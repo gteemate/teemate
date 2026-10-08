@@ -239,6 +239,11 @@ export async function setGuestHandicap(guestId, hcp) {
   must(await sb.rpc('set_guest_handicap', { p_guest_id: guestId, p_hcp: hcp }))
 }
 
+/** Cancel a booking: deletes it if I made it (guest points back), otherwise withdraws me. → { result, pointsBack } */
+export async function cancelBooking(id) {
+  return must(await sb.rpc('cancel_booking', { p_booking: id }))
+}
+
 export async function getMyBookings() {
   return must(await sb.rpc('get_my_bookings'))
 }

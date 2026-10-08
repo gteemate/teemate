@@ -138,6 +138,30 @@ do $$ declare e text; used int; i int; begin
     t.err($q$insert into public.guest_visits (member_id, date, guest_name, course_id, points) values (2, current_date, 'x', 1, 3)$q$) is not null);
 end $$;
 
+-- ------------------------------------------------------------------ cancelling bookings
+do $$ declare s5 bigint := (select id from t.slot where start_time = 710); r jsonb; bid bigint; used_before int; e text; begin
+  perform t.act_as(0); -- Gary books himself, Declan and a guest
+  select coalesce(sum(points), 0) into used_before from public.guest_visits where member_id = 0;
+  r := public.book_tee_time(s5, '{1}', '[{"name":"Cancel Guest"}]');
+  bid := (r->>'id')::bigint;
+  perform t.done();
+  perform t.act_as(2); -- Aoife isn't in it
+  e := t.err(format('select public.cancel_booking(%s)', bid));
+  perform t.ok('Cancel: someone not in the booking cannot', e like '%isn''t your booking%', e);
+  perform t.done();
+  perform t.act_as(1); -- Declan was booked in by Gary: withdraws only himself
+  r := public.cancel_booking(bid);
+  perform t.done();
+  perform t.ok('Cancel: a player booked in by someone else withdraws only themselves',
+    r->>'result' = 'withdrawn' and t.taken(s5) = 2, r::text);
+  perform t.act_as(0);
+  r := public.cancel_booking(bid);
+  perform t.done();
+  perform t.ok('Cancel: the booker deletes the whole booking', r->>'result' = 'deleted' and t.taken(s5) = 0, r::text);
+  perform t.ok('Cancel: guest points are given back', (r->>'pointsBack')::int = 3
+    and (select coalesce(sum(points), 0) from public.guest_visits where member_id = 0) = used_before);
+end $$;
+
 -- ------------------------------------------------------------------ guest handicaps
 do $$ declare s3 bigint := (select id from t.slot where start_time = 690); r jsonb; gid bigint; e text; begin
   perform t.act_as(3); -- Ciarán books with Declan and two guests

@@ -482,7 +482,7 @@ img{max-width:100%}
 /* swipe a member row left to reveal Delete */
 .swipe{position:relative;overflow:hidden;border-top:1px solid var(--line)}
 .swipe:first-child{border-top:0}
-.swipe .accrow{position:relative;z-index:1;background:var(--surface);border-top:0;transition:transform .2s ease;touch-action:pan-y;user-select:none}
+.swipe .swrow{position:relative;z-index:1;background:var(--surface);border-top:0;transition:transform .2s ease;touch-action:pan-y;user-select:none}
 .swdel{position:absolute;right:0;top:0;bottom:0;width:92px;border:0;background:var(--loss);color:var(--on-loss);font:800 15px var(--sys);cursor:pointer}
 /* favourites in Members & access */
 .accend{display:flex;align-items:center;gap:6px}
@@ -509,3 +509,4 @@ img{max-width:100%}
 .wlpill.on{background:var(--loss);color:var(--on-loss)}
 button.wlpill{cursor:pointer}
 .wlpill.off{background:var(--surface);color:var(--loss);box-shadow:inset 0 0 0 1.5px var(--loss)}
+.bkrow{grid-template-columns:70px 1fr;cursor:default}

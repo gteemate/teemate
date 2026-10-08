@@ -56,7 +56,10 @@ do $$ declare e text; v bigint; begin
   update public.members set user_id = (select id from auth.users where email = 'ev-test-9@example.invalid') where id = 9;
   perform t.act_as(9);
   perform t.ok('See: someone not in a private event cannot', (select count(*) from public.events where id = v) = 0);
-  perform t.ok('See: everyone sees all-member events', (select count(*) from public.events where everyone) >= 1);
+  perform t.done();
+  insert into public.events (name, start_date, style, fmt, club, everyone) values ('Open To All', current_date + 3, 'individual', 'stab', true, true);
+  perform t.act_as(9);
+  perform t.ok('See: everyone sees all-member events', (select count(*) from public.events where name = 'Open To All') = 1);
   perform t.done();
   -- a club event for entrants only
   perform t.act_as(0);

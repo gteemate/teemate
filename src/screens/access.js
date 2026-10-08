@@ -4,6 +4,7 @@ import * as api from '../api.js'
 import { S } from '../state.js'
 import { $, esc, ini, header, keepScroll, render, toast } from '../ui.js'
 import { toAdmin } from './nav.js'
+import { bindSwipes, swipeSwallowsClick } from '../swipe.js'
 
 export async function load() {
   const [list, me, requests, favs] = await Promise.all([api.getAccessList(), api.getMe(), api.getAccessRequests(), api.getFavourites()])
@@ -29,7 +30,7 @@ export function draw({ list, me, requests, favs }) {
     <button class="primary" id="addm">+ Add member</button>
     <div class="search"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="accq" type="search" placeholder="Name, email or GUI" value="${esc(S.accQ)}" autocomplete="off"></div>
     ${(() => {
-      const row = m => { const fav = favs.includes(m.id); return `<div class="swipe">${m.id === me.id ? '' : `<button class="swdel" data-del="${m.id}">Delete</button>`}<div class="lrow accrow" role="button" tabindex="0" data-m="${m.id}" ${m.id === me.id ? '' : 'data-swipe'}><span class="av">${ini(m.name)}</span>
+      const row = m => { const fav = favs.includes(m.id); return `<div class="swipe">${m.id === me.id ? '' : `<button class="swdel" data-del="${m.id}">Delete</button>`}<div class="lrow accrow swrow" role="button" tabindex="0" data-m="${m.id}" ${m.id === me.id ? '' : 'data-swipe'}><span class="av">${ini(m.name)}</span>
         <span class="who"><strong>${esc(m.name)}${m.id === me.id ? ' (you)' : ''}${m.admin ? ' <span class="pill tag">Admin</span>' : ''}</strong><small>${m.email ? esc(m.email) : 'No email · can’t sign in'}</small></span>
         <span class="accend"><span class="accst ${m.signedIn ? 'on' : m.email ? 'inv' : ''}">${status(m)}</span><button class="favstar" data-fav="${m.id}" aria-pressed="${fav}" aria-label="${fav ? 'Remove from' : 'Add to'} favourites">${fav ? '★' : '☆'}</button></span></div></div>` }
       const starred = shown.filter(m => favs.includes(m.id))
@@ -62,8 +63,7 @@ export function draw({ list, me, requests, favs }) {
   }))
   document.querySelectorAll('[data-m]').forEach(b => (b.onkeydown = e => { if ((e.key === 'Enter' || e.key === ' ') && e.target === b) { e.preventDefault(); b.click() } }))
   document.querySelectorAll('[data-m]').forEach(b => (b.onclick = () => {
-    if (b.dataset.swiped === '1') { b.dataset.swiped = ''; return } // that was a swipe, not a tap
-    if (b.classList.contains('open')) { slide(b, 0); return } // tapping an open row closes it
+    if (swipeSwallowsClick(b)) return // a swipe, or closing an open row
     S.accEdit = +b.dataset.m; S.accConfirm = false; keepScroll(render)
   }))
   bindSwipes()
@@ -74,36 +74,6 @@ export function draw({ list, me, requests, favs }) {
   if (S.accEdit != null) editSheet(S.accEdit === 'new' ? { name: '', email: '', gui: '', hcp: 54, admin: false, ...S.accPrefill } : list.find(m => m.id === S.accEdit), me)
 }
 
-// Swipe a row left to reveal Delete (pointer events: works with touch and a mouse drag).
-const OPEN = -92
-function slide(row, x) {
-  row.style.transform = x ? `translateX(${x}px)` : ''
-  row.classList.toggle('open', x !== 0)
-}
-function bindSwipes() {
-  document.querySelectorAll('[data-swipe]').forEach(row => {
-    let start = null, base = 0, x = 0
-    row.onpointerdown = e => { start = e.clientX; base = row.classList.contains('open') ? OPEN : 0; x = base; row.style.transition = 'none' }
-    row.onpointermove = e => {
-      if (start == null) return
-      const dx = e.clientX - start
-      if (Math.abs(dx) > 8) { row.dataset.swiped = '1'; try { row.setPointerCapture(e.pointerId) } catch {} } // keep following the finger off the row
-      x = Math.max(OPEN, Math.min(0, base + dx))
-      row.style.transform = `translateX(${x}px)`
-    }
-    const end = () => {
-      if (start == null) return
-      start = null
-      row.style.transition = ''
-      if (row.dataset.swiped !== '1') return
-      const open = x < OPEN / 2
-      document.querySelectorAll('[data-swipe].open').forEach(r => r !== row && slide(r, 0)) // one open at a time
-      slide(row, open ? OPEN : 0)
-    }
-    row.onpointerup = end
-    row.onpointercancel = end
-  })
-}
 async function confirmDelete(btn, m, ask = 'Sure?') {
   if (btn.dataset.armed !== '1') { btn.dataset.armed = '1'; btn.textContent = ask; return }
   btn.disabled = true
