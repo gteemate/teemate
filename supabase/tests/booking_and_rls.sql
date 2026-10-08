@@ -73,6 +73,7 @@ do $$ declare e text; total bigint := (select count(*) from public.members); beg
   perform t.ok('My games: can save my own preference', t.err($q$insert into public.member_game_prefs values (1, 2, 'sm2')$q$) is null);
   perform t.ok('My games: cannot set someone else''s', t.err($q$insert into public.member_game_prefs values (0, 2, 'sm2')$q$) is not null);
   perform t.ok('My games: only see my own', t.val('select count(*) from public.member_game_prefs where member_id <> 1') = 0);
+  perform t.ok('Member: cannot delete someone else''s card', t.val('with d as (delete from public.rounds where created_by = 0 returning 1) select count(*) from d') = 0);
   perform t.ok('Member: cannot start a card as someone else', t.err($q$insert into public.rounds (created_by, lineup) values (0, '[{"m":0}]')$q$) is not null);
   perform t.done();
 end $$;
@@ -155,9 +156,11 @@ do $$ declare s5 bigint := (select id from t.slot where start_time = 710); r jso
   perform t.ok('Cancel: a player booked in by someone else withdraws only themselves',
     r->>'result' = 'withdrawn' and t.taken(s5) = 2, r::text);
   perform t.act_as(0);
+  insert into public.rounds (lineup, slot_id, scores, done) values ('[{"m":0}]', s5, '[]', (select jsonb_agg(false) from generate_series(1,18)));
   r := public.cancel_booking(bid);
   perform t.done();
   perform t.ok('Cancel: the booker deletes the whole booking', r->>'result' = 'deleted' and t.taken(s5) = 0, r::text);
+  perform t.ok('Cancel: their unscored card for that tee time goes too', (r->>'cardsRemoved')::int = 1 and not exists (select 1 from public.rounds where slot_id = s5));
   perform t.ok('Cancel: guest points are given back', (r->>'pointsBack')::int = 3
     and (select coalesce(sum(points), 0) from public.guest_visits where member_id = 0) = used_before);
 end $$;

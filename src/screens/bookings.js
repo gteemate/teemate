@@ -6,6 +6,7 @@ import { $, esc, header, keepScroll, render, toast } from '../ui.js'
 import { fromIso, longDay, hhmm } from '../dates.js'
 import { toAdmin } from './nav.js'
 import { bindSwipes, swipeSwallowsClick } from '../swipe.js'
+import { resetRound } from './scores.js'
 
 export async function load() {
   return { bookings: await api.getMyBookings() }
@@ -34,6 +35,7 @@ export function draw({ bookings }) {
       btn.disabled = false
       return
     }
+    resetRound() // Scores reloads, in case the card for that tee time went too
     await keepScroll(render)
     toast(r.result === 'deleted'
       ? `${hhmm(b.time)} booking deleted${r.pointsBack ? ` · ${r.pointsBack} guest points back` : ''}`

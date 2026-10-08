@@ -66,9 +66,12 @@ export async function signOut() {
 
 /** cb(event) on sign-in, sign-out, token refresh. */
 export function onAuthChange(cb) {
-  sb.auth.onAuthStateChange(event => {
-    if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') me = undefined
-    cb(event)
+  let current = null
+  sb.auth.onAuthStateChange((event, session) => {
+    const id = session?.user.id ?? null
+    if (id !== current) me = undefined // only forget the member when the login actually changes
+    current = id
+    cb(event, session)
   })
 }
 
@@ -300,6 +303,11 @@ export async function getCurrentRound() {
   const r = must(await sb.from('rounds').select(ROUND_COLS).eq('date', todayIso()).eq('created_by', await myId())
     .order('id', { ascending: false }).limit(1).maybeSingle())
   return r && toRound(r)
+}
+
+/** Delete one of my scorecards. */
+export async function deleteRound(id) {
+  must(await sb.from('rounds').delete().eq('id', id))
 }
 
 /** Insert or update my scorecard. A new round gets its id set. */

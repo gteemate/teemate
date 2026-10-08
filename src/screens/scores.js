@@ -49,6 +49,13 @@ function bindEvents(events, me) {
   invitePopup(pendingInvite(events, me), me)
 }
 
+/** Forget the card held in memory so the next visit reloads it (e.g. after a booking is deleted). */
+export function resetRound() {
+  round = undefined
+  S.ch = null
+  S.gmenu = false
+}
+
 export function setRound(r) {
   round = r
   S.ch = 0
@@ -93,7 +100,8 @@ export function draw({ course, members, guests, L, me, teeTimes, events, leagues
     ${G.pairs ? `<div class="gm-sec"><span class="gm-lbl">Pairs</span><div class="games" role="radiogroup" aria-label="Pairs">${PAIRINGS.map((pp, n) => `<button class="gamecard sm" role="radio" aria-checked="${round.pairing === n}" data-pr="${n}"><span class="radio"></span><span class="who"><strong>You & ${esc(ps[pp[1]].name)}</strong><small>v ${esc(ps[pp[2]].name)} & ${esc(ps[pp[3]].name)}</small></span></button>`).join('')}</div></div>` : ''}
     <div class="gm-sec"><span class="gm-lbl">Players and shots</span><div class="gm-players">${ps.map((p, k) => `<div><span>${esc(p.name)}${k === 0 ? ' (you)' : ''}${p.guestId ? ` · guest · ${p.hcp == null ? '<button class="linkbtn" data-gh="' + k + '">set handicap</button>' : `index ${fmtHcp(p.hcp)} <button class="linkbtn" data-gh="${k}">change</button>`}` : ''}</span><b>${ph[k]}</b></div>`).join('')}</div>
       <span class="hint">${G.offLow ? 'Shots off the lowest playing handicap.' : G.allow ? `Playing handicap at ${Math.round(G.allow * 100)}% of course handicap.` : 'Scratch: no shots.'} Course handicaps from the white tees (${teeRating(course).rating} / ${teeRating(course).slope}).</span></div>
-    <div class="gm-btns"><button class="ghost" id="chg">Change players</button><button class="primary" id="gdone">Done</button></div></div>` : ''
+    <div class="gm-btns"><button class="ghost" id="chg">Change players</button><button class="primary" id="gdone">Done</button></div>
+    <button class="ghost accremove" id="delcard">Delete this card</button></div>` : ''
 
   const sideA = k => o.indexOf(k) < 2
   const best = k => {
@@ -172,6 +180,16 @@ export function draw({ course, members, guests, L, me, teeTimes, events, leagues
     }))
     $('chg').onclick = async () => { S.gmenu = false; S.pickTmp = round.lineup.slice(1).filter(e => e.m != null).map(e => e.m); S.sview = 'players'; await render(); top0() }
     $('gdone').onclick = () => { S.gmenu = false; render() }
+    $('delcard').onclick = async () => {
+      const b = $('delcard')
+      if (b.dataset.armed !== '1') { b.dataset.armed = '1'; b.textContent = P ? `Tap again to delete this card and its ${P} hole${P === 1 ? '' : 's'} of scores` : 'Tap again to delete this card'; return }
+      b.disabled = true
+      if (round.id) await api.deleteRound(round.id)
+      resetRound()
+      await render()
+      top0()
+      toast('Card deleted')
+    }
   }
 
   bindEvents(events, me)

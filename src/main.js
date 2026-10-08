@@ -42,6 +42,7 @@ async function render() {
   try {
     // Signed out → sign-in screen. Signed in but not a member → explain. Otherwise the app.
     const session = await api.getSession()
+    signedInAs = session?.user.id ?? null
     const me = session && (await api.getMe())
     if (mine !== seq) return
     $('app').classList.toggle('signed-out', !me)
@@ -69,9 +70,13 @@ if (seen) applyTheme(seen)
 api.getTheme().then(applyTheme).catch(err => console.warn('Club colours not loaded', err))
 
 // Sign-out (here or in another tab) starts the app afresh.
-api.onAuthChange(event => {
+// Supabase also announces SIGNED_IN whenever the tab regains focus. Only redraw for a real sign-in
+// (a different login from the one on screen), so half-done things like an armed Delete button or
+// text being typed aren't wiped when you switch back to the app.
+let signedInAs = null
+api.onAuthChange((event, session) => {
   if (event === 'SIGNED_OUT') location.replace(import.meta.env.BASE_URL)
-  else if (event === 'SIGNED_IN') render()
+  else if (event === 'SIGNED_IN' && session?.user.id !== signedInAs) render()
 })
 // A failed save or button action shouldn't fail silently.
 addEventListener('unhandledrejection', e => { console.error(e.reason); toast(e.reason?.message || 'Something went wrong') })
