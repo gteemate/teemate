@@ -31,6 +31,11 @@ export async function signIn(email, password) {
   }
 }
 
+/** True if this email is approved but its account hasn't been created yet (after a failed sign-in). */
+export async function needsAccount(email) {
+  return must(await sb.rpc('needs_account', { p_email: email }))
+}
+
 /** First sign-in: create a login with a password. Only emails an admin has approved are accepted. */
 export async function createAccount(email, password) {
   const { data, error } = await sb.auth.signUp({ email: email.trim().toLowerCase(), password })

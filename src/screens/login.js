@@ -16,6 +16,7 @@ export function draw() {
     <label for="email">Email</label><input id="email" type="email" autocomplete="email" inputmode="email" placeholder="you@example.com" value="${esc(S.loginEmail)}">
     <label for="pw">${create ? 'Choose a password' : 'Password'}</label>${passwordInput('pw', `autocomplete="${create ? 'new-password' : 'current-password'}" ${create ? `placeholder="At least ${MIN} characters"` : ''}`)}
     ${create ? `<label for="pw2">Password again</label>${passwordInput('pw2', 'autocomplete="new-password"')}` : ''}
+    ${create && S.loginNotice ? `<p class="hcpnote" style="margin:4px 0 0">${esc(S.loginNotice)}</p>` : ''}
     <p class="gerr" id="err" role="alert"></p>
     <button class="primary" type="submit" id="go">${create ? 'Create account' : 'Sign in'}</button>
     <span class="hint">${create ? 'Your email has to be approved by the club admin first.' : 'Forgotten your password? Ask the club admin to reset your login.'}</span>
@@ -23,7 +24,7 @@ export function draw() {
     <button type="button" class="linkbtn" id="toreq" style="align-self:flex-start">Not approved yet? Request access</button>
   </form></div>`
   setTimeout(() => $(S.loginEmail ? 'pw' : 'email')?.focus(), 30)
-  $('mode').onclick = () => { S.loginEmail = $('email').value.trim(); S.loginMode = create ? 'signin' : 'create'; render() }
+  $('mode').onclick = () => { S.loginEmail = $('email').value.trim(); S.loginNotice = ''; S.loginMode = create ? 'signin' : 'create'; render() }
   $('toreq').onclick = () => { S.loginEmail = $('email').value.trim(); S.loginMode = 'request'; render() }
   $('login').onsubmit = async e => {
     e.preventDefault()
@@ -38,11 +39,20 @@ export function draw() {
     try {
       await (create ? api.createAccount(email, pw) : api.signIn(email, pw))
       S.loginEmail = ''
+      S.loginNotice = ''
       S.loginMode = 'signin'
       // onAuthChange in main.js redraws once signed in
     } catch (ex) {
       // Not approved yet: offer to leave their name for the admin.
       if (create && /given access/.test(ex.message)) { S.loginEmail = email; S.loginMode = 'request'; render(); return }
+      // Approved but never set a password: take them to Create account instead of "wrong password".
+      if (!create && /Wrong email or password/.test(ex.message) && (await api.needsAccount(email).catch(() => false))) {
+        S.loginEmail = email
+        S.loginMode = 'create'
+        S.loginNotice = 'This email is approved but hasn’t been set up yet. Choose your password below to create your account.'
+        render()
+        return
+      }
       err(ex.message)
       go.disabled = false
       go.textContent = label
