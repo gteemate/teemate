@@ -1,4 +1,5 @@
-// Admin → Events (every player): events set up in advance — mine, ones I'm in, and club events.
+// Admin → Events (every player): events set up in advance — mine and ones I'm in.
+// Club admin → Club events (S.evScope 'club'): club-wide events and leagues, set up by admins.
 import * as api from '../api.js'
 import { S } from '../state.js'
 import { $, esc, header, top0, render } from '../ui.js'
@@ -14,8 +15,11 @@ export async function load() {
 export const lastDay = eventLastDay
 export const canEdit = (e, me) => me.admin || (e.createdBy?.id === me.id && e.startDate > isoDate(today()))
 
-export function draw({ events, me }) {
-  header('Events', 'Set up matches and competitions in advance', toAdmin)
+export function draw({ events: all, me }) {
+  const club = S.evScope === 'club' && me.admin
+  const isClub = e => e.club || e.style === 'league'
+  const events = club ? all.filter(isClub) : all.filter(e => !isClub(e) || e.players.includes(me.id))
+  header(club ? 'Club events' : 'Events', club ? 'Club-wide events and leagues' : 'Set up matches and competitions in advance', toAdmin)
   const t = isoDate(today())
   const upcoming = events.filter(e => lastDay(e) >= t), done = events.filter(e => lastDay(e) < t).reverse()
   const card = e => {
@@ -31,11 +35,14 @@ export function draw({ events, me }) {
       <div class="peacts"><button class="linkbtn" data-view="${e.id}">${lastDay(e) < t ? 'Results' : 'View'}</button>${canEdit(e, me) ? `<button class="linkbtn" data-edit="${e.id}">Edit</button>` : ''}</div></div>`
   }
   $('main').innerHTML = `<div class="screen">
-    <button class="primary" id="newev">+ New event</button>
-    <h3>Coming up</h3>${upcoming.length ? upcoming.map(card).join('') : '<div class="empty-state">No events coming up. Set one up for your group.</div>'}
+    ${club ? '<div class="bk-btns"><button class="primary" id="newev">+ New club event</button><button class="primary" id="newlg">+ New league</button></div>' : '<button class="primary" id="newev">+ New event</button>'}
+    <h3>Coming up</h3>${upcoming.length ? upcoming.map(card).join('') : `<div class="empty-state">${club ? 'No club events or leagues coming up.' : 'No events coming up. Set one up for your group.'}</div>`}
     ${done.length ? `<h3>Finished</h3>${done.map(card).join('')}` : ''}
   </div>`
-  $('newev').onclick = async () => { S.ev = null; S.evId = null; S.evStep = 1; S.aview = 'event'; await render(); top0() }
+  const start = async style => { S.ev = null; S.evId = null; S.evStep = 1; S.evNew = style; S.aview = 'event'; await render(); top0() }
+  $('newev').onclick = () => start(null)
+  const lg = $('newlg')
+  if (lg) lg.onclick = () => start('league')
   document.querySelectorAll('[data-edit]').forEach(b => (b.onclick = async () => { S.ev = null; S.evId = +b.dataset.edit; S.evStep = 1; S.aview = 'event'; await render(); top0() }))
   document.querySelectorAll('[data-view]').forEach(b => (b.onclick = async () => { S.evId = +b.dataset.view; S.evDay = 1; S.aview = 'evboard'; await render(); top0() }))
 }

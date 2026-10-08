@@ -27,9 +27,10 @@ export async function load() {
   if (!S.ev) {
     const e = S.evId && events.find(x => x.id === S.evId)
     S.ev = e ? structuredClone(e) : {
-      name: '', startDate: addDaysIso(isoDate(today()), 1), days: 1, style: 'ryder', fmt: 'bbl', club: false,
-      players: [me.id], team: {}, matches: {}, A: { name: 'Blues', col: '#19335A' }, B: { name: 'Reds', col: '#762A43' },
+      name: '', startDate: addDaysIso(isoDate(today()), 1), days: 1, style: 'ryder', fmt: 'bbl', club: S.evScope === 'club',
+      players: S.evScope === 'club' ? [] : [me.id], team: {}, matches: {}, A: { name: 'Blues', col: '#19335A' }, B: { name: 'Reds', col: '#762A43' },
     }
+    if (!e && S.evNew === 'league') Object.assign(S.ev, { style: 'league', fmt: 'beststab', weeks: 6, bestOf: 7, teams: leagueTeams(10), club: false })
   }
   return { members, me }
 }
@@ -93,9 +94,9 @@ export function draw({ members, me }) {
       ${ev.style === 'league' ? `<div class="card evsec"><h4>League</h4>${[['weeks', 'Weeks', 1, 26], ['bestOf', 'Scores that count per team each week', 1, 30], ['nteams', 'Number of teams', 2, 20], ['size', 'Players per team', 1, 30]].map(([k, l, lo, hi]) => `<div class="gedit"><span class="hint">${l}</span><span class="stepper sm"><button data-lg="${k}" data-d="-1" data-lo="${lo}" aria-label="Fewer">−</button><output>${k === 'nteams' ? ev.teams.length : k === 'size' ? ev.teams[0]?.size ?? 12 : ev[k]}</output><button data-lg="${k}" data-d="1" data-hi="${hi}" aria-label="More">+</button></span></div>`).join('')}
         <span class="hint">${ev.weeks} weeks from ${eventDates(ev.startDate, 1)} to ${eventDates(addDaysIso(ev.startDate, ev.weeks * 7 - 1), 1)}. Each week a team’s best ${ev.bestOf} Stableford rounds count; the season table is the total. Players choose before they play whether a round is entered, one per week.</span></div>` : ''}
       <h3>Format</h3>
-      <div class="games">${Object.entries(EVENT_TYPES).filter(([, t]) => !t.adminOnly || me.admin).map(([k, t]) => `<button class="gamecard" role="radio" aria-checked="${ev.style === k}" data-style="${k}"><span class="radio"></span><span class="who"><strong>${t.name}</strong><small>${t.desc}</small></span></button>`).join('')}</div>
+      <div class="games">${Object.entries(EVENT_TYPES).filter(([, t]) => !t.adminOnly || (me.admin && S.evScope === 'club')).map(([k, t]) => `<button class="gamecard" role="radio" aria-checked="${ev.style === k}" data-style="${k}"><span class="radio"></span><span class="who"><strong>${t.name}</strong><small>${t.desc}</small></span></button>`).join('')}</div>
       ${EVENT_TYPES[ev.style].formats.length > 1 ? `<div class="card evsec"><label for="ev-fmt">${ev.style === 'ryder' ? 'Match format' : 'Scoring'}</label><select id="ev-fmt" class="plainsel">${EVENT_TYPES[ev.style].formats.map(([k, n]) => `<option value="${k}" ${ev.fmt === k ? 'selected' : ''}>${n}</option>`).join('')}</select></div>` : ''}
-      ${ev.style === 'league' ? '<div class="hint">Only the league’s players (and admins) see a league.</div>' : me.admin ? `<div class="card evsec"><div class="actrow"><span class="who"><strong>Club event</strong><small>Everyone in the club sees it on the Leaderboard</small></span><button class="switch" role="switch" aria-checked="${ev.club}" id="ev-club" aria-label="Club event"><span></span></button></div>
+      ${ev.style === 'league' ? '<div class="hint">Only the league’s players (and admins) see a league.</div>' : me.admin && S.evScope === 'club' ? `<div class="card evsec"><div class="actrow"><span class="who"><strong>Club event</strong><small>Everyone in the club sees it on the Leaderboard</small></span><button class="switch" role="switch" aria-checked="${ev.club}" id="ev-club" aria-label="Club event"><span></span></button></div>
         <span class="hint">${ev.club ? 'Everyone in the club will see this event.' : 'Only the players in it will see this event.'}</span></div>` : '<div class="hint">Only the players you pick will see this event.</div>'}`
   } else if (step === 2) {
     const q = (S.evQ || '').trim().toLowerCase()

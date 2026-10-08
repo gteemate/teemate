@@ -13,11 +13,12 @@ export async function load() {
     api.getTeeSheet(isoDate(today())), api.getMyBookings(), api.getBuddies(), api.getGameSettings(), api.getEvents(), api.getGuestPoints(),
     me.admin ? api.getAccessRequests() : [],
   ])
-  const upcoming = events.filter(e => eventLastDay(e) >= isoDate(today())).length
-  return { me, sheet, bookings, buddies, L: buildLibrary(games), upcoming, points, requests }
+  const live = events.filter(e => eventLastDay(e) >= isoDate(today()))
+  const upcoming = live.filter(e => !e.club && e.style !== 'league').length, clubEvents = live.filter(e => e.club || e.style === 'league').length
+  return { me, sheet, bookings, buddies, L: buildLibrary(games), upcoming, clubEvents, points, requests }
 }
 
-export function draw({ me, sheet, bookings, buddies, L, upcoming, points, requests }) {
+export function draw({ me, sheet, bookings, buddies, L, upcoming, clubEvents, points, requests }) {
   header('Admin', `Signed in as <b>${esc(me.name)}</b>`)
   const avail = sheet.filter(s => s.players.length < s.capacity).length
   const used = points.mine.reduce((t, x) => t + x.points, 0), left = points.allowance - used
@@ -38,6 +39,7 @@ export function draw({ me, sheet, bookings, buddies, L, upcoming, points, reques
   </div>
   ${me.admin ? `<h3 class="adminhead">Club admin <span class="hint">only admins see this</span></h3>
   <div class="agrid">
+    <button class="atile row" data-a="clubevents"><span class="e">🏆</span><span class="rt"><b>Club events</b><span>${clubEvents ? `${clubEvents} running or coming up · ` : ''}club-wide events and leagues</span></span></button>
     <button class="atile row" data-a="access"><span class="e">🔑</span><span class="rt"><b>Members &amp; access</b><span>${requests.length ? `<b class="reqcount">${requests.length} access request${requests.length > 1 ? 's' : ''}</b>` : 'Choose who can sign in'}</span></span></button>
     <button class="atile row" data-a="colours"><span class="e">🎨</span><span class="rt"><b>Club colours</b><span>Two colours that theme the whole app</span></span></button>
     <button class="atile row" data-a="pins"><span class="e">⛳</span><span class="rt"><b>Pins</b><span>Set today's flags</span></span></button>
@@ -49,6 +51,8 @@ export function draw({ me, sheet, bookings, buddies, L, upcoming, points, reques
   $('chpw').onclick = () => passwordSheet(ok => ok && toast('Password changed'))
   document.querySelectorAll('[data-a]').forEach(b => (b.onclick = async () => {
     S.aview = b.dataset.a
+    if (S.aview === 'events') S.evScope = 'player'
+    if (S.aview === 'clubevents') { S.evScope = 'club'; S.aview = 'events' }
     if (S.aview === 'buddies') { S.bseg = 'mine'; S.bfrom = null }
     if (S.aview === 'access') { S.accEdit = null; S.accQ = '' }
     await render()

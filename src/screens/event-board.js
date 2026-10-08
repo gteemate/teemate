@@ -102,7 +102,7 @@ function leagueHtml({ e, members, course, L, entries, cards, me }, top) {
       const v = wk === 'season' ? t.total : t.perWeek[wk - 1].score
       if (v !== prev) { pos = i + 1; prev = v }
       const w = wk === 'season' ? null : t.perWeek[wk - 1]
-      const sub = wk === 'season' ? `${t.perWeek.filter(x => x.entered).length} of ${e.weeks} weeks played · ${e.team ? Object.values(e.team).filter(x => x === t.idx).length : 0} players`
+      const sub = wk === 'season' ? `${t.perWeek.filter(x => x.entered).length} of ${e.weeks} weeks played · ${(n => `${n} player${n === 1 ? '' : 's'}`)(Object.values(e.team ?? {}).filter(x => x === t.idx).length)}`
         : `${w.entered} entered · best ${Math.min(e.bestOf, w.entered)} count${w.live ? ' <span class="livedot">● live</span>' : ''}`
       return `<div class="lbrow${t.idx === myTeam ? ' me' : ''}"><span class="lpos">${pos}</span><span class="av" style="border-color:${t.col}">${ini(t.name)}</span><span class="who"><strong>${esc(t.name)}${t.idx === myTeam ? ' (your team)' : ''}</strong><small>${sub}</small></span><span class="lval">${v}</span></div>`
     }).join('')}</div>`
