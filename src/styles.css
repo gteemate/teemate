@@ -443,7 +443,7 @@ img{max-width:100%}
 .ptsmini b{color:var(--ink);font-size:16px}
 .ptsmini.low{border-color:var(--loss)}
 .ptsmini.low b{color:var(--loss)}
-.atile.row .rt{display:flex;flex-direction:column;gap:2px;min-width:0}
+.atile.row .rt{display:flex;flex-direction:column;gap:2px;min-width:0;color:var(--ink)} /* title in ink; only the description is grey */
 .pinsum{font-size:13px;color:var(--muted)}
 /* pins: "Flag is [3] yds from [Back]" */
 .pinline{display:flex;align-items:center;gap:6px;flex-wrap:wrap}

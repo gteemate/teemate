@@ -4,7 +4,7 @@ import { S } from '../state.js'
 import { $, esc, header, top0, render, toast } from '../ui.js'
 import { passwordSheet } from './login.js'
 import { isoDate, today, eventLastDay } from '../dates.js'
-import { buildLibrary, preferredGame } from '../games.js'
+import { buildLibrary } from '../games.js'
 import { bar } from './booking.js'
 
 export async function load() {
@@ -35,7 +35,7 @@ export function draw({ me, sheet, bookings, buddies, L, upcoming, points, reques
     <button class="atile" data-a="mine"><span class="e">📋</span><b>Bookings</b><span>${bookings.length ? `${bookings.length} upcoming` : 'Nothing booked yet'}</span></button>
     <button class="atile" data-a="buddies"><span class="e">👥</span><b>Buddies</b><span>${buddies.length} playing partners</span></button>
     <button class="atile row" data-a="events"><span class="e">🏆</span><span class="rt"><b>Events</b><span>${upcoming ? `${upcoming} coming up · set one up for your group` : 'Set up a match or competition in advance'}</span></span></button>
-    <button class="atile row" data-a="mygames"><span class="e">🎯</span><span class="rt"><b>Games</b><span>Your game for 2, 3 and 4 players: ${[2, 3, 4].map(n => esc(L.lib[preferredGame(L, n)]?.name ?? '–')).join(' · ')}</span></span></button>
+    <button class="atile row" data-a="mygames"><span class="e">🎯</span><span class="rt"><b>Games</b></span></button>
   </div>
   ${me.admin ? `<h3 class="adminhead">Club admin <span class="hint">only admins see this</span></h3>
   <div class="agrid">
