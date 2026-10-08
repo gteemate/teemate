@@ -427,3 +427,8 @@ img{max-width:100%}
 .pegroup{border:1px solid var(--line);border-radius:16px;padding:10px 12px;background:var(--surface)}
 .peacts{display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex-shrink:0}
 .mcard.mine{border-color:var(--leaf-line)}
+/* play an event: group rows (time and size on top, full names below) */
+.brow.grouprow{grid-template-columns:1fr auto}
+.grouprow .who strong{font-size:16px}
+.grouprow .gtime{font-size:18px;font-weight:800;font-variant-numeric:tabular-nums}
+.grouprow .who small{line-height:1.35;margin-top:2px}

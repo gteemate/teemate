@@ -45,9 +45,9 @@ export function draw({ me, dates, date, sheet }) {
   $('main').innerHTML = `<div class="screen">
     ${dates.length > 1 ? `<div class="tabs-pill" role="group" aria-label="Day">${dates.map(d => `<button data-day="${d}" aria-pressed="${d === date}">${d === isoDate(today()) ? 'Today' : longDay(fromIso(d))}</button>`).join('')}</div>` : `<div class="hint">${longDay(fromIso(date))}</div>`}
     <h3>Your group</h3>
-    ${mine.map(s => `<button class="card evrow" data-host="${s.id}" aria-pressed="${s.id === pe.host}"><span class="who"><strong>${hhmm(s.time)}</strong><small>${names(s)}</small></span>${mine.length > 1 ? `<span class="check">${s.id === pe.host ? '✓' : ''}</span>` : ''}</button>`).join('')}
+    ${mine.map(s => `<button class="card evrow" data-host="${s.id}" aria-pressed="${s.id === pe.host}"><span class="who"><strong>${hhmm(s.time)} · ${s.players.length} players</strong><small>${names(s)}</small></span>${mine.length > 1 ? `<span class="check">${s.id === pe.host ? '✓' : ''}</span>` : ''}</button>`).join('')}
     <h3>Groups to challenge</h3><div class="hint">Pick one or more. Each needs at least two players, including a member to accept.</div>
-    ${others.length ? `<div class="pick">${others.map(s => { const on = pe.invited.includes(s.id); return `<button class="brow" data-inv="${s.id}" aria-pressed="${on}"><span style="font-size:20px;font-weight:800">${hhmm(s.time)}</span><span class="who"><strong>${s.players.length} players</strong><small>${names(s)}</small></span><span class="check">${on ? '✓' : ''}</span></button>` }).join('')}</div>`
+    ${others.length ? `<div class="pick">${others.map(s => { const on = pe.invited.includes(s.id); return `<button class="brow grouprow" data-inv="${s.id}" aria-pressed="${on}"><span class="who"><strong><span class="gtime">${hhmm(s.time)}</span> · ${s.players.length} players</strong><small>${names(s)}</small></span><span class="check">${on ? '✓' : ''}</span></button>` }).join('')}</div>`
       : '<div class="empty-state">No other groups with a member are booked that day yet.</div>'}
   </div>
   <div class="cta"><button class="primary" id="pe-setup" ${pe.invited.length ? '' : 'disabled'}>${pe.invited.length ? `Set up event with ${pe.invited.length} group${pe.invited.length > 1 ? 's' : ''}` : 'Pick groups to challenge'}</button></div>`
