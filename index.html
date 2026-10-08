@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>TeeMates</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⛳</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Pinyon+Script&display=swap">
+</head>
+<body>
+  <div class="wrap">
+    <div class="phone" id="app">
+      <header class="top" id="hdr"></header>
+      <div id="dateWrap"></div>
+      <main id="main"></main>
+      <nav class="tabs" aria-label="Main">
+        <button data-tab="scores">Scores</button>
+        <button data-tab="lb">Leaderboard</button>
+        <button data-tab="course">Course</button>
+        <button data-tab="admin">Admin</button>
+      </nav>
+      <div id="modal"></div>
+      <div class="toast" id="toast" hidden></div>
+    </div>
+  </div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

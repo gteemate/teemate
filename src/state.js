@@ -1,0 +1,22 @@
+// UI state only: which tab and screen, selections, and drafts not yet saved. Data lives behind api.js.
+export const S = {
+  loginSent: null,  // email a sign-in link was sent to
+  tab: 'scores',
+  sview: 'card',     // scores: 'card' | 'players'
+  aview: 'home',     // admin: home | tee | book | booked | mine | buddies | pins | games | points | events | event
+
+  // course
+  hole: 0, cimg: 'hole',
+  // scores
+  ch: null, gmenu: false, pickTmp: null,
+  // leaderboard
+  lbm: 'net', lbv: 'event', evDay: 1,
+  // tee times and booking
+  day: 0, filter: 'all', slotId: null, picked: [], guests: [], gmodal: false, lastBooking: null,
+  // buddies
+  bseg: 'mine', q: '', qCaret: null, bfrom: null, // bfrom: where to offer a way back to ('book' | 'players')
+  // games admin
+  gedit: null,
+  // events admin
+  evId: null, evStep: 1,
+}
