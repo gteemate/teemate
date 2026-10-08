@@ -1,6 +1,7 @@
 import './styles.css'
 import { S } from './state.js'
 import * as api from './api.js'
+import { today } from './dates.js'
 import { $, esc, header, setRender, toast, top0 } from './ui.js'
 import * as login from './screens/login.js'
 import * as colours from './screens/colours.js'
@@ -34,10 +35,17 @@ function screenFor() {
   return ADMIN[S.aview] || adminHome
 }
 
+// When the app opens: Scores if you're playing today (a booking, or a card already on the go),
+// otherwise Admin. Chosen once per visit; after that the tabs stay where you put them.
+let startTabChosen = false
+async function chooseStartTab() {
+  const [teeTimes, card] = await Promise.all([api.getMyTeeTimes(today()), api.getCurrentRound()])
+  return teeTimes.length || card?.done.some(Boolean) ? 'scores' : 'admin'
+}
+
 let seq = 0
 async function render() {
   const mine = ++seq
-  document.querySelectorAll('nav.tabs button').forEach(b => b.setAttribute('aria-current', b.dataset.tab === S.tab ? 'page' : 'false'))
   let screen, data
   try {
     // Signed out → sign-in screen. Signed in but not a member → explain. Otherwise the app.
@@ -48,7 +56,11 @@ async function render() {
     $('app').classList.toggle('signed-out', !me)
     if (!session) screen = login
     else if (!me) screen = { draw: () => login.drawNotMember({ email: session.user.email }) }
-    else screen = screenFor()
+    else {
+      if (!startTabChosen) { startTabChosen = true; S.tab = await chooseStartTab(); if (S.tab === 'admin') S.aview = 'home' }
+      screen = screenFor()
+    }
+    document.querySelectorAll('nav.tabs button').forEach(b => b.setAttribute('aria-current', b.dataset.tab === S.tab ? 'page' : 'false'))
     data = screen.load ? await screen.load() : undefined
   } catch (err) {
     if (mine !== seq) return
