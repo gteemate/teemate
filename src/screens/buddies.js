@@ -13,10 +13,10 @@ export function draw({ members, buddies }) {
   header('Buddies', `<b>${buddies.length}</b> playing partners`, toAdmin)
   const q = S.q.trim().toLowerCase().replace(/[\s']/g, '').replace(/^gui/, '')
   const mine = members.filter(m => buddies.includes(m.id))
-  const res = q ? members.filter(m => m.name.toLowerCase().replace(/[\s']/g, '').includes(q) || m.gui.includes(q)) : []
+  const res = q ? members.filter(m => m.name.toLowerCase().replace(/[\s']/g, '').includes(q) || (m.gui || '').includes(q)) : []
   const row = m => {
     const on = buddies.includes(m.id)
-    return `<div class="lrow"><span class="av">${ini(m.name)}</span><span class="who"><strong>${esc(m.name)}</strong><small>GUI ${m.gui}</small></span><span style="display:flex;gap:12px;align-items:center"><span class="hcp">${m.hcp}<small>HCP</small></span>${S.bseg === 'find' ? `<button class="add${on ? ' on' : ''}" data-b="${m.id}">${on ? 'Added' : 'Add'}</button>` : `<button class="x" data-b="${m.id}" aria-label="Remove ${esc(m.name)}">×</button>`}</span></div>`
+    return `<div class="lrow"><span class="av">${ini(m.name)}</span><span class="who"><strong>${esc(m.name)}</strong><small>${m.gui ? 'GUI ' + m.gui : 'No GUI number'}</small></span><span style="display:flex;gap:12px;align-items:center"><span class="hcp">${m.hcp}<small>HCP</small></span>${S.bseg === 'find' ? `<button class="add${on ? ' on' : ''}" data-b="${m.id}">${on ? 'Added' : 'Add'}</button>` : `<button class="x" data-b="${m.id}" aria-label="Remove ${esc(m.name)}">×</button>`}</span></div>`
   }
   let body
   if (S.bseg === 'mine') body = mine.length ? `<div class="card list">${mine.map(row).join('')}</div>` : '<div class="empty-state">No buddies yet. Switch to Find members to add some.</div>'
