@@ -105,26 +105,29 @@ export function skins(netsByHole, players = netsByHole[0]?.length ?? 0) {
 }
 
 /**
- * Six pointer for three players: 6 points a hole. Best score 4, next 2, last 0; ties share:
- * two tied best 3/3/0, two tied worst 4/1/1, all level 2/2/2.
+ * Points-a-hole games for three players. Best score gets split[0], next split[1], last split[2]; tied
+ * players share their places' points. Six pointer [4, 2, 0]: two tied best 3/3/0, two tied worst 4/1/1,
+ * all level 2/2/2. Nine points [5, 3, 1]: 4/4/1, 5/2/2, 3/3/3.
  * scores: one value per player where higher is better (Stableford points, or minus the net score).
  */
-export function sixPointer(scores) {
+export function sixPointer(scores, split = [4, 2, 0]) {
   const [a, b, c] = scores
-  if (a === b && b === c) return [2, 2, 2]
+  const [p1, p2, p3] = split
+  if (a === b && b === c) return Array(3).fill((p1 + p2 + p3) / 3)
   const order = [0, 1, 2].sort((x, y) => scores[y] - scores[x])
   const [hi, mid, lo] = order.map(i => scores[i])
   const out = [0, 0, 0]
-  if (hi === mid) { out[order[0]] = 3; out[order[1]] = 3; out[order[2]] = 0 }
-  else if (mid === lo) { out[order[0]] = 4; out[order[1]] = 1; out[order[2]] = 1 }
-  else { out[order[0]] = 4; out[order[1]] = 2; out[order[2]] = 0 }
+  if (hi === mid) { out[order[0]] = out[order[1]] = (p1 + p2) / 2; out[order[2]] = p3 }
+  else if (mid === lo) { out[order[0]] = p1; out[order[1]] = out[order[2]] = (p2 + p3) / 2 }
+  else { out[order[0]] = p1; out[order[1]] = p2; out[order[2]] = p3 }
   return out
 }
 
 /**
  * Full state of the 4-ball game being played on the scorecard.
  * game = { kind: 'match' | 'match1' | 'six' | 'stab' | 'skins' | 'stroke', cmp?: 'net' | 'pts' }
- *   match = better ball (4 players), match1 = head to head (2 players), six = six pointer (3 players)
+ *   match = better ball (4 players), match1 = head to head (2 players), six = points a hole for 3 players
+ *   (six pointer, or nine points with split: [5, 3, 1])
  * played = number of holes completed (scores beyond that are ignored).
  *
  * holes[i] per kind:  match → { diff }   stab → { pts }   skins → { winner }   stroke → { toPar } (player 0)
@@ -147,7 +150,7 @@ export function gameState(game, holes, phs, scores, played, order = [0, 1, 2, 3]
   }
   if (game.kind === 'six') {
     calcs.forEach(c => {
-      const share = sixPointer(game.cmp === 'pts' ? c.pts : c.net.map(x => -x))
+      const share = sixPointer(game.cmp === 'pts' ? c.pts : c.net.map(x => -x), game.split)
       share.forEach((p, k) => (totals[k] += p))
       perHole.push({ pts: share[0], share })
     })

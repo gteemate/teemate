@@ -10,6 +10,8 @@ export const GAME_DEFS = {
   3: { title: '3 golfers', games: [
     { k: 'six', name: 'Six pointer (Stableford)', sub: 'Stableford', pct: 100, desc: '4 / 2 / 0 a hole by Stableford points.', play: { kind: 'six', cmp: 'pts' } },
     { k: 'sixs', name: 'Six pointer (scratch)', sub: 'No shots', pct: null, desc: '4 / 2 / 0 a hole by gross score. No shots.', play: { kind: 'six', cmp: 'net' } },
+    { k: 'nine', name: '9 points (Stableford)', sub: 'Stableford', pct: 100, desc: '5 / 3 / 1 a hole by Stableford points.', play: { kind: 'six', cmp: 'pts', split: [5, 3, 1] } },
+    { k: 'nines', name: '9 points (scratch)', sub: 'No shots', pct: null, desc: '5 / 3 / 1 a hole by gross score. No shots.', play: { kind: 'six', cmp: 'net', split: [5, 3, 1] } },
     { k: 'wolf', name: 'Wolf (Stableford)', sub: 'Full handicaps', pct: 100, desc: 'Rotating tee order; the wolf goes solo or partners. Lone win 2, pair win 1 each.' },
     { k: 'wolfs', name: 'Wolf (scratch)', sub: 'No shots', pct: null, desc: 'Same game on gross scores. No shots.' },
     { k: 'tvt', name: '2 v 1 Stableford · better total', sub: 'Stableford', pct: 100, desc: "The single's own Stableford total against the better of the pair's own totals." },

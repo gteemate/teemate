@@ -210,6 +210,20 @@ describe('2- and 3-ball games', () => {
     expect(sixPointer([3, 1, 1])).toEqual([4, 1, 1]) // tie for worst
     expect(sixPointer([2, 2, 2])).toEqual([2, 2, 2])
   })
+  it('nine points splits 5 / 3 / 1 a hole, ties sharing', () => {
+    const N = [5, 3, 1]
+    expect(sixPointer([3, 2, 1], N)).toEqual([5, 3, 1])
+    expect(sixPointer([1, 3, 2], N)).toEqual([1, 5, 3])
+    expect(sixPointer([3, 3, 1], N)).toEqual([4, 4, 1]) // tie for best
+    expect(sixPointer([3, 1, 1], N)).toEqual([5, 2, 2]) // tie for worst
+    expect(sixPointer([2, 2, 2], N)).toEqual([3, 3, 3])
+  })
+  it('nine points over holes, Stableford and scratch', () => {
+    const pts = gameState({ kind: 'six', cmp: 'pts', split: [5, 3, 1] }, FLAT, [0, 0, 0], [[3, 4, 4], [4, 3, 6]], 2)
+    expect(pts.totals.reduce((a, b) => a + b)).toBe(18) // 9 a hole
+    const scr = gameState({ kind: 'six', cmp: 'net', split: [5, 3, 1] }, FLAT, [0, 0, 0], [[3, 4, 5]], 1)
+    expect(scr.totals).toEqual([5, 3, 1]) // lowest gross best
+  })
   it('six pointer on Stableford points over holes', () => {
     // Hole 1: 3, 2, 2 points → 4/1/1. Hole 2: 2, 3, 0 → 2/4/0.
     const s = gameState({ kind: 'six', cmp: 'pts' }, FLAT, [0, 0, 0], [[3, 4, 4], [4, 3, 6]], 2)
