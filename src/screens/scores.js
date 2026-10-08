@@ -155,7 +155,7 @@ export function draw({ course, members, guests, L, me, teeTimes, events, leagues
 
   const fin = gs.finished && round.done[i]
   const hcpNote = noHcp.length ? `<div class="hcpnote">${noHcp.map(p => esc(p.name.split(' ')[0])).join(' and ')} ${noHcp.length > 1 ? 'have' : 'has'} no handicap yet, so ${noHcp.length > 1 ? 'they play' : 'plays'} off an index of 0 until you set one. Shots and points update as soon as you do.</div>` : ''
-  $('main').innerHTML = `<div class="screen">${eventsTop(events, me)}${leagueLine(leagues, entries, members)}${grid}${hcpNote}
+  $('main').innerHTML = `<div class="screen">${eventsTop(events, me)}${grid}${hcpNote}
     <div class="matchline"><button class="gamesel" id="gchip" aria-expanded="${!!S.gmenu}" aria-controls="gmenu">${esc(LG.name)}${CHEV}</button><b>${esc(line)}</b></div>
     ${gamebar}
     ${body}
@@ -246,7 +246,7 @@ function standings(ps, gs, g) {
 
 // League entry: before hole 1 the card keeper is asked, once, whether today's round counts for each
 // league player on the card (one entered round a week each; locked once hole 1 is saved). Players
-// whose round counts get a badge on the card; a line at the top shows who's counting.
+// whose round counts get a badge on the card; tapping a badge before hole 1 changes the answers.
 const initials = name => name.split(/\s+/).filter(Boolean).map(w => w[0].toUpperCase()).join('').slice(0, 3)
 const leagueWeekNow = e => leagueWeek(e, isoDate(today()))
 const entered = (entries, e, id) => round.id != null && entries.some(x => x.eventId === e.id && x.memberId === id && x.roundId === round.id)
@@ -254,9 +254,16 @@ const enteredElsewhere = (entries, e, id) => !entered(entries, e, id) && entries
 const leaguePlayers = e => round.lineup.filter(x => x.m != null && e.players.includes(x.m)).map(x => x.m)
 const firstName = (members, id) => (members.find(m => m.id === id)?.name ?? '').split(' ')[0]
 
+// Counting: a solid badge. Before hole 1, league players get a badge to tap (outlined if not
+// counting) that reopens the question; after that only the counting ones show, and can't change.
 function leagueBadges(memberId, leagues, entries) {
   if (memberId == null) return ''
-  return leagues.filter(e => entered(entries, e, memberId)).map(e => `<span class="pill wlpill on" title="This round counts for ${esc(e.name)}">${esc(initials(e.name))}</span>`).join('')
+  const started = round.done.some(Boolean)
+  return leagues.filter(e => e.players.includes(memberId)).map(e => {
+    const on = entered(entries, e, memberId), tag = esc(initials(e.name))
+    if (started || enteredElsewhere(entries, e, memberId)) return on ? `<span class="pill wlpill on" title="This round counts for ${esc(e.name)}">${tag}</span>` : ''
+    return `<button class="pill wlpill ${on ? 'on' : 'off'}" data-lgask aria-label="${on ? 'Counting for' : 'Not counting for'} ${esc(e.name)}. Change">${tag}</button>`
+  }).join('')
 }
 
 // Answered (or put off) per card in this visit; answered also remembered on this phone.
@@ -266,15 +273,6 @@ function answered() {
   try { return round.id != null && localStorage.getItem(askedKey()) === '1' } catch { return false }
 }
 function markAnswered() { try { localStorage.setItem(askedKey(), '1') } catch { /* fine: it asks again */ } }
-
-function leagueLine(leagues, entries, members) {
-  const started = round.done.some(Boolean)
-  return leagues.filter(e => leaguePlayers(e).length).map(e => {
-    const on = leaguePlayers(e).filter(id => entered(entries, e, id)), names = on.map(id => esc(firstName(members, id))).join(', ')
-    if (started) return on.length ? `<div class="lgline locked"><span>🏆 ${esc(e.name)} week ${leagueWeekNow(e)} · <b>${names}</b> counting · locked</span></div>` : ''
-    return `<div class="lgline"><span>🏆 ${esc(e.name)} week ${leagueWeekNow(e)} · ${on.length ? `<b>${names}</b> counting` : 'not counting yet'}</span><button class="linkbtn" data-lgask>${on.length ? 'Change' : 'Choose'}</button></div>`
-  }).join('')
-}
 
 function leagueSheet(leagues, entries, members) {
   const list = leagues.filter(e => leaguePlayers(e).length)
@@ -295,7 +293,7 @@ function leagueSheet(leagues, entries, members) {
         <div class="yn"><button class="yes" data-yn="${k}" data-v="1" aria-pressed="${ans[k] === true}">Yes, count it</button><button class="no" data-yn="${k}" data-v="0" aria-pressed="${ans[k] === false}">Not this one</button></div></div>`
     }).join('')).join('')}
     <div class="gm-btns"><button type="button" class="ghost" id="lg-later">Ask me later</button><button class="primary" id="lg-done" ${ready ? '' : 'disabled'}>Done</button></div>
-    <span class="hint" style="text-align:center">You can change this until hole 1 is saved.</span>
+    <span class="hint" style="text-align:center">Tap the ${esc(list.map(e => initials(e.name)).join('/'))} badge on a player to change this until hole 1 is saved.</span>
   </div></div>`
   const redraw = () => leagueSheet(leagues, entries, members)
   document.querySelectorAll('[data-yn]').forEach(b => (b.onclick = () => { ans[b.dataset.yn] = b.dataset.v === '1'; redraw() }))
