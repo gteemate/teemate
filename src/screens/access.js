@@ -20,9 +20,12 @@ export function draw({ list, me, requests }) {
   const shown = q ? list.filter(m => m.name.toLowerCase().includes(q) || (m.email || '').includes(q) || (m.gui || '').includes(q)) : list
   $('main').innerHTML = `<div class="screen">
     <div class="hint">Only approved emails can create an account. Once approved, they tap “Create your account” on the sign-in screen and choose a password.</div>
-    ${requests.length ? `<h3>Access requests</h3><div class="card list">${requests.map(r => `<div class="reqrow"><span class="av">${ini(r.name)}</span>
+    <h3>Access requests${requests.length ? ` <span class="pill">${requests.length}</span>` : ''}</h3>
+    ${requests.length ? `<div class="card list">${requests.map(r => `<div class="reqrow"><span class="av">${ini(r.name)}</span>
       <span class="who"><strong>${esc(r.name)}</strong><small>${new Date(r.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</small></span>
-      <span class="reqbtns"><button class="ghost" data-dec="${r.id}">Decline</button><button class="primary" data-apr="${r.id}">Approve</button></span></div>`).join('')}</div><h3>Members</h3>` : ''}
+      <span class="reqbtns"><button class="ghost" data-dec="${r.id}">Decline</button><button class="primary" data-apr="${r.id}">Approve</button></span></div>`).join('')}</div>`
+      : '<div class="card empty-state">No one is waiting. Anyone not approved can tap “Request access” on the sign-in screen, and their name appears here.</div>'}
+    <h3>Members</h3>
     <button class="primary" id="addm">+ Add member</button>
     <div class="search"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="accq" type="search" placeholder="Name, email or GUI" value="${esc(S.accQ)}" autocomplete="off"></div>
     <div class="card list">${shown.map(m => `<button class="lrow accrow" data-m="${m.id}"><span class="av">${ini(m.name)}</span>

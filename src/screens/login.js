@@ -20,9 +20,11 @@ export function draw() {
     <button class="primary" type="submit" id="go">${create ? 'Create account' : 'Sign in'}</button>
     <span class="hint">${create ? 'Your email has to be approved by the club admin first.' : 'Forgotten your password? Ask the club admin to reset your login.'}</span>
     <button type="button" class="linkbtn" id="mode" style="align-self:flex-start">${create ? 'Already have an account? Sign in' : 'First time here? Create your account'}</button>
+    <button type="button" class="linkbtn" id="toreq" style="align-self:flex-start">Not approved yet? Request access</button>
   </form></div>`
   setTimeout(() => $(S.loginEmail ? 'pw' : 'email')?.focus(), 30)
   $('mode').onclick = () => { S.loginEmail = $('email').value.trim(); S.loginMode = create ? 'signin' : 'create'; render() }
+  $('toreq').onclick = () => { S.loginEmail = $('email').value.trim(); S.loginMode = 'request'; render() }
   $('login').onsubmit = async e => {
     e.preventDefault()
     const email = $('email').value.trim(), pw = $('pw').value, err = m => ($('err').textContent = m)
@@ -49,7 +51,7 @@ export function draw() {
 }
 
 function drawRequest() {
-  header('TeeMates', 'Your email isn’t approved yet')
+  header('TeeMates', 'Ask the club admin for access')
   $('main').innerHTML = `<div class="screen"><form class="card evsec" id="req" novalidate>
     <h4>Request access</h4>
     <span class="hint">Leave your name and the club admin will see your request. Once it’s approved, come back and create your account.</span>
