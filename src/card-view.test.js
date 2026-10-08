@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { viewPerm, toView, toStored, mergeSaved } from './card-view.js'
+import { viewPerm, toView, toStored, mergeSaved, disagreements } from './card-view.js'
 import { PAIRINGS } from './games.js'
 
 // Gareth (319) started the card: Gareth, Tom (10), Orla (12), Peter (293).
@@ -119,5 +119,28 @@ describe('merging saved holes', () => {
     const v = toView(c, 293)
     expect(v.entered[0]).toEqual([293, 319, null, 12])
     expect(toStored(v)).toEqual(c)
+  })
+})
+
+describe('flagging scores to check', () => {
+  const at = (scores, entered) => ({ ...card, scores, entered, done: [true], submitted: {} })
+
+  it('flags when I type a different score for someone than they typed themselves, and keeps theirs', () => {
+    const theirs = at([[4, 4, 4, 5]], [[null, null, null, 293]])
+    const mine = at([[4, 4, 4, 6]], [[null, null, null, 319]])
+    expect(disagreements(mine, theirs, new Set(['0:3']))).toEqual([{ i: 0, k: 3, mine: 6, theirs: 5, by: 293, kept: 5 }])
+  })
+
+  it('flags two people typing different scores for a third, keeping the later one', () => {
+    const theirs = at([[4, 4, 4, 4]], [[null, 12, null, null]])
+    const mine = at([[4, 5, 4, 4]], [[null, 319, null, null]])
+    expect(disagreements(mine, theirs, new Set(['0:1']))).toEqual([{ i: 0, k: 1, mine: 5, theirs: 4, by: 12, kept: 5 }])
+  })
+
+  it("doesn't flag untouched pars, matching scores, or scores I didn't change", () => {
+    const theirs = at([[4, 4, 4, 5]], [[null, null, null, 293]])
+    expect(disagreements(at([[4, 4, 4, 4]], [[null, null, null, null]]), theirs, new Set())).toEqual([])
+    expect(disagreements(at([[4, 4, 4, 5]], [[null, null, null, 319]]), theirs, new Set(['0:3']))).toEqual([])
+    expect(disagreements(at([[3, 4, 4, 4]], [[null, null, 319, null]]), at([[3, 4, 4, 4]], [[null, null, null, null]]), new Set(['0:2']))).toEqual([])
   })
 })

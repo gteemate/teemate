@@ -77,3 +77,20 @@ export function mergeSaved(mine, theirs, changed = new Set()) {
     submitted: { ...theirs.submitted, ...mine.submitted },
   }
 }
+
+/**
+ * Scores where my save and someone else's disagree, worth a second look: a score I typed for a player
+ * that someone else has also typed, differently. [{ i, k, mine, theirs, by, kept }] in stored order,
+ * by = who typed theirs, kept = the score the card now has.
+ */
+export function disagreements(mine, theirs, changed = new Set()) {
+  const out = []
+  for (const c of changed) {
+    const [i, k] = c.split(':').map(Number)
+    const by = theirs.entered?.[i]?.[k]
+    if (by == null || by === mine.entered?.[i]?.[k] || theirs.scores[i][k] === mine.scores[i][k]) continue
+    const kept = trust(mine, i, k) >= trust(theirs, i, k) ? mine.scores[i][k] : theirs.scores[i][k]
+    out.push({ i, k, mine: mine.scores[i][k], theirs: theirs.scores[i][k], by, kept })
+  }
+  return out.sort((a, b) => a.i - b.i || a.k - b.k)
+}

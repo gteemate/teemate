@@ -44,6 +44,13 @@ async function latest(mine) {
   if (!fresh) { S.ch = null; return api.getCurrentRound() } // deleted by whoever started it
   if (fresh.updatedAt === mine.updatedAt) return mine
   if (JSON.stringify(fresh.lineup) !== JSON.stringify(mine.lineup)) return fresh
+  // Someone has changed a score I typed in: flag it for a second look
+  const meId = mine.lineup[0].m
+  fresh.checks = mine.checks ?? []
+  fresh.scores.forEach((row, i) => row.forEach((v, k) => {
+    const by = fresh.entered?.[i]?.[k]
+    if (mine.done[i] && mine.entered?.[i]?.[k] === meId && by != null && by !== meId && v !== mine.scores[i][k]) fresh.checks.push({ i, k, mine: mine.scores[i][k], theirs: v, by, kept: v })
+  }))
   // Keep what I've typed in and not saved yet
   fresh.changed = mine.changed ?? new Set()
   for (const c of fresh.changed) {
@@ -155,8 +162,16 @@ export function draw({ course, members, guests, L, me, teeTimes, events, leagues
   }
 
   const fin = gs.finished && round.done[i]
+  // Two people typed different scores for the same player: ask for a second look.
+  const nm = id => members.find(m => m.id === id)?.name ?? 'Someone'
+  const checks = (round.checks ?? []).map((c, n) => {
+    const who = k => (round.lineup[k].m === me.id ? 'you' : esc(ps[k].name))
+    const byTxt = c.by === round.lineup[c.k].m ? `${esc(nm(c.by))} put ${c.theirs} (own score)` : `${esc(nm(c.by))} put ${c.theirs}`
+    return `<div class="hcpnote checknote"><b>Check hole ${c.i + 1}, ${who(c.k) === 'you' ? 'your score' : who(c.k)}:</b> you put ${c.mine}, ${byTxt}. The card has ${c.kept}.
+      <span class="row"><button class="linkbtn" data-chk-go="${n}">Go to hole ${c.i + 1}</button><button class="linkbtn" data-chk-ok="${n}">OK, it's right</button></span></div>`
+  }).join('')
   const hcpNote = noHcp.length ? `<div class="hcpnote">${noHcp.map(p => esc(p.name.split(' ')[0])).join(' and ')} ${noHcp.length > 1 ? 'have' : 'has'} no handicap yet, so ${noHcp.length > 1 ? 'they play' : 'plays'} off an index of 0 until you set one. Shots and points update as soon as you do.</div>` : ''
-  $('main').innerHTML = `<div class="screen">${eventsTop(events, me)}${grid}${hcpNote}
+  $('main').innerHTML = `<div class="screen">${eventsTop(events, me)}${grid}${checks}${hcpNote}
     <div class="matchline"><button class="gamesel" id="gchip" aria-expanded="${!!S.gmenu}" aria-controls="gmenu">${esc(LG.name)}${CHEV}</button><b>${esc(line)}</b></div>
     ${gamebar}
     ${body}
@@ -195,6 +210,9 @@ export function draw({ course, members, guests, L, me, teeTimes, events, leagues
 
   bindEvents(events, me)
   bindLeagueBox(leagues, entries, members)
+
+  document.querySelectorAll('[data-chk-ok]').forEach(b => (b.onclick = () => { round.checks.splice(+b.dataset.chkOk, 1); keepScroll(render) }))
+  document.querySelectorAll('[data-chk-go]').forEach(b => (b.onclick = () => { const c = round.checks.splice(+b.dataset.chkGo, 1)[0]; S.ch = c.i; keepScroll(render) }))
 
   // Guest handicaps can be set or changed at any time; everything recalculates.
   document.querySelectorAll('[data-gh]').forEach(b => (b.onclick = () => guestHcpSheet(ps[+b.dataset.gh])))

@@ -7,11 +7,17 @@ import { toAdmin } from './nav.js'
 
 export async function load() {
   const days = nextDays(7)
-  const [sheet, points] = await Promise.all([api.getTeeSheet(isoDate(days[S.day])), api.getGuestPoints()])
-  return { days, sheet, points }
+  const [sheet, points, me] = await Promise.all([api.getTeeSheet(isoDate(days[S.day])), api.getGuestPoints(), api.getMe()])
+  return { days, sheet, points, me }
 }
 
-export function draw({ days, sheet, points }) {
+// Tee times have to be at least 2 hours apart (the database checks this too, for everyone booked).
+const GAP = 120
+
+export function draw({ days, sheet, points, me }) {
+  const mine = sheet.filter(s => s.players.some(p => p.memberId === me.id))
+  const isMine = s => mine.includes(s)
+  const tooClose = s => !isMine(s) && mine.find(m => Math.abs(m.time - s.time) < GAP)
   const free = s => s.capacity - s.players.length
   header('Tee times', `${longDay(days[S.day])} · <b>${sheet.filter(s => free(s) > 0).length}</b> of ${sheet.length} available`, toAdmin)
   $('dateWrap').innerHTML = `<div class="dates" role="group" aria-label="Choose day">${days.map((d, i) => `<button class="day" data-d="${i}" aria-pressed="${i === S.day}"><small>${i === 0 ? 'Today' : DN[d.getDay()]}</small><b>${d.getDate()}</b></button>`).join('')}</div>`
@@ -23,9 +29,10 @@ export function draw({ days, sheet, points }) {
     if (!gs.length) continue
     h += `<div class="period">${g}${g === 'Afternoon' ? " · 12:20–13:00 held for Ladies' Comp" : ''}</div>`
     gs.forEach(s => {
-      const f = free(s), full = !f, taken = s.players.length
-      h += `<button class="slot${full ? ' full' : ''}" data-id="${s.id}" ${full ? 'aria-disabled="true"' : ''}><span class="time">${hhmm(s.time)}</span>
-        <span class="meta"><strong>${full ? 'Fully booked' : f === 4 ? 'Open tee' : `${f} space${f > 1 ? 's' : ''} left`}${s.twilight ? '<span class="pill tag">Twilight</span>' : ''}</strong>1st tee · 18 holes</span>
+      const f = free(s), near = tooClose(s), off = !f || near || isMine(s), taken = s.players.length
+      const what = isMine(s) ? 'You’re booked on this' : near ? `Within 2 hours of your ${hhmm(near.time)}` : !f ? 'Fully booked' : f === 4 ? 'Open tee' : `${f} space${f > 1 ? 's' : ''} left`
+      h += `<button class="slot${off ? ' full' : ''}${isMine(s) ? ' minebk' : ''}" data-id="${s.id}" ${off ? 'aria-disabled="true"' : ''}><span class="time">${hhmm(s.time)}</span>
+        <span class="meta"><strong>${what}${s.twilight ? '<span class="pill tag">Twilight</span>' : ''}</strong>1st tee · 18 holes</span>
         <span class="balls" aria-label="${taken} of ${s.capacity} booked">${[0, 1, 2, 3].map(k => `<span class="ball${k < taken ? ' taken' : ''}"></span>`).join('')}</span></button>`
     })
   }
@@ -34,6 +41,9 @@ export function draw({ days, sheet, points }) {
   document.querySelectorAll('.chip').forEach(b => (b.onclick = () => { S.filter = b.dataset.f; render() }))
   document.querySelectorAll('.slot').forEach(b => (b.onclick = async () => {
     const s = sheet.find(x => x.id === +b.dataset.id)
+    if (isMine(s)) { Object.assign(S, { aview: 'mine' }); await render(); top0(); return } // see it in Bookings
+    const near = tooClose(s)
+    if (near) { toast(`You’re booked at ${hhmm(near.time)}. Tee times have to be at least 2 hours apart`); return }
     if (!free(s)) { toast('That time is full'); return }
     Object.assign(S, { slotId: s.id, picked: [], guests: [], aview: 'book' })
     await render()

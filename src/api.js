@@ -5,7 +5,7 @@
 // column names) and throw an Error with a message fit to show the user.
 import { createClient } from '@supabase/supabase-js'
 import { isoDate, today } from './dates.js'
-import { toView, toStored, mergeSaved } from './card-view.js'
+import { toView, toStored, mergeSaved, disagreements } from './card-view.js'
 
 const sb = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_ANON_KEY, {
   auth: { persistSession: true, detectSessionInUrl: false },
@@ -325,13 +325,19 @@ export async function deleteRound(id) {
  * round.changed: the "hole:player" scores I've typed in since loading (in my view). Only those can
  * replace what's saved, and not when the saved one is more trustworthy (see mergeSaved), so a par I
  * never touched can't overwrite someone's real score. My copy ends up as what was saved.
+ * Where someone else typed a different score for the same player, it's added to round.checks
+ * ({ i, k, mine, theirs, by, kept } in my view) so the app can ask for a second look.
  */
 export async function saveRound(round) {
   let card = toStored(round)
   const changed = new Set([...(round.changed ?? [])].map(c => { const [i, v] = c.split(':'); return `${i}:${round.perm ? round.perm[v] : v}` }))
   if (round.id) {
     const cur = must(await sb.from('rounds').select('lineup, scores, entered, done, submitted').eq('id', round.id).maybeSingle())
-    if (cur && JSON.stringify(cur.lineup) === JSON.stringify(card.lineup)) card = mergeSaved(card, cur, changed)
+    if (cur && JSON.stringify(cur.lineup) === JSON.stringify(card.lineup)) {
+      const inv = round.perm ? round.perm.reduce((a, s, v) => ((a[s] = v), a), []) : null
+      round.checks = [...(round.checks ?? []), ...disagreements(card, cur, changed).map(d => ({ ...d, k: inv ? inv[d.k] : d.k }))]
+      card = mergeSaved(card, cur, changed)
+    }
   }
   const row = { lineup: card.lineup, slot_id: card.slotId ?? null, game: card.game, pairing: card.pairing, scores: card.scores, entered: card.entered ?? null, done: card.done, submitted: card.submitted, updated_at: new Date().toISOString() }
   if (round.id) round.updatedAt = must(await sb.from('rounds').update(row).eq('id', round.id).select('updated_at').single()).updated_at
