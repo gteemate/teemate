@@ -10,7 +10,7 @@ export function draw() {
   if (S.loginMode === 'request') return drawRequest()
   if (S.loginMode === 'requested') return drawRequested()
   const create = S.loginMode === 'create'
-  header('TeeMates', create ? 'First time? Choose a password' : 'Sign in with your email and password')
+  header('TeeMate', create ? 'First time? Choose a password' : 'Sign in with your email and password')
   $('main').innerHTML = `<div class="screen"><form class="card evsec" id="login" novalidate>
     <h4>${create ? 'Create account' : 'Sign in'}</h4>
     <label for="email">Email</label><input id="email" type="email" autocomplete="email" inputmode="email" placeholder="you@example.com" value="${esc(S.loginEmail)}">
@@ -51,7 +51,7 @@ export function draw() {
 }
 
 function drawRequest() {
-  header('TeeMates', 'Ask the club admin for access')
+  header('TeeMate', 'Ask the club admin for access')
   $('main').innerHTML = `<div class="screen"><form class="card evsec" id="req" novalidate>
     <h4>Request access</h4>
     <span class="hint">Leave your name and the club admin will see your request. Once it’s approved, come back and create your account.</span>
@@ -83,7 +83,7 @@ function drawRequest() {
 }
 
 function drawRequested() {
-  header('TeeMates', '')
+  header('TeeMate', '')
   $('main').innerHTML = `<div class="done"><div class="flagmark">⛳</div><h4>Request sent</h4>
     <p>Thanks, ${esc(S.requestName.split(' ')[0])}. The club admin will see your request.</p>
     <p class="hint">Once you’re approved, come back and tap “Create your account” with <b style="color:var(--ink)">${esc(S.loginEmail)}</b>.</p>
@@ -92,7 +92,7 @@ function drawRequested() {
 }
 
 export function drawNotMember({ email }) {
-  header('TeeMates', '')
+  header('TeeMate', '')
   $('main').innerHTML = `<div class="done"><div class="flagmark">⛳</div><h4>Not on the list yet</h4>
     <p>You're signed in as <b style="color:var(--ink)">${esc(email)}</b>, but that email isn't on the club's members list.</p>
     <p class="hint">Ask the club admin to approve it.</p>

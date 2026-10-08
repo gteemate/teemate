@@ -1,4 +1,4 @@
-# TeeMates
+# TeeMate
 
 Golf club app: tee times and bookings, buddies, scorecards with games, leaderboards,
 course guide with daily pins, guest points and team events.

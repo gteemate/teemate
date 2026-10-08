@@ -18,7 +18,7 @@ export function draw({ saved }) {
       ${row('main', 'Main colour', 'Buttons, header cards, selected days and options', saved.main)}
       ${row('accent', 'Accent colour', 'The selected tab, highlights and “they won the hole”', saved.accent)}
       <p class="gerr" id="cerr" role="alert"></p>
-      <div class="bk-btns"><button class="ghost" id="reset">TeeMates defaults</button><button class="primary" id="csave">Save for everyone</button></div>
+      <div class="bk-btns"><button class="ghost" id="reset">TeeMate defaults</button><button class="primary" id="csave">Save for everyone</button></div>
     </div>
     <h3>Preview</h3>
     <div class="card preview">
