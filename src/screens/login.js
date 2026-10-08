@@ -8,7 +8,6 @@ const MIN = 8
 
 export function draw() {
   if (S.loginMode === 'request') return drawRequest()
-  if (S.loginMode === 'requested') return drawRequested()
   const create = S.loginMode === 'create'
   header('TeeMate', create ? 'First time? Choose a password' : 'Sign in with your email and password')
   $('main').innerHTML = `<div class="screen"><form class="card evsec" id="login" novalidate>
@@ -25,7 +24,7 @@ export function draw() {
   </form></div>`
   setTimeout(() => $(S.loginEmail ? 'pw' : 'email')?.focus(), 30)
   $('mode').onclick = () => { S.loginEmail = $('email').value.trim(); S.loginNotice = ''; S.loginMode = create ? 'signin' : 'create'; render() }
-  $('toreq').onclick = () => { S.loginEmail = $('email').value.trim(); S.loginMode = 'request'; render() }
+  $('toreq').onclick = () => { pendingPw = null; S.loginEmail = $('email').value.trim(); S.loginMode = 'request'; render() }
   $('login').onsubmit = async e => {
     e.preventDefault()
     const email = $('email').value.trim(), pw = $('pw').value, err = m => ($('err').textContent = m)
@@ -44,7 +43,7 @@ export function draw() {
       // onAuthChange in main.js redraws once signed in
     } catch (ex) {
       // Not approved yet: offer to leave their name for the admin.
-      if (create && /given access/.test(ex.message)) { S.loginEmail = email; S.loginMode = 'request'; render(); return }
+      if (create && /given access/.test(ex.message)) { pendingPw = pw; S.loginEmail = email; S.loginMode = 'request'; render(); return }
       // Approved but never set a password: take them to Create account instead of "wrong password".
       if (!create && /Wrong email or password/.test(ex.message) && (await api.needsAccount(email).catch(() => false))) {
         S.loginEmail = email
@@ -60,54 +59,74 @@ export function draw() {
   }
 }
 
+// The password typed on "Create account" is kept here (in memory only) if the email turns out not to
+// be approved, so the request form can create the account with it: one password, set once.
+let pendingPw = null
+
 function drawRequest() {
+  const needPw = !pendingPw
   header('TeeMate', 'Ask the club admin for access')
   $('main').innerHTML = `<div class="screen"><form class="card evsec" id="req" novalidate>
     <h4>Request access</h4>
-    <span class="hint">Leave your name and the club admin will see your request. Once it’s approved, come back and create your account.</span>
+    <span class="hint">${needPw ? 'Leave your name and choose your password.' : 'Your email isn’t approved yet. Leave your name and'} the club admin will see your request. Once you’re approved, just sign in with your email and password.</span>
     <label for="rname">Your name</label><input id="rname" autocomplete="name" placeholder="e.g. Pete Reid">
-    <label for="remail">Email</label><input id="remail" type="email" autocomplete="email" inputmode="email" value="${esc(S.loginEmail)}">
+    <label for="remail">Email</label><input id="remail" type="email" autocomplete="email" inputmode="email" value="${esc(S.loginEmail)}" ${needPw ? '' : 'readonly'}>
+    ${needPw ? `<label for="rpw">Choose a password</label>${passwordInput('rpw', `autocomplete="new-password" placeholder="At least ${MIN} characters"`)}
+      <label for="rpw2">Password again</label>${passwordInput('rpw2', 'autocomplete="new-password"')}` : ''}
     <p class="gerr" id="err" role="alert"></p>
     <button class="primary" type="submit" id="go">Request access</button>
     <button type="button" class="linkbtn" id="back" style="align-self:flex-start">Back to sign in</button>
   </form></div>`
   setTimeout(() => $('rname')?.focus(), 30)
-  $('back').onclick = () => { S.loginMode = 'signin'; render() }
+  $('back').onclick = () => { pendingPw = null; S.loginMode = 'signin'; render() }
   $('req').onsubmit = async e => {
     e.preventDefault()
-    const name = $('rname').value.trim(), email = $('remail').value.trim()
-    if (!name) return ($('err').textContent = 'Enter your name.')
+    const name = $('rname').value.trim(), email = $('remail').value.trim(), err = m => ($('err').textContent = m)
+    if (!name) return err('Enter your name.')
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return err('Enter your email address.')
+    const pw = pendingPw ?? $('rpw').value
+    if (!pendingPw) {
+      if (pw.length < MIN) return err(`Choose a password of at least ${MIN} characters.`)
+      if (pw !== $('rpw2').value) return err("The two passwords don't match.")
+    }
     $('go').disabled = true
     try {
       await api.requestAccess(email, name)
+      // Create the account now with their password. If they already made one while waiting, sign in.
+      await api.createAccount(email, pw).catch(async ex => {
+        if (/already an account/.test(ex.message)) return api.signIn(email, pw)
+        throw ex
+      })
     } catch (ex) {
-      $('err').textContent = ex.message
+      err(ex.message)
       $('go').disabled = false
       return
     }
-    S.loginEmail = email
-    S.requestName = name
-    S.loginMode = 'requested'
-    render()
+    pendingPw = null
+    S.loginEmail = ''
+    S.loginMode = 'signin'
+    // signed in now: the app shows the "waiting for approval" screen
   }
 }
 
-function drawRequested() {
-  header('TeeMate', '')
-  $('main').innerHTML = `<div class="done"><div class="flagmark">⛳</div><h4>Request sent</h4>
-    <p>Thanks, ${esc(S.requestName.split(' ')[0])}. The club admin will see your request.</p>
-    <p class="hint">Once you’re approved, come back and tap “Create your account” with <b style="color:var(--ink)">${esc(S.loginEmail)}</b>.</p>
-    <button class="ghost" id="back">Back to sign in</button></div>`
-  $('back').onclick = () => { S.loginMode = 'create'; render() }
-}
-
+/** Signed in but not (yet) a member: waiting for approval, or not on the list. */
 export function drawNotMember({ email }) {
   header('TeeMate', '')
-  $('main').innerHTML = `<div class="done"><div class="flagmark">⛳</div><h4>Not on the list yet</h4>
-    <p>You're signed in as <b style="color:var(--ink)">${esc(email)}</b>, but that email isn't on the club's members list.</p>
-    <p class="hint">Ask the club admin to approve it.</p>
-    <button class="ghost" id="out">Sign out</button></div>`
-  $('out').onclick = () => api.signOut()
+  const show = pending => {
+    $('main').innerHTML = pending
+      ? `<div class="done"><div class="flagmark">⛳</div><h4>Request sent</h4>
+          <p>Thanks. Your request is with the club admin.</p>
+          <p class="hint">As soon as you’re approved you’ll get straight in. Just open TeeMate, or sign in with <b style="color:var(--ink)">${esc(email)}</b> and the password you chose.</p>
+          <div class="gm-btns"><button class="ghost" id="out">Sign out</button><button class="primary" id="again">Check again</button></div></div>`
+      : `<div class="done"><div class="flagmark">⛳</div><h4>Not on the list yet</h4>
+          <p>You're signed in as <b style="color:var(--ink)">${esc(email)}</b>, but that email isn't on the club's members list.</p>
+          <p class="hint">Ask the club admin to approve it.</p>
+          <div class="gm-btns"><button class="ghost" id="out">Sign out</button><button class="primary" id="again">Check again</button></div></div>`
+    $('out').onclick = () => api.signOut()
+    $('again').onclick = () => { api.forgetMe(); render() }
+  }
+  show(false)
+  api.myRequestPending().then(show).catch(() => {})
 }
 
 // Change password (from Admin), as a bottom sheet.

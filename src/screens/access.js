@@ -167,8 +167,8 @@ function editSheet(m, me) {
   $('mform').onsubmit = e => {
     e.preventDefault()
     const hadAccess = !!m.email
-    save({}, n => (isNew ? (n.email ? `${n.name.trim()} approved. They can create their account now` : `${n.name.trim()} added without access`)
-      : !hadAccess && n.email.trim() ? `${n.name.trim()} approved. They can create their account now` : hadAccess && !n.email.trim() ? `${n.name.trim()}’s access removed` : 'Saved'))
+    save({}, n => (isNew ? (n.email ? `${n.name.trim()} approved. They can sign in now` : `${n.name.trim()} added without access`)
+      : !hadAccess && n.email.trim() ? `${n.name.trim()} approved. They can sign in now` : hadAccess && !n.email.trim() ? `${n.name.trim()}’s access removed` : 'Saved'))
   }
   const reset = $('mreset')
   if (reset) reset.onclick = async () => {

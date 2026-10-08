@@ -47,6 +47,14 @@ export async function createAccount(email, password) {
   if (!data.session) throw new Error('Account created, but sign-in failed. Try signing in.')
 }
 
+/** Is my login waiting for an admin to approve it? */
+export async function myRequestPending() {
+  return must(await sb.rpc('my_request_pending'))
+}
+
+/** Forget the cached member so the next getMe() asks again (e.g. "Check again" after approval). */
+export const forgetMe = () => { me = undefined }
+
 export async function changePassword(password) {
   must(await sb.auth.updateUser({ password }))
 }

@@ -159,6 +159,38 @@ do $$ declare e text; begin
                                                                 and t.hook('decline.me@example.invalid') ? 'error');
 end $$;
 
+-- ------------------------------------------------------------------ request access with a password (set once)
+do $$ declare e text; v_req bigint; v_uid uuid; begin
+  perform set_config('request.jwt.claims', '{"role":"anon"}', true);
+  set local role anon;
+  perform public.request_access('once.only@example.invalid', 'Once Only');
+  reset role;
+  perform t.ok('Request: with a pending request, sign-up is allowed (password set now)', t.hook('once.only@example.invalid') = '{}'::jsonb);
+  insert into auth.users (id, email, aud, role) values (gen_random_uuid(), 'once.only@example.invalid', 'authenticated', 'authenticated') returning id into v_uid;
+  perform set_config('request.jwt.claims', json_build_object('sub', v_uid, 'email', 'once.only@example.invalid', 'role', 'authenticated')::text, true);
+  set local role authenticated;
+  perform t.ok('Request: while waiting they see nothing', (select count(*) from public.members) = 0);
+  perform t.ok('Request: they can tell they are waiting', public.my_request_pending());
+  reset role;
+  perform t.act_as(0);
+  perform public.admin_save_member(null, 'Once Only', 'once.only@example.invalid');
+  perform t.done();
+  perform t.ok('Request: approving links the account they already made (no second password)',
+    (select user_id from public.members where email = 'once.only@example.invalid') = v_uid);
+
+  -- decline removes the waiting account
+  perform set_config('request.jwt.claims', '{"role":"anon"}', true);
+  set local role anon;
+  perform public.request_access('say.no@example.invalid', 'Say No');
+  reset role;
+  insert into auth.users (id, email, aud, role) values (gen_random_uuid(), 'say.no@example.invalid', 'authenticated', 'authenticated');
+  select id into v_req from public.access_requests where email = 'say.no@example.invalid';
+  perform t.act_as(0);
+  perform public.admin_decline_request(v_req);
+  perform t.done();
+  perform t.ok('Request: declining deletes the waiting account', not exists (select 1 from auth.users where email = 'say.no@example.invalid'));
+end $$;
+
 -- ------------------------------------------------------------------ favourites
 do $$ declare e text; begin
   perform t.act_as(0);
