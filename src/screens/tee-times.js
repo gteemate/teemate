@@ -19,7 +19,7 @@ export function draw({ days, sheet, points, me }) {
   const isMine = s => mine.includes(s)
   const tooClose = s => !isMine(s) && mine.find(m => Math.abs(m.time - s.time) < GAP)
   const free = s => s.capacity - s.players.length
-  header('Tee times', `${longDay(days[S.day])} · <b>${sheet.filter(s => free(s) > 0).length}</b> of ${sheet.length} available`, toAdmin)
+  header('Book tee times', `${longDay(days[S.day])} · <b>${sheet.filter(s => free(s) > 0).length}</b> of ${sheet.length} available`, toAdmin)
   $('dateWrap').innerHTML = `<div class="dates" role="group" aria-label="Choose day">${days.map((d, i) => `<button class="day" data-d="${i}" aria-pressed="${i === S.day}"><small>${i === 0 ? 'Today' : DN[d.getDay()]}</small><b>${d.getDate()}</b></button>`).join('')}</div>`
   const list = sheet.filter(s => S.filter === 'all' || (S.filter === 'open' && free(s) > 0) || (S.filter === '2' && free(s) >= 2))
   const left = points.allowance - points.mine.reduce((t, x) => t + x.points, 0)

@@ -25,7 +25,7 @@ export function draw({ me, sheet, bookings, buddies, L, upcoming, clubEvents, po
   // Player items first (what every member sees), then admin-only items in one section at the end.
   $('main').innerHTML = `<div class="screen">
   <div class="agrid">
-    <button class="atile hero" data-a="tee"><span class="e">🗓️</span><b>Tee times</b><span>${avail} times free today · book and add buddies</span></button>
+    <button class="atile hero" data-a="tee"><span class="e">🗓️</span><b>Book tee times</b><span>${avail} times free today · add buddies and guests</span></button>
     <button class="atile" data-a="mine"><span class="e">📋</span><b>Bookings</b><span>${bookings.length ? `${bookings.length} upcoming` : 'Nothing booked yet'}</span></button>
     <button class="atile" data-a="buddies"><span class="e">👥</span><b>Buddies</b><span>${buddies.length} playing partner${buddies.length === 1 ? '' : 's'}</span></button>
     <button class="atile row" data-a="events"><span class="e">🏆</span><span class="rt"><b>Events</b><span>${upcoming ? `${upcoming} coming up · set one up for your group` : 'Set up a match or competition in advance'}</span></span></button>
