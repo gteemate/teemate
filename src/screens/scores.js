@@ -5,7 +5,7 @@ import { $, esc, ini, sur, header, keepScroll, top0, render, toast, parseHcp, fm
 import { today, hhmm, isoDate, eventLastDay, leagueWeek } from '../dates.js'
 import { banners, bindBanners, pendingInvite, invitePopup } from './player-events.js'
 import { holeGrid } from '../course-art.js'
-import { courseHandicap, playingHandicaps, holeCalc, betterBallWinner, gameState, upText, toPar, sixPointer } from '../scoring.js'
+import { courseHandicap, playingHandicaps, holeCalc, gameState, upText, toPar } from '../scoring.js'
 import { buildLibrary, playable, gameSpec, resolveGame, preferredGame, teeRating, PAIRINGS } from '../games.js'
 
 // The round is kept here between redraws so unsaved stepper changes survive; api.saveRound() persists it.
@@ -117,23 +117,6 @@ export function draw({ course, members, guests, L, me, teeTimes, events, leagues
       <span class="stepper"><button data-k="${k}" data-d="-1" aria-label="One fewer for ${esc(p.name)}">−</button><output class="${round.done[i] ? '' : 'draft'}">${gr}</output><button data-k="${k}" data-d="1" aria-label="One more for ${esc(p.name)}">+</button></span></div>`
   }
 
-  let verdict = ''
-  if (g === 'match') {
-    const w = betterBallWinner(c, G.cmp)
-    verdict = w > 0 ? '<span class="result-pill W">Your pair wins the hole</span>' : w < 0 ? '<span class="result-pill L">They win the hole</span>' : '<span class="result-pill H">Hole halved</span>'
-  }
-  if (g === 'match1') {
-    const w = G.cmp === 'pts' ? Math.sign(c.pts[0] - c.pts[1]) : Math.sign(c.net[1] - c.net[0])
-    verdict = w > 0 ? '<span class="result-pill W">You win the hole</span>' : w < 0 ? `<span class="result-pill L">${esc(sur(ps[1].name))} wins the hole</span>` : '<span class="result-pill H">Hole halved</span>'
-  }
-  if (g === 'six') {
-    const share = sixPointer(G.cmp === 'pts' ? c.pts : c.net.map(x => -x))
-    verdict = `<span class="result-pill ${share[0] === 4 ? 'W' : share[0] === 0 ? 'L' : 'H'}">${share.join(' / ')} · you ${share[0]}</span>`
-  }
-  if (g === 'skins') {
-    const lo = Math.min(...c.net), w = c.net.filter(n => n === lo).length === 1 ? c.net.indexOf(lo) : -1
-    verdict = w >= 0 ? `<span class="result-pill ${w === 0 ? 'W' : 'H'}">Skin to ${esc(sur(ps[w].name))}</span>` : '<span class="result-pill H">Carries over</span>'
-  }
   const sideLbl = s => (G.cmp === 'pts' ? `${s === 'A' ? c.pA : c.pB} pts` : `best ${G.allow ? 'net' : 'score'} ${s === 'A' ? c.nA : c.nB}`)
   const body = G.pairs
     ? `<div class="sidehead"><b>You & ${esc(sur(ps[o[1]].name))}</b><span>${sideLbl('A')}</span></div>${card(o[0])}${card(o[1])}
@@ -159,7 +142,7 @@ export function draw({ course, members, guests, L, me, teeTimes, events, leagues
     <div class="matchline"><button class="gamesel" id="gchip" aria-expanded="${!!S.gmenu}" aria-controls="gmenu">${esc(LG.name)}${CHEV}</button><b>${esc(line)}</b></div>
     ${gamebar}
     ${body}
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span class="hint">${round.done[i] ? 'Saved' : 'Gross scores. Shots applied automatically.'}</span>${verdict}</div>
+    <span class="hint">${round.done[i] ? 'Saved' : 'Gross scores. Shots applied automatically.'}</span>
     ${!G.pairs && g !== 'match1' && gs.thru ? `<h3>Standings</h3>${standings(ps, gs, g)}` : ''}
     ${eventsBottom(events)}
   </div>
