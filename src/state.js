@@ -1,6 +1,6 @@
 // UI state only: which tab and screen, selections, and drafts not yet saved. Data lives behind api.js.
 export const S = {
-  loginMode: 'signin', loginEmail: '', requestName: '', loginNotice: '', // sign-in screen: 'signin' | 'create' | 'request' | 'requested'
+  loginMode: 'welcome', loginEmail: '', requestName: '', loginNotice: '', // signed out: 'welcome' | 'signin' | 'signup'
   tab: 'scores',
   sview: 'card',     // scores: 'card' | 'players' | 'challenge' | 'pevent'
   aview: 'home',     // admin: home | tee | book | booked | mine | buddies | pins | games | points | events | event | access

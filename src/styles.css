@@ -531,4 +531,17 @@ button.wlpill{cursor:pointer}
 .yn button{padding:11px 0;border-radius:14px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink);font:700 15px var(--sys);cursor:pointer}
 .yn button.yes[aria-pressed="true"]{background:var(--loss);border-color:var(--loss);color:var(--on-loss)}
 .yn button.no[aria-pressed="true"]{background:var(--sunk);border-color:var(--muted)}
-.ask.done{opacity:.65}
+.ask.prev{opacity:.65}
+/* signed out */
+.welcome{min-height:70vh;justify-content:center;gap:12px}
+.welcome .brand{display:flex;flex-direction:column;align-items:center;gap:8px;margin:0 0 22px;text-align:center}
+.welcome .logo{width:76px;height:76px;border-radius:22px;background:var(--green);color:var(--on-green);display:grid;place-items:center;font-size:38px}
+.welcome .brand h2{font-size:38px;font-weight:800;letter-spacing:-.03em;margin:6px 0 0}
+.welcome .brand p{color:var(--muted);margin:0;font-size:16px}
+.welcome .big{flex:0 0 auto;width:100%;padding:18px;font-size:19px;font-weight:800;border-radius:20px}
+.ring{width:76px;height:76px;border-radius:50%;border:6px solid var(--leaf);border-top-color:var(--green);animation:spin 1.4s linear infinite}
+@media (prefers-reduced-motion:reduce){.ring{animation:none}}
+@keyframes spin{to{transform:rotate(360deg)}}
+.chip.live{display:inline-flex;align-items:center;gap:6px;margin-top:6px;cursor:default}
+.chip.live .dot{width:8px;height:8px;border-radius:50%;background:var(--green)}
+.tickmark{width:76px;height:76px;border-radius:50%;background:var(--green);color:var(--on-green);display:grid;place-items:center;font-size:40px;font-weight:800}

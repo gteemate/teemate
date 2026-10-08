@@ -39,7 +39,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--leaf-line);outl
 .logo{width:76px;height:76px;border-radius:22px;background:var(--green);color:var(--on-green);display:grid;place-items:center;font-size:38px}
 .brand h2{font-size:38px;font-weight:800;letter-spacing:-.03em;margin:6px 0 0}
 .brand p{color:var(--muted);margin:0;font-size:16px}
-.big{display:flex;flex-direction:column;gap:4px;text-align:left;padding:18px 20px;border-radius:20px;border:2px solid var(--line);background:var(--surface);color:var(--ink)}
+.big{display:flex;flex-direction:column;gap:4px;align-items:center;text-align:center;padding:18px 20px;border-radius:20px;border:2px solid var(--line);background:var(--surface);color:var(--ink)}
 .big b{font-size:20px;font-weight:800}
 .big span{color:var(--muted);font-size:14px}
 .big.primary{background:var(--green);border-color:var(--green);color:var(--on-green)}
@@ -74,7 +74,7 @@ input{width:100%;padding:14px;border-radius:14px;border:1px solid var(--line);ba
 <div class="wrap">
   <div class="notes">
     <h1>Simpler sign-up</h1>
-    <p>The first screen shows two clear buttons: <b>I'm new</b> or <b>I've got an account</b>.</p>
+    <p>The first screen shows two clear buttons: <b>Sign in</b> on top, then <b>I'm new · Sign up</b>.</p>
     <p>Signing up is one page: name, email and password. That sends the request to the admin and keeps you signed in.</p>
     <p>While you wait, the app checks for approval every few seconds. The moment the admin approves, it goes straight into TeeMate without asking you to sign in again. If you close it and come back later, it opens straight in too.</p>
     <p>If your email is already on the members list, you skip the waiting step entirely.</p>
@@ -97,8 +97,8 @@ const eye = id => `<button type="button" class="eye" aria-label="Show password" 
 const screens = {
   welcome: () => `<div class="scr fade">
     <div class="brand"><div class="logo">⛳</div><h2>TeeMate</h2><p>Tee times, scores and leagues for the club</p></div>
-    <button class="big primary" data-go="signup"><b>I'm new · Sign up</b><span>Takes a minute. The club admin approves you.</span></button>
-    <button class="big" data-go="signin"><b>I've got an account · Sign in</b><span>Email and password</span></button>
+    <button class="big primary" data-go="signin"><b>Sign in</b></button>
+    <button class="big" data-go="signup"><b>I'm new · Sign up</b></button>
   </div>`,
   signup: () => `<div class="scr fade">
     <button class="back" data-go="welcome">‹ Back</button>

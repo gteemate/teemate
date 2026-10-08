@@ -287,7 +287,7 @@ function leagueSheet(leagues, entries, members) {
     ${askable.length > 1 ? `<button class="ghost" id="lg-all">Yes for everyone</button>` : ''}
     ${list.map(e => leaguePlayers(e).map(id => {
       const team = e.teams?.[e.team?.[id]]?.name, me = id === round.lineup[0].m
-      if (enteredElsewhere(entries, e, id)) return `<div class="ask done"><span class="av">${ini(name(id))}</span><span class="who"><strong>${esc(name(id))}</strong><small>${team ? esc(team) + ' · ' : ''}already counted a round this week</small></span></div>`
+      if (enteredElsewhere(entries, e, id)) return `<div class="ask prev"><span class="av">${ini(name(id))}</span><span class="who"><strong>${esc(name(id))}</strong><small>${team ? esc(team) + ' · ' : ''}already counted a round this week</small></span></div>`
       const k = `${e.id}:${id}`
       return `<div class="ask"><span class="av">${ini(name(id))}</span><span class="who"><strong>${esc(name(id))}${me ? ' (you)' : ''}</strong><small>${team ? esc(team) : ''}</small></span>
         <div class="yn"><button class="yes" data-yn="${k}" data-v="1" aria-pressed="${ans[k] === true}">Yes, count it</button><button class="no" data-yn="${k}" data-v="0" aria-pressed="${ans[k] === false}">Not this one</button></div></div>`

@@ -1,129 +1,139 @@
-// Sign in with email and password, or create an account the first time (approved emails only).
+// Signed out: a welcome screen (Sign in / I'm new · Sign up), then one page for each.
+// Signing up is name, email and a password, once. An approved email gets straight in; otherwise
+// the account is made with an access request and waits, signed in, until an admin approves it.
 // Also the screen for a login that isn't on the members list.
 import * as api from '../api.js'
 import { S } from '../state.js'
 import { $, esc, header, render, passwordInput } from '../ui.js'
 
 const MIN = 8
+const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 
 export function draw() {
-  if (S.loginMode === 'request') return drawRequest()
-  const create = S.loginMode === 'create'
-  header('TeeMate', create ? 'First time? Choose a password' : 'Sign in with your email and password')
+  if (S.loginMode === 'signin') return drawSignIn()
+  if (S.loginMode === 'signup') return drawSignUp()
+  header('', '')
+  $('main').innerHTML = `<div class="screen welcome">
+    <div class="brand"><div class="logo">⛳</div><h2>TeeMate</h2><p>Tee times, scores and leagues for the club</p></div>
+    <button class="primary big" id="to-in">Sign in</button>
+    <button class="ghost big" id="to-up">I'm new · Sign up</button>
+  </div>`
+  $('to-in').onclick = () => go('signin')
+  $('to-up').onclick = () => go('signup')
+}
+
+const go = mode => { S.loginMode = mode; S.loginNotice = ''; render() }
+
+function drawSignIn() {
+  header('Sign in', '', () => go('welcome'))
   $('main').innerHTML = `<div class="screen"><form class="card evsec" id="login" novalidate>
-    <h4>${create ? 'Create account' : 'Sign in'}</h4>
     <label for="email">Email</label><input id="email" type="email" autocomplete="email" inputmode="email" placeholder="you@example.com" value="${esc(S.loginEmail)}">
-    <label for="pw">${create ? 'Choose a password' : 'Password'}</label>${passwordInput('pw', `autocomplete="${create ? 'new-password' : 'current-password'}" ${create ? `placeholder="At least ${MIN} characters"` : ''}`)}
-    ${create ? `<label for="pw2">Password again</label>${passwordInput('pw2', 'autocomplete="new-password"')}` : ''}
-    ${create && S.loginNotice ? `<p class="hcpnote" style="margin:4px 0 0">${esc(S.loginNotice)}</p>` : ''}
+    <label for="pw">Password</label>${passwordInput('pw', 'autocomplete="current-password"')}
     <p class="gerr" id="err" role="alert"></p>
-    <button class="primary" type="submit" id="go">${create ? 'Create account' : 'Sign in'}</button>
-    <span class="hint">${create ? 'Your email has to be approved by the club admin first.' : 'Forgotten your password? Ask the club admin to reset your login.'}</span>
-    <button type="button" class="linkbtn" id="mode" style="align-self:flex-start">${create ? 'Already have an account? Sign in' : 'First time here? Create your account'}</button>
-    <button type="button" class="linkbtn" id="toreq" style="align-self:flex-start">Not approved yet? Request access</button>
-  </form></div>`
+    <button class="primary" type="submit" id="go">Sign in</button>
+    <span class="hint">Forgotten your password? Ask the club admin to reset your login.</span>
+  </form>
+  <button type="button" class="linkbtn" id="to-up">New here? Sign up</button></div>`
   setTimeout(() => $(S.loginEmail ? 'pw' : 'email')?.focus(), 30)
-  $('mode').onclick = () => { S.loginEmail = $('email').value.trim(); S.loginNotice = ''; S.loginMode = create ? 'signin' : 'create'; render() }
-  $('toreq').onclick = () => { pendingPw = null; S.loginEmail = $('email').value.trim(); S.loginMode = 'request'; render() }
+  $('to-up').onclick = () => { S.loginEmail = $('email').value.trim(); go('signup') }
   $('login').onsubmit = async e => {
     e.preventDefault()
     const email = $('email').value.trim(), pw = $('pw').value, err = m => ($('err').textContent = m)
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return err('Enter your email address.')
+    if (!EMAIL.test(email)) return err('Enter your email address.')
     if (!pw) return err('Enter your password.')
-    if (create && pw.length < MIN) return err(`Choose a password of at least ${MIN} characters.`)
-    if (create && pw !== $('pw2').value) return err("The two passwords don't match.")
-    const go = $('go'), label = go.textContent
-    go.disabled = true
-    go.textContent = create ? 'Creating…' : 'Signing in…'
+    const btn = $('go')
+    btn.disabled = true
+    btn.textContent = 'Signing in…'
     try {
-      await (create ? api.createAccount(email, pw) : api.signIn(email, pw))
+      await api.signIn(email, pw)
       S.loginEmail = ''
-      S.loginNotice = ''
-      S.loginMode = 'signin'
-      // onAuthChange in main.js redraws once signed in
+      S.loginMode = 'welcome' // onAuthChange in main.js redraws once signed in
     } catch (ex) {
-      // Not approved yet: offer to leave their name for the admin.
-      if (create && /given access/.test(ex.message)) { pendingPw = pw; S.loginEmail = email; S.loginMode = 'request'; render(); return }
-      // Approved but never set a password: take them to Create account instead of "wrong password".
-      if (!create && /Wrong email or password/.test(ex.message) && (await api.needsAccount(email).catch(() => false))) {
+      // Approved but never set a password: finish signing up instead of "wrong password".
+      if (/Wrong email or password/.test(ex.message) && (await api.needsAccount(email).catch(() => false))) {
         S.loginEmail = email
-        S.loginMode = 'create'
-        S.loginNotice = 'This email is approved but hasn’t been set up yet. Choose your password below to create your account.'
+        S.loginMode = 'signup'
+        S.loginNotice = 'Your email is approved but not set up yet. Add your name and choose a password to finish.'
         render()
         return
       }
-      err(ex.message)
-      go.disabled = false
-      go.textContent = label
+      err(ex.message.replace(' First time here? Create your account instead.', ''))
+      btn.disabled = false
+      btn.textContent = 'Sign in'
     }
   }
 }
 
-// The password typed on "Create account" is kept here (in memory only) if the email turns out not to
-// be approved, so the request form can create the account with it: one password, set once.
-let pendingPw = null
-
-function drawRequest() {
-  const needPw = !pendingPw
-  header('TeeMate', 'Ask the club admin for access')
-  $('main').innerHTML = `<div class="screen"><form class="card evsec" id="req" novalidate>
-    <h4>Request access</h4>
-    <span class="hint">${needPw ? 'Leave your name and choose your password.' : 'Your email isn’t approved yet. Leave your name and'} the club admin will see your request. Once you’re approved, just sign in with your email and password.</span>
-    <label for="rname">Your name</label><input id="rname" autocomplete="name" placeholder="e.g. Pete Reid">
-    <label for="remail">Email</label><input id="remail" type="email" autocomplete="email" inputmode="email" value="${esc(S.loginEmail)}" ${needPw ? '' : 'readonly'}>
-    ${needPw ? `<label for="rpw">Choose a password</label>${passwordInput('rpw', `autocomplete="new-password" placeholder="At least ${MIN} characters"`)}
-      <label for="rpw2">Password again</label>${passwordInput('rpw2', 'autocomplete="new-password"')}` : ''}
+function drawSignUp() {
+  header('Sign up', '', () => go('welcome'))
+  $('main').innerHTML = `<div class="screen"><form class="card evsec" id="signup" novalidate>
+    ${S.loginNotice ? `<p class="hcpnote" style="margin:0 0 4px">${esc(S.loginNotice)}</p>` : ''}
+    <label for="name">Your name</label><input id="name" autocomplete="name" placeholder="e.g. Pete Reid" value="${esc(S.requestName)}">
+    <label for="email">Email</label><input id="email" type="email" autocomplete="email" inputmode="email" placeholder="you@example.com" value="${esc(S.loginEmail)}">
+    <label for="pw">Choose a password</label>${passwordInput('pw', `autocomplete="new-password" placeholder="At least ${MIN} characters"`)}
+    <span class="hint">Tap the eye to check it. You'll use it to sign in on other phones.</span>
     <p class="gerr" id="err" role="alert"></p>
-    <button class="primary" type="submit" id="go">Request access</button>
-    <button type="button" class="linkbtn" id="back" style="align-self:flex-start">Back to sign in</button>
-  </form></div>`
-  setTimeout(() => $('rname')?.focus(), 30)
-  $('back').onclick = () => { pendingPw = null; S.loginMode = 'signin'; render() }
-  $('req').onsubmit = async e => {
+    <button class="primary" type="submit" id="go">Sign up</button>
+  </form>
+  <button type="button" class="linkbtn" id="to-in">Already have an account? Sign in</button></div>`
+  setTimeout(() => $('name')?.focus(), 30)
+  $('to-in').onclick = () => { S.loginEmail = $('email').value.trim(); go('signin') }
+  $('signup').onsubmit = async e => {
     e.preventDefault()
-    const name = $('rname').value.trim(), email = $('remail').value.trim(), err = m => ($('err').textContent = m)
+    const name = $('name').value.trim(), email = $('email').value.trim(), pw = $('pw').value, err = m => ($('err').textContent = m)
     if (!name) return err('Enter your name.')
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return err('Enter your email address.')
-    const pw = pendingPw ?? $('rpw').value
-    if (!pendingPw) {
-      if (pw.length < MIN) return err(`Choose a password of at least ${MIN} characters.`)
-      if (pw !== $('rpw2').value) return err("The two passwords don't match.")
-    }
-    $('go').disabled = true
+    if (!EMAIL.test(email)) return err('Enter your email address.')
+    if (pw.length < MIN) return err(`Choose a password of at least ${MIN} characters.`)
+    const btn = $('go')
+    btn.disabled = true
+    btn.textContent = 'Signing up…'
     try {
-      await api.requestAccess(email, name)
-      // Create the account now with their password. If they already made one while waiting, sign in.
+      // Already approved: the account is made and they're in. Otherwise leave a request for the
+      // admin and make the account with it, so they wait signed in.
       await api.createAccount(email, pw).catch(async ex => {
-        if (/already an account/.test(ex.message)) return api.signIn(email, pw)
-        throw ex
+        if (!/given access/.test(ex.message)) throw ex
+        await api.requestAccess(email, name)
+        await api.createAccount(email, pw)
       })
+      S.loginEmail = ''
+      S.requestName = ''
+      S.loginNotice = ''
+      S.loginMode = 'welcome' // onAuthChange in main.js redraws: the app, or "waiting for approval"
     } catch (ex) {
       err(ex.message)
-      $('go').disabled = false
-      return
+      btn.disabled = false
+      btn.textContent = 'Sign up'
     }
-    pendingPw = null
-    S.loginEmail = ''
-    S.loginMode = 'signin'
-    // signed in now: the app shows the "waiting for approval" screen
   }
 }
 
-/** Signed in but not (yet) a member: waiting for approval, or not on the list. */
+/** Signed in but not (yet) a member: waiting for approval (checks by itself), or not on the list. */
+let polling = null
 export function drawNotMember({ email }) {
-  header('TeeMate', '')
+  header('', '')
+  clearInterval(polling)
   const show = pending => {
     $('main').innerHTML = pending
-      ? `<div class="done"><div class="flagmark">⛳</div><h4>Request sent</h4>
-          <p>Thanks. Your request is with the club admin.</p>
-          <p class="hint">As soon as you’re approved you’ll get straight in. Just open TeeMate, or sign in with <b style="color:var(--ink)">${esc(email)}</b> and the password you chose.</p>
-          <div class="gm-btns"><button class="ghost" id="out">Sign out</button><button class="primary" id="again">Check again</button></div></div>`
+      ? `<div class="done" id="waiting"><div class="ring" aria-hidden="true"></div><h4>Waiting for approval</h4>
+          <p>Thanks. Your request is with the club admin. Keep this open or come back later: TeeMate opens straight in once you're approved.</p>
+          <span class="chip live"><span class="dot"></span>Checking automatically</span>
+          <button class="linkbtn" id="out" style="margin-top:18px">Wrong email? Start again</button></div>`
       : `<div class="done"><div class="flagmark">⛳</div><h4>Not on the list yet</h4>
           <p>You're signed in as <b style="color:var(--ink)">${esc(email)}</b>, but that email isn't on the club's members list.</p>
           <p class="hint">Ask the club admin to approve it.</p>
           <div class="gm-btns"><button class="ghost" id="out">Sign out</button><button class="primary" id="again">Check again</button></div></div>`
-    $('out').onclick = () => api.signOut()
-    $('again').onclick = () => { api.forgetMe(); render() }
+    $('out').onclick = () => { clearInterval(polling); api.signOut() }
+    if ($('again')) $('again').onclick = () => { api.forgetMe(); render() }
+    if (pending) polling = setInterval(check, 5000)
+  }
+  const check = async () => {
+    if (!$('waiting')) return clearInterval(polling) // moved on
+    api.forgetMe()
+    const me = await api.getMe().catch(() => null)
+    if (!me) return
+    clearInterval(polling)
+    $('main').innerHTML = `<div class="done"><div class="tickmark">✓</div><h4>You're in!</h4><p>The admin approved you. Opening TeeMate…</p></div>`
+    setTimeout(render, 1200)
   }
   show(false)
   api.myRequestPending().then(show).catch(() => {})
