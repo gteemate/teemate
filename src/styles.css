@@ -219,6 +219,10 @@ table.lb td small{color:var(--muted);font-size:12px}
 .atile.wide{grid-column:1/-1}
 .atile.row{grid-column:1/-1;flex-direction:row;align-items:center;gap:14px;padding:16px 18px}
 .atile.row .e{margin:0;font-size:26px}
+.atile.row.slim{padding:10px 18px;border-radius:16px}
+.atile.row.slim .e{font-size:18px}
+.atile.row.slim b{font-size:15px;font-weight:700}
+.atile.row.slim span{font-size:13px}
 .signout{align-self:flex-start;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px 22px;font-size:17px;font-weight:700;color:var(--ink);cursor:pointer}
 .pinrow{padding:12px 14px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:10px}
 .pinrow:first-child{border-top:0}
