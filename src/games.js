@@ -26,6 +26,25 @@ export const GAME_DEFS = {
     { k: 'stroke', name: 'Net strokeplay', sub: 'Allowance', pct: 95, desc: 'Total net score against par.', play: { kind: 'stroke' } }] },
 }
 
+// Player events: one group challenges another.
+export const EVENT_STYLES = {
+  fourball: { name: 'Four-ball v four-ball', desc: 'Your group against theirs.' },
+  ryder: { name: 'Ryder Cup', desc: 'Mixed teams: two from each four-ball on each team. Each four-ball plays a better-ball match.' },
+}
+export const EVENT_FORMATS = {
+  fourball: [
+    { k: 'best2', name: 'Best 2 Stableford per hole', desc: 'Each group’s two best Stableford scores on every hole count.' },
+    { k: 'all4', name: 'All 4 Stableford', desc: 'Every player’s Stableford points count.' },
+    { k: 'bestball', name: 'Match play · best ball', desc: 'Each hole goes to the group with the lowest net score.' },
+  ],
+  ryder: [
+    { k: 'bbl', name: 'Better ball · off the low', desc: 'Match play, shots off the lowest handicap. 1 point a match.' },
+    { k: 'bbstab', name: 'Better ball · Stableford', desc: 'Most Stableford points wins each hole. 1 point a match.' },
+    { k: 'bbscr', name: 'Better ball · scratch', desc: 'No shots. 1 point a match.' },
+  ],
+}
+export const eventFormatName = k => Object.values(EVENT_FORMATS).flat().find(f => f.k === k)?.name ?? k
+
 // Better-ball pairings as player indexes [a1, a2, b1, b2]; player 0 is always "you".
 export const PAIRINGS = [[0, 1, 2, 3], [0, 2, 1, 3], [0, 3, 1, 2]]
 

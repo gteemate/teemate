@@ -305,6 +305,39 @@ export async function getTodayRounds(date = today()) {
   return out
 }
 
+/* ---------- Player events (one group challenges another) ---------- */
+
+/**
+ * Player events I'm part of from today on (RLS: only the two groups and admins see them).
+ * [{ id, date, style, format, teamNames: {A,B}, players: [{ id, name, memberId, guest, group, team }],
+ *    status, timeA, timeB, slotA, slotB, createdBy: { id, name }, respondedBy: { id, name } | null }]
+ */
+export async function getMyPlayerEvents() {
+  const rows = must(await sb.from('player_events')
+    .select('id, date, style, format, team_names, players, status, slot_a, slot_b, a:slot_a(start_time), b:slot_b(start_time), creator:created_by(id, name), responder:responded_by(id, name)')
+    .gte('date', todayIso()).order('created_at', { ascending: false }))
+  const meId = await myId()
+  return rows
+    .filter(e => e.players.some(p => p.memberId === meId)) // admins see all; the Scores tab only shows mine
+    .map(e => ({
+      id: e.id, date: e.date, style: e.style, format: e.format, teamNames: e.team_names, players: e.players, status: e.status,
+      slotA: e.slot_a, slotB: e.slot_b, timeA: e.a.start_time, timeB: e.b.start_time, createdBy: e.creator, respondedBy: e.responder,
+    }))
+}
+
+/** Propose an event from my tee time to another group's. teams (Ryder Cup): { bookingPlayerId: 'A' | 'B' }. */
+export async function proposePlayerEvent({ slotA, slotB, style, format, teamNames, teams = {} }) {
+  return must(await sb.rpc('create_player_event', { p_slot_a: slotA, p_slot_b: slotB, p_style: style, p_format: format, p_team_names: teamNames, p_teams: teams }))
+}
+
+export async function answerPlayerEvent(id, accept) {
+  must(await sb.rpc('respond_player_event', { p_id: id, p_accept: accept }))
+}
+
+export async function cancelPlayerEvent(id) {
+  must(await sb.rpc('cancel_player_event', { p_id: id }))
+}
+
 /* ---------- Team events ---------- */
 
 const EVENT_COLS = 'id, name, team_a, team_b, active, days, course, format, players, team, matches'

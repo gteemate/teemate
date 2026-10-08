@@ -413,3 +413,12 @@ img{max-width:100%}
 .preview .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .preview .tabs-demo{display:flex;justify-content:space-around;border-top:1px solid var(--line);padding-top:10px;font-weight:600;color:var(--muted)}
 .preview .tabs-demo b{color:var(--loss);font-weight:800}
+/* player events */
+.pebanner{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 14px;border-left:5px solid var(--green)}
+.pebanner.pe-pending{border-left-color:var(--loss)}
+.pebanner.pe-declined{opacity:.7;border-left-color:var(--full)}
+.pebanner .pestate{color:var(--ink);font-weight:700;margin-top:2px}
+.pecard{display:flex;flex-direction:column;gap:10px;padding:14px;margin:4px 0}
+.pecard>div{display:flex;flex-direction:column;gap:2px}
+.evrow[aria-pressed="true"]{border-color:var(--leaf-line);background:var(--leaf)}
+.gamecard:disabled{opacity:.5;cursor:not-allowed}

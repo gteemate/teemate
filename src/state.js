@@ -2,13 +2,15 @@
 export const S = {
   loginMode: 'signin', loginEmail: '', requestName: '', // sign-in screen: 'signin' | 'create' | 'request' | 'requested'
   tab: 'scores',
-  sview: 'card',     // scores: 'card' | 'players'
+  sview: 'card',     // scores: 'card' | 'players' | 'challenge'
   aview: 'home',     // admin: home | tee | book | booked | mine | buddies | pins | games | points | events | event | access
 
   // course
   hole: 0, cimg: 'hole',
   // scores
   ch: null, gmenu: false, pickTmp: null,
+  // player events: draft being set up, and invitations put off this session
+  pe: null, peDismissed: new Set(),
   // leaderboard
   lbm: 'net', lbv: 'event', evDay: 1,
   // tee times and booking

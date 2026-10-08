@@ -3,6 +3,7 @@ import * as api from '../api.js'
 import { S } from '../state.js'
 import { $, esc, ini, sur, header, keepScroll, top0, render, toast, parseHcp, fmtHcp } from '../ui.js'
 import { today, hhmm } from '../dates.js'
+import { banners, bindBanners, pendingInvite, invitePopup } from './player-events.js'
 import { holeGrid } from '../course-art.js'
 import { courseHandicap, playingHandicaps, holeCalc, betterBallWinner, gameState, upText, toPar } from '../scoring.js'
 import { buildLibrary, playable, gameSpec, resolveGame, teeRating, PAIRINGS } from '../games.js'
@@ -25,10 +26,22 @@ export function lineupFromTeeTime(slot, meId) {
 }
 
 export async function load() {
-  const [course, members, games, me, teeTimes] = await Promise.all([api.getCourse(), api.getMembers(), api.getGameSettings(), api.getMe(), api.getMyTeeTimes(today())])
+  const [course, members, games, me, teeTimes, events] = await Promise.all([api.getCourse(), api.getMembers(), api.getGameSettings(), api.getMe(), api.getMyTeeTimes(today()), api.getMyPlayerEvents()])
   round ??= await api.getCurrentRound()
   const guests = round ? await api.getGuests(round.lineup.filter(e => e.g != null).map(e => e.g)) : []
-  return { course, members, guests, L: buildLibrary(games), me, teeTimes }
+  return { course, members, guests, L: buildLibrary(games), me, teeTimes, events }
+}
+
+// Player event banners, the "play an event" link, and any invitation waiting for my answer.
+function eventsTop(events, me) {
+  const busy = events.some(e => e.status === 'pending' || e.status === 'accepted')
+  return banners(events, me) + (busy ? '' : '<button class="linkbtn" id="pe-new" style="align-self:flex-start">+ Play an event with another group</button>')
+}
+function bindEvents(events, me) {
+  bindBanners(events)
+  const nb = $('pe-new')
+  if (nb) nb.onclick = async () => { S.sview = 'challenge'; await render(); top0() }
+  invitePopup(pendingInvite(events, me))
 }
 
 export function setRound(r) {
@@ -38,8 +51,8 @@ export function setRound(r) {
 
 const CHEV = '<svg class="cv" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>'
 
-export function draw({ course, members, guests, L, me, teeTimes }) {
-  if (!round) return startScreen({ course, L, me, teeTimes })
+export function draw({ course, members, guests, L, me, teeTimes, events }) {
+  if (!round) { startScreen({ course, L, me, teeTimes, events }); return bindEvents(events, me) }
   // Players on the card. A guest without a handicap plays off 0 until someone sets it.
   const ps = round.lineup.map(e => {
     if (e.m != null) { const m = members.find(x => x.id === e.m); return { name: m.name, hcp: m.hcp, guestId: null } }
@@ -118,7 +131,7 @@ export function draw({ course, members, guests, L, me, teeTimes }) {
 
   const fin = gs.finished && round.done[i]
   const hcpNote = noHcp.length ? `<div class="hcpnote">${noHcp.map(p => esc(p.name.split(' ')[0])).join(' and ')} ${noHcp.length > 1 ? 'have' : 'has'} no handicap yet, so ${noHcp.length > 1 ? 'they play' : 'plays'} off an index of 0 until you set one. Shots and points update as soon as you do.</div>` : ''
-  $('main').innerHTML = `<div class="screen">${grid}${hcpNote}
+  $('main').innerHTML = `<div class="screen">${eventsTop(events, me)}${grid}${hcpNote}
     <div class="matchline"><button class="gamesel" id="gchip" aria-expanded="${!!S.gmenu}" aria-controls="gmenu">${esc(LG.name)}${CHEV}</button><b>${esc(line)}</b></div>
     ${gamebar}
     ${body}
@@ -143,6 +156,8 @@ export function draw({ course, members, guests, L, me, teeTimes }) {
     $('chg').onclick = async () => { S.gmenu = false; S.pickTmp = round.lineup.slice(1).filter(e => e.m != null).map(e => e.m); S.sview = 'players'; await render(); top0() }
     $('gdone').onclick = () => { S.gmenu = false; render() }
   }
+
+  bindEvents(events, me)
 
   // Guest handicaps can be set or changed at any time; everything recalculates.
   document.querySelectorAll('[data-gh]').forEach(b => (b.onclick = () => guestHcpSheet(ps[+b.dataset.gh])))
@@ -198,10 +213,10 @@ export function getRound() {
 }
 
 // No card yet today: start one from your tee time (all four, guests included), or pick buddies.
-function startScreen({ course, L, me, teeTimes }) {
+function startScreen({ course, L, me, teeTimes, events }) {
   header('Scores', 'Start today’s card')
   const names = s => s.players.map(p => esc(p.memberId === me.id ? 'You' : p.name) + (p.guest ? ' <span class="pill tag">Guest</span>' : '')).join(', ')
-  $('main').innerHTML = `<div class="screen">
+  $('main').innerHTML = `<div class="screen">${eventsTop(events, me)}
     ${teeTimes.length ? teeTimes.map(s => `<button class="card evrow" data-slot="${s.id}"><span class="who"><strong>Start card for your ${hhmm(s.time)}</strong><small>${names(s)}</small></span><span class="pill">${s.players.length} players</span></button>`).join('')
       : '<div class="empty-state">You’re not on a tee time today. Pick who you’re playing with instead.</div>'}
     <button class="ghost" id="pick">${teeTimes.length ? 'Pick players instead' : 'Pick players'}</button>
