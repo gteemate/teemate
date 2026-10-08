@@ -516,3 +516,6 @@ button.wlpill{cursor:pointer}
 .pslot .chev,.brow .chev{font-size:22px;font-weight:700;color:var(--green)}
 .picklist{max-height:45vh;overflow-y:auto;display:flex;flex-direction:column;gap:8px;margin-top:8px}
 .sheet .guestbtn small{font-weight:500;opacity:.75;margin-left:6px}
+.capgrid{display:grid;grid-template-columns:auto 1fr;gap:8px 10px;align-items:center;margin:4px 0 8px}
+.capgrid label{display:flex;align-items:center;gap:6px;font-weight:700;font-size:14px;white-space:nowrap}
+.capgrid select{min-width:0;width:100%}

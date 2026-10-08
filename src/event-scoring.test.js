@@ -214,28 +214,48 @@ describe('leagues', () => {
   })
 })
 
-import { balanceTeams } from './event-scoring.js'
-describe('balancing league teams by handicap', () => {
+import { drawTeams } from './event-scoring.js'
+describe('drawing league teams', () => {
   const idx = id => id // handicap index = id, for easy checking
-  it('deals snake-style so averages are close', () => {
-    const t = balanceTeams([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], idx, 3, 4)
-    const teams = [0, 1, 2].map(k => Object.keys(t).filter(id => t[id] === k).map(Number))
-    // Team 1 gets 1, 6, 7, 12; team 2 gets 2, 5, 8, 11; team 3 gets 3, 4, 9, 10 → all average 6.5
-    expect(teams).toEqual([[1, 6, 7, 12], [2, 5, 8, 11], [3, 4, 9, 10]])
+  // a repeatable "random" sequence
+  const seeded = (seed = 1) => () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646
+  const teamsOf = (t, n) => Array.from({ length: n }, (_, k) => Object.keys(t).filter(id => t[id] === k).map(Number))
+  it('with no jitter, deals so averages match', () => {
+    const t = drawTeams([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], idx, 3, 4, [], seeded(), 0)
+    const avgs = teamsOf(t, 3).map(m => m.reduce((s, x) => s + x, 0) / m.length)
+    expect(teamsOf(t, 3).every(m => m.length === 4)).toBe(true)
+    expect(Math.max(...avgs) - Math.min(...avgs)).toBeLessThanOrEqual(1)
   })
   it('never overfills a team; extras stay unassigned', () => {
-    const t = balanceTeams([1, 2, 3, 4, 5, 6, 7], idx, 2, 3)
+    const t = drawTeams([1, 2, 3, 4, 5, 6, 7], idx, 2, 3, [], seeded(), 0)
     expect(Object.keys(t)).toHaveLength(6)
     expect(t[7]).toBeUndefined()
   })
-  it('120 players into 10 teams of 12: every team full, averages within a point', () => {
+  it('keeps captains on their teams', () => {
+    const t = drawTeams([1, 2, 3, 4, 5, 6, 7, 8], idx, 2, 4, [8, 7], seeded())
+    expect(t[8]).toBe(0)
+    expect(t[7]).toBe(1)
+    expect(teamsOf(t, 2).map(m => m.length)).toEqual([4, 4])
+  })
+  it('a captain who is not an entrant is ignored', () => {
+    const t = drawTeams([1, 2, 3, 4], idx, 2, 2, [99, null], seeded())
+    expect(t[99]).toBeUndefined()
+    expect(Object.keys(t)).toHaveLength(4)
+  })
+  it('120 players into 10 teams of 12 with captains: full, averages within 0.3, and the draw varies', () => {
     const ids = Array.from({ length: 120 }, (_, i) => i + 1)
     const index = id => ((id * 37) % 360) / 10 // a spread from 0 to 36
-    const t = balanceTeams(ids, index, 10, 12)
-    const avg = k => { const m = ids.filter(id => t[id] === k); return [m.length, m.reduce((s, id) => s + index(id), 0) / m.length] }
-    const all = Array.from({ length: 10 }, (_, k) => avg(k))
-    expect(all.every(([n]) => n === 12)).toBe(true)
-    const avgs = all.map(([, a]) => a)
-    expect(Math.max(...avgs) - Math.min(...avgs)).toBeLessThan(1)
+    const captains = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => n * 12) // a spread of captains' handicaps
+    const check = t => {
+      const all = teamsOf(t, 10)
+      expect(all.every(m => m.length === 12)).toBe(true)
+      captains.forEach((c, k) => expect(t[c]).toBe(k))
+      const avgs = all.map(m => m.reduce((s, id) => s + index(id), 0) / m.length)
+      expect(Math.max(...avgs) - Math.min(...avgs)).toBeLessThan(0.3)
+    }
+    const a = drawTeams(ids, index, 10, 12, captains, seeded(1)), b = drawTeams(ids, index, 10, 12, captains, seeded(7))
+    check(a)
+    check(b)
+    expect(ids.some(id => a[id] !== b[id])).toBe(true)
   })
 })

@@ -243,22 +243,54 @@ function rankBy(list, value) {
 }
 
 /**
- * Deal players into teams so the teams' handicaps balance: sort by handicap index and deal
- * snake-style (1→N, then N→1, …), skipping full teams. Anyone left when every team is full stays
- * unassigned. Returns { [playerId]: teamIndex }.
+ * Draw league teams so their handicaps roughly balance, with a different draw each time.
+ * Captains (captains[k] = member id or null) stay on their own team. Everyone else is sorted by
+ * handicap index with a little random jitter, then dealt a band at a time: each band's lowest
+ * index goes to the team whose projected average (empty places counted at the average of the
+ * players still to deal) is currently highest. Finally, players (never captains) are swapped
+ * between the highest- and lowest-average teams while that narrows the gap. Full teams are skipped; anyone left when every team is full stays off.
+ * Returns { [playerId]: teamIndex }.
  */
-export function balanceTeams(ids, indexOf, nTeams, sizes) {
+export function drawTeams(ids, indexOf, nTeams, sizes, captains = [], rand = Math.random, jitter = 3) {
   const cap = k => (Array.isArray(sizes) ? sizes[k] : sizes) ?? Infinity
-  const count = Array(nTeams).fill(0), out = {}
-  const order = [...ids].sort((a, b) => indexOf(a) - indexOf(b) || a - b)
-  let i = 0
-  for (const id of order) {
-    // next team in snake order that has room
-    for (let tries = 0; tries < 2 * nTeams; tries++, i++) {
-      const round = Math.floor(i / nTeams), pos = i % nTeams
-      const k = round % 2 ? nTeams - 1 - pos : pos
-      if (count[k] < cap(k)) { out[id] = k; count[k]++; i++; break }
+  const out = {}, sum = Array(nTeams).fill(0), count = Array(nTeams).fill(0)
+  const put = (id, k) => { out[id] = k; sum[k] += indexOf(id); count[k]++ }
+  captains.forEach((id, k) => { if (id != null && k < nTeams && ids.includes(id) && count[k] < cap(k)) put(id, k) })
+  const rest = ids.filter(id => out[id] == null).map(id => ({ id, key: indexOf(id) + rand() * jitter })).sort((a, b) => a.key - b.key)
+  // Where a team is heading: its players so far, with its empty places filled at the average of
+  // the players still to deal who'll get a place (the highest handicaps beyond the places stay off).
+  let pool = 0
+  const avg = k => (Number.isFinite(cap(k)) ? (sum[k] + (cap(k) - count[k]) * pool) / cap(k) : count[k] ? sum[k] / count[k] : pool)
+  while (rest.length) {
+    const open = Array.from({ length: nTeams }, (_, k) => k).filter(k => count[k] < cap(k))
+    if (!open.length) break
+    const places = open.reduce((t, k) => t + cap(k) - count[k], 0), placeable = rest.slice(0, places)
+    pool = placeable.reduce((t, x) => t + indexOf(x.id), 0) / placeable.length
+    const band = rest.splice(0, open.length).sort((a, b) => indexOf(a.id) - indexOf(b.id))
+    const needy = [...open].sort((a, b) => avg(b) - avg(a) || count[a] - count[b] || a - b)
+    band.forEach((x, n) => put(x.id, needy[n]))
+  }
+  // Then even out what's left: swap a non-captain between the highest- and lowest-average teams
+  // while that brings them closer together.
+  const capt = new Set(captains.filter(id => id != null))
+  const mean = k => sum[k] / count[k]
+  for (let guard = 0; guard < 500; guard++) {
+    const ks = Array.from({ length: nTeams }, (_, k) => k).filter(k => count[k])
+    if (ks.length < 2) break
+    const hi = ks.reduce((a, b) => (mean(b) > mean(a) ? b : a)), lo = ks.reduce((a, b) => (mean(b) < mean(a) ? b : a))
+    const gap = mean(hi) - mean(lo)
+    let best = null
+    for (const a of Object.keys(out)) {
+      if (out[a] !== hi || capt.has(+a)) continue
+      for (const b of Object.keys(out)) {
+        if (out[b] !== lo || capt.has(+b)) continue
+        const d = indexOf(+a) - indexOf(+b)
+        const g = Math.abs((sum[hi] - d) / count[hi] - (sum[lo] + d) / count[lo])
+        if (g < gap - 0.01 && (!best || g < best.g)) best = { a, b, d, g }
+      }
     }
+    if (!best) break
+    out[best.a] = lo; out[best.b] = hi; sum[hi] -= best.d; sum[lo] += best.d
   }
   return out
 }

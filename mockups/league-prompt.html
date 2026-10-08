@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>League prompt mockup</title>
+<style>
+:root{
+  --bg:#f4f4f7; --surface:#ffffff; --sunk:#e9eaf0; --ink:#151a26; --muted:#676c7a; --line:#dfe2ea;
+  --green:#19335A; --on-green:#f4f6fb; --leaf:#dfe6f1; --leaf-line:#19335A; --pill:#19335A; --gold:#b8862b;
+  --shadow:rgba(25,51,90,.4);
+  --sys:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f121a; --surface:#181d29; --sunk:#202636; --ink:#eef0f6; --muted:#9ba1b2; --line:#2a3142;
+  --green:#2d548f; --on-green:#f4f6fb; --leaf:#22324d; --leaf-line:#8fb0e6; --pill:#2d548f; --gold:#e0b25a;
+  --shadow:rgba(0,0,0,.6); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f121a; --surface:#181d29; --sunk:#202636; --ink:#eef0f6; --muted:#9ba1b2; --line:#2a3142;
+  --green:#2d548f; --on-green:#f4f6fb; --leaf:#22324d; --leaf-line:#8fb0e6; --pill:#2d548f; --gold:#e0b25a;
+  --shadow:rgba(0,0,0,.6); color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--sunk);color:var(--ink);font-family:var(--sys);font-size:15px;padding:24px 16px}
+button{font-family:var(--sys);cursor:pointer}
+button:focus-visible{outline:2px solid var(--leaf-line);outline-offset:2px}
+.wrap{display:flex;gap:40px;justify-content:center;align-items:flex-start;flex-wrap:wrap}
+.notes{max-width:320px;min-width:0;padding-top:30px}
+.notes h1{font-size:30px;font-weight:800;letter-spacing:-.02em;line-height:1.05;margin:0 0 10px;text-wrap:balance}
+.notes p{color:var(--muted);line-height:1.55;margin:0 0 12px}
+.steps{display:flex;flex-direction:column;gap:8px;margin:16px 0}
+.steps button{text-align:left;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:14px;padding:10px 14px;font-size:14px;font-weight:600}
+.steps button[aria-pressed="true"]{background:var(--green);color:var(--on-green);border-color:var(--green)}
+.steps small{display:block;font-weight:500;opacity:.75;margin-top:2px}
+.phone{width:100%;max-width:390px;height:800px;background:var(--bg);border-radius:40px;border:1px solid var(--line);
+  box-shadow:0 30px 60px -30px var(--shadow);overflow:hidden;display:flex;flex-direction:column;position:relative}
+header.top{padding:22px 20px 6px}
+.top h2{font-size:34px;font-weight:800;letter-spacing:-.025em;margin:0;line-height:1.05}
+.top .sub{color:var(--muted);font-size:16px;margin-top:6px}
+main{flex:1;overflow-y:auto;padding:10px 16px 20px;display:flex;flex-direction:column;gap:12px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:22px}
+.hole{display:flex;justify-content:space-between;align-items:baseline;padding:14px 18px}
+.hole b{font-size:26px;font-weight:800}
+.hole span{color:var(--muted);font-weight:600}
+.prow{display:grid;grid-template-columns:44px 1fr auto;gap:12px;align-items:center;padding:12px 16px;border-top:1px solid var(--line)}
+.av{width:44px;height:44px;border-radius:50%;background:var(--leaf);display:grid;place-items:center;font-weight:800;font-size:14px}
+.who strong{display:block;font-size:16px}
+.who .pills{display:flex;gap:5px;flex-wrap:wrap;margin-top:4px}
+.pill{background:var(--pill);color:var(--on-green);font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap}
+.pill.soft{background:var(--sunk);color:var(--muted)}
+.wl{background:var(--gold);color:#fff;font-size:11px;font-weight:800;padding:3px 8px;border-radius:999px;letter-spacing:.04em}
+.step{display:flex;align-items:center;gap:8px}
+.step button{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:20px;font-weight:700}
+.step b{font-size:24px;font-weight:800;min-width:20px;text-align:center}
+.lgline{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 16px;border-radius:18px;border:1.5px solid var(--gold);background:var(--surface);font-size:14px}
+.lgline b{color:var(--gold)}
+.lgline button{background:none;border:0;color:var(--green);font-weight:700;font-size:14px;padding:4px}
+.lgline.locked{border-style:dashed;color:var(--muted)}
+nav.tabs{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line);background:var(--surface)}
+nav.tabs span{text-align:center;padding:16px 0;font-weight:700;font-size:14px;color:var(--muted)}
+nav.tabs span.on{color:var(--green)}
+/* sheet */
+.overlay{position:absolute;inset:0;background:rgba(10,14,24,.5);display:flex;align-items:flex-end}
+.sheet{width:100%;background:var(--bg);border-radius:24px 24px 0 0;padding:20px 18px 22px;display:flex;flex-direction:column;gap:12px;box-shadow:0 -10px 30px rgba(0,0,0,.2)}
+.sheet .kicker{display:flex;align-items:center;gap:8px;color:var(--gold);font-weight:800;font-size:13px;letter-spacing:.04em;text-transform:uppercase}
+.sheet h4{margin:0;font-size:26px;font-weight:800;letter-spacing:-.02em;line-height:1.1}
+.sheet p{margin:0;color:var(--muted);line-height:1.45}
+.ask{display:grid;grid-template-columns:44px 1fr;gap:12px;align-items:center;padding:12px 14px;background:var(--surface);border:1px solid var(--line);border-radius:18px}
+.ask .yn{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.yn button{padding:11px 0;border-radius:14px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink);font-weight:700;font-size:15px}
+.yn button[aria-pressed="true"].yes{background:var(--gold);border-color:var(--gold);color:#fff}
+.yn button[aria-pressed="true"].no{background:var(--sunk);border-color:var(--muted)}
+.ask small{color:var(--muted);font-size:13px}
+.ask.done{opacity:.65}
+.btns{display:grid;grid-template-columns:1fr 1.4fr;gap:10px;margin-top:4px}
+.btns button{padding:15px 0;border-radius:16px;font-weight:800;font-size:16px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+.btns .primary{background:var(--green);color:var(--on-green);border-color:var(--green)}
+.btns .primary:disabled{opacity:.45;cursor:not-allowed}
+.foot{font-size:13px;color:var(--muted);text-align:center}
+@media (max-width:460px){body{padding:0}.notes{max-width:none;padding:20px 16px 0}.phone{border-radius:0;max-width:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="notes">
+    <h1>Count this round?</h1>
+    <p>When a scorecard opens and someone on it is in the Winter League, TeeMate asks straight away whether today's Stableford counts for their team.</p>
+    <p>One round a week counts. Players who've already counted a round this week are shown but can't be ticked. The answer can be changed until hole 1 is saved.</p>
+    <div class="steps" role="group" aria-label="Mockup step">
+      <button data-s="1" aria-pressed="true">1 · Card opens<small>The question pops up</small></button>
+      <button data-s="2" aria-pressed="false">2 · Answered<small>WL badge on the scorecard</small></button>
+      <button data-s="3" aria-pressed="false">3 · Hole 1 saved<small>Locked in for week 2</small></button>
+    </div>
+    <p>Try the Yes / No buttons and “Done” on the phone. “Ask me later” closes it; the gold line on the card reopens it.</p>
+  </div>
+
+  <div class="phone">
+    <header class="top"><h2>Hole 1</h2><div class="sub">Thu 8 Oct · 07:50 · Stableford</div></header>
+    <main id="card"></main>
+    <nav class="tabs"><span class="on">Scores</span><span>Leaderboard</span><span>Course</span><span>Admin</span></nav>
+    <div id="sheet"></div>
+  </div>
+</div>
+
+<script>
+const players = [
+  { id: 'gc', ini: 'GC', name: 'Gary Cochrane', note: 'you', shots: 1, league: 'Team 3' },
+  { id: 'sk', ini: 'SK', name: 'Siobhán Kelly', shots: 2, league: 'Team 7', already: 'Tue 6 Oct · 34 pts' },
+  { id: 'pr', ini: 'PR', name: 'Peter Reid', shots: 1 },
+  { id: 'ph', ini: 'PH', name: 'Paul Hughes', shots: 2, guest: true },
+]
+let step = 1, open = true, answer = { gc: null }, saved = { gc: false }
+const $ = id => document.getElementById(id)
+
+function drawCard() {
+  const counted = players.filter(p => saved[p.id])
+  let line = ''
+  if (step === 3) line = `<div class="lgline locked"><span>🏆 Winter League week 2 · <b>${counted.map(p => p.name.split(' ')[0]).join(', ') || 'nobody'}</b> counting · locked</span></div>`
+  else if (!open) line = `<div class="lgline"><span>🏆 Winter League week 2 · ${counted.length ? `<b>${counted.map(p => p.name.split(' ')[0]).join(', ')}</b> counting` : 'not counting today'}</span><button id="reopen">Change</button></div>`
+  $('card').innerHTML = `${line}
+    <div class="card"><div class="hole"><b>Par 4 · 380 yds</b><span>Index 7</span></div>
+    ${players.map(p => `<div class="prow"><span class="av">${p.ini}</span>
+      <span class="who"><strong>${p.name}${p.note ? ` <small style="color:var(--muted);font-weight:600">(${p.note})</small>` : ''}</strong>
+      <span class="pills"><span class="pill">${p.shots} shot${p.shots > 1 ? 's' : ''}</span>${saved[p.id] ? '<span class="wl" title="Counts for the Winter League">WL</span>' : ''}${p.guest ? '<span class="pill soft">Guest</span>' : ''}</span></span>
+      <span class="step"><button aria-label="Fewer">−</button><b>${step === 3 ? [4, 5, 4, 6][players.indexOf(p)] : 4}</b><button aria-label="More">+</button></span></div>`).join('')}
+    </div>`
+  $('reopen') && ($('reopen').onclick = () => { open = true; answer.gc = saved.gc ? 'yes' : 'no'; draw() })
+}
+
+function drawSheet() {
+  if (!open || step !== 1) { $('sheet').innerHTML = ''; return }
+  const lp = players.filter(p => p.league)
+  const ready = lp.every(p => p.already || answer[p.id])
+  $('sheet').innerHTML = `<div class="overlay"><div class="sheet" role="dialog" aria-labelledby="lgq">
+    <span class="kicker">🏆 Winter League · Week 2</span>
+    <h4 id="lgq">Count today's round?</h4>
+    <p>Your Stableford score goes towards your team's total for the week. Only one round a week counts.</p>
+    ${lp.map(p => p.already ? `<div class="ask done"><span class="av">${p.ini}</span><span class="who"><strong>${p.name}</strong><small>${p.league} · already counted this week (${p.already})</small></span></div>`
+      : `<div class="ask"><span class="av">${p.ini}</span><span class="who"><strong>${p.name}${p.note ? ' (you)' : ''}</strong><small>${p.league}</small></span>
+        <div class="yn"><button class="yes" data-a="${p.id}" data-v="yes" aria-pressed="${answer[p.id] === 'yes'}">Yes, count it</button><button class="no" data-a="${p.id}" data-v="no" aria-pressed="${answer[p.id] === 'no'}">Not this one</button></div></div>`).join('')}
+    <div class="btns"><button id="later">Ask me later</button><button class="primary" id="done" ${ready ? '' : 'disabled'}>Done</button></div>
+    <div class="foot">You can change this until hole 1 is saved.</div>
+  </div></div>`
+  document.querySelectorAll('[data-a]').forEach(b => (b.onclick = () => { answer[b.dataset.a] = b.dataset.v; drawSheet() }))
+  $('later').onclick = () => { open = false; draw() }
+  $('done').onclick = () => { for (const k in answer) saved[k] = answer[k] === 'yes'; open = false; setStep(2) }
+}
+
+function draw() { drawCard(); drawSheet() }
+function setStep(s) {
+  step = s
+  if (s === 1) { open = true; answer = { gc: null }; saved = { gc: false } }
+  if (s >= 2) { open = false; if (!answer.gc) { answer.gc = 'yes'; saved.gc = true } }
+  document.querySelectorAll('[data-s]').forEach(b => b.setAttribute('aria-pressed', +b.dataset.s === s))
+  draw()
+}
+document.querySelectorAll('[data-s]').forEach(b => (b.onclick = () => setStep(+b.dataset.s)))
+draw()
+</script>
+</body>
+</html>
