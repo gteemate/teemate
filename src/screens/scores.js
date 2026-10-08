@@ -9,7 +9,8 @@ import { courseHandicap, playingHandicaps, holeCalc, gameState, upText, toPar } 
 import { buildLibrary, playable, gameSpec, resolveGame, preferredGame, teeRating, PAIRINGS } from '../games.js'
 
 // The round is kept here between redraws so unsaved stepper changes survive; api.saveRound() persists it.
-// round.lineup: the card's players in order, each { m: memberId } or { g: guestId }; the first is you.
+// round.lineup: the card's players in order, each { m: memberId } or { g: guestId }; the first is you
+// (a card someone else started comes in your view of it, see card-view.js).
 let round
 
 export const newRound = (course, lineup, game, slotId = null) => ({
@@ -27,13 +28,30 @@ export function lineupFromTeeTime(slot, meId) {
 
 export async function load() {
   const [course, members, games, me, teeTimes, events, allEvents] = await Promise.all([api.getCourse(), api.getMembers(), api.getGameSettings(), api.getMe(), api.getMyTeeTimes(today()), api.getMyPlayerEvents(), api.getEvents()])
-  round ??= await api.getCurrentRound()
+  round = !round ? await api.getCurrentRound() : round.id ? await latest(round) : round
   const guests = round ? await api.getGuests(round.lineup.filter(e => e.g != null).map(e => e.g)) : []
   // Leagues running this week that someone on this card plays in.
   const t = isoDate(today())
   const leagues = round ? allEvents.filter(e => e.style === 'league' && e.startDate <= t && eventLastDay(e) >= t && round.lineup.some(x => e.players.includes(x.m))) : []
   const entries = await api.getLeagueEntries(leagues.map(e => e.id))
   return { course, members, guests, L: buildLibrary(games), me, teeTimes, events, leagues, entries }
+}
+
+// The card is shared by everyone on it, so pick up holes, game or pairs someone else has saved.
+// Scores I've typed in and not saved yet stay as they are.
+async function latest(mine) {
+  const fresh = await api.getRound(mine.id)
+  if (!fresh) { S.ch = null; return api.getCurrentRound() } // deleted by whoever started it
+  if (fresh.updatedAt === mine.updatedAt) return mine
+  if (JSON.stringify(fresh.lineup) !== JSON.stringify(mine.lineup)) return fresh
+  // Keep what I've typed in and not saved yet
+  fresh.changed = mine.changed ?? new Set()
+  for (const c of fresh.changed) {
+    const [i, k] = c.split(':').map(Number)
+    fresh.scores[i][k] = mine.scores[i][k]
+    ;(fresh.entered ??= fresh.scores.map(r => r.map(() => null)))[i][k] = mine.entered[i][k]
+  }
+  return fresh
 }
 
 // Player event banners go at the top of the Scores tab; the "play an event" link at the bottom.
@@ -101,7 +119,7 @@ export function draw({ course, members, guests, L, me, teeTimes, events, leagues
     <div class="gm-sec"><span class="gm-lbl">Players and shots</span><div class="gm-players">${ps.map((p, k) => `<div><span>${esc(p.name)}${k === 0 ? ' (you)' : ''}${p.guestId ? ` · guest · ${p.hcp == null ? '<button class="linkbtn" data-gh="' + k + '">set handicap</button>' : `index ${fmtHcp(p.hcp)} <button class="linkbtn" data-gh="${k}">change</button>`}` : ''}</span><b>${ph[k]}</b></div>`).join('')}</div>
       <span class="hint">${G.offLow ? 'Shots off the lowest playing handicap.' : G.allow ? `Playing handicap at ${Math.round(G.allow * 100)}% of course handicap.` : 'Scratch: no shots.'} Course handicaps from the white tees (${teeRating(course).rating} / ${teeRating(course).slope}).</span></div>
     <div class="gm-btns"><button class="ghost" id="chg">Change players</button><button class="primary" id="gdone">Done</button></div>
-    <button class="ghost accremove" id="delcard">Delete this card</button></div>` : ''
+    ${round.createdBy == null || round.createdBy === me.id ? '<button class="ghost accremove" id="delcard">Delete this card</button>' : ''}</div>` : ''
 
   const sideA = k => o.indexOf(k) < 2
   const best = k => {
@@ -163,7 +181,7 @@ export function draw({ course, members, guests, L, me, teeTimes, events, leagues
     }))
     $('chg').onclick = async () => { S.gmenu = false; S.pickTmp = round.lineup.slice(1).filter(e => e.m != null).map(e => e.m); S.sview = 'players'; await render(); top0() }
     $('gdone').onclick = () => { S.gmenu = false; render() }
-    $('delcard').onclick = async () => {
+    if ($('delcard')) $('delcard').onclick = async () => {
       const b = $('delcard')
       if (b.dataset.armed !== '1') { b.dataset.armed = '1'; b.textContent = P ? `Tap again to delete this card and its ${P} hole${P === 1 ? '' : 's'} of scores` : 'Tap again to delete this card'; return }
       b.disabled = true
@@ -192,6 +210,8 @@ export function draw({ course, members, guests, L, me, teeTimes, events, leagues
     const k = +b.dataset.k, v = round.scores[i][k] + +b.dataset.d
     if (v < 1 || v > 12) return
     round.scores[i][k] = v
+    ;(round.entered ??= round.scores.map(r => r.map(() => null)))[i][k] = me.id // who typed it: see card-view.js trust()
+    ;(round.changed ??= new Set()).add(`${i}:${k}`)
     keepScroll(render)
   }))
   const on = (id, f) => { const el = $(id); if (el) el.onclick = f }

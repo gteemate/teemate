@@ -19,7 +19,7 @@ grant execute on all functions in schema t to anon, authenticated;
 
 insert into auth.users (id, email, aud, role) select gen_random_uuid(), 'lg-test-' || i || '@example.invalid', 'authenticated', 'authenticated' from generate_series(0, 9) i;
 update public.members m set user_id = (select id from auth.users where email = 'lg-test-' || m.id || '@example.invalid') where m.id between 0 and 9;
-update public.members set admin = (id = 0) where id between 0 and 9;
+update public.members set admin = (id = 5) where id between 0 and 9;
 create table t.ids (k text primary key, id bigint);
 grant all on t.ids to authenticated;
 
@@ -30,7 +30,7 @@ do $$ declare e text; lg bigint; r1 bigint; r2 bigint; w int; begin
   perform t.ok('Setup: only admins can create a league', e is not null, e);
   perform t.done();
 
-  perform t.act_as(0);
+  perform t.act_as(5);
   insert into public.events (name, start_date, style, fmt, weeks, best_of, league_teams, players, team)
     values ('Winter League', current_date - extract(isodow from current_date)::int + 1, 'league', 'beststab', 6, 7,
             '[{"name":"Team 1"},{"name":"Team 2"}]', '{1,2,3,4}', '{"1":0,"2":0,"3":1,"4":1}') returning id into lg;
@@ -62,8 +62,30 @@ do $$ declare e text; lg bigint; r1 bigint; r2 bigint; w int; begin
 
   perform t.act_as(3);
   e := t.err(format('select public.enter_league(%s, %s, ''{3}'')', r1, lg));
-  perform t.ok('Enter: only from your own card', e like '%your own card%', e);
+  perform t.ok('Enter: only from a card you are on', e like '%a card you''re on%', e);
   perform t.ok('See: a league player sees the entries', (select count(*) from public.league_entries where event_id = lg) = 2);
+  perform t.done();
+
+  -- One card per group: Aoife (on Declan's card) can save holes and answer for it; Ciara can't; only Declan deletes.
+  perform t.act_as(1);
+  insert into public.rounds (lineup, scores, done) values ('[{"m":1},{"m":4}]', '[]', (select jsonb_agg(false) from generate_series(1,18))) returning id into r2;
+  perform t.done();
+  perform t.act_as(4);
+  update public.rounds set game = 'stab', done = jsonb_set(done, '{0}', 'true') where id = r2;
+  perform t.ok('Shared card: a player on the card can save to it', (select game = 'stab' and done->>0 = 'true' from public.rounds where id = r2));
+  delete from public.rounds where id = r2;
+  perform t.ok('Shared card: only the starter can delete it', (select count(*) from public.rounds where id = r2) = 1);
+  perform t.done();
+  perform t.act_as(3);
+  update public.rounds set game = 'skins' where id = r2;
+  perform t.ok('Shared card: someone not on it cannot change it', (select game from public.rounds where id = r2) = 'stab');
+  perform t.done();
+  perform t.act_as(3);
+  insert into public.rounds (lineup, scores, done) values ('[{"m":3},{"m":4}]', '[]', (select jsonb_agg(false) from generate_series(1,18))) returning id into r2;
+  perform t.done();
+  perform t.act_as(4);
+  perform public.enter_league(r2, lg, '{3,4}');
+  perform t.ok('Shared card: any player on the card can answer the league question', (select count(*) from public.league_entries where round_id = r2) = 2);
   perform t.done();
   perform t.act_as(9);
   perform t.ok('See: someone not in the league sees neither it nor its entries',

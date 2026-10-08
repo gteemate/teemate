@@ -5,6 +5,7 @@
 // column names) and throw an Error with a message fit to show the user.
 import { createClient } from '@supabase/supabase-js'
 import { isoDate, today } from './dates.js'
+import { toView, toStored, mergeSaved } from './card-view.js'
 
 const sb = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_ANON_KEY, {
   auth: { persistSession: true, detectSessionInUrl: false },
@@ -294,27 +295,52 @@ export async function setMyGamePref(groupSize, k) {
 
 /* ---------- Rounds and leaderboard ---------- */
 
-// lineup: the card's players in order, each { m: memberId } or { g: guestId }; the first is the card's owner.
-const ROUND_COLS = 'id, created_by, lineup, slot_id, game, pairing, scores, done, submitted, tee_time'
-const toRound = r => ({ id: r.id, lineup: r.lineup, slotId: r.slot_id, game: r.game, pairing: r.pairing, scores: r.scores, done: r.done, submitted: r.submitted })
+// lineup: the card's players in order, each { m: memberId } or { g: guestId }; the first started the card.
+// Everyone on a card shares it; each player gets it in their own view (themselves first, see card-view.js).
+const ROUND_COLS = 'id, created_by, lineup, slot_id, game, pairing, scores, entered, done, submitted, tee_time, updated_at'
+const toCard = r => ({ id: r.id, createdBy: r.created_by, updatedAt: r.updated_at, lineup: r.lineup, slotId: r.slot_id, game: r.game, pairing: r.pairing, scores: r.scores, entered: r.entered, done: r.done, submitted: r.submitted })
 
-/** My scorecard for today, or null if I haven't started one. */
+/** Today's card I'm on (one I started, or one someone started with me on it), or null. */
 export async function getCurrentRound() {
-  const r = must(await sb.from('rounds').select(ROUND_COLS).eq('date', todayIso()).eq('created_by', await myId())
+  const meId = await myId()
+  const r = must(await sb.from('rounds').select(ROUND_COLS).eq('date', todayIso())
+    .contains('lineup', [{ m: meId }]) // the starter is always on their own card
     .order('id', { ascending: false }).limit(1).maybeSingle())
-  return r && toRound(r)
+  return r && toView(toCard(r), meId)
 }
 
-/** Delete one of my scorecards. */
+/** One card by id, in my view, or null if it's gone. */
+export async function getRound(id) {
+  const r = must(await sb.from('rounds').select(ROUND_COLS).eq('id', id).maybeSingle())
+  return r && toView(toCard(r), await myId())
+}
+
+/** Delete a scorecard I started. */
 export async function deleteRound(id) {
   must(await sb.from('rounds').delete().eq('id', id))
 }
 
-/** Insert or update my scorecard. A new round gets its id set. */
+/**
+ * Insert or update a scorecard (in my view). A new round gets its id set.
+ * round.changed: the "hole:player" scores I've typed in since loading (in my view). Only those can
+ * replace what's saved, and not when the saved one is more trustworthy (see mergeSaved), so a par I
+ * never touched can't overwrite someone's real score. My copy ends up as what was saved.
+ */
 export async function saveRound(round) {
-  const row = { lineup: round.lineup, slot_id: round.slotId ?? null, game: round.game, pairing: round.pairing, scores: round.scores, done: round.done, submitted: round.submitted, updated_at: new Date().toISOString() }
-  if (round.id) must(await sb.from('rounds').update(row).eq('id', round.id))
-  else round.id = must(await sb.from('rounds').insert({ ...row, date: todayIso() }).select('id').single()).id
+  let card = toStored(round)
+  const changed = new Set([...(round.changed ?? [])].map(c => { const [i, v] = c.split(':'); return `${i}:${round.perm ? round.perm[v] : v}` }))
+  if (round.id) {
+    const cur = must(await sb.from('rounds').select('lineup, scores, entered, done, submitted').eq('id', round.id).maybeSingle())
+    if (cur && JSON.stringify(cur.lineup) === JSON.stringify(card.lineup)) card = mergeSaved(card, cur, changed)
+  }
+  const row = { lineup: card.lineup, slot_id: card.slotId ?? null, game: card.game, pairing: card.pairing, scores: card.scores, entered: card.entered ?? null, done: card.done, submitted: card.submitted, updated_at: new Date().toISOString() }
+  if (round.id) round.updatedAt = must(await sb.from('rounds').update(row).eq('id', round.id).select('updated_at').single()).updated_at
+  else {
+    const r = must(await sb.from('rounds').insert({ ...row, date: todayIso() }).select('id, created_by, updated_at').single())
+    Object.assign(round, { id: r.id, createdBy: r.created_by, updatedAt: r.updated_at })
+  }
+  const v = round.perm ? toView(card, round.lineup[0].m) : card
+  Object.assign(round, { scores: v.scores, entered: v.entered, done: v.done, submitted: v.submitted, changed: new Set() })
 }
 
 /**
@@ -391,7 +417,7 @@ export async function cancelPlayerEvent(id) {
 /** Each group's scorecard for an event day, by tee time: { [slotId]: round } (cards started from that tee time). */
 export async function getCardsForTeeTimes(date, slotIds) {
   const rows = must(await sb.from('rounds').select(ROUND_COLS).eq('date', date).in('slot_id', slotIds).order('updated_at'))
-  return Object.fromEntries(rows.map(r => [r.slot_id, toRound(r)])) // latest card per tee time wins
+  return Object.fromEntries(rows.map(r => [r.slot_id, toCard(r)])) // latest card per tee time wins
 }
 
 /* ---------- Events set up in advance ---------- */
