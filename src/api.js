@@ -389,13 +389,13 @@ export async function getTodayRounds(date = today()) {
  */
 export async function getMyPlayerEvents() {
   const rows = must(await sb.from('player_events')
-    .select('id, date, style, format, team_names, players, status, creator:created_by(id, name), player_event_groups(slot_id, host, answer, answerer:answered_by(id, name), tee:slot_id(start_time))')
+    .select('id, date, style, format, team_names, players, status, cancel_note, cancelled_by, creator:created_by(id, name), player_event_groups(slot_id, host, answer, answerer:answered_by(id, name), tee:slot_id(start_time))')
     .gte('date', todayIso()).order('created_at', { ascending: false }))
   const meId = await myId()
   return rows
     .filter(e => e.players.some(p => p.memberId === meId)) // admins can see all; the Scores tab shows mine
     .map(e => ({
-      id: e.id, date: e.date, style: e.style, format: e.format, teamNames: e.team_names, players: e.players, status: e.status,
+      id: e.id, date: e.date, style: e.style, format: e.format, teamNames: e.team_names, players: e.players, status: e.status, cancelNote: e.cancel_note, cancelledBy: e.cancelled_by,
       createdBy: e.creator,
       groups: e.player_event_groups
         .map(g => ({ slot: g.slot_id, time: g.tee.start_time, host: g.host, answer: g.answer, answeredBy: g.answerer }))

@@ -35,9 +35,14 @@ function stateLine(e, me) {
   return (accepted.length ? `${accepted.join(', ')} accepted · ` : '') + `waiting for ${waiting.join(', ')}`
 }
 
-/** Banners for my events (anything not cancelled). */
+// A called-off event stays on the Scores tab, saying why, until it's dismissed on this phone.
+const seenKey = id => `teemate.peOffSeen.${id}`
+const offSeen = id => { try { return localStorage.getItem(seenKey(id)) === '1' } catch { return false } }
+
+/** Banners for my events: live and pending ones, and called-off ones not yet dismissed. */
 export function banners(events, me) {
-  return events.filter(e => e.status !== 'cancelled').map(e => {
+  return events.filter(e => e.status !== 'cancelled' || (e.cancelNote && e.cancelledBy !== me.id && !offSeen(e.id))).map(e => {
+    if (e.status === 'cancelled') return `<div class="card pebanner pe-cancelled"><div class="who"><strong>${eventTitle(e)}</strong><small>${eventSubtitle(e)}</small><small class="pestate">Off: ${esc(e.cancelNote)}</small></div><div class="peacts"><button class="linkbtn" data-pe-seen="${e.id}">OK</button></div></div>`
     const mine = myGroup(e, me.id)
     const acts = []
     if (e.status === 'pending' && !mine.host && !mine.answer) acts.push(`<button class="linkbtn" data-pe-open="${e.id}">Answer</button>`)
@@ -48,6 +53,7 @@ export function banners(events, me) {
 }
 
 export function bindBanners(events, me) {
+  document.querySelectorAll('[data-pe-seen]').forEach(b => (b.onclick = () => { try { localStorage.setItem(seenKey(b.dataset.peSeen), '1') } catch { /* shows again next time */ } keepScroll(render) }))
   document.querySelectorAll('[data-pe-cancel]').forEach(b => (b.onclick = async () => {
     if (b.dataset.armed !== '1') { b.dataset.armed = '1'; b.textContent = 'Sure?'; return }
     await api.cancelPlayerEvent(+b.dataset.peCancel)

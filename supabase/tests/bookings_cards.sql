@@ -27,7 +27,7 @@ grant select on t.slot to authenticated;
 
 do $$ declare s8 bigint := (select id from t.slot where start_time = 480); s9 bigint := (select id from t.slot where start_time = 540);
   s950 bigint := (select id from t.slot where start_time = 590); s10 bigint := (select id from t.slot where start_time = 610);
-  s12 bigint := (select id from t.slot where start_time = 720); e text; r jsonb; bk bigint; c1 bigint; c2 bigint; begin
+  s12 bigint := (select id from t.slot where start_time = 720); e text; r jsonb; bk bigint; c1 bigint; c2 bigint; ev bigint; ev2 bigint; begin
   -- 2-hour rule
   perform t.act_as(1);
   bk := (public.book_tee_time(s8, '{2}')->>'id')::bigint;
@@ -55,8 +55,15 @@ do $$ declare s8 bigint := (select id from t.slot where start_time = 480); s9 bi
   perform t.done();
   perform t.act_as(1);
   insert into public.rounds (lineup, scores, done, slot_id) values ('[{"m":1},{"m":2}]', '[]', (select jsonb_agg(n = 1) from generate_series(1,18) n), s8) returning id into c2;
+  perform t.done();
+  insert into public.player_events (date, created_by, style, format, team_names, players, status)
+    values (current_date + 12, 1, 'fourball', 'best2', '{}', jsonb_build_array(jsonb_build_object('id', (select id from public.booking_players where slot_id = s8 and member_id = 2), 'memberId', 2)), 'pending') returning id into ev;
+  perform t.act_as(1);
   r := public.cancel_booking(bk);
   perform t.done();
+  perform t.ok('Events: deleting a booking calls off events with anyone from it',
+    (select status = 'cancelled' and cancel_note like '% cancelled the 08:00 booking' from public.player_events where id = ev),
+    (select cancel_note from public.player_events where id = ev));
   perform t.ok('Cards: deleting a booking removes the other player''s unstarted card for it', not exists (select 1 from public.rounds where id = c1), r::text);
   perform t.ok('Cards: a card with saved holes is kept', exists (select 1 from public.rounds where id = c2));
 
@@ -65,10 +72,19 @@ do $$ declare s8 bigint := (select id from t.slot where start_time = 480); s9 bi
   bk := (select (x->>'id')::bigint from jsonb_array_elements(public.get_my_bookings()) x where (x->>'time')::int = 720);
   insert into public.rounds (lineup, scores, done, slot_id) values ('[{"m":3},{"m":2}]', '[]', (select jsonb_agg(false) from generate_series(1,18)), s12) returning id into c1;
   perform t.done();
+  -- an event with Aoife's group on the 12:00, and one she isn't in
+  insert into public.player_events (date, created_by, style, format, team_names, players, status)
+    values (current_date + 12, 3, 'fourball', 'best2', '{}', jsonb_build_array(jsonb_build_object('id', (select id from public.booking_players where slot_id = s12 and member_id = 2), 'memberId', 2)), 'accepted') returning id into ev;
+  insert into public.player_events (date, created_by, style, format, team_names, players, status)
+    values (current_date + 12, 3, 'fourball', 'best2', '{}', '[{"id": -1, "memberId": 4}]', 'accepted') returning id into ev2;
   perform t.act_as(2);
   r := public.cancel_booking(bk);
   perform t.ok('Cards: withdrawing removes the unstarted card I''m on', r->>'result' = 'withdrawn' and not exists (select 1 from public.rounds where id = c1), r::text);
   perform t.done();
+  perform t.ok('Events: withdrawing calls off an event I''m in, saying why',
+    (select status = 'cancelled' and cancel_note like '% withdrew from the 12:00' from public.player_events where id = ev),
+    (select cancel_note from public.player_events where id = ev));
+  perform t.ok('Events: an event I''m not in carries on', (select status from public.player_events where id = ev2) = 'accepted');
 end $$;
 
 select test, ok, detail from t.results order by n;

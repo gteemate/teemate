@@ -420,6 +420,7 @@ img{max-width:100%}
 .pebanner{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 14px;border-left:5px solid var(--green)}
 .pebanner.pe-pending{border-left-color:var(--loss)}
 .pebanner.pe-declined{opacity:.7;border-left-color:var(--full)}
+.pebanner.pe-cancelled{border-left-color:var(--full)}
 .pebanner .pestate{color:var(--ink);font-weight:700;margin-top:2px}
 .pecard{display:flex;flex-direction:column;gap:10px;padding:14px;margin:4px 0}
 .pecard>div{display:flex;flex-direction:column;gap:2px}
