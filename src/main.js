@@ -8,6 +8,7 @@ import { applyTheme, cachedTheme } from './theme.js'
 import * as scores from './screens/scores.js'
 import * as players from './screens/players.js'
 import * as challenge from './screens/challenge.js'
+import * as eventLive from './screens/event-live.js'
 import * as leaderboard from './screens/leaderboard.js'
 import * as course from './screens/course.js'
 import * as adminHome from './screens/admin-home.js'
@@ -26,7 +27,7 @@ import * as access from './screens/access.js'
 // Each screen exports an optional async load() and a sync draw(data).
 const ADMIN = { home: adminHome, tee: teeTimes, book: booking, booked, mine: bookings, buddies, pins, games, points, events, event: eventEditor, access, colours }
 function screenFor() {
-  if (S.tab === 'scores') return S.sview === 'players' ? players : S.sview === 'challenge' ? challenge : scores
+  if (S.tab === 'scores') return S.sview === 'players' ? players : S.sview === 'challenge' ? challenge : S.sview === 'pevent' ? eventLive : scores
   if (S.tab === 'lb') return leaderboard
   if (S.tab === 'course') return course
   return ADMIN[S.aview] || adminHome

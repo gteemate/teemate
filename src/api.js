@@ -305,29 +305,37 @@ export async function getTodayRounds(date = today()) {
   return out
 }
 
-/* ---------- Player events (one group challenges another) ---------- */
+/* ---------- Player events (one group challenges others) ---------- */
 
 /**
- * Player events I'm part of from today on (RLS: only the two groups and admins see them).
- * [{ id, date, style, format, teamNames: {A,B}, players: [{ id, name, memberId, guest, group, team }],
- *    status, timeA, timeB, slotA, slotB, createdBy: { id, name }, respondedBy: { id, name } | null }]
+ * Player events I'm part of, from today on (RLS: only players in the event and admins see them).
+ * [{ id, date, style, format, teamNames, status, createdBy: { id, name },
+ *    players: [{ id, name, memberId, guest, slot, team }],
+ *    groups: [{ slot, time, host, answer, answeredBy: { id, name } | null }] }]   groups in tee-time order
  */
 export async function getMyPlayerEvents() {
   const rows = must(await sb.from('player_events')
-    .select('id, date, style, format, team_names, players, status, slot_a, slot_b, a:slot_a(start_time), b:slot_b(start_time), creator:created_by(id, name), responder:responded_by(id, name)')
+    .select('id, date, style, format, team_names, players, status, creator:created_by(id, name), player_event_groups(slot_id, host, answer, answerer:answered_by(id, name), tee:slot_id(start_time))')
     .gte('date', todayIso()).order('created_at', { ascending: false }))
   const meId = await myId()
   return rows
-    .filter(e => e.players.some(p => p.memberId === meId)) // admins see all; the Scores tab only shows mine
+    .filter(e => e.players.some(p => p.memberId === meId)) // admins can see all; the Scores tab shows mine
     .map(e => ({
       id: e.id, date: e.date, style: e.style, format: e.format, teamNames: e.team_names, players: e.players, status: e.status,
-      slotA: e.slot_a, slotB: e.slot_b, timeA: e.a.start_time, timeB: e.b.start_time, createdBy: e.creator, respondedBy: e.responder,
+      createdBy: e.creator,
+      groups: e.player_event_groups
+        .map(g => ({ slot: g.slot_id, time: g.tee.start_time, host: g.host, answer: g.answer, answeredBy: g.answerer }))
+        .sort((a, b) => a.time - b.time),
     }))
 }
 
-/** Propose an event from my tee time to another group's. teams (Ryder Cup): { bookingPlayerId: 'A' | 'B' }. */
-export async function proposePlayerEvent({ slotA, slotB, style, format, teamNames, teams = {} }) {
-  return must(await sb.rpc('create_player_event', { p_slot_a: slotA, p_slot_b: slotB, p_style: style, p_format: format, p_team_names: teamNames, p_teams: teams }))
+/**
+ * Propose an event from my tee time to other groups the same day.
+ * teamNames: { A, B } (ryder/teams) or { "<slot id>": name } (fourball, optional).
+ * teams (ryder/teams): { bookingPlayerId: 'A' | 'B' }.
+ */
+export async function proposePlayerEvent({ hostSlot, invited, style, format, teamNames = {}, teams = {} }) {
+  return must(await sb.rpc('create_player_event', { p_host_slot: hostSlot, p_invited: invited, p_style: style, p_format: format, p_team_names: teamNames, p_teams: teams }))
 }
 
 export async function answerPlayerEvent(id, accept) {
@@ -336,6 +344,12 @@ export async function answerPlayerEvent(id, accept) {
 
 export async function cancelPlayerEvent(id) {
   must(await sb.rpc('cancel_player_event', { p_id: id }))
+}
+
+/** Each group's scorecard for an event day, by tee time: { [slotId]: round } (cards started from that tee time). */
+export async function getCardsForTeeTimes(date, slotIds) {
+  const rows = must(await sb.from('rounds').select(ROUND_COLS).eq('date', date).in('slot_id', slotIds).order('updated_at'))
+  return Object.fromEntries(rows.map(r => [r.slot_id, toRound(r)])) // latest card per tee time wins
 }
 
 /* ---------- Team events ---------- */

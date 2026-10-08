@@ -422,3 +422,8 @@ img{max-width:100%}
 .pecard>div{display:flex;flex-direction:column;gap:2px}
 .evrow[aria-pressed="true"]{border-color:var(--leaf-line);background:var(--leaf)}
 .gamecard:disabled{opacity:.5;cursor:not-allowed}
+.pesheet{max-height:88vh;overflow-y:auto;gap:8px}
+.pesheet .gm-lbl{margin-top:8px}
+.pegroup{border:1px solid var(--line);border-radius:16px;padding:10px 12px;background:var(--surface)}
+.peacts{display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex-shrink:0}
+.mcard.mine{border-color:var(--leaf-line)}

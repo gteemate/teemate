@@ -28,8 +28,9 @@ export const GAME_DEFS = {
 
 // Player events: one group challenges another.
 export const EVENT_STYLES = {
-  fourball: { name: 'Four-ball v four-ball', desc: 'Your group against theirs.' },
-  ryder: { name: 'Ryder Cup', desc: 'Mixed teams: two from each four-ball on each team. Each four-ball plays a better-ball match.' },
+  fourball: { name: 'Four-ball v four-ball', desc: 'Each group is a team. No picking needed.' },
+  ryder: { name: 'Ryder Cup', desc: 'Two teams, two from each team in every four-ball. Each four-ball plays a better-ball match for a point.' },
+  teams: { name: 'Your own teams', desc: 'Split everyone into two equal teams however you like.' },
 }
 export const EVENT_FORMATS = {
   fourball: [
@@ -42,7 +43,12 @@ export const EVENT_FORMATS = {
     { k: 'bbstab', name: 'Better ball · Stableford', desc: 'Most Stableford points wins each hole. 1 point a match.' },
     { k: 'bbscr', name: 'Better ball · scratch', desc: 'No shots. 1 point a match.' },
   ],
+  teams: [
+    { k: 'teamstab', name: 'Team Stableford', desc: 'Everyone’s Stableford points count for their team.' },
+  ],
 }
+// Which club game setting supplies the handicap allowance for each event format.
+export const EVENT_ALLOWANCE_GAME = { best2: 'stab', all4: 'stab', teamstab: 'stab', bestball: 'bbl', bbl: 'bbl', bbstab: 'bbstab', bbscr: 'bbscr' }
 export const eventFormatName = k => Object.values(EVENT_FORMATS).flat().find(f => f.k === k)?.name ?? k
 
 // Better-ball pairings as player indexes [a1, a2, b1, b2]; player 0 is always "you".

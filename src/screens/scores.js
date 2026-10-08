@@ -35,13 +35,13 @@ export async function load() {
 // Player event banners, the "play an event" link, and any invitation waiting for my answer.
 function eventsTop(events, me) {
   const busy = events.some(e => e.status === 'pending' || e.status === 'accepted')
-  return banners(events, me) + (busy ? '' : '<button class="linkbtn" id="pe-new" style="align-self:flex-start">+ Play an event with another group</button>')
+  return banners(events, me) + (busy ? '' : '<button class="linkbtn" id="pe-new" style="align-self:flex-start">+ Play an event with other groups</button>')
 }
 function bindEvents(events, me) {
-  bindBanners(events)
+  bindBanners(events, me)
   const nb = $('pe-new')
   if (nb) nb.onclick = async () => { S.sview = 'challenge'; await render(); top0() }
-  invitePopup(pendingInvite(events, me))
+  invitePopup(pendingInvite(events, me), me)
 }
 
 export function setRound(r) {
