@@ -25,6 +25,7 @@ export function draw({ me, sheet, bookings, buddies, L, active, points }) {
     ${committee ? `<button class="atile" data-a="pins"><span class="e">⛳</span><b>Pins</b><span>Set today's flags</span></button>
     <button class="atile" data-a="games"><span class="e">🎯</span><b>Games</b><span>${gamesOn} on · preferred and allowances</span></button>
     <button class="atile row" data-a="events"><span class="e">🏆</span><b>Events</b><span>${active ? `Active: ${esc(active.name)}` : 'Create a team event'}</span></button>` : ''}
+    ${me.admin ? '<button class="atile row" data-a="access"><span class="e">🔑</span><b>Members &amp; access</b><span>Choose who can sign in</span></button>' : ''}
     <button class="atile row" data-a="points"><span class="e">🎟️</span><b>Guest points</b><span>${left} of ${points.allowance} left this year</span></button>
   </div>
   ${committee ? '<div class="hint">Pins, Games and Events only show for committee members.</div>' : ''}
@@ -33,6 +34,7 @@ export function draw({ me, sheet, bookings, buddies, L, active, points }) {
   document.querySelectorAll('[data-a]').forEach(b => (b.onclick = async () => {
     S.aview = b.dataset.a
     if (S.aview === 'buddies') { S.bseg = 'mine'; S.bfrom = null }
+    if (S.aview === 'access') { S.accEdit = null; S.accQ = '' }
     await render()
     top0()
   }))

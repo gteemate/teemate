@@ -387,3 +387,11 @@ table.lb td small{color:var(--muted);font-size:12px}
 [hidden]{display:none!important}
 img{max-width:100%}
 .signed-out nav.tabs{display:none}
+/* members & access */
+.accrow{width:100%;background:none;border:0;border-top:1px solid var(--line);text-align:left;color:var(--ink);cursor:pointer;font:inherit}
+.accrow:first-child{border-top:0}
+.accrow .who small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block}
+.accst{font-size:12px;font-weight:700;color:var(--muted);white-space:nowrap}
+.accst.on{color:var(--win)}.accst.inv{color:var(--ink)}
+.accremove{border-color:var(--loss);color:var(--loss);margin:6px 0 4px}
+.sheet .actrow{margin:8px 0 0}

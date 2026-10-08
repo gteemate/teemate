@@ -3,7 +3,7 @@ export const S = {
   loginSent: null,  // email a sign-in link was sent to
   tab: 'scores',
   sview: 'card',     // scores: 'card' | 'players'
-  aview: 'home',     // admin: home | tee | book | booked | mine | buddies | pins | games | points | events | event
+  aview: 'home',     // admin: home | tee | book | booked | mine | buddies | pins | games | points | events | event | access
 
   // course
   hole: 0, cimg: 'hole',
@@ -17,6 +17,8 @@ export const S = {
   bseg: 'mine', q: '', qCaret: null, bfrom: null, // bfrom: where to offer a way back to ('book' | 'players')
   // games admin
   gedit: null,
+  // members & access (admin)
+  accEdit: null, accQ: '', accConfirm: false, // accEdit: null | 'new' | member id
   // events admin
   evId: null, evStep: 1,
 }

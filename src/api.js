@@ -46,8 +46,8 @@ export function onAuthChange(cb) {
 
 /* ---------- Members and buddies ---------- */
 
-const MEMBER_COLS = 'id, name, gui, hcp_index, committee'
-const toMember = m => ({ id: m.id, name: m.name, gui: m.gui, hcp: Number(m.hcp_index), committee: m.committee })
+const MEMBER_COLS = 'id, name, gui, hcp_index, committee, admin'
+const toMember = m => ({ id: m.id, name: m.name, gui: m.gui, hcp: Number(m.hcp_index), committee: m.committee, admin: m.admin })
 
 let me // cached for the session; undefined = not loaded, null = signed in but not a member
 /** The signed-in member, or null if this login isn't on the members list. */
@@ -73,6 +73,26 @@ export async function addBuddy(id) {
 
 export async function removeBuddy(id) {
   must(await sb.from('buddies').delete().eq('buddy_id', id))
+}
+
+/* ---------- Access (admins only) ---------- */
+
+/** Everyone, with email and whether they've signed in: [{ id, name, gui, hcp, email, committee, admin, signedIn }] */
+export async function getAccessList() {
+  return must(await sb.rpc('admin_list_members')).map(m => ({ ...m, hcp: Number(m.hcp) }))
+}
+
+/**
+ * Add (no id) or update a member. An email gives them access; a blank email removes it
+ * (and deletes their login). Returns the member id.
+ */
+export async function saveMember(m) {
+  const id = must(await sb.rpc('admin_save_member', {
+    p_id: m.id ?? null, p_name: m.name, p_email: m.email ?? '', p_gui: m.gui ?? '',
+    p_hcp: m.hcp, p_committee: !!m.committee, p_admin: !!m.admin,
+  }))
+  me = undefined // in case I edited myself
+  return id
 }
 
 /* ---------- Course and pins ---------- */
