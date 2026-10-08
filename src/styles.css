@@ -2,7 +2,7 @@
 :root{
   --bg:#f4f4f7; --surface:#ffffff; --sunk:#e9eaf0; --ink:#151a26; --muted:#676c7a; --line:#dfe2ea;
   --green:#19335A; --on-green:#f4f6fb; --leaf:#dfe6f1; --leaf-2:#ffffff; --leaf-line:#19335A; --pill:#19335A;
-  --win:#19335A; --loss:#762A43; --full:#c6cad5;
+  --win:#19335A; --loss:#762A43; --full:#c6cad5; --on-win:#ffffff; --on-loss:#ffffff; --shadow:rgba(25,51,90,.4);
   --rough:#6f9c55; --fair:#a3cf7c; --putt:#c6e9a4;
   --sys:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
   --serif:"Cinzel",Georgia,"Times New Roman",serif; --script:"Pinyon Script","Snell Roundhand",cursive;
@@ -10,11 +10,11 @@
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#0f121a; --surface:#181d29; --sunk:#202636; --ink:#eef0f6; --muted:#9ba1b2; --line:#2a3142;
   --green:#2d548f; --on-green:#f4f6fb; --leaf:#22324d; --leaf-2:#181d29; --leaf-line:#8fb0e6; --pill:#2d548f;
-  --win:#8fb0e6; --loss:#e58aa6; --full:#3a4152; color-scheme:dark}}
+  --win:#8fb0e6; --loss:#e58aa6; --full:#3a4152; --on-win:#151a26; --on-loss:#151a26; --shadow:rgba(0,0,0,.6); color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#0f121a; --surface:#181d29; --sunk:#202636; --ink:#eef0f6; --muted:#9ba1b2; --line:#2a3142;
   --green:#2d548f; --on-green:#f4f6fb; --leaf:#22324d; --leaf-2:#181d29; --leaf-line:#8fb0e6; --pill:#2d548f;
-  --win:#8fb0e6; --loss:#e58aa6; --full:#3a4152; color-scheme:dark}
+  --win:#8fb0e6; --loss:#e58aa6; --full:#3a4152; --on-win:#151a26; --on-loss:#151a26; --shadow:rgba(0,0,0,.6); color-scheme:dark}
 *{box-sizing:border-box}
 body{background:var(--sunk);color:var(--ink);font-family:var(--sys);font-size:15px;padding-inline:16px;padding-block:24px}
 .wrap{display:flex;gap:40px;justify-content:center;align-items:flex-start;flex-wrap:wrap}
@@ -23,7 +23,7 @@ body{background:var(--sunk);color:var(--ink);font-family:var(--sys);font-size:15
 .notes p{color:var(--muted);line-height:1.55;margin:0 0 12px}
 .notes ol{padding-left:18px;color:var(--muted);line-height:1.6;margin:0}
 .phone{width:100%;max-width:390px;height:800px;background:var(--bg);border-radius:40px;border:1px solid var(--line);
-  box-shadow:0 30px 60px -30px rgba(25,51,90,.4);overflow:hidden;display:flex;flex-direction:column;position:relative}
+  box-shadow:0 30px 60px -30px var(--shadow);overflow:hidden;display:flex;flex-direction:column;position:relative}
 @media (max-width:460px){body{padding-inline:0;padding-block:0}.notes{display:none}
   .phone{border-radius:0;border:0;height:auto;min-height:100vh;max-width:none;box-shadow:none;overflow:visible}
   main{overflow:visible;padding-bottom:calc(64px + env(safe-area-inset-bottom,0px))}
@@ -63,7 +63,7 @@ main{flex:1;overflow-y:auto;min-height:0}
 .balls{display:flex;gap:4px}
 .ball{width:12px;height:12px;border-radius:50%;background:var(--leaf);border:1.5px solid var(--leaf-line)}
 .ball.taken{background:var(--full);border-color:var(--full)}
-.pill{display:inline-block;background:var(--pill);color:#fff;font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap}
+.pill{display:inline-block;background:var(--pill);color:var(--on-green);font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap}
 .tag{margin-left:6px;vertical-align:2px;font-size:10px}
 /* booking */
 .summary{display:grid;grid-template-columns:repeat(3,1fr);padding:14px 4px}
@@ -87,7 +87,7 @@ h3{font-size:20px;font-weight:800;letter-spacing:-.01em;margin:8px 0 -4px}
 .brow[aria-pressed="true"]{border-color:var(--leaf-line);background:var(--leaf)}
 .brow:disabled{opacity:.45;cursor:not-allowed}
 .check{width:24px;height:24px;border-radius:7px;border:2px solid var(--muted);display:grid;place-items:center;background:var(--surface)}
-.brow[aria-pressed="true"] .check{background:var(--green);border-color:var(--green);color:#fff}
+.brow[aria-pressed="true"] .check{background:var(--green);border-color:var(--green);color:var(--on-green)}
 .hint{font-size:13px;color:var(--muted);line-height:1.45}
 .cta{position:sticky;bottom:0;background:var(--bg);border-top:1px solid var(--line);padding:12px 16px 14px;display:flex;gap:12px;align-items:center}
 .cta .tot{font-size:12px;color:var(--muted);line-height:1.2}
@@ -125,7 +125,7 @@ nav.tabs button[aria-current="page"]{color:var(--loss);font-weight:800}
 .darkcard{background:var(--green);color:var(--on-green);border-radius:22px;padding:18px 18px;display:flex;justify-content:space-between;align-items:center;gap:12px}
 .darkcard small{display:block;font-size:14px;opacity:.8}
 .darkcard b{font-size:21px;font-weight:800;letter-spacing:-.01em}
-.darkcard .live{background:#762A43;color:#fff;font-size:12px;font-weight:700;padding:5px 10px;border-radius:999px;white-space:nowrap}
+.darkcard .live{background:var(--loss);color:var(--on-loss);font-size:12px;font-weight:700;padding:5px 10px;border-radius:999px;white-space:nowrap}
 .lbwrap{overflow:hidden}
 table.lb{width:100%;border-collapse:collapse;font-size:14px}
 table.lb th{font-size:12px;color:var(--muted);font-weight:600;text-align:left;padding:10px 8px;border-bottom:1px solid var(--line)}
@@ -147,7 +147,7 @@ table.lb td small{color:var(--muted);font-size:12px}
 .fx b{font-size:15px;font-weight:800;text-align:center;white-space:nowrap}
 .fx .win{font-weight:800}
 .result-pill{display:inline-block;padding:4px 10px;border-radius:999px;font-size:13px;font-weight:700}
-.result-pill.W{background:var(--win);color:#fff}.result-pill.L{background:var(--loss);color:#fff}.result-pill.H{background:var(--full);color:var(--ink)}.result-pill.P{background:var(--sunk);color:var(--muted)}
+.result-pill.W{background:var(--win);color:var(--on-win)}.result-pill.L{background:var(--loss);color:var(--on-loss)}.result-pill.H{background:var(--full);color:var(--ink)}.result-pill.P{background:var(--sunk);color:var(--muted)}
 /* hole picker grid (scorecard + course) */
 .hgrid{padding:14px 10px;display:flex;flex-direction:column;gap:10px}
 .hgrid .row{display:grid;grid-template-columns:repeat(9,1fr);gap:2px}
@@ -405,3 +405,11 @@ img{max-width:100%}
 .pcard .linkbtn.h{font-size:inherit;font-weight:500;color:var(--muted);padding:0}
 .hcpnote{background:var(--surface);border:1.5px solid var(--loss);border-radius:16px;padding:10px 14px;font-size:14px;line-height:1.4}
 .gm-players .linkbtn{font-size:13px;padding:0 2px}
+/* club colours (admin) */
+.colrow{display:flex;gap:10px;align-items:center}
+.colrow input[type=color]{width:56px;height:48px;flex-shrink:0;border:1px solid var(--line);border-radius:12px;background:var(--surface);padding:4px;cursor:pointer}
+.colrow input[type=text]{flex:1;min-width:0;text-transform:uppercase;font-variant-numeric:tabular-nums}
+.preview{display:flex;flex-direction:column;gap:10px;padding:16px}
+.preview .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.preview .tabs-demo{display:flex;justify-content:space-around;border-top:1px solid var(--line);padding-top:10px;font-weight:600;color:var(--muted)}
+.preview .tabs-demo b{color:var(--loss);font-weight:800}

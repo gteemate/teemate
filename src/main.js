@@ -3,6 +3,8 @@ import { S } from './state.js'
 import * as api from './api.js'
 import { $, esc, header, setRender, toast, top0 } from './ui.js'
 import * as login from './screens/login.js'
+import * as colours from './screens/colours.js'
+import { applyTheme, cachedTheme } from './theme.js'
 import * as scores from './screens/scores.js'
 import * as players from './screens/players.js'
 import * as leaderboard from './screens/leaderboard.js'
@@ -21,7 +23,7 @@ import * as eventEditor from './screens/event-editor.js'
 import * as access from './screens/access.js'
 
 // Each screen exports an optional async load() and a sync draw(data).
-const ADMIN = { home: adminHome, tee: teeTimes, book: booking, booked, mine: bookings, buddies, pins, games, points, events, event: eventEditor, access }
+const ADMIN = { home: adminHome, tee: teeTimes, book: booking, booked, mine: bookings, buddies, pins, games, points, events, event: eventEditor, access, colours }
 function screenFor() {
   if (S.tab === 'scores') return S.sview === 'players' ? players : scores
   if (S.tab === 'lb') return leaderboard
@@ -57,6 +59,11 @@ async function render() {
   screen.draw(data)
 }
 setRender(render)
+
+// Club colours: last-seen ones straight away (no flash), then the current ones from the club.
+const seen = cachedTheme()
+if (seen) applyTheme(seen)
+api.getTheme().then(applyTheme).catch(err => console.warn('Club colours not loaded', err))
 
 // Sign-out (here or in another tab) starts the app afresh.
 api.onAuthChange(event => {

@@ -29,6 +29,7 @@ export function draw({ me, sheet, bookings, buddies, L, active, points, requests
     <button class="atile" data-a="games"><span class="e">🎯</span><b>Games</b><span>${gamesOn} on · preferred and allowances</span></button>
     <button class="atile row" data-a="events"><span class="e">🏆</span><b>Events</b><span>${active ? `Active: ${esc(active.name)}` : 'Create a team event'}</span></button>` : ''}
     ${admin ? `<button class="atile row" data-a="access"><span class="e">🔑</span><b>Members &amp; access</b><span>${requests.length ? `<b class="reqcount">${requests.length} access request${requests.length > 1 ? 's' : ''}</b>` : 'Choose who can sign in'}</span></button>` : ''}
+    ${admin ? '<button class="atile row" data-a="colours"><span class="e">🎨</span><b>Club colours</b><span>Two colours that theme the whole app</span></button>' : ''}
     <button class="atile row" data-a="points"><span class="e">🎟️</span><b>Guest points</b><span>${left} of ${points.allowance} left this year</span></button>
   </div>
   ${admin ? '<div class="hint">Pins, Games, Events and Members &amp; access only show for admins.</div>' : ''}

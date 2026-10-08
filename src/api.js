@@ -59,6 +59,17 @@ export function onAuthChange(cb) {
   })
 }
 
+/* ---------- Club colours ---------- */
+
+/** { main, accent } hex codes. Works before signing in. */
+export async function getTheme() {
+  return must(await sb.rpc('get_theme'))
+}
+
+export async function setTheme(main, accent) {
+  must(await sb.rpc('admin_set_theme', { p_main: main, p_accent: accent }))
+}
+
 /* ---------- Members and buddies ---------- */
 
 const MEMBER_COLS = 'id, name, gui, hcp_index, admin'
