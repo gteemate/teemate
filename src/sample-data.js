@@ -35,7 +35,7 @@ export const PIN_SHEET = {
 
 export const ME_ID = 0
 export const MEMBERS = [
-  { id: 0, name: 'Gary Cochrane', gui: '10844471', hcp: 12.4, committee: true, admin: true },
+  { id: 0, name: 'Gary Cochrane', gui: '10844471', hcp: 12.4, admin: true },
   { id: 1, name: 'Declan Murphy', gui: '10831207', hcp: 8.2 }, { id: 2, name: 'Aoife Brennan', gui: '10845519', hcp: 15.1 },
   { id: 3, name: "Ciarán O'Neill", gui: '10820933', hcp: 4.6 }, { id: 4, name: 'Siobhán Kelly', gui: '10867741', hcp: 22.0 },
   { id: 5, name: 'Mark Doherty', gui: '10812288', hcp: 10.3 }, { id: 6, name: 'Niall Gallagher', gui: '10839104', hcp: 18.7 },

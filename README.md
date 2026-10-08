@@ -25,7 +25,8 @@ Copy `.env.example` to `.env` and fill it in.
   transaction, so double bookings and negative points can't happen.
 - **Sign-in** is email + password; no emails are sent. An admin approves an email (Admin → Members & access);
   that person creates their own password the first time. Any other email is refused by a Supabase
-  before-user-created hook. Forgotten password: the admin uses Reset login.
+  before-user-created hook, and the person can leave their name as an access request for an admin
+  to approve or decline. Forgotten password: the admin uses Reset login.
 
 ## Database commands
 

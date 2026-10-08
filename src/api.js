@@ -61,8 +61,8 @@ export function onAuthChange(cb) {
 
 /* ---------- Members and buddies ---------- */
 
-const MEMBER_COLS = 'id, name, gui, hcp_index, committee, admin'
-const toMember = m => ({ id: m.id, name: m.name, gui: m.gui, hcp: Number(m.hcp_index), committee: m.committee, admin: m.admin })
+const MEMBER_COLS = 'id, name, gui, hcp_index, admin'
+const toMember = m => ({ id: m.id, name: m.name, gui: m.gui, hcp: Number(m.hcp_index), admin: m.admin })
 
 let me // cached for the session; undefined = not loaded, null = signed in but not a member
 /** The signed-in member, or null if this login isn't on the members list. */
@@ -92,7 +92,7 @@ export async function removeBuddy(id) {
 
 /* ---------- Access (admins only) ---------- */
 
-/** Everyone, with email and whether they've signed in: [{ id, name, gui, hcp, email, committee, admin, signedIn }] */
+/** Everyone, with email and whether they've created an account: [{ id, name, gui, hcp, email, admin, signedIn }] */
 export async function getAccessList() {
   return must(await sb.rpc('admin_list_members')).map(m => ({ ...m, hcp: Number(m.hcp) }))
 }
@@ -104,10 +104,25 @@ export async function getAccessList() {
 export async function saveMember(m) {
   const id = must(await sb.rpc('admin_save_member', {
     p_id: m.id ?? null, p_name: m.name, p_email: m.email ?? '', p_gui: m.gui ?? '',
-    p_hcp: m.hcp, p_committee: !!m.committee, p_admin: !!m.admin,
+    p_hcp: m.hcp, p_admin: !!m.admin,
   }))
   me = undefined // in case I edited myself
   return id
+}
+
+/** People who asked for access: [{ id, name, email, createdAt }], oldest first. Admins only. */
+export async function getAccessRequests() {
+  return must(await sb.from('access_requests').select('id, name, email, created_at').order('created_at'))
+    .map(r => ({ id: r.id, name: r.name, email: r.email, createdAt: r.created_at }))
+}
+
+export async function declineRequest(id) {
+  must(await sb.rpc('admin_decline_request', { p_id: id }))
+}
+
+/** Leave your name for an admin to approve. Works before signing in. */
+export async function requestAccess(email, name) {
+  must(await sb.rpc('request_access', { p_email: email, p_name: name }))
 }
 
 /** Delete a member's login (e.g. forgotten password) but keep their email approved. */
@@ -171,7 +186,7 @@ export async function getGuestPoints(year = String(today().getFullYear())) {
   const [c, settings, visits, members, meId] = await Promise.all([
     getCourse(),
     sb.from('club_settings').select('guest_allowance').single().then(must),
-    // RLS returns only my visits, or everyone's for the committee.
+    // RLS returns only my visits, or everyone's for an admin.
     sb.from('guest_visits').select('member_id, date, guest_name, guest_club, points, course:course_id(name)')
       .gte('date', `${year}-01-01`).lte('date', `${year}-12-31`).order('date').then(must),
     getMembers(),

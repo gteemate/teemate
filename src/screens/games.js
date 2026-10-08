@@ -1,4 +1,4 @@
-// Admin → Games (committee): turn games on/off, edit allowances, pick the preferred game per group size.
+// Admin → Games (admins): turn games on/off, edit allowances, pick the preferred game per group size.
 import * as api from '../api.js'
 import { S } from '../state.js'
 import { $, esc, header, keepScroll, render, toast } from '../ui.js'

@@ -19,7 +19,7 @@ export function draw({ points: P, me }) {
      <span class="hint">${P.mine.length} guest${P.mine.length === 1 ? '' : 's'} this year · ${usedMine} points used</span></div>
    <h3>Your guests</h3>
    <div class="card list">${P.mine.length ? P.mine.slice().reverse().map(x => `<div class="lrow" style="grid-template-columns:56px 1fr auto"><span class="hint" style="font-weight:700">${dayMonth(fromIso(x.date))}</span><span class="who"><strong>${esc(x.guest)}</strong><small>${x.club ? esc(x.club) : 'No home club'} · ${esc(x.course)}</small></span><span class="ptag">−${x.points}</span></div>`).join('') : '<div class="empty-state">No guests yet this year.</div>'}</div>
-   ${me.committee ? `<h3>All members</h3><div class="hint">Committee view. Lowest balance first.</div>
+   ${me.admin ? `<h3>All members</h3><div class="hint">Admin view. Lowest balance first.</div>
    <div class="card list">${all.map(r => `<div class="lrow ptsline"><span class="av">${ini(r.name)}</span><span class="who"><strong>${esc(r.name)}${r.id === me.id ? ' (you)' : ''}</strong><small>${r.used} of ${P.allowance} used</small>${bar(r.left, P.allowance)}</span><span class="hcp${r.left === 0 ? ' zero' : ''}">${r.left}<small>left</small></span></div>`).join('')}</div>` : ''}
   </div>`
 }

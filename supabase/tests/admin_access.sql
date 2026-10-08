@@ -24,19 +24,19 @@ create function t.hook(p_email text) returns jsonb language sql as $$
   select public.hook_before_user_created(jsonb_build_object('user', jsonb_build_object('email', p_email))) $$;
 grant execute on all functions in schema t to anon, authenticated;
 
--- Test logins: member 0 as an admin, member 1 as committee but not admin.
+-- Test logins: member 0 as an admin, member 1 as an ordinary member.
 insert into auth.users (id, email, aud, role)
   select gen_random_uuid(), 'access-test-' || i || '@example.invalid', 'authenticated', 'authenticated' from generate_series(0, 1) i;
 insert into t.users select i, (select id from auth.users where email = 'access-test-' || i || '@example.invalid') from generate_series(0, 1) i;
 update public.members m set user_id = u.uid, email = 'access-test-' || m.id || '@example.invalid' from t.users u where m.id = u.member_id;
-update public.members set admin = (id = 0), committee = id in (0, 1) where id in (0, 1);
+update public.members set admin = (id = 0) where id in (0, 1);
 
 -- ------------------------------------------------------------------ non-admins
 do $$ begin
   perform t.act_as(1);
-  perform t.ok('Committee (not admin): cannot list emails', t.err('select public.admin_list_members()') is not null);
-  perform t.ok('Committee (not admin): cannot grant access', t.err($q$select public.admin_save_member(null, 'Sneaky', 'sneaky@example.invalid')$q$) is not null);
-  perform t.ok('Committee (not admin): cannot make themselves admin', t.err($q$select public.admin_save_member(1, 'Declan Murphy', 'access-test-1@example.invalid', null, 8.2, true, true)$q$) is not null);
+  perform t.ok('Member (not admin): cannot list emails', t.err('select public.admin_list_members()') is not null);
+  perform t.ok('Member (not admin): cannot grant access', t.err($q$select public.admin_save_member(null, 'Sneaky', 'sneaky@example.invalid')$q$) is not null);
+  perform t.ok('Member (not admin): cannot make themselves admin', t.err($q$select public.admin_save_member(1, 'Declan Murphy', 'access-test-1@example.invalid', null, 8.2, true)$q$) is not null);
   perform t.ok('Member: still cannot read emails directly', t.err('select email from public.members') is not null);
   perform t.done();
 end $$;
@@ -50,17 +50,17 @@ do $$ declare v_id bigint; v_list jsonb; e text; begin
   v_id := public.admin_save_member(null, 'New Golfer', '  New.Golfer@Example.invalid ', '12345678', 18.4);
   perform t.done(); -- check the stored row as the database owner (admins read emails only via admin_list_members)
   perform t.ok('Admin: adds a member (email stored lower-case)', (select email from public.members where id = v_id) = 'new.golfer@example.invalid');
-  perform t.ok('Admin: new member is not committee or admin by default', (select not committee and not admin from public.members where id = v_id));
+  perform t.ok('Admin: new member is not an admin by default', (select not admin from public.members where id = v_id));
   perform t.act_as(0);
   e := t.err($q$select public.admin_save_member(null, 'Twin', 'NEW.GOLFER@example.invalid')$q$);
   perform t.ok('Admin: the same email twice is refused', e like '%already has that email%', e);
   e := t.err($q$select public.admin_save_member(null, 'Bad', 'not-an-email')$q$);
   perform t.ok('Admin: a bad email is refused', e like '%look like an email%', e);
-  e := t.err($q$select public.admin_save_member(0, 'Gary', 'access-test-0@example.invalid', null, 12.4, true, false)$q$);
+  e := t.err($q$select public.admin_save_member(0, 'Gary', 'access-test-0@example.invalid', null, 12.4, false)$q$);
   perform t.ok('Admin: cannot remove own admin rights', e like '%own admin%', e);
-  e := t.err($q$select public.admin_save_member(0, 'Gary', '', null, 12.4, true, true)$q$);
+  e := t.err($q$select public.admin_save_member(0, 'Gary', '', null, 12.4, true)$q$);
   perform t.ok('Admin: cannot remove own access', e like '%own admin%', e);
-  perform public.admin_save_member(1, 'Declan Murphy', 'access-test-1@example.invalid', null, 8.2, true, true);
+  perform public.admin_save_member(1, 'Declan Murphy', 'access-test-1@example.invalid', null, 8.2, true);
   perform t.ok('Admin: can make another member an admin', (select admin from public.members where id = 1));
   perform t.done();
 end $$;
@@ -93,7 +93,7 @@ end $$;
 -- Changing someone's email moves access to the new address.
 do $$ begin
   perform t.act_as(0);
-  perform public.admin_save_member(1, 'Declan Murphy', 'declan.new@example.invalid', null, 8.2, true, true);
+  perform public.admin_save_member(1, 'Declan Murphy', 'declan.new@example.invalid', null, 8.2, true);
   perform t.done();
   perform t.ok('Change email: old login removed', not exists (select 1 from auth.users where email = 'access-test-1@example.invalid'));
   perform t.ok('Change email: new address allowed, old refused',
@@ -121,6 +121,43 @@ end $$;
 insert into auth.users (id, email, aud, role) values (gen_random_uuid(), 'reset.me@example.invalid', 'authenticated', 'authenticated');
 select t.ok('Reset login: new account re-links to the same member',
   (select user_id from public.members where email = 'reset.me@example.invalid') = (select id from auth.users where email = 'reset.me@example.invalid'));
+
+-- ------------------------------------------------------------------ access requests
+do $$ declare e text; begin
+  perform set_config('request.jwt.claims', '{"role":"anon"}', true);
+  set local role anon;
+  e := t.err($q$select public.request_access('Pete.Test@Example.invalid', 'Pete Test')$q$);
+  perform t.ok('Request: anyone (not signed in) can leave their name', e is null, e);
+  e := t.err($q$select public.request_access('pete.test@example.invalid', 'Pete T')$q$);
+  perform t.ok('Request: asking twice updates it, no duplicate', e is null, e);
+  e := t.err($q$select public.request_access('pete.test@example.invalid', '  ')$q$);
+  perform t.ok('Request: a name is required', e like '%your name%', e);
+  e := t.err($q$select public.request_access('access-test-0@example.invalid', 'Already In')$q$);
+  perform t.ok('Request: an approved email is told to create the account', e like '%already approved%', e);
+  perform t.ok('Request: visitors cannot read requests', t.err('select count(*) from public.access_requests') is not null);
+  reset role;
+  perform t.ok('Request: stored once, lower-case, latest name', (select count(*) = 1 and min(name) = 'Pete T' from public.access_requests where email = 'pete.test@example.invalid'));
+
+  perform t.act_as(1); -- ordinary member
+  perform t.ok('Request: members cannot see requests', (select count(*) from public.access_requests) = 0);
+  e := t.err(format('select public.admin_decline_request(%s)', (select 1)));
+  perform t.ok('Request: members cannot decline', e is not null, e);
+  perform t.done();
+
+  perform t.act_as(0); -- admin
+  perform t.ok('Request: admin sees the name', (select name from public.access_requests where email = 'pete.test@example.invalid') = 'Pete T');
+  perform public.admin_save_member(null, 'Pete Test', 'pete.test@example.invalid');
+  perform t.ok('Request: approving clears the request', not exists (select 1 from public.access_requests where email = 'pete.test@example.invalid'));
+  perform t.done();
+  perform t.ok('Request: approved email can now create an account', t.hook('pete.test@example.invalid') = '{}'::jsonb);
+
+  perform public.request_access('decline.me@example.invalid', 'Decline Me');
+  perform t.act_as(0);
+  perform public.admin_decline_request((select id from public.access_requests where email = 'decline.me@example.invalid'));
+  perform t.done();
+  perform t.ok('Request: decline removes it and grants nothing', not exists (select 1 from public.access_requests where email = 'decline.me@example.invalid')
+                                                                and t.hook('decline.me@example.invalid') ? 'error');
+end $$;
 
 select test, ok, detail from t.results order by n;
 rollback;

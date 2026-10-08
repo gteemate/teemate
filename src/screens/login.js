@@ -7,6 +7,8 @@ import { $, esc, header, render } from '../ui.js'
 const MIN = 8
 
 export function draw() {
+  if (S.loginMode === 'request') return drawRequest()
+  if (S.loginMode === 'requested') return drawRequested()
   const create = S.loginMode === 'create'
   header('TeeMates', create ? 'First time? Choose a password' : 'Sign in with your email and password')
   $('main').innerHTML = `<div class="screen"><form class="card evsec" id="login" novalidate>
@@ -37,11 +39,54 @@ export function draw() {
       S.loginMode = 'signin'
       // onAuthChange in main.js redraws once signed in
     } catch (ex) {
+      // Not approved yet: offer to leave their name for the admin.
+      if (create && /given access/.test(ex.message)) { S.loginEmail = email; S.loginMode = 'request'; render(); return }
       err(ex.message)
       go.disabled = false
       go.textContent = label
     }
   }
+}
+
+function drawRequest() {
+  header('TeeMates', 'Your email isn’t approved yet')
+  $('main').innerHTML = `<div class="screen"><form class="card evsec" id="req" novalidate>
+    <h4>Request access</h4>
+    <span class="hint">Leave your name and the club admin will see your request. Once it’s approved, come back and create your account.</span>
+    <label for="rname">Your name</label><input id="rname" autocomplete="name" placeholder="e.g. Pete Reid">
+    <label for="remail">Email</label><input id="remail" type="email" autocomplete="email" inputmode="email" value="${esc(S.loginEmail)}">
+    <p class="gerr" id="err" role="alert"></p>
+    <button class="primary" type="submit" id="go">Request access</button>
+    <button type="button" class="linkbtn" id="back" style="align-self:flex-start">Back to sign in</button>
+  </form></div>`
+  setTimeout(() => $('rname')?.focus(), 30)
+  $('back').onclick = () => { S.loginMode = 'signin'; render() }
+  $('req').onsubmit = async e => {
+    e.preventDefault()
+    const name = $('rname').value.trim(), email = $('remail').value.trim()
+    if (!name) return ($('err').textContent = 'Enter your name.')
+    $('go').disabled = true
+    try {
+      await api.requestAccess(email, name)
+    } catch (ex) {
+      $('err').textContent = ex.message
+      $('go').disabled = false
+      return
+    }
+    S.loginEmail = email
+    S.requestName = name
+    S.loginMode = 'requested'
+    render()
+  }
+}
+
+function drawRequested() {
+  header('TeeMates', '')
+  $('main').innerHTML = `<div class="done"><div class="flagmark">⛳</div><h4>Request sent</h4>
+    <p>Thanks, ${esc(S.requestName.split(' ')[0])}. The club admin will see your request.</p>
+    <p class="hint">Once you’re approved, come back and tap “Create your account” with <b style="color:var(--ink)">${esc(S.loginEmail)}</b>.</p>
+    <button class="ghost" id="back">Back to sign in</button></div>`
+  $('back').onclick = () => { S.loginMode = 'create'; render() }
 }
 
 export function drawNotMember({ email }) {

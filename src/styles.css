@@ -395,3 +395,8 @@ img{max-width:100%}
 .accst.on{color:var(--win)}.accst.inv{color:var(--ink)}
 .accremove{border-color:var(--loss);color:var(--loss);margin:6px 0 4px}
 .sheet .actrow{margin:8px 0 0}
+.reqcount{color:var(--loss);font-weight:800;font-size:inherit}
+.reqrow{display:grid;grid-template-columns:44px 1fr auto;gap:12px;align-items:center;padding:12px 14px;border-top:1px solid var(--line)}
+.reqrow:first-child{border-top:0}
+.reqbtns{display:flex;gap:6px}
+.reqbtns button{padding:8px 12px;font-size:14px;border-radius:12px}

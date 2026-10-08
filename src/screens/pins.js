@@ -1,4 +1,4 @@
-// Admin → Pins (committee): set today's pin positions and publish them to the Course tab.
+// Admin → Pins (admins): set today's pin positions and publish them to the Course tab.
 import * as api from '../api.js'
 import { $, esc, header, keepScroll, render, toast } from '../ui.js'
 import { flagOf, FLAGCOL, FLAGNAME } from '../course-art.js'

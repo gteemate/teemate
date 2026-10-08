@@ -1,4 +1,4 @@
-// Admin → Events (committee): list of team events.
+// Admin → Events (admins): list of team events.
 import * as api from '../api.js'
 import { S } from '../state.js'
 import { $, esc, header, top0, render } from '../ui.js'

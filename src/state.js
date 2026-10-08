@@ -1,6 +1,6 @@
 // UI state only: which tab and screen, selections, and drafts not yet saved. Data lives behind api.js.
 export const S = {
-  loginMode: 'signin', loginEmail: '', // sign-in screen: 'signin' | 'create'
+  loginMode: 'signin', loginEmail: '', requestName: '', // sign-in screen: 'signin' | 'create' | 'request' | 'requested'
   tab: 'scores',
   sview: 'card',     // scores: 'card' | 'players'
   aview: 'home',     // admin: home | tee | book | booked | mine | buddies | pins | games | points | events | event | access
@@ -18,7 +18,7 @@ export const S = {
   // games admin
   gedit: null,
   // members & access (admin)
-  accEdit: null, accQ: '', accConfirm: false, // accEdit: null | 'new' | member id
+  accEdit: null, accQ: '', accConfirm: false, accPrefill: null, // accEdit: null | 'new' | member id
   // events admin
   evId: null, evStep: 1,
 }

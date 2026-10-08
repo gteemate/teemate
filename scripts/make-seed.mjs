@@ -10,7 +10,7 @@ const j = v => `${q(JSON.stringify(v))}::jsonb`
 const arr = xs => `'{${xs.join(',')}}'::bigint[]`
 const rows = (table, cols, data) => data.length ? `insert into public.${table} (${cols.join(', ')}) values\n  ${data.map(r => `(${r.join(', ')})`).join(',\n  ')};\n` : ''
 
-// The login email for the sample committee member (id 0) comes from .env, so it isn't committed.
+// The login email for the sample admin (id 0) comes from .env, so it isn't committed.
 const envFile = new URL('../.env', import.meta.url)
 const OWNER_EMAIL = process.env.OWNER_EMAIL ?? (existsSync(envFile) && readFileSync(envFile, 'utf8').match(/^OWNER_EMAIL=(.*)$/m)?.[1].trim().toLowerCase()) ?? null
 if (!OWNER_EMAIL) console.warn('OWNER_EMAIL not set in .env: no sample member will be linked to a login.')
@@ -43,7 +43,7 @@ insert into public.club_settings (id, guest_allowance) values (1, ${S.GUEST_RULE
 insert into public.courses (id, name, guest_points) values (1, ${q(C.name)}, ${S.GUEST_RULES.costByCourse[C.name]});
 ${rows('tees', ['course_id', 'key', 'name', 'colour', 'rating', 'slope', 'sort'], C.tees.map((t, i) => [1, q(t.key), q(t.name), q(t.colour), q(t.rating), q(t.slope), i]))}
 ${rows('holes', ['course_id', 'n', 'name', 'par', 'si', 'green_depth', 'yards'], C.holes.map(h => [1, h.n, q(h.name), h.par, h.si, h.greenDepth, j(h.yards)]))}
-${rows('members', ['id', 'name', 'gui', 'hcp_index', 'committee', 'admin', 'email'], S.MEMBERS.map(m => [m.id, q(m.name), q(m.gui), m.hcp, !!m.committee, !!m.admin, q(m.id === S.ME_ID ? OWNER_EMAIL : null)]))}
+${rows('members', ['id', 'name', 'gui', 'hcp_index', 'admin', 'email'], S.MEMBERS.map(m => [m.id, q(m.name), q(m.gui), m.hcp, !!m.admin, q(m.id === S.ME_ID ? OWNER_EMAIL : null)]))}
 -- Link the login if it already exists (new logins are linked by the on_auth_user_created trigger).
 update public.members m set user_id = u.id from auth.users u where m.email = lower(u.email);
 

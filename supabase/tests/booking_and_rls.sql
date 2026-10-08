@@ -31,7 +31,7 @@ create function t.val(p_sql text) returns bigint language plpgsql as $$
 declare v bigint; begin execute p_sql into v; return v; end $$;
 grant execute on all functions in schema t to anon, authenticated;
 
--- Test logins for: Gary (0, committee), Declan (1), Aoife (2, no guest points left).
+-- Test logins for: Gary (0, admin), Declan (1), Aoife (2, no guest points left).
 insert into auth.users (id, email, aud, role)
   select gen_random_uuid(), 'rls-test-' || i || '@example.invalid', 'authenticated', 'authenticated' from generate_series(0, 2) i;
 insert into t.users select i, (select id from auth.users where email = 'rls-test-' || i || '@example.invalid') from generate_series(0, 2) i;
@@ -134,15 +134,15 @@ do $$ declare e text; used int; i int; begin
     t.err($q$insert into public.guest_visits (member_id, date, guest_name, course_id, points) values (2, current_date, 'x', 1, 3)$q$) is not null);
 end $$;
 
--- ------------------------------------------------------------------ committee (Gary)
+-- ------------------------------------------------------------------ admin (Gary)
 do $$ declare new_id bigint; begin
   perform t.act_as(0);
-  perform t.ok('Committee: can publish pins', t.err($q$insert into public.pin_sheets (course_id, date, pins) values (1, current_date + 1, '[]')$q$) is null);
-  perform t.ok('Committee: can change games', t.err($q$insert into public.game_settings values ('skins', false, null)$q$) is null);
-  perform t.ok('Committee: sees everyone''s guest points', t.val('select count(distinct member_id) from public.guest_visits') > 2);
+  perform t.ok('Admin: can publish pins', t.err($q$insert into public.pin_sheets (course_id, date, pins) values (1, current_date + 1, '[]')$q$) is null);
+  perform t.ok('Admin: can change games', t.err($q$insert into public.game_settings values ('skins', false, null)$q$) is null);
+  perform t.ok('Admin: sees everyone''s guest points', t.val('select count(distinct member_id) from public.guest_visits') > 2);
   insert into public.events (name, team_a, team_b, course, format) values ('Test', '{}', '{}', 'Ailsa', 'x') returning id into new_id;
   perform public.set_active_event(new_id, true);
-  perform t.ok('Committee: only one event is active at a time', (select count(*) from public.events where active) = 1
+  perform t.ok('Admin: only one event is active at a time', (select count(*) from public.events where active) = 1
                                                                and (select active from public.events where id = new_id));
   perform t.done();
 end $$;
