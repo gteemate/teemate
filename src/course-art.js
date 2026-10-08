@@ -15,8 +15,9 @@ export const pinFrom = (hole, depthRef, depth, sideRef, side) => ({
 })
 
 export const flagOf = (d, g) => (d < g / 3 ? 'front' : d < (2 * g) / 3 ? 'middle' : 'back')
-export const FLAGCOL = { front: '#d23b2f', middle: '#ffffff', back: '#2a5bd7' }
-export const FLAGNAME = { front: 'Red · front', middle: 'White · middle', back: 'Blue · back' }
+// Front and back flags are the club colours (Admin → Club colours): accent at the front, main at the back.
+export const FLAGCOL = { front: 'var(--flag-front)', middle: '#ffffff', back: 'var(--flag-back)' }
+export const FLAGNAME = { front: 'Front', middle: 'White · middle', back: 'Back' }
 
 export function greenPic(hole, pin) {
   const i = hole.n - 1, d = pin.yardsOn, g = hole.greenDepth

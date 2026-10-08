@@ -26,6 +26,7 @@ export function themeVars({ main, accent }) {
     '--leaf': mix(main, LIGHT_BG, 0.86),
     '--on-green': textOn(main), '--on-win': textOn(main), '--on-loss': textOn(accent),
     '--shadow': `${main}66`,
+    '--flag-front': accent, '--flag-back': main, // pin flags: the exact club colours in both modes
   }
   const dMain = mix(main, LIGHT_BG, 0.15), dLine = mix(main, LIGHT_BG, 0.55), dAccent = mix(accent, LIGHT_BG, 0.45)
   const dark = {
@@ -33,6 +34,7 @@ export function themeVars({ main, accent }) {
     '--leaf': mix(main, DARK_SURFACE, 0.6),
     '--on-green': textOn(dMain), '--on-win': textOn(dLine), '--on-loss': textOn(dAccent),
     '--shadow': '#00000099',
+    '--flag-front': accent, '--flag-back': main,
   }
   return { light, dark }
 }

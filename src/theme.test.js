@@ -19,6 +19,10 @@ describe('club colours', () => {
     expect(luminance(dark['--leaf-line'])).toBeGreaterThan(luminance(dark['--leaf'])) // outline stands out in dark mode
     expect(light['--on-loss']).toBe('#151a26') // gold accent gets dark text
   })
+  it('pin flags are the exact club colours in both modes: accent at the front, main at the back', () => {
+    const { light, dark } = themeVars({ main: '#0B6E4F', accent: '#C9A227' })
+    for (const m of [light, dark]) expect([m['--flag-front'], m['--flag-back']]).toEqual(['#C9A227', '#0B6E4F'])
+  })
   it('only accepts 6-digit hex', () => {
     expect([isHex('#19335A'), isHex('19335A'), isHex('#1935A'), isHex('green')]).toEqual([true, false, false, false])
   })

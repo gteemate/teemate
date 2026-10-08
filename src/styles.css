@@ -3,6 +3,7 @@
   --bg:#f4f4f7; --surface:#ffffff; --sunk:#e9eaf0; --ink:#151a26; --muted:#676c7a; --line:#dfe2ea;
   --green:#19335A; --on-green:#f4f6fb; --leaf:#dfe6f1; --leaf-2:#ffffff; --leaf-line:#19335A; --pill:#19335A;
   --win:#19335A; --loss:#762A43; --full:#c6cad5; --on-win:#ffffff; --on-loss:#ffffff; --shadow:rgba(25,51,90,.4);
+  --flag-front:#762A43; --flag-back:#19335A; /* pin flags: the club colours, same in dark mode */
   --rough:#6f9c55; --fair:#a3cf7c; --putt:#c6e9a4;
   --sys:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
   --serif:"Cinzel",Georgia,"Times New Roman",serif; --script:"Pinyon Script","Snell Roundhand",cursive;
