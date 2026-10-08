@@ -444,3 +444,9 @@ img{max-width:100%}
 .ptsmini.low{border-color:var(--loss)}
 .ptsmini.low b{color:var(--loss)}
 .atile.row .rt{display:flex;flex-direction:column;gap:2px;min-width:0}
+.pinsum{font-size:13px;color:var(--muted)}
+/* pins: "Flag is [3] yds from [Back]" */
+.pinline{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.pinline .hint{font-size:14px}
+.pinseg button{width:auto;padding:7px 10px}
+.pinfoot{display:flex;justify-content:space-between;align-items:center;gap:8px}

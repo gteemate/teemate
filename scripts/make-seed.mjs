@@ -42,7 +42,7 @@ truncate public.club_settings, public.courses, public.tees, public.holes, public
 insert into public.club_settings (id, guest_allowance) values (1, ${S.GUEST_RULES.allowance});
 insert into public.courses (id, name, guest_points) values (1, ${q(C.name)}, ${S.GUEST_RULES.costByCourse[C.name]});
 ${rows('tees', ['course_id', 'key', 'name', 'colour', 'rating', 'slope', 'sort'], C.tees.map((t, i) => [1, q(t.key), q(t.name), q(t.colour), q(t.rating), q(t.slope), i]))}
-${rows('holes', ['course_id', 'n', 'name', 'par', 'si', 'green_depth', 'yards'], C.holes.map(h => [1, h.n, q(h.name), h.par, h.si, h.greenDepth, j(h.yards)]))}
+${rows('holes', ['course_id', 'n', 'name', 'par', 'si', 'green_depth', 'green_width', 'yards'], C.holes.map(h => [1, h.n, q(h.name), h.par, h.si, h.greenDepth, h.greenWidth, j(h.yards)]))}
 ${rows('members', ['id', 'name', 'gui', 'hcp_index', 'admin', 'email'], S.MEMBERS.map(m => [m.id, q(m.name), q(m.gui), m.hcp, !!m.admin, q(m.id === S.ME_ID ? OWNER_EMAIL : null)]))}
 -- Link the login if it already exists (new logins are linked by the on_auth_user_created trigger).
 update public.members m set user_id = u.id from auth.users u where m.email = lower(u.email);

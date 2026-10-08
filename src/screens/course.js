@@ -2,7 +2,7 @@
 import * as api from '../api.js'
 import { S } from '../state.js'
 import { $, esc, header, keepScroll, top0, render, nn, asset } from '../ui.js'
-import { flagOf, FLAGCOL, greenPic, holeGrid } from '../course-art.js'
+import { flagOf, FLAGCOL, greenPic, holeGrid, pinDistances } from '../course-art.js'
 
 let course
 export async function load() {
@@ -25,7 +25,8 @@ export function draw({ course, pinSheet }) {
    <div class="hint">White numbers are yards to the front of the green. Boxed numbers are distances from the back of each numbered tee.</div>
    <div class="card pincard">${greenPic(h, pin)}<div style="display:flex;flex-direction:column;gap:12px;min-width:0">
      <b style="font-size:18px">Today's pin</b>
-     <div class="facts"><div><span>Flag</span><b><i class="fl" style="background:${FLAGCOL[f]}"></i>${f[0].toUpperCase() + f.slice(1)}</b></div><div><span>Position</span><b>${d} on · ${pin.side}</b></div><div><span>Green depth</span><b>${g} yds</b></div><div><span>Behind pin</span><b>${g - d} yds</b></div></div>
+     <div class="facts">${Object.entries(pinDistances(h, pin)).map(([k, v]) => `<div><span>${k[0].toUpperCase() + k.slice(1)}</span><b>${v}</b></div>`).join('')}</div>
+     <div class="pinsum"><i class="fl" style="background:${FLAGCOL[f]}"></i>${f[0].toUpperCase() + f.slice(1)} flag · yards from each edge of a ${g} × ${h.greenWidth} yd green</div>
      <small class="hint">Set ${esc(pinSheet.setAt)} today · Stimp 10.5</small></div></div>
    <div class="holenav"><button class="ghost" id="prev" ${i === 0 ? 'disabled' : ''}>‹ Hole ${i || 1}</button><button class="ghost" id="next" ${i === 17 ? 'disabled' : ''}>Hole ${Math.min(i + 2, 18)} ›</button></div>
   </div>`

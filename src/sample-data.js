@@ -20,7 +20,7 @@ export const COURSE = {
     { key: 'red', name: 'Red', colour: '#c8342b' },
   ],
   holes: AILSA.map(([name, par, yds, si, greenDepth], i) => ({
-    n: i + 1, name, par, si, greenDepth,
+    n: i + 1, name, par, si, greenDepth, greenWidth: Math.max(18, Math.round(greenDepth * 0.8)), // width estimated
     yards: Object.fromEntries(T.map((t, k) => [t, yds[k]])),
   })),
 }
@@ -30,7 +30,11 @@ const PINS = [[8, 'L'], [29, 'C'], [26, 'R'], [12, 'C'], [32, 'L'], [6, 'R'], [3
 export const PIN_SHEET = {
   setAt: '06:30',
   setBy: 'Head greenkeeper',
-  pins: PINS.map(([yardsOn, side], i) => ({ hole: i + 1, yardsOn, side })),
+  // Left/centre/right become a quarter, half or three-quarters across the green.
+  pins: PINS.map(([yardsOn, side], i) => {
+    const w = Math.max(18, Math.round(AILSA[i][4] * 0.8))
+    return { hole: i + 1, yardsOn, fromLeft: Math.round(w * { L: 0.25, C: 0.5, R: 0.75 }[side]), depthRef: 'front', sideRef: side === 'R' ? 'right' : 'left' }
+  }),
 }
 
 export const ME_ID = 0
