@@ -1,5 +1,7 @@
 // Scores → Play an event with other groups: pick one or more groups booked the same day, then set
 // the style, format and teams in a pop-up and send the invitations.
+// The same pop-up suggests changes to an invitation (S.pe.counter = the event): same groups,
+// starting from what's on the table.
 import * as api from '../api.js'
 import { S } from '../state.js'
 import { $, esc, header, render, toast, top0 } from '../ui.js'
@@ -8,8 +10,20 @@ import { fromIso, isoDate, longDay, hhmm, today } from '../dates.js'
 
 export const freshDraft = (date = null) => ({ date, host: null, invited: [], style: 'fourball', format: 'best2', names: { A: 'Blues', B: 'Reds' }, teams: {}, sheet: false })
 
+/** A draft for suggesting changes to event e, starting from its current game and teams. */
+export function counterDraft(e) {
+  const groups = e.groups.map(g => ({ id: g.slot, time: g.time, players: e.players.filter(p => p.slot === g.slot) }))
+  const pick = e.style !== 'fourball'
+  return {
+    ...freshDraft(e.date), counter: e, groups, sheet: true, style: e.style, format: e.format,
+    names: pick ? { A: e.teamNames.A, B: e.teamNames.B } : { A: 'Blues', B: 'Reds' },
+    teams: pick ? Object.fromEntries(e.players.map(p => [p.id, p.team])) : {},
+  }
+}
+
 export async function load() {
   S.pe ??= freshDraft()
+  if (S.pe.counter) return { me: await api.getMe() }
   const [me, bookings] = await Promise.all([api.getMe(), api.getMyBookings()])
   const dates = [...new Set(bookings.map(b => b.date))].sort()
   const d = S.pe.date && dates.includes(S.pe.date) ? S.pe.date : dates[0]
@@ -27,6 +41,7 @@ async function redraw() {
 }
 
 export function draw({ me, dates, date, sheet }) {
+  if (S.pe.counter) return drawCounter(me)
   header('Play an event', 'Challenge other groups on your day', back)
   if (!date) {
     $('main').innerHTML = '<div class="screen"><div class="empty-state">Book a tee time first. Then you can challenge other groups playing the same day.</div></div>'
@@ -64,6 +79,16 @@ export function draw({ me, dates, date, sheet }) {
   if (pe.sheet && host && pe.invited.length) optionsSheet(pe, chosen, me)
 }
 
+// Suggesting changes: the event's groups are fixed, so it's just the pop-up over a short page.
+function drawCounter(me) {
+  const pe = S.pe
+  header('Suggest changes', pe.groups.map(g => hhmm(g.time)).join(' v '), back)
+  $('main').innerHTML = `<div class="screen"><div class="hint">Change the game or teams, then send it back. Every other group then answers your version.</div>
+    <button class="primary" id="pe-reopen">Choose the game and teams</button></div>`
+  $('pe-reopen').onclick = () => { pe.sheet = true; redraw() }
+  if (pe.sheet) optionsSheet(pe, pe.groups, me)
+}
+
 function optionsSheet(pe, groups, me) {
   const full = groups.every(s => s.players.length === 4)
   const two = groups.length === 2
@@ -82,7 +107,7 @@ function optionsSheet(pe, groups, me) {
   const styleNote = k => (k === 'ryder' && !full ? 'Needs every group to be a full four-ball' : k === 'fourball' ? (groups.length > 2 ? 'Each group is its own team, ranked in a table.' : 'Your group against theirs.') : EVENT_STYLES[k].desc)
 
   $('modal').innerHTML = `<div class="overlay" id="ovl"><div class="sheet pesheet" id="pesheet" role="dialog" aria-labelledby="pst">
-    <h4 id="pst">Event with ${groups.map(s => hhmm(s.time)).join(', ')}</h4>
+    <h4 id="pst">${pe.counter ? 'Suggest changes' : `Event with ${groups.map(s => hhmm(s.time)).join(', ')}`}</h4>
     <span class="gm-lbl">Team style</span>
     <div class="games" role="radiogroup">${Object.entries(EVENT_STYLES).map(([k, s]) => `<button class="gamecard sm" role="radio" aria-checked="${pe.style === k}" data-style="${k}" ${k === 'ryder' && !full ? 'disabled' : ''}><span class="radio"></span><span class="who"><strong>${s.name}</strong><small>${styleNote(k)}</small></span></button>`).join('')}</div>
     <span class="gm-lbl">Format</span>
@@ -93,7 +118,7 @@ function optionsSheet(pe, groups, me) {
         ${s.players.map(p => `<div class="trow"><span class="who"><strong>${nameOf(p)}</strong><small>${p.guest ? 'Guest' : 'Member'}</small></span><span class="tseg"><button data-tm="${p.id}" data-t="A" aria-pressed="${pe.teams[p.id] === 'A'}" style="--tc:var(--green)">${esc(pe.names.A || 'A')}</button><button data-tm="${p.id}" data-t="B" aria-pressed="${pe.teams[p.id] === 'B'}" style="--tc:var(--loss)">${esc(pe.names.B || 'B')}</button></span></div>`).join('')}</div>`).join('')}`
       : `<span class="gm-lbl">Teams</span><div class="hint">No picking needed: each group plays as a team${groups.length > 2 ? ', ranked in a table' : ''}.</div>`}
     <p class="gerr" id="pe-err" role="alert">${problem}</p>
-    <div class="gm-btns"><button class="ghost" id="pe-close">Back</button><button class="primary" id="pe-send" ${problem ? 'disabled' : ''}>Send invitation${groups.length > 2 ? 's' : ''}</button></div>
+    <div class="gm-btns"><button class="ghost" id="pe-close">Back</button><button class="primary" id="pe-send" ${problem ? 'disabled' : ''}>${pe.counter ? 'Send suggested changes' : `Send invitation${groups.length > 2 ? 's' : ''}`}</button></div>
   </div></div>`
 
   const readNames = () => { if ($('pe-na')) pe.names = { A: $('pe-na').value, B: $('pe-nb').value } }
@@ -106,19 +131,18 @@ function optionsSheet(pe, groups, me) {
   $('pe-send').onclick = async () => {
     readNames()
     $('pe-send').disabled = true
+    const setup = { style: pe.style, format: pe.format, teamNames: pick ? pe.names : {}, teams: pick ? Object.fromEntries(players.map(p => [p.id, pe.teams[p.id]])) : {} }
     try {
-      await api.proposePlayerEvent({
-        hostSlot: pe.host, invited: pe.invited, style: pe.style, format: pe.format,
-        teamNames: pick ? pe.names : {}, teams: pick ? Object.fromEntries(players.map(p => [p.id, pe.teams[p.id]])) : {},
-      })
+      if (pe.counter) await api.counterPlayerEvent(pe.counter.id, setup)
+      else await api.proposePlayerEvent({ hostSlot: pe.host, invited: pe.invited, ...setup })
     } catch (err) {
       $('pe-err').textContent = err.message
       $('pe-send').disabled = false
       return
     }
-    const n = pe.invited.length
+    const n = pe.invited.length, counter = !!pe.counter
     $('modal').innerHTML = ''
     await back()
-    toast(n > 1 ? `Invitations sent to ${n} groups` : 'Invitation sent')
+    toast(counter ? 'Changes sent. The other groups can accept them' : n > 1 ? `Invitations sent to ${n} groups` : 'Invitation sent')
   }
 }

@@ -3,13 +3,20 @@ import * as api from '../api.js'
 import { S } from '../state.js'
 import { $, esc, keepScroll, render, toast, top0 } from '../ui.js'
 import { EVENT_STYLES, eventFormatName } from '../games.js'
+import { counterDraft } from './challenge.js'
 import { hhmm, fromIso, longDay, isoDate, today } from '../dates.js'
 
 const first = n => n.split(' ')[0]
 const dayText = e => (e.date === isoDate(today()) ? 'today' : longDay(fromIso(e.date)))
 export const myGroup = (e, meId) => e.groups.find(g => g.slot === e.players.find(p => p.memberId === meId)?.slot)
 const host = e => e.groups.find(g => g.host)
-const invited = e => e.groups.filter(g => !g.host)
+// The version on the table was put there by one group (the host, or whoever last suggested changes);
+// every other group has to accept it.
+const proposer = e => e.groups.find(g => g.slot === e.proposerSlot) ?? host(e)
+const asked = e => e.groups.filter(g => g !== proposer(e))
+const countered = e => proposer(e) !== host(e) || e.proposedBy?.id !== e.createdBy.id
+/** My group still has to answer the version on the table. */
+const toAnswer = (e, mine) => e.status === 'pending' && mine && mine !== proposer(e) && !mine.answer
 
 /** "Blues v Reds", or "08:10 v 08:20 v 08:30" for four-ball v four-ball. HTML-escaped unless plain. */
 export function eventTitle(e, plain = false) {
@@ -27,12 +34,13 @@ export function teamLists(e) {
 
 function stateLine(e, me) {
   const mine = myGroup(e, me.id)
-  const waiting = invited(e).filter(g => !g.answer).map(g => hhmm(g.time))
-  const accepted = invited(e).filter(g => g.answer === 'accepted').map(g => hhmm(g.time))
+  const waiting = asked(e).filter(g => !g.answer).map(g => hhmm(g.time))
+  const accepted = asked(e).filter(g => g.answer === 'accepted').map(g => hhmm(g.time))
   if (e.status === 'accepted') return 'On! Everyone has accepted'
-  if (e.status === 'declined') { const d = invited(e).find(g => g.answer === 'declined'); return `Declined by ${d?.answeredBy ? esc(first(d.answeredBy.name)) : 'a group'} (${d ? hhmm(d.time) : ''})` }
-  if (!mine.host && !mine.answer) return `Invitation from ${esc(first(e.createdBy.name))} (${hhmm(host(e).time)})`
-  return (accepted.length ? `${accepted.join(', ')} accepted · ` : '') + `waiting for ${waiting.join(', ')}`
+  if (e.status === 'declined') { const d = asked(e).find(g => g.answer === 'declined'); return `Declined by ${d?.answeredBy ? esc(first(d.answeredBy.name)) : 'a group'} (${d ? hhmm(d.time) : ''})` }
+  const by = `${esc(first(e.proposedBy.name))} (${hhmm(proposer(e).time)})`
+  if (toAnswer(e, mine)) return countered(e) ? `Changes suggested by ${by}` : `Invitation from ${by}`
+  return (countered(e) ? `${mine === proposer(e) ? 'Your' : `${by}’s`} changes · ` : '') + (accepted.length ? `${accepted.join(', ')} accepted · ` : '') + `waiting for ${waiting.join(', ')}`
 }
 
 // A called-off event stays on the Scores tab, saying why, until it's dismissed on this phone.
@@ -45,7 +53,7 @@ export function banners(events, me) {
     if (e.status === 'cancelled') return `<div class="card pebanner pe-cancelled"><div class="who"><strong>${eventTitle(e)}</strong><small>${eventSubtitle(e)}</small><small class="pestate">Off: ${esc(e.cancelNote)}</small></div><div class="peacts"><button class="linkbtn" data-pe-seen="${e.id}">OK</button></div></div>`
     const mine = myGroup(e, me.id)
     const acts = []
-    if (e.status === 'pending' && !mine.host && !mine.answer) acts.push(`<button class="linkbtn" data-pe-open="${e.id}">Answer</button>`)
+    if (toAnswer(e, mine)) acts.push(`<button class="linkbtn" data-pe-open="${e.id}">Answer</button>`)
     if (e.status === 'accepted') acts.push(`<button class="linkbtn" data-pe-board="${e.id}">Live board</button>`)
     if ((e.status === 'pending' || e.status === 'accepted') && e.createdBy.id === me.id) acts.push(`<button class="linkbtn" data-pe-cancel="${e.id}">Cancel</button>`)
     return `<div class="card pebanner pe-${e.status}"><div class="who"><strong>${eventTitle(e)}</strong><small>${eventSubtitle(e)}</small><small class="pestate">${stateLine(e, me)}</small></div><div class="peacts">${acts.join('')}</div></div>`
@@ -66,28 +74,30 @@ export function bindBanners(events, me) {
 
 /** The first invitation waiting for my group's answer that I haven't put off this session. */
 export function pendingInvite(events, me) {
-  return events.find(e => { const g = myGroup(e, me.id); return e.status === 'pending' && g && !g.host && !g.answer && !S.peDismissed.has(e.id) })
+  return events.find(e => toAnswer(e, myGroup(e, me.id)) && !S.peDismissed.has(e.id))
 }
 
 export function invitePopup(e, me) {
   if (!e) return
-  const h = host(e), others = invited(e), mine = me && myGroup(e, me.id)
-  // "… with your group and 17:00" when other groups are invited too
-  const rest = others.filter(g => g !== mine).map(g => hhmm(g.time))
+  const h = proposer(e), others = asked(e), mine = me && myGroup(e, me.id)
+  // "… with your group and 17:00" when other groups are asked too
+  const rest = e.groups.filter(g => g !== mine && g !== h).map(g => hhmm(g.time))
   const withWho = rest.length ? ` with your group and ${rest.join(', ')}` : ''
+  const who = esc(first(e.proposedBy.name))
   $('modal').innerHTML = `<div class="overlay" id="ovl"><div class="sheet" role="dialog" aria-labelledby="pet">
-    <h4 id="pet">${esc(first(e.createdBy.name))} from ${hhmm(h.time)} would like to play an event${withWho}</h4>
-    <p class="hint" style="margin:0 0 6px">${esc(first(e.createdBy.name))} has proposed these teams and this format for ${dayText(e)}. Do you agree?${others.length > 1 ? ' It starts once every group has accepted.' : ''}</p>
+    <h4 id="pet">${countered(e) ? `${who} from ${hhmm(h.time)} has suggested changes` : `${who} from ${hhmm(h.time)} would like to play an event${withWho}`}</h4>
+    <p class="hint" style="margin:0 0 6px">${who} has proposed these teams and this format for ${dayText(e)}. Do you agree?${others.length > 1 ? ' It starts once every group has accepted.' : ''}</p>
     <div class="card pecard">
       <div><span class="gm-lbl">Format</span><b>${EVENT_STYLES[e.style].name} · ${esc(eventFormatName(e.format))}</b></div>
       ${teamLists(e).map((t, i) => `<div><span class="gm-lbl" style="color:${['var(--green)', 'var(--loss)'][i % 2]}">${t.name}</span><span>${t.players}</span></div>`).join('')}
     </div>
     <p class="gerr" id="peerr" role="alert"></p>
     <div class="gm-btns"><button class="ghost" id="pe-no">Decline</button><button class="primary" id="pe-yes">Accept</button></div>
-    <button class="linkbtn" id="pe-later" style="align-self:center">Decide later</button>
+    <div class="gm-btns"><button class="ghost" id="pe-counter">Suggest changes</button><button class="ghost" id="pe-later">Decide later</button></div>
   </div></div>`
   const close = () => { $('modal').innerHTML = '' }
   $('pe-later').onclick = () => { S.peDismissed.add(e.id); close() }
+  $('pe-counter').onclick = async () => { close(); S.pe = counterDraft(e); S.sview = 'challenge'; await render(); top0() }
   $('ovl').onclick = ev => { if (ev.target.id === 'ovl') { S.peDismissed.add(e.id); close() } }
   const answer = accept => async () => {
     $('pe-yes').disabled = $('pe-no').disabled = true
@@ -101,7 +111,7 @@ export function invitePopup(e, me) {
     close()
     await render()
     top0()
-    toast(accept ? (others.length > 1 ? 'Accepted. It starts once every group has accepted' : `You’re on: ${eventTitle(e, true)}`) : `You declined ${first(e.createdBy.name)}’s invitation`)
+    toast(accept ? (others.length > 1 ? 'Accepted. It starts once every group has accepted' : `You’re on: ${eventTitle(e, true)}`) : `You declined ${first(e.proposedBy.name)}’s invitation`)
   }
   $('pe-yes').onclick = answer(true)
   $('pe-no').onclick = answer(false)

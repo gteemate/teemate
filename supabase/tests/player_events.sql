@@ -17,10 +17,10 @@ end $$;
 create function t.done() returns void language plpgsql as $$ begin reset role; end $$;
 grant execute on all functions in schema t to anon, authenticated;
 
--- Logins for members 0–12; member 0 is the only admin.
+-- Logins for members 0–12 (those that exist); member 12 is the only admin.
 insert into auth.users (id, email, aud, role) select gen_random_uuid(), 'pe-test-' || i || '@example.invalid', 'authenticated', 'authenticated' from generate_series(0, 12) i;
 update public.members m set user_id = (select id from auth.users where email = 'pe-test-' || m.id || '@example.invalid') where m.id between 0 and 12;
-update public.members set admin = (id = 0) where id between 0 and 12;
+update public.members set admin = (id = 12) where id between 0 and 12;
 
 -- Tee times 12 days out. A: 1, 3, 7 + guest. B: 2, 4, 5 + guest. C: 6, 8. D: 9, 10. E: 11, 12.
 create table t.slots (k text primary key, id bigint);
@@ -84,13 +84,13 @@ do $$ declare e text; v bigint; ab bigint[] := array[t.s('B')]; names jsonb := '
   perform t.act_as(8);  perform t.ok('See: a player in an invited group can', (select count(*) from public.player_events where id = v) = 1
                                                                         and (select count(*) from public.player_event_groups where event_id = v) = 3); perform t.done();
   perform t.act_as(9);  perform t.ok('See: someone in none of the groups cannot', (select count(*) from public.player_events where id = v) = 0); perform t.done();
-  perform t.act_as(0);  perform t.ok('See: an admin can', (select count(*) from public.player_events where id = v) = 1); perform t.done();
+  perform t.act_as(12); perform t.ok('See: an admin can', (select count(*) from public.player_events where id = v) = 1); perform t.done();
   perform t.act_as(4);  perform t.ok('Write: no direct edits', t.err(format($q$update public.player_events set status = 'accepted' where id = %s$q$, v)) is not null); perform t.done();
 
   -- every invited group must accept
   perform t.act_as(3);
   e := t.err(format('select public.respond_player_event(%s, true)', v));
-  perform t.ok('Answer: the host group cannot answer', e like '%Only an invited group%', e);
+  perform t.ok('Answer: the host group cannot answer', e like '%been asked%', e);
   perform t.done();
   perform t.act_as(4); perform public.respond_player_event(v, true); perform t.done();
   perform t.ok('Answer: one group accepting is not enough', (select status from public.player_events where id = v) = 'pending');
@@ -119,6 +119,50 @@ do $$ declare e text; v bigint; ab bigint[] := array[t.s('B')]; names jsonb := '
   perform t.act_as(6); perform public.respond_player_event(v, true); perform t.done();
   perform t.act_as(10); perform public.respond_player_event(v, false); perform t.done();
   perform t.ok('Answer: one group declining stops it', (select status from public.player_events where id = v) = 'declined');
+
+  -- counter-offers: an invited group suggests a different game; the host's group then has to accept
+  perform t.act_as(1);
+  v := public.create_player_event(t.s('A'), array[t.s('C')], 'fourball', 'best2');
+  perform t.done();
+  perform t.act_as(6);
+  perform public.counter_player_event(v, 'fourball', 'all4');
+  perform t.ok('Counter: the invited group can suggest a different format',
+    (select format = 'all4' and status = 'pending' and proposer_slot = t.s('C') and proposed_by = 6 from public.player_events where id = v));
+  e := t.err(format('select public.respond_player_event(%s, true)', v));
+  perform t.ok('Counter: you can''t accept your own suggestion', e like '%been asked%', e);
+  perform t.done();
+  perform t.act_as(3);
+  perform public.respond_player_event(v, true);
+  perform t.done();
+  perform t.ok('Counter: on once the host''s group accepts the suggestion', (select status from public.player_events where id = v) = 'accepted');
+  perform t.act_as(1); perform public.cancel_player_event(v); perform t.done();
+
+  -- three groups: a counter resets everyone's answers, and teams can change too
+  perform t.act_as(1);
+  v := public.create_player_event(t.s('A'), array[t.s('B'), t.s('C')], 'fourball', 'best2');
+  perform t.done();
+  perform t.act_as(4); perform public.respond_player_event(v, true); perform t.done();
+  perform t.act_as(8);
+  e := t.err(format($q$select public.counter_player_event(%s, 'teams', 'teamstab', '%s', '%s')$q$, v, names, t.teams(array['A','B','C'], 'all-A')));
+  perform t.ok('Counter: the suggestion is checked like a new proposal', e like '%same number of players%', e);
+  perform public.counter_player_event(v, 'teams', 'teamstab', names, t.teams(array['A','B','C'], 'alternate'));
+  perform t.done();
+  perform t.ok('Counter: new teams snapshotted and earlier acceptances reset',
+    (select style = 'teams' and team_names->>'A' = 'Blues' and (select count(*) from jsonb_array_elements(players) x where x->>'team' = 'A') = 5 from public.player_events where id = v)
+    and not exists (select 1 from public.player_event_groups where event_id = v and answer is not null));
+  perform t.act_as(1); perform public.respond_player_event(v, true); perform t.done();
+  perform t.ok('Counter: every other group has to accept again', (select status from public.player_events where id = v) = 'pending');
+  perform t.act_as(2); perform public.respond_player_event(v, true); perform t.done();
+  perform t.ok('Counter: on once they have', (select status from public.player_events where id = v) = 'accepted');
+  perform t.act_as(9);
+  e := t.err(format($q$select public.counter_player_event(%s, 'fourball', 'all4')$q$, v));
+  perform t.ok('Counter: someone not in it can''t', e like '%been asked%', e);
+  perform t.done();
+  perform t.act_as(4);
+  e := t.err(format($q$select public.counter_player_event(%s, 'fourball', 'all4')$q$, v));
+  perform t.ok('Counter: not once it''s agreed', e like '%already been agreed%', e);
+  perform t.done();
+  perform t.act_as(1); perform public.cancel_player_event(v); perform t.done();
 
   -- groups changed after proposing
   perform t.act_as(9);
