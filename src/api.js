@@ -304,7 +304,7 @@ const toCard = r => ({ id: r.id, createdBy: r.created_by, updatedAt: r.updated_a
 export async function getCurrentRound() {
   const meId = await myId()
   const r = must(await sb.from('rounds').select(ROUND_COLS).eq('date', todayIso())
-    .contains('lineup', [{ m: meId }]) // the starter is always on their own card
+    .contains('lineup', JSON.stringify([{ m: meId }])) // as JSON (an array would be sent as a Postgres array). The starter is always on their own card
     .order('id', { ascending: false }).limit(1).maybeSingle())
   return r && toView(toCard(r), meId)
 }
