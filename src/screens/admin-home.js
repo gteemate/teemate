@@ -3,7 +3,7 @@ import * as api from '../api.js'
 import { S } from '../state.js'
 import { $, esc, header, top0, render, toast } from '../ui.js'
 import { passwordSheet } from './login.js'
-import { isoDate, today, addDaysIso } from '../dates.js'
+import { isoDate, today, eventLastDay } from '../dates.js'
 import { buildLibrary, preferredGame } from '../games.js'
 import { bar } from './booking.js'
 
@@ -13,7 +13,7 @@ export async function load() {
     api.getTeeSheet(isoDate(today())), api.getMyBookings(), api.getBuddies(), api.getGameSettings(), api.getEvents(), api.getGuestPoints(),
     me.admin ? api.getAccessRequests() : [],
   ])
-  const upcoming = events.filter(e => addDaysIso(e.startDate, e.days - 1) >= isoDate(today())).length
+  const upcoming = events.filter(e => eventLastDay(e) >= isoDate(today())).length
   return { me, sheet, bookings, buddies, L: buildLibrary(games), upcoming, points, requests }
 }
 

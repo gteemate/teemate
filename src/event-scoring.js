@@ -192,3 +192,52 @@ export function scoreAdvanceEvent(event, holes, dayCards, player, allow) {
   })
   return { kind: 'individual', rows }
 }
+
+/* ---------- Leagues ---------- */
+
+/**
+ * A league over several weeks: each week a team scores the sum of its best `best_of` entered
+ * Stableford rounds; the season is the total of the weeks. Rounds count live, hole by hole.
+ *   event:   { weeks, bestOf, teams: [{ name, col }], team: { memberId: teamIndex } }
+ *   entries: [{ week, memberId, roundId }]      cards: { [roundId]: { lineup, scores, done } }
+ *   player(id) → { name, courseHcp }            allow: Stableford allowance (fraction)
+ */
+export function scoreLeague(event, holes, entries, cards, player, allow) {
+  const rounds = entries.map(en => {
+    const card = cards[en.roundId]
+    const k = card ? card.lineup.findIndex(x => x.m === en.memberId) : -1
+    const gross = holes.map((_, i) => (k >= 0 && card.done[i] ? card.scores[i][k] : null))
+    const thru = groupThru([{ gross }])
+    const ph = playingHandicaps([player(en.memberId).courseHcp], allow)[0]
+    let pts = 0
+    for (let i = 0; i < thru; i++) pts += stablefordPoints(gross[i], holes[i].par, shotsOnHole(ph, holes[i].si))
+    return { ...en, team: event.team[en.memberId], pts, thru }
+  })
+  const weeks = Array.from({ length: event.weeks }, (_, i) => i + 1)
+  const teams = event.teams.map((t, idx) => {
+    const perWeek = weeks.map(w => {
+      const mine = rounds.filter(r => r.team === idx && r.week === w).sort((a, b) => b.pts - a.pts)
+      const counted = mine.slice(0, event.bestOf)
+      return { week: w, score: counted.reduce((s, r) => s + r.pts, 0), entered: mine.length, counting: counted.map(r => r.memberId), live: mine.some(r => r.thru < 18) }
+    })
+    return { idx, name: t.name, col: t.col, perWeek, total: perWeek.reduce((s, w) => s + w.score, 0) }
+  })
+  rankBy(teams, t => t.total)
+  const players = Object.keys(event.team).map(Number).map(id => {
+    const mine = rounds.filter(r => r.memberId === id)
+    return { id, name: player(id).name, team: event.team[id], total: mine.reduce((s, r) => s + r.pts, 0), rounds: mine.length, perWeek: Object.fromEntries(mine.map(r => [r.week, { pts: r.pts, thru: r.thru }])) }
+  })
+  rankBy(players.filter(p => p.rounds), p => p.total)
+  players.sort((a, b) => (b.rounds > 0) - (a.rounds > 0) || b.total - a.total)
+  return { teams: teams.sort((a, b) => a.pos - b.pos), players }
+}
+
+function rankBy(list, value) {
+  const sorted = [...list].sort((a, b) => value(b) - value(a))
+  let pos = 0, prev = null
+  sorted.forEach((x, i) => {
+    if (value(x) !== prev) { pos = i + 1; prev = value(x) }
+    x.pos = pos
+    x.tied = sorted.filter(y => value(y) === value(x)).length > 1
+  })
+}

@@ -181,3 +181,35 @@ describe('events set up in advance', () => {
     expect(r.rows.map(x => [x.name, x.net])).toEqual([['Declan', -1], ['Ciarán', 1]])
   })
 })
+
+import { scoreLeague } from './event-scoring.js'
+describe('leagues', () => {
+  // Three teams, best 2 count each week. Everyone plays off 0 at 100%, so a par is 2 points.
+  const event = { weeks: 2, bestOf: 2, teams: [{ name: 'T1' }, { name: 'T2' }, { name: 'T3' }], team: { 1: 0, 2: 0, 3: 0, 4: 1, 5: 1, 6: 2 } }
+  const player = id => ({ name: `P${id}`, courseHcp: 0 })
+  // One card per entry: n holes saved, each at the given score.
+  const cardOf = (score, n) => ({ lineup: [{ m: 0 }], scores: FLAT.map(() => [score]), done: FLAT.map((_, i) => i < n) })
+  const mk = (rid, memberId, week, score, n) => [{ week, memberId, roundId: rid }, { [rid]: { ...cardOf(score, n), lineup: [{ m: memberId }] } }]
+  const parts = [
+    mk(1, 1, 1, 4, 18), // P1 week 1: 18 pars = 36
+    mk(2, 2, 1, 3, 18), // P2 week 1: 18 birdies = 54
+    mk(3, 3, 1, 5, 18), // P3 week 1: 18 bogeys = 18 → not in T1's best 2
+    mk(4, 4, 1, 4, 18), // P4 week 1: 36
+    mk(5, 1, 2, 4, 9),  // P1 week 2, live: 9 pars = 18 so far
+  ]
+  const entries = parts.map(p => p[0]), cards = Object.assign({}, ...parts.map(p => p[1]))
+  const r = scoreLeague(event, FLAT, entries, cards, player, 1)
+
+  it('each week a team scores its best N entered rounds', () => {
+    const t1 = r.teams.find(t => t.name === 'T1')
+    expect(t1.perWeek[0]).toMatchObject({ score: 90, entered: 3, counting: [2, 1] })
+    expect(t1.perWeek[1]).toMatchObject({ score: 18, entered: 1, live: true })
+  })
+  it('the season table is the total of the weeks', () => {
+    expect(r.teams.map(t => [t.name, t.total, t.pos])).toEqual([['T1', 108], ['T2', 36], ['T3', 0]].map(([n, s], i) => [n, s, i + 1]))
+  })
+  it('individual table: total points of every entered round', () => {
+    expect(r.players.slice(0, 4).map(p => [p.name, p.total, p.rounds, p.pos])).toEqual([['P1', 54, 2, 1], ['P2', 54, 1, 1], ['P4', 36, 1, 3], ['P3', 18, 1, 4]])
+    expect(r.players.find(p => p.name === 'P6')).toMatchObject({ rounds: 0, total: 0 })
+  })
+})

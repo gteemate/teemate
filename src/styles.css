@@ -469,3 +469,8 @@ img{max-width:100%}
 .matchedit .v{color:var(--muted);font-weight:500}
 .swapname{background:none;border:0;padding:2px 3px;border-radius:6px;font:inherit;color:inherit;cursor:pointer}
 .swapname.on{background:var(--leaf);outline:2px solid var(--leaf-line)}
+/* league entry on the scorecard */
+.lgbox{padding:12px 14px;display:flex;flex-direction:column;gap:8px;border-left:5px solid var(--loss)}
+.lgrow{display:flex;justify-content:space-between;align-items:center;gap:8px;font-weight:600}
+.lgbtn{flex:0 0 auto;padding:7px 14px;font-size:14px;border-radius:12px}
+.lgin{color:var(--win)}

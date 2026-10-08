@@ -2,7 +2,7 @@
 import * as api from '../api.js'
 import { S } from '../state.js'
 import { $, esc, header, top0, render } from '../ui.js'
-import { addDaysIso, eventDates, isoDate, today } from '../dates.js'
+import { eventDates, eventLastDay, isoDate, today } from '../dates.js'
 import { EVENT_TYPES } from './event-editor.js'
 import { toAdmin } from './nav.js'
 
@@ -11,7 +11,7 @@ export async function load() {
   return { events, me }
 }
 
-export const lastDay = e => addDaysIso(e.startDate, e.days - 1)
+export const lastDay = eventLastDay
 export const canEdit = (e, me) => me.admin || (e.createdBy?.id === me.id && e.startDate > isoDate(today()))
 
 export function draw({ events, me }) {
@@ -24,9 +24,10 @@ export function draw({ events, me }) {
       live ? '<span class="pill" style="background:var(--win)">On now</span>' : '',
       e.club ? '<span class="pill" style="background:var(--loss)">Club event</span>' : '',
       mine ? '<span class="pill">Yours</span>' : playing ? `<span class="pill ghosty">You’re playing${e.createdBy ? ` · set up by ${esc(e.createdBy.name.split(' ')[0])}` : ''}</span>` : '',
-      `<span class="pill ghosty">${e.players.length} players${e.style !== 'individual' ? ` · ${esc(e.A.name)} v ${esc(e.B.name)}` : ''}</span>`,
+      e.style === 'league' ? `<span class="pill ghosty">${e.teams.length} teams · ${e.players.length} players · best ${e.bestOf} count</span>`
+        : `<span class="pill ghosty">${e.players.length} players${e.style !== 'individual' ? ` · ${esc(e.A.name)} v ${esc(e.B.name)}` : ''}</span>`,
     ].join('')
-    return `<div class="card evcard"><div class="who"><strong>${esc(e.name)}</strong><small>${EVENT_TYPES[e.style].name} · ${eventDates(e.startDate, e.days)}</small><div class="pillrow">${pills}</div></div>
+    return `<div class="card evcard"><div class="who"><strong>${esc(e.name)}</strong><small>${EVENT_TYPES[e.style].name} · ${e.style === 'league' ? `${e.weeks} weeks from ${eventDates(e.startDate, 1)}` : eventDates(e.startDate, e.days)}</small><div class="pillrow">${pills}</div></div>
       <div class="peacts"><button class="linkbtn" data-view="${e.id}">${lastDay(e) < t ? 'Results' : 'View'}</button>${canEdit(e, me) ? `<button class="linkbtn" data-edit="${e.id}">Edit</button>` : ''}</div></div>`
   }
   $('main').innerHTML = `<div class="screen">

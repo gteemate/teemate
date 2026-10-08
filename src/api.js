@@ -369,10 +369,11 @@ export async function getCardsForTeeTimes(date, slotIds) {
 
 /* ---------- Events set up in advance ---------- */
 
-const EVENT_COLS = 'id, name, team_a, team_b, club, start_date, days, style, fmt, players, team, matches, creator:created_by(id, name)'
+const EVENT_COLS = 'id, name, team_a, team_b, club, start_date, days, style, fmt, players, team, matches, weeks, best_of, league_teams, creator:created_by(id, name)'
 const toEvent = e => ({
   id: e.id, name: e.name, A: e.team_a, B: e.team_b, club: e.club, startDate: e.start_date, days: e.days,
   style: e.style, fmt: e.fmt, players: e.players, team: e.team, matches: e.matches, createdBy: e.creator,
+  weeks: e.weeks, bestOf: e.best_of, teams: e.league_teams, // leagues
 })
 
 /** Events I can see: club events, ones I set up, and ones I'm playing in (RLS decides). */
@@ -385,6 +386,7 @@ export async function saveEvent(e) {
   const row = {
     name: e.name, team_a: e.A, team_b: e.B, club: !!e.club, start_date: e.startDate, days: e.days,
     style: e.style, fmt: e.fmt, players: e.players, team: e.team, matches: e.matches,
+    weeks: e.weeks ?? null, best_of: e.bestOf ?? null, league_teams: e.teams ?? null,
   }
   if (e.id) {
     const rows = must(await sb.from('events').update(row).eq('id', e.id).select('id'))
@@ -402,4 +404,28 @@ export async function deleteEvent(id) {
 /** Everyone's cards on some dates (for scoring events): [{ date, lineup, scores, done }]. */
 export async function getCardsOn(dates) {
   return must(await sb.from('rounds').select('date, lineup, scores, done, updated_at').in('date', dates).order('updated_at'))
+}
+
+/* ---------- Leagues ---------- */
+
+/** League entries: [{ eventId, week, memberId, roundId }] (only leagues I can see). */
+export async function getLeagueEntries(eventIds) {
+  if (!eventIds.length) return []
+  return must(await sb.from('league_entries').select('event_id, week, member_id, round_id').in('event_id', eventIds))
+    .map(r => ({ eventId: r.event_id, week: r.week, memberId: r.member_id, roundId: r.round_id }))
+}
+
+/** Cards by id: { [id]: { lineup, scores, done } } */
+export async function getCardsById(ids) {
+  if (!ids.length) return {}
+  return Object.fromEntries(must(await sb.from('rounds').select('id, lineup, scores, done').in('id', ids)).map(r => [r.id, r]))
+}
+
+/** Enter players on my card into a league this week (before the first hole is saved). Returns the week. */
+export async function enterLeague(roundId, eventId, memberIds) {
+  return must(await sb.rpc('enter_league', { p_round: roundId, p_event: eventId, p_members: memberIds }))
+}
+
+export async function leaveLeague(roundId, eventId, memberIds) {
+  must(await sb.rpc('leave_league', { p_round: roundId, p_event: eventId, p_members: memberIds }))
 }

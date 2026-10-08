@@ -12,7 +12,7 @@ export const S = {
   // player events: draft being set up, and invitations put off this session
   pe: null, peDismissed: new Set(), peId: null, // peId: event shown on the live board
   // leaderboard
-  lbm: 'net', lbv: 'event', evDay: 1,
+  lbm: 'net', lbv: 'event', evDay: 1, lgView: 'teams', lgWeek: null, // league board: 'teams' or 'individual'; lgWeek null = whole season
   // tee times and booking
   day: 0, filter: 'all', slotId: null, picked: [], guests: [], gmodal: false, lastBooking: null,
   // buddies
@@ -22,5 +22,5 @@ export const S = {
   // members & access (admin)
   accEdit: null, accQ: '', accConfirm: false, accPrefill: null, // accEdit: null | 'new' | member id
   // events admin
-  evId: null, evStep: 1, ev: null, evQ: '', evSwap: null, // event being set up (draft), its step, player search, a pending swap
+  evId: null, evStep: 1, ev: null, evQ: '', evSwap: null, evTeam: 0, // event being set up (draft), its step, player search, a pending swap
 }

@@ -4,15 +4,20 @@ import * as api from '../api.js'
 import { S } from '../state.js'
 import { $, esc, ini, sur, header, keepScroll, render, top0 } from '../ui.js'
 import { courseHandicap, fmtPts, toPar } from '../scoring.js'
-import { scoreAdvanceEvent } from '../event-scoring.js'
+import { scoreAdvanceEvent, scoreLeague } from '../event-scoring.js'
 import { buildLibrary, teeRating, EVENT_ALLOWANCE_GAME } from '../games.js'
-import { addDaysIso, eventDates, isoDate, today, fromIso, longDay } from '../dates.js'
+import { addDaysIso, eventDates, isoDate, today, fromIso, longDay, leagueWeek } from '../dates.js'
 import { EVENT_TYPES, eventFormat } from './event-editor.js'
 
 export async function loadBoard(id) {
   const [events, members, course, games] = await Promise.all([api.getEvents(), api.getMembers(), api.getCourse(), api.getGameSettings()])
   const e = events.find(x => x.id === id)
   if (!e) return { e: null }
+  if (e.style === 'league') {
+    const entries = await api.getLeagueEntries([e.id])
+    const cards = await api.getCardsById([...new Set(entries.map(x => x.roundId))])
+    return { e, members, course, L: buildLibrary(games), entries, cards, me: await api.getMe() }
+  }
   const dates = Array.from({ length: e.days }, (_, i) => addDaysIso(e.startDate, i))
   const cards = await api.getCardsOn(dates)
   const dayCards = Object.fromEntries(dates.map((d, i) => [i + 1, cards.filter(c => c.date === d)]))
@@ -22,7 +27,9 @@ export async function loadBoard(id) {
 /** Which day of the event today is (1-based), clamped to the event's days. */
 export const dayOf = e => Math.min(e.days, Math.max(1, Math.round((fromIso(isoDate(today())) - fromIso(e.startDate)) / 864e5) + 1))
 
-export function boardHtml({ e, members, course, L, dayCards, me }, top = '') {
+export function boardHtml(data, top = '') {
+  if (data.e.style === 'league') return leagueHtml(data, top)
+  const { e, members, course, L, dayCards, me } = data
   const tee = teeRating(course)
   const m = id => members.find(x => x.id === id)
   const player = id => ({ name: m(id)?.name ?? 'Former member', courseHcp: courseHandicap(m(id)?.hcp ?? 0, tee) })
@@ -70,6 +77,52 @@ export function boardHtml({ e, members, course, L, dayCards, me }, top = '') {
 
 export function bindBoard() {
   document.querySelectorAll('[data-evday]').forEach(b => (b.onclick = () => { S.evDay = +b.dataset.evday; keepScroll(render) }))
+  document.querySelectorAll('[data-lgview]').forEach(b => (b.onclick = () => { S.lgView = b.dataset.lgview; keepScroll(render) }))
+  document.querySelectorAll('[data-lgweek]').forEach(b => (b.onclick = () => { S.lgWeek = b.dataset.lgweek === 'season' ? 'season' : +b.dataset.lgweek; keepScroll(render) }))
+}
+
+// A league: team table (season or one week) and an individual table.
+function leagueHtml({ e, members, course, L, entries, cards, me }, top) {
+  const tee = teeRating(course), m = id => members.find(x => x.id === id)
+  const player = id => ({ name: m(id)?.name ?? 'Former member', courseHcp: courseHandicap(m(id)?.hcp ?? 0, tee) })
+  const g = L.lib.stab, allow = g?.pct == null ? 1 : g.pct / 100
+  const r = scoreLeague(e, course.holes, entries.filter(x => x.eventId === e.id), cards, player, allow)
+  const now = Math.min(e.weeks, leagueWeek(e, isoDate(today())))
+  const wk = S.lgWeek === 'season' || !S.lgWeek ? 'season' : Math.min(S.lgWeek, e.weeks)
+  const view = S.lgView === 'individual' ? 'individual' : 'teams'
+  const weekDates = w => `${eventDates(addDaysIso(e.startDate, (w - 1) * 7), 1)} – ${eventDates(addDaysIso(e.startDate, w * 7 - 1), 1)}`
+  const chips = `<div class="tabs-pill" role="group" aria-label="Week"><button data-lgweek="season" aria-pressed="${wk === 'season'}">Season</button>${Array.from({ length: e.weeks }, (_, i) => `<button data-lgweek="${i + 1}" aria-pressed="${wk === i + 1}">Wk ${i + 1}${i + 1 === now ? ' ●' : ''}</button>`).join('')}</div>`
+  const seg = `<div class="seg" role="group"><button data-lgview="teams" aria-pressed="${view === 'teams'}">Teams</button><button data-lgview="individual" aria-pressed="${view === 'individual'}">Individual</button></div>`
+  const myTeam = e.team[me.id]
+  let body
+  if (view === 'teams') {
+    const rows = wk === 'season' ? r.teams : [...r.teams].sort((a, b) => b.perWeek[wk - 1].score - a.perWeek[wk - 1].score)
+    let pos = 0, prev = null
+    body = `<div class="lblist">${rows.map((t, i) => {
+      const v = wk === 'season' ? t.total : t.perWeek[wk - 1].score
+      if (v !== prev) { pos = i + 1; prev = v }
+      const w = wk === 'season' ? null : t.perWeek[wk - 1]
+      const sub = wk === 'season' ? `${t.perWeek.filter(x => x.entered).length} of ${e.weeks} weeks played · ${e.team ? Object.values(e.team).filter(x => x === t.idx).length : 0} players`
+        : `${w.entered} entered · best ${Math.min(e.bestOf, w.entered)} count${w.live ? ' <span class="livedot">● live</span>' : ''}`
+      return `<div class="lbrow${t.idx === myTeam ? ' me' : ''}"><span class="lpos">${pos}</span><span class="av" style="border-color:${t.col}">${ini(t.name)}</span><span class="who"><strong>${esc(t.name)}${t.idx === myTeam ? ' (your team)' : ''}</strong><small>${sub}</small></span><span class="lval">${v}</span></div>`
+    }).join('')}</div>`
+  } else {
+    const rows = r.players.filter(p => (wk === 'season' ? p.rounds : p.perWeek[wk]))
+      .map(p => ({ ...p, v: wk === 'season' ? p.total : p.perWeek[wk].pts, thru: wk === 'season' ? null : p.perWeek[wk].thru }))
+      .sort((a, b) => b.v - a.v)
+    let pos = 0, prev = null
+    body = rows.length ? `<div class="lblist">${rows.map((p, i) => {
+      if (p.v !== prev) { pos = i + 1; prev = p.v }
+      const t = e.teams[p.team]
+      return `<div class="lbrow${p.id === me.id ? ' me' : ''}"><span class="lpos">${pos}</span><span class="av" style="border-color:${t?.col}">${ini(p.name)}</span><span class="who"><strong>${esc(p.name)}${p.id === me.id ? ' (you)' : ''}</strong><small>${esc(t?.name ?? '')} · ${wk === 'season' ? `${p.rounds} round${p.rounds === 1 ? '' : 's'}` : p.thru === 18 ? 'Finished' : `thru ${p.thru} <span class="livedot">● live</span>`}</small></span><span class="lval">${p.v}</span></div>`
+    }).join('')}</div>` : '<div class="empty-state">No rounds entered yet.</div>'
+  }
+  const notYet = now === 0
+  return `<div class="screen">${top}
+    <div class="matchline"><b style="color:var(--ink)">League · best ${e.bestOf} Stableford rounds a week</b><span>${e.weeks} weeks · ${wk === 'season' ? `${eventDates(e.startDate, 1)} – ${eventDates(addDaysIso(e.startDate, e.weeks * 7 - 1), 1)}` : `Week ${wk}: ${weekDates(wk)}`}</span></div>
+    ${notYet ? `<div class="hcpnote">Starts ${longDay(fromIso(e.startDate))}. Players enter a round from their scorecard before they tee off.</div>` : ''}
+    ${seg}${chips}${body}
+    <div class="hint" style="text-align:center">Players enter one round a week from their scorecard, before the first hole. Points update as holes are saved.</div></div>`
 }
 
 // As an Admin → Events screen (View / Results).

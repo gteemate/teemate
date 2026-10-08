@@ -5,14 +5,14 @@ import { S } from '../state.js'
 import { $, esc, ini, header, keepScroll, top0, render } from '../ui.js'
 import { courseHandicap, roundSummary, toPar } from '../scoring.js'
 import { teeRating } from '../games.js'
-import { longDay, today, isoDate, addDaysIso } from '../dates.js'
+import { longDay, today, isoDate, eventLastDay } from '../dates.js'
 import { loadBoard, boardHtml, bindBoard } from './event-board.js'
 
 export async function load() {
   const [all, me] = await Promise.all([api.getEvents(), api.getMe()])
   const t = isoDate(today())
   // Events on today that are for me to see here: club events, or ones I'm in or set up.
-  const events = all.filter(e => e.startDate <= t && addDaysIso(e.startDate, e.days - 1) >= t && (e.club || e.players.includes(me.id) || e.createdBy?.id === me.id))
+  const events = all.filter(e => e.startDate <= t && eventLastDay(e) >= t && (e.club || e.players.includes(me.id) || e.createdBy?.id === me.id))
   if (S.lbv === 'event') S.lbv = events[0]?.id ?? 'today' // first visit: show the event if there is one
   const ev = events.find(e => e.id === S.lbv)
   if (ev) return { events, board: await loadBoard(ev.id) }

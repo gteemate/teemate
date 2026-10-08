@@ -13,3 +13,7 @@ export const hhmm = m => `${p2(Math.floor(m / 60))}:${p2(m % 60)}`
 export const addDaysIso = (iso, n) => { const d = fromIso(iso); d.setDate(d.getDate() + n); return isoDate(d) }
 /** "Sat 17 Oct" or "Sat 17 – Sun 18 Oct" for an event's days. */
 export const eventDates = (iso, days) => (days > 1 ? `${longDay(fromIso(iso))} – ${longDay(fromIso(addDaysIso(iso, days - 1)))}` : longDay(fromIso(iso)))
+/** Last day of an event: the last of its days, or the Sunday of a league's final week. */
+export const eventLastDay = e => addDaysIso(e.startDate, e.style === 'league' ? e.weeks * 7 - 1 : e.days - 1)
+/** Which league week a date falls in (1-based), or 0 before it starts. */
+export const leagueWeek = (e, iso) => (iso < e.startDate ? 0 : Math.floor((fromIso(iso) - fromIso(e.startDate)) / (7 * 864e5)) + 1)

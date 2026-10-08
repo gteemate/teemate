@@ -2,7 +2,7 @@
 import * as api from '../api.js'
 import { S } from '../state.js'
 import { $, esc, ini, sur, header, keepScroll, top0, render, toast, parseHcp, fmtHcp } from '../ui.js'
-import { today, hhmm } from '../dates.js'
+import { today, hhmm, isoDate, eventLastDay, leagueWeek } from '../dates.js'
 import { banners, bindBanners, pendingInvite, invitePopup } from './player-events.js'
 import { holeGrid } from '../course-art.js'
 import { courseHandicap, playingHandicaps, holeCalc, betterBallWinner, gameState, upText, toPar, sixPointer } from '../scoring.js'
@@ -26,10 +26,14 @@ export function lineupFromTeeTime(slot, meId) {
 }
 
 export async function load() {
-  const [course, members, games, me, teeTimes, events] = await Promise.all([api.getCourse(), api.getMembers(), api.getGameSettings(), api.getMe(), api.getMyTeeTimes(today()), api.getMyPlayerEvents()])
+  const [course, members, games, me, teeTimes, events, allEvents] = await Promise.all([api.getCourse(), api.getMembers(), api.getGameSettings(), api.getMe(), api.getMyTeeTimes(today()), api.getMyPlayerEvents(), api.getEvents()])
   round ??= await api.getCurrentRound()
   const guests = round ? await api.getGuests(round.lineup.filter(e => e.g != null).map(e => e.g)) : []
-  return { course, members, guests, L: buildLibrary(games), me, teeTimes, events }
+  // Leagues running this week that someone on this card plays in.
+  const t = isoDate(today())
+  const leagues = round ? allEvents.filter(e => e.style === 'league' && e.startDate <= t && eventLastDay(e) >= t && round.lineup.some(x => e.players.includes(x.m))) : []
+  const entries = await api.getLeagueEntries(leagues.map(e => e.id))
+  return { course, members, guests, L: buildLibrary(games), me, teeTimes, events, leagues, entries }
 }
 
 // Player event banners go at the top of the Scores tab; the "play an event" link at the bottom.
@@ -52,7 +56,7 @@ export function setRound(r) {
 
 const CHEV = '<svg class="cv" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>'
 
-export function draw({ course, members, guests, L, me, teeTimes, events }) {
+export function draw({ course, members, guests, L, me, teeTimes, events, leagues, entries }) {
   if (!round) { startScreen({ course, L, me, teeTimes, events }); return bindEvents(events, me) }
   // Players on the card. A guest without a handicap plays off 0 until someone sets it.
   const ps = round.lineup.map(e => {
@@ -143,7 +147,7 @@ export function draw({ course, members, guests, L, me, teeTimes, events }) {
 
   const fin = gs.finished && round.done[i]
   const hcpNote = noHcp.length ? `<div class="hcpnote">${noHcp.map(p => esc(p.name.split(' ')[0])).join(' and ')} ${noHcp.length > 1 ? 'have' : 'has'} no handicap yet, so ${noHcp.length > 1 ? 'they play' : 'plays'} off an index of 0 until you set one. Shots and points update as soon as you do.</div>` : ''
-  $('main').innerHTML = `<div class="screen">${eventsTop(events, me)}${grid}${hcpNote}
+  $('main').innerHTML = `<div class="screen">${eventsTop(events, me)}${leagueBox(leagues, entries, members)}${grid}${hcpNote}
     <div class="matchline"><button class="gamesel" id="gchip" aria-expanded="${!!S.gmenu}" aria-controls="gmenu">${esc(LG.name)}${CHEV}</button><b>${esc(line)}</b></div>
     ${gamebar}
     ${body}
@@ -171,6 +175,7 @@ export function draw({ course, members, guests, L, me, teeTimes, events }) {
   }
 
   bindEvents(events, me)
+  bindLeagueBox(leagues)
 
   // Guest handicaps can be set or changed at any time; everything recalculates.
   document.querySelectorAll('[data-gh]').forEach(b => (b.onclick = () => guestHcpSheet(ps[+b.dataset.gh])))
@@ -219,6 +224,44 @@ function standings(ps, gs, g) {
   const rows = ps.map((p, k) => ({ p, k, v: gs.totals[k] })).sort((a, b) => (g === 'stroke' ? a.v - b.v : b.v - a.v))
   const unit = g === 'stab' || g === 'six' ? 'pts' : g === 'skins' ? 'skins' : 'net'
   return `<div class="card list">${rows.map((r, n) => `<div class="lrow" style="grid-template-columns:24px 44px 1fr auto"><span style="font-weight:800;text-align:center">${n + 1}</span><span class="av">${ini(r.p.name)}</span><span class="who"><strong>${esc(r.p.name)}${r.k === 0 ? ' (you)' : ''}</strong></span><span class="hcp">${g === 'stroke' ? toPar(r.v) : r.v}<small>${unit}</small></span></div>`).join('')}</div>`
+}
+
+// League entry: players choose before they play. One entered round a week; locked after hole 1.
+function leagueBox(leagues, entries, members) {
+  if (!leagues.length) return ''
+  const started = round.done.some(Boolean)
+  return leagues.map(e => {
+    const week = leagueWeek(e, isoDate(today()))
+    const ids = round.lineup.map(x => x.m).filter(id => e.players.includes(id))
+    const rows = ids.map(id => {
+      const here = entries.some(x => x.eventId === e.id && x.memberId === id && x.roundId === round.id)
+      const elsewhere = !here && entries.some(x => x.eventId === e.id && x.memberId === id && x.week === week)
+      const name = esc(members.find(m => m.id === id)?.name ?? '')
+      const btn = elsewhere ? '<span class="hint">entered another round this week</span>'
+        : started ? `<b class="${here ? 'lgin' : 'hint'}">${here ? 'Entered ✓' : 'Not entered'}</b>`
+        : `<button class="${here ? 'primary' : 'ghost'} lgbtn" data-lg-e="${e.id}" data-lg-m="${id}" data-lg-on="${here}">${here ? 'Entered ✓' : 'Enter'}</button>`
+      return `<div class="lgrow"><span>${name}</span>${btn}</div>`
+    }).join('')
+    return `<div class="card lgbox"><div class="pinhead"><b>🏆 ${esc(e.name)} · week ${week}</b><span class="hint">${started ? 'locked' : 'before you tee off'}</span></div>${rows}
+      ${started ? '' : `<span class="hint">Enter now if this round counts for the league. One round a week each; entries lock when hole 1 is saved.</span>`}</div>`
+  }).join('')
+}
+function bindLeagueBox(leagues) {
+  document.querySelectorAll('[data-lg-e]').forEach(b => (b.onclick = async () => {
+    const e = leagues.find(x => x.id === +b.dataset.lgE), id = +b.dataset.lgM, on = b.dataset.lgOn === 'true'
+    b.disabled = true
+    try {
+      if (!round.id) await api.saveRound(round) // the card needs to exist to be entered
+      if (on) await api.leaveLeague(round.id, e.id, [id])
+      else await api.enterLeague(round.id, e.id, [id])
+    } catch (err) {
+      toast(err.message)
+      b.disabled = false
+      return
+    }
+    await keepScroll(render)
+    toast(on ? 'Entry removed' : `Entered in ${e.name}`)
+  }))
 }
 
 export function getRound() {

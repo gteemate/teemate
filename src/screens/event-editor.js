@@ -9,14 +9,21 @@ export const EVENT_TYPES = {
   ryder: { name: 'Ryder Cup', desc: 'Two teams. Pairs play better-ball matches, 1 point each.', formats: [['bbl', 'Better ball · off the low'], ['bbstab', 'Better ball · Stableford'], ['bbscr', 'Better ball · scratch']] },
   teams: { name: 'Team Stableford', desc: 'Two teams. Everyone’s Stableford points count for their team.', formats: [['teamstab', 'Team Stableford']] },
   individual: { name: 'Individual', desc: 'A leaderboard of everyone: Stableford or net.', formats: [['stab', 'Stableford'], ['net', 'Net strokeplay']] },
+  league: { name: 'League', desc: 'Many teams over several weeks. Each week a team’s best Stableford rounds count. Admins only.', formats: [['beststab', 'Best Stableford rounds']], adminOnly: true },
 }
+const TEAM_COLOURS = ['#19335A', '#762A43', '#0B6E4F', '#C9A227', '#5B3E96', '#D2691E', '#2A7AB0', '#8B1E3F', '#3D7A2E', '#555B6E', '#B5446E', '#1F8A8A']
+export const leagueTeams = (n, existing = []) => Array.from({ length: n }, (_, i) => existing[i] ?? { name: `Team ${i + 1}`, col: TEAM_COLOURS[i % TEAM_COLOURS.length], size: 12 })
 export const eventFormat = e => EVENT_TYPES[e.style].formats.find(f => f[0] === e.fmt)?.[1] ?? ''
 
-const STEPS = { 1: 'Details', 2: 'Players', 3: 'Teams', 4: 'Draw', 5: 'Review' }
-const stepsFor = style => (style === 'ryder' ? [1, 2, 3, 4, 5] : style === 'teams' ? [1, 2, 3, 5] : [1, 2, 5])
+const STEPS = { 1: 'Details', 2: 'Players', 3: 'Teams', 4: 'Draw', 5: 'Review', 6: 'Teams & players' }
+const stepsFor = style => (style === 'ryder' ? [1, 2, 3, 4, 5] : style === 'teams' ? [1, 2, 3, 5] : style === 'league' ? [1, 6, 5] : [1, 2, 5])
 
+// Members and events are loaded once when the wizard opens, so each tap redraws instantly
+// (and nothing being typed is overwritten by a slow reload).
+let cache = null
 export async function load() {
-  const [events, members, me] = await Promise.all([api.getEvents(), api.getMembers(), api.getMe()])
+  if (!S.ev || !cache) cache = await Promise.all([api.getEvents(), api.getMembers(), api.getMe()])
+  const [events, members, me] = cache
   if (!S.ev) {
     const e = S.evId && events.find(x => x.id === S.evId)
     S.ev = e ? structuredClone(e) : {
@@ -27,7 +34,7 @@ export async function load() {
   return { members, me }
 }
 
-const leave = async () => { S.ev = null; S.evQ = ''; S.evSwap = null; S.aview = 'events'; await render(); top0() }
+const leave = async () => { S.ev = null; S.evQ = ''; S.evSwap = null; cache = null; S.aview = 'events'; await render(); top0() }
 const teamOf = (ev, id) => ev.team[id]
 const sideIds = (ev, t) => ev.players.filter(id => teamOf(ev, id) === t)
 
@@ -35,7 +42,7 @@ const sideIds = (ev, t) => ev.players.filter(id => teamOf(ev, id) === t)
 function problem(ev, step) {
   if (step === 1) {
     if (!ev.name.trim()) return 'Give the event a name.'
-    if (!ev.startDate || ev.startDate < isoDate(today())) return 'Pick a first day from today on.'
+    if (!ev.startDate || (!ev.id && ev.startDate < isoDate(today()))) return 'Pick a first day from today on.'
   }
   if (step === 2) {
     if (ev.players.length < 2) return 'Pick at least two players.'
@@ -81,12 +88,14 @@ export function draw({ members, me }) {
     body = `<div class="card evsec"><h4>Event</h4>
         <label for="ev-name">Name</label><input id="ev-name" value="${esc(ev.name)}" maxlength="60" placeholder="e.g. Saturday Fourball Cup">
         <div class="tnames"><div><label for="ev-date">First day</label><input id="ev-date" type="date" value="${ev.startDate}" min="${isoDate(today())}"></div>
-          <div><label>Days</label><div class="daychips">${[1, 2, 3].map(n => `<button data-days="${n}" aria-pressed="${ev.days === n}">${n}</button>`).join('')}</div></div></div>
-        <span class="hint">${ev.startDate ? eventDates(ev.startDate, ev.days) : ''}${ev.days > 1 ? '. Points add up across the days.' : ''}</span></div>
+          ${ev.style === 'league' ? '' : `<div><label>Days</label><div class="daychips">${[1, 2, 3].map(n => `<button data-days="${n}" aria-pressed="${ev.days === n}">${n}</button>`).join('')}</div></div>`}</div>
+        ${ev.style === 'league' ? '<span class="hint">Week 1 starts on this day; each week runs seven days.</span>' : `<span class="hint">${ev.startDate ? eventDates(ev.startDate, ev.days) : ''}${ev.days > 1 ? '. Points add up across the days.' : ''}</span>`}</div>
+      ${ev.style === 'league' ? `<div class="card evsec"><h4>League</h4>${[['weeks', 'Weeks', 1, 26], ['bestOf', 'Scores that count per team each week', 1, 30], ['nteams', 'Number of teams', 2, 20], ['size', 'Players per team', 1, 30]].map(([k, l, lo, hi]) => `<div class="gedit"><span class="hint">${l}</span><span class="stepper sm"><button data-lg="${k}" data-d="-1" data-lo="${lo}" aria-label="Fewer">−</button><output>${k === 'nteams' ? ev.teams.length : k === 'size' ? ev.teams[0]?.size ?? 12 : ev[k]}</output><button data-lg="${k}" data-d="1" data-hi="${hi}" aria-label="More">+</button></span></div>`).join('')}
+        <span class="hint">${ev.weeks} weeks from ${eventDates(ev.startDate, 1)} to ${eventDates(addDaysIso(ev.startDate, ev.weeks * 7 - 1), 1)}. Each week a team’s best ${ev.bestOf} Stableford rounds count; the season table is the total. Players choose before they play whether a round is entered, one per week.</span></div>` : ''}
       <h3>Format</h3>
-      <div class="games">${Object.entries(EVENT_TYPES).map(([k, t]) => `<button class="gamecard" role="radio" aria-checked="${ev.style === k}" data-style="${k}"><span class="radio"></span><span class="who"><strong>${t.name}</strong><small>${t.desc}</small></span></button>`).join('')}</div>
+      <div class="games">${Object.entries(EVENT_TYPES).filter(([, t]) => !t.adminOnly || me.admin).map(([k, t]) => `<button class="gamecard" role="radio" aria-checked="${ev.style === k}" data-style="${k}"><span class="radio"></span><span class="who"><strong>${t.name}</strong><small>${t.desc}</small></span></button>`).join('')}</div>
       ${EVENT_TYPES[ev.style].formats.length > 1 ? `<div class="card evsec"><label for="ev-fmt">${ev.style === 'ryder' ? 'Match format' : 'Scoring'}</label><select id="ev-fmt" class="plainsel">${EVENT_TYPES[ev.style].formats.map(([k, n]) => `<option value="${k}" ${ev.fmt === k ? 'selected' : ''}>${n}</option>`).join('')}</select></div>` : ''}
-      ${me.admin ? `<div class="card evsec"><div class="actrow"><span class="who"><strong>Club event</strong><small>Everyone in the club sees it on the Leaderboard</small></span><button class="switch" role="switch" aria-checked="${ev.club}" id="ev-club" aria-label="Club event"><span></span></button></div>
+      ${ev.style === 'league' ? '<div class="hint">Only the league’s players (and admins) see a league.</div>' : me.admin ? `<div class="card evsec"><div class="actrow"><span class="who"><strong>Club event</strong><small>Everyone in the club sees it on the Leaderboard</small></span><button class="switch" role="switch" aria-checked="${ev.club}" id="ev-club" aria-label="Club event"><span></span></button></div>
         <span class="hint">${ev.club ? 'Everyone in the club will see this event.' : 'Only the players in it will see this event.'}</span></div>` : '<div class="hint">Only the players you pick will see this event.</div>'}`
   } else if (step === 2) {
     const q = (S.evQ || '').trim().toLowerCase()
@@ -109,6 +118,29 @@ export function draw({ members, me }) {
     body = `<div class="hint">Each match is a four-ball. Players book a tee time together as usual; the board scores each match from their cards. Tap two players on the same team to swap them.</div>
       ${Array.from({ length: ev.days }, (_, i) => i + 1).map(d => `<div class="card evsec"><div class="pinhead"><h4 style="font-size:20px">Day ${d} · ${eventDates(addDaysIso(ev.startDate, d - 1), 1)}</h4><button class="linkbtn" data-draw="${d}">${(ev.matches[d] ?? []).length ? 'Redraw' : 'Draw matches'}</button></div>
         ${(ev.matches[d] ?? []).map((m, k) => `<div class="matchedit"><span style="color:${ev.A.col}">${who(d, m.a[0])} &amp; ${who(d, m.a[1])}</span><span class="v">v</span><span class="r" style="color:${ev.B.col}">${who(d, m.b[0])} &amp; ${who(d, m.b[1])}</span></div>`).join('') || '<span class="hint">Not drawn yet.</span>'}</div>`).join('')}`
+  } else if (step === 6) {
+    const t = Math.min(S.evTeam ?? 0, ev.teams.length - 1), team = ev.teams[t]
+    const inTeam = k => ev.players.filter(id => ev.team[id] === k)
+    const q = (S.evQ || '').trim().toLowerCase()
+    const list = members.filter(m => !q || m.name.toLowerCase().includes(q) || (m.gui || '').includes(q))
+    const filled = ev.players.length, places = ev.teams.reduce((s2, x) => s2 + (x.size ?? 12), 0)
+    body = `<div class="hint"><b>${filled} of ${places} places filled.</b> You can save now and fill teams later as members join.</div>
+      <div class="tabs-pill" role="group" aria-label="Team">${ev.teams.map((x, k) => `<button data-team="${k}" aria-pressed="${k === t}"><i class="fl" style="background:${x.col}"></i>${esc(x.name)} ${inTeam(k).length}/${x.size ?? 12}</button>`).join('')}</div>
+      <div class="card evsec"><div class="trowin"><input id="lg-tn" value="${esc(team.name)}" maxlength="24" aria-label="Team name"><input type="color" id="lg-tc" value="${team.col}" aria-label="Team colour"></div>
+        <span class="hint">${inTeam(t).length ? inTeam(t).map(id => esc(name(id))).join(', ') : 'No players yet. Pick members below.'}</span></div>
+      <div class="search"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="ev-q" type="search" placeholder="Name or GUI number" value="${esc(S.evQ || '')}" autocomplete="off"></div>
+      <div class="pick">${list.map(m2 => { const k = ev.team[m2.id], on = k === t; return `<button class="brow" data-lgp="${m2.id}" aria-pressed="${on}"><span class="av">${ini(m2.name)}</span><span class="who"><strong>${esc(m2.name)}</strong><small>Index ${fmtHcp(m2.hcp)}${k != null && !on ? ` · in ${esc(ev.teams[k].name)} (tap to move)` : ''}</small></span><span class="check">${on ? '✓' : ''}</span></button>` }).join('')}</div>`
+  } else if (ev.style === 'league') {
+    const places = ev.teams.reduce((s2, x) => s2 + (x.size ?? 12), 0)
+    body = `<div class="card evsec"><h4>${esc(ev.name)}</h4><div class="sumgrid">
+        <span>When</span><b>${ev.weeks} weeks · ${eventDates(ev.startDate, 1)} – ${eventDates(addDaysIso(ev.startDate, ev.weeks * 7 - 1), 1)}</b>
+        <span>Scoring</span><b>Best ${ev.bestOf} Stableford rounds per team each week; season total</b>
+        <span>Teams</span><b>${ev.teams.length} · ${ev.teams.map(x => esc(x.name)).join(', ')}</b>
+        <span>Players</span><b>${ev.players.length} of ${places} places filled</b>
+        <span>Entering</span><b>Players choose before they play; one round a week</b>
+        <span>Who sees it</span><b>Only the league’s players (and admins)</b></div></div>
+      <div class="hint">Players see it on their Leaderboard tab while it runs: a team table and an individual table.</div>
+      ${ev.id ? '<button class="ghost accremove" id="ev-del">Delete league</button>' : ''}`
   } else {
     const A = sideIds(ev, 'A'), B = sideIds(ev, 'B')
     body = `<div class="card evsec"><h4>${esc(ev.name)}</h4><div class="sumgrid">
@@ -131,10 +163,40 @@ export function draw({ members, me }) {
   const read = () => {
     if ($('ev-name')) { ev.name = $('ev-name').value; ev.startDate = $('ev-date').value; if ($('ev-fmt')) ev.fmt = $('ev-fmt').value }
     if ($('ev-an')) { ev.A = { name: $('ev-an').value, col: $('ev-ac').value }; ev.B = { name: $('ev-bn').value, col: $('ev-bc').value } }
+    if ($('lg-tn')) { const t = S.evTeam ?? 0; ev.teams[t] = { ...ev.teams[t], name: $('lg-tn').value || ev.teams[t].name, col: $('lg-tc').value } }
   }
   const on = (id, f) => { const el = $(id); if (el) el.onclick = f }
   document.querySelectorAll('[data-days]').forEach(b => (b.onclick = () => { read(); ev.days = +b.dataset.days; ev.matches = {}; redraw() }))
-  document.querySelectorAll('[data-style]').forEach(b => (b.onclick = () => { read(); ev.style = b.dataset.style; ev.fmt = EVENT_TYPES[ev.style].formats[0][0]; redraw() }))
+  document.querySelectorAll('[data-style]').forEach(b => (b.onclick = () => {
+    read()
+    const was = ev.style
+    ev.style = b.dataset.style
+    ev.fmt = EVENT_TYPES[ev.style].formats[0][0]
+    if (ev.style === 'league' && was !== 'league') { ev.weeks ??= 6; ev.bestOf ??= 7; ev.teams = leagueTeams(10, ev.teams ?? []); ev.team = {}; ev.players = []; ev.club = false; ev.days = 1 }
+    if (ev.style !== 'league' && was === 'league') { ev.team = {}; ev.players = [me.id] }
+    redraw()
+  }))
+  document.querySelectorAll('[data-lg]').forEach(b => (b.onclick = () => {
+    read()
+    const k = b.dataset.lg, d = +b.dataset.d, lo = +(b.dataset.lo ?? 1), hi = +(b.dataset.hi ?? 99)
+    if (k === 'nteams') {
+      const n = Math.max(2, Math.min(20, ev.teams.length + d))
+      ev.teams = leagueTeams(n, ev.teams)
+      for (const [id, t] of Object.entries(ev.team)) if (t >= n) delete ev.team[id] // players on a removed team come off
+      ev.players = Object.keys(ev.team).map(Number)
+    } else if (k === 'size') ev.teams = ev.teams.map(x => ({ ...x, size: Math.max(1, Math.min(30, (x.size ?? 12) + d)) }))
+    else ev[k] = Math.max(lo, Math.min(hi, ev[k] + d))
+    redraw()
+  }))
+  document.querySelectorAll('[data-team]').forEach(b => (b.onclick = () => { read(); S.evTeam = +b.dataset.team; redraw() }))
+  document.querySelectorAll('[data-lgp]').forEach(b => (b.onclick = () => {
+    read()
+    const id = +b.dataset.lgp, t = S.evTeam ?? 0
+    if (ev.team[id] === t) delete ev.team[id]
+    else ev.team[id] = t // picks, or moves from another team
+    ev.players = Object.keys(ev.team).map(Number)
+    redraw()
+  }))
   if ($('ev-date')) $('ev-date').onchange = () => { read(); redraw() }
   on('ev-club', () => { read(); ev.club = !ev.club; redraw() })
   const qi = $('ev-q')
@@ -147,7 +209,7 @@ export function draw({ members, me }) {
     redraw()
   }))
   document.querySelectorAll('[data-tm]').forEach(b => (b.onclick = () => { read(); ev.team[+b.dataset.tm] = b.dataset.t; ev.matches = {}; redraw() }))
-  ;['ev-an', 'ev-bn', 'ev-ac', 'ev-bc'].forEach(id => { if ($(id)) $(id).onchange = () => { read(); redraw() } })
+  ;['ev-an', 'ev-bn', 'ev-ac', 'ev-bc', 'lg-tn', 'lg-tc'].forEach(id => { if ($(id)) $(id).onchange = () => { read(); redraw() } })
   on('ev-bal', () => { read(); autoBalance(ev, members); redraw() })
   on('ev-shuf', () => { read(); ev.team = {}; shuffle(ev.players).forEach((id, n) => (ev.team[id] = n % 2 ? 'B' : 'A')); ev.matches = {}; redraw() })
   document.querySelectorAll('[data-draw]').forEach(b => (b.onclick = () => { draw1(ev, +b.dataset.draw); S.evSwap = null; redraw() }))
@@ -175,6 +237,7 @@ export function draw({ members, me }) {
     if (!last) { S.evStep = steps[idx + 1]; S.evSwap = null; await render(); top0(); return }
     if (ev.style !== 'ryder') ev.matches = {}
     if (ev.style === 'individual') ev.team = {}
+    if (ev.style !== 'league') { ev.weeks = null; ev.bestOf = null; ev.teams = null }
     $('ev-next').disabled = true
     try { await api.saveEvent(ev) } catch (e) { $('ev-err').textContent = e.message; $('ev-next').disabled = false; return }
     const saved = ev.name
