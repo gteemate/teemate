@@ -69,6 +69,9 @@ do $$ declare e text; begin
                                                    and t.val('select count(*) from public.guest_visits') = 2);
   perform t.ok('Member: cannot edit someone else''s scorecard', t.val($q$with u as (update public.rounds set game = 'x' where created_by = 0 returning 1) select count(*) from u$q$) = 0);
   perform t.ok('Member: can start own scorecard', t.err($q$insert into public.rounds (lineup) values ('[{"m":1},{"m":2}]')$q$) is null);
+  perform t.ok('My games: can save my own preference', t.err($q$insert into public.member_game_prefs values (1, 2, 'sm2')$q$) is null);
+  perform t.ok('My games: cannot set someone else''s', t.err($q$insert into public.member_game_prefs values (0, 2, 'sm2')$q$) is not null);
+  perform t.ok('My games: only see my own', t.val('select count(*) from public.member_game_prefs where member_id <> 1') = 0);
   perform t.ok('Member: cannot start a card as someone else', t.err($q$insert into public.rounds (created_by, lineup) values (0, '[{"m":0}]')$q$) is not null);
   perform t.done();
 end $$;

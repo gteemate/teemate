@@ -105,8 +105,26 @@ export function skins(netsByHole, players = netsByHole[0]?.length ?? 0) {
 }
 
 /**
+ * Six pointer for three players: 6 points a hole. Best score 4, next 2, last 0; ties share:
+ * two tied best 3/3/0, two tied worst 4/1/1, all level 2/2/2.
+ * scores: one value per player where higher is better (Stableford points, or minus the net score).
+ */
+export function sixPointer(scores) {
+  const [a, b, c] = scores
+  if (a === b && b === c) return [2, 2, 2]
+  const order = [0, 1, 2].sort((x, y) => scores[y] - scores[x])
+  const [hi, mid, lo] = order.map(i => scores[i])
+  const out = [0, 0, 0]
+  if (hi === mid) { out[order[0]] = 3; out[order[1]] = 3; out[order[2]] = 0 }
+  else if (mid === lo) { out[order[0]] = 4; out[order[1]] = 1; out[order[2]] = 1 }
+  else { out[order[0]] = 4; out[order[1]] = 2; out[order[2]] = 0 }
+  return out
+}
+
+/**
  * Full state of the 4-ball game being played on the scorecard.
- * game = { kind: 'match' | 'stab' | 'skins' | 'stroke', cmp?: 'net' | 'pts' }
+ * game = { kind: 'match' | 'match1' | 'six' | 'stab' | 'skins' | 'stroke', cmp?: 'net' | 'pts' }
+ *   match = better ball (4 players), match1 = head to head (2 players), six = six pointer (3 players)
  * played = number of holes completed (scores beyond that are ignored).
  *
  * holes[i] per kind:  match → { diff }   stab → { pts }   skins → { winner }   stroke → { toPar } (player 0)
@@ -120,6 +138,20 @@ export function gameState(game, holes, phs, scores, played, order = [0, 1, 2, 3]
     const m = matchProgress(calcs.map(c => betterBallWinner(c, game.cmp)))
     m.running.forEach(diff => perHole.push({ diff }))
     return { holes: perHole, totals, thru: m.thru, finished: m.finished, match: m }
+  }
+  if (game.kind === 'match1') {
+    // Head to head (two players): player 0 against player 1, on points or net.
+    const m = matchProgress(calcs.map(c => (game.cmp === 'pts' ? Math.sign(c.pts[0] - c.pts[1]) : Math.sign(c.net[1] - c.net[0]))))
+    m.running.forEach(diff => perHole.push({ diff }))
+    return { holes: perHole, totals, thru: m.thru, finished: m.finished, match: m }
+  }
+  if (game.kind === 'six') {
+    calcs.forEach(c => {
+      const share = sixPointer(game.cmp === 'pts' ? c.pts : c.net.map(x => -x))
+      share.forEach((p, k) => (totals[k] += p))
+      perHole.push({ pts: share[0], share })
+    })
+    return { holes: perHole, totals, thru: played, finished: played === HOLES_IN_ROUND }
   }
   if (game.kind === 'skins') {
     const s = skins(calcs.map(c => c.net), n)

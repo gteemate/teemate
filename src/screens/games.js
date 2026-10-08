@@ -10,7 +10,7 @@ export async function load() {
 }
 
 export function draw({ L }) {
-  header('Games', "Pick each group's preferred game", toAdmin)
+  header('Club games', 'Which games the club offers, allowances and club defaults', toAdmin)
   const sec = n => {
     const s = L.sections[n]
     return `<div class="card gsec"><h4>${s.title}</h4>${s.games.map(x => {

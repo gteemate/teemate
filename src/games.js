@@ -4,12 +4,12 @@
 // pct: default handicap allowance; null = scratch, nothing to edit. play: how the 4-ball scorecard scores it.
 export const GAME_DEFS = {
   2: { title: '2 golfers', games: [
-    { k: 'sm2', name: 'Stableford match play', sub: 'Off the low man', pct: 85, desc: 'More Stableford points on a hole wins it.' },
-    { k: 'st2', name: 'Stableford total', sub: 'Stableford', pct: 100, desc: 'Higher Stableford total over 18 wins.' },
-    { k: 'sc2', name: 'Scratch match play', sub: 'No shots', pct: null, desc: 'Lower gross score wins each hole. No shots.' }] },
+    { k: 'sm2', name: 'Stableford match play', sub: 'Off the low man', pct: 85, desc: 'More Stableford points on a hole wins it.', play: { kind: 'match1', cmp: 'pts', offLow: true } },
+    { k: 'st2', name: 'Stableford total', sub: 'Stableford', pct: 100, desc: 'Higher Stableford total over 18 wins.', play: { kind: 'stab' } },
+    { k: 'sc2', name: 'Scratch match play', sub: 'No shots', pct: null, desc: 'Lower gross score wins each hole. No shots.', play: { kind: 'match1', cmp: 'net' } }] },
   3: { title: '3 golfers', games: [
-    { k: 'six', name: 'Six pointer (Stableford)', sub: 'Stableford', pct: 100, desc: '4 / 2 / 0 a hole by Stableford points.' },
-    { k: 'sixs', name: 'Six pointer (scratch)', sub: 'No shots', pct: null, desc: '4 / 2 / 0 a hole by gross score. No shots.' },
+    { k: 'six', name: 'Six pointer (Stableford)', sub: 'Stableford', pct: 100, desc: '4 / 2 / 0 a hole by Stableford points.', play: { kind: 'six', cmp: 'pts' } },
+    { k: 'sixs', name: 'Six pointer (scratch)', sub: 'No shots', pct: null, desc: '4 / 2 / 0 a hole by gross score. No shots.', play: { kind: 'six', cmp: 'net' } },
     { k: 'wolf', name: 'Wolf (Stableford)', sub: 'Full handicaps', pct: 100, desc: 'Rotating tee order; the wolf goes solo or partners. Lone win 2, pair win 1 each.' },
     { k: 'wolfs', name: 'Wolf (scratch)', sub: 'No shots', pct: null, desc: 'Same game on gross scores. No shots.' },
     { k: 'tvt', name: '2 v 1 Stableford · better total', sub: 'Stableford', pct: 100, desc: "The single's own Stableford total against the better of the pair's own totals." },
@@ -55,7 +55,7 @@ export const eventFormatName = k => Object.values(EVENT_FORMATS).flat().find(f =
 export const PAIRINGS = [[0, 1, 2, 3], [0, 2, 1, 3], [0, 3, 1, 2]]
 
 /** Merge the club's settings into the definitions. */
-export function buildLibrary({ settings, pref }) {
+export function buildLibrary({ settings, pref, mine = {} }) {
   const sections = {}, lib = {}
   for (const [n, s] of Object.entries(GAME_DEFS)) {
     sections[n] = { title: s.title, games: s.games.map(def => {
@@ -65,21 +65,30 @@ export function buildLibrary({ settings, pref }) {
       return x
     }) }
   }
-  return { sections, lib, pref }
+  return { sections, lib, pref, mine }
 }
 
-// Games that can be scored on a card of n players. Pairs games need four.
-export const playable = (L, n = 4) => L.sections[4].games.filter(x => x.play && x.on && (n === 4 || !x.play.pairs))
+// Games that can be scored on a card of n players: that group size's own games, plus the
+// individual 4-ball games (Stableford, skins, strokeplay) for smaller groups.
+export function playable(L, n = 4) {
+  const own = (L.sections[n]?.games ?? []).filter(x => x.play && x.on)
+  if (n === 4) return own
+  const extra = L.sections[4].games.filter(x => x.play && x.on && !x.play.pairs && !own.some(o => o.play.kind === x.play.kind))
+  return [...own, ...extra]
+}
 export const gameSpec = x => ({ ...x.play, allow: x.pct == null ? 0 : x.pct / 100 })
 
-/** The game to use on a card of n players: the chosen one if it's on and playable, else the
- *  club's preferred 4-ball game, else the first playable. */
+/** The game to use on a card of n players: the chosen one if it's playable, else my preferred
+ *  game for that group size, else the club's, else the first playable. */
 export function resolveGame(L, k, n = 4) {
   const ok = x => x && playable(L, n).includes(x)
   if (ok(L.lib[k])) return k
-  if (ok(L.lib[L.pref[4]])) return L.pref[4]
+  for (const p of [L.mine?.[n], L.pref[n]]) if (ok(L.lib[p])) return p
   return playable(L, n)[0]?.k
 }
+
+/** My preferred game for a group size (falls back to the club's). */
+export const preferredGame = (L, n) => resolveGame(L, null, n)
 
 /** Slope, rating and par for course-handicap maths. */
 export function teeRating(course, key = 'white') {

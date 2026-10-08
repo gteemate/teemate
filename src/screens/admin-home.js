@@ -4,7 +4,7 @@ import { S } from '../state.js'
 import { $, esc, header, top0, render, toast } from '../ui.js'
 import { passwordSheet } from './login.js'
 import { isoDate, today } from '../dates.js'
-import { buildLibrary } from '../games.js'
+import { buildLibrary, preferredGame } from '../games.js'
 import { bar } from './booking.js'
 
 export async function load() {
@@ -33,6 +33,7 @@ export function draw({ me, sheet, bookings, buddies, L, active, points, requests
     </button>
     <button class="atile" data-a="mine"><span class="e">📋</span><b>Bookings</b><span>${bookings.length ? `${bookings.length} upcoming` : 'Nothing booked yet'}</span></button>
     <button class="atile" data-a="buddies"><span class="e">👥</span><b>Buddies</b><span>${buddies.length} playing partners</span></button>
+    <button class="atile row" data-a="mygames"><span class="e">🎯</span><span class="rt"><b>Games</b><span>Your game for 2, 3 and 4 players: ${[2, 3, 4].map(n => esc(L.lib[preferredGame(L, n)]?.name ?? '–')).join(' · ')}</span></span></button>
   </div>
   ${me.admin ? `<h3 class="adminhead">Club admin <span class="hint">only admins see this</span></h3>
   <div class="agrid">
@@ -40,7 +41,7 @@ export function draw({ me, sheet, bookings, buddies, L, active, points, requests
     <button class="atile row" data-a="colours"><span class="e">🎨</span><span class="rt"><b>Club colours</b><span>Two colours that theme the whole app</span></span></button>
     <button class="atile row" data-a="events"><span class="e">🏆</span><span class="rt"><b>Club events</b><span>${active ? `Active: ${esc(active.name)}` : 'Create a team event'}</span></span></button>
     <button class="atile" data-a="pins"><span class="e">⛳</span><b>Pins</b><span>Set today's flags</span></button>
-    <button class="atile" data-a="games"><span class="e">🎯</span><b>Games</b><span>${gamesOn} on · allowances</span></button>
+    <button class="atile" data-a="games"><span class="e">⚙️</span><b>Club games</b><span>${gamesOn} on · allowances</span></button>
   </div>` : ''}
   <h3>Your account</h3>
   <div class="bk-btns acct"><button class="ghost" id="chpw">Change password</button><button class="ghost" id="signout">Sign out</button></div>

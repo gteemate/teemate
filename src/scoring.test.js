@@ -200,3 +200,35 @@ describe('team event points', () => {
     expect([2, 1.5, 0.5, 0].map(fmtPts)).toEqual(['2', '1½', '½', '0'])
   })
 })
+
+import { sixPointer } from './scoring.js'
+describe('2- and 3-ball games', () => {
+  it('six pointer splits 6 points a hole', () => {
+    expect(sixPointer([3, 2, 1])).toEqual([4, 2, 0])
+    expect(sixPointer([1, 3, 2])).toEqual([0, 4, 2])
+    expect(sixPointer([3, 3, 1])).toEqual([3, 3, 0]) // tie for best
+    expect(sixPointer([3, 1, 1])).toEqual([4, 1, 1]) // tie for worst
+    expect(sixPointer([2, 2, 2])).toEqual([2, 2, 2])
+  })
+  it('six pointer on Stableford points over holes', () => {
+    // Hole 1: 3, 2, 2 points → 4/1/1. Hole 2: 2, 3, 0 → 2/4/0.
+    const s = gameState({ kind: 'six', cmp: 'pts' }, FLAT, [0, 0, 0], [[3, 4, 4], [4, 3, 6]], 2)
+    expect(s.totals).toEqual([6, 5, 1])
+    expect(s.holes.map(h => h.pts)).toEqual([4, 2])
+  })
+  it('scratch six pointer: lowest gross is best', () => {
+    const s = gameState({ kind: 'six', cmp: 'net' }, FLAT, [0, 0, 0], [[5, 4, 4]], 1)
+    expect(s.totals).toEqual([0, 3, 3])
+  })
+  it('head-to-head match play on points, with shots', () => {
+    // Player 1 gets a shot on SI 1: their 5 is a net 4 (2 pts) v player 0's par (2 pts) → halved.
+    // Hole 2 (SI 2, no shot): 4 v 5 → player 0 wins. 1 up thru 2.
+    const s = gameState({ kind: 'match1', cmp: 'pts' }, FLAT, [0, 1], [[4, 5], [4, 5]], 2)
+    expect(s.holes.map(h => h.diff)).toEqual([0, 1])
+    expect(s.match).toMatchObject({ text: '1 up', thru: 2, lead: 'A' })
+  })
+  it('scratch head-to-head ignores handicaps', () => {
+    const s = gameState({ kind: 'match1', cmp: 'net' }, FLAT, [0, 0], [[5, 4]], 1)
+    expect(s.match).toMatchObject({ diff: -1, lead: 'B' })
+  })
+})
