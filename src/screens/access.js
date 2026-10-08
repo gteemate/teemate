@@ -6,14 +6,14 @@ import { $, esc, ini, header, keepScroll, render, toast } from '../ui.js'
 import { toAdmin } from './nav.js'
 
 export async function load() {
-  const [list, me, requests] = await Promise.all([api.getAccessList(), api.getMe(), api.getAccessRequests()])
-  return { list, me, requests }
+  const [list, me, requests, favs] = await Promise.all([api.getAccessList(), api.getMe(), api.getAccessRequests(), api.getFavourites()])
+  return { list, me, requests, favs }
 }
 
 // signedIn = they've created their account (a login exists)
 const status = m => (!m.email ? 'No access' : m.signedIn ? 'Has account' : 'Approved')
 
-export function draw({ list, me, requests }) {
+export function draw({ list, me, requests, favs }) {
   const withAccess = list.filter(m => m.email), signedIn = list.filter(m => m.signedIn)
   header('Members & access', `<b>${withAccess.length}</b> approved · ${signedIn.length} with accounts`, () => { S.accEdit = null; S.accQ = ''; toAdmin() })
   const q = S.accQ.trim().toLowerCase()
@@ -28,9 +28,14 @@ export function draw({ list, me, requests }) {
     <h3>Members</h3>
     <button class="primary" id="addm">+ Add member</button>
     <div class="search"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="accq" type="search" placeholder="Name, email or GUI" value="${esc(S.accQ)}" autocomplete="off"></div>
-    <div class="card list">${shown.map(m => `<div class="swipe">${m.id === me.id ? '' : `<button class="swdel" data-del="${m.id}">Delete</button>`}<button class="lrow accrow" data-m="${m.id}" ${m.id === me.id ? '' : 'data-swipe'}><span class="av">${ini(m.name)}</span>
-      <span class="who"><strong>${esc(m.name)}${m.id === me.id ? ' (you)' : ''}${m.admin ? ' <span class="pill tag">Admin</span>' : ''}</strong><small>${m.email ? esc(m.email) : 'No email · can’t sign in'}</small></span>
-      <span class="accst ${m.signedIn ? 'on' : m.email ? 'inv' : ''}">${status(m)}</span></button></div>`).join('') || '<div class="empty-state">No one matches.</div>'}</div>
+    ${(() => {
+      const row = m => { const fav = favs.includes(m.id); return `<div class="swipe">${m.id === me.id ? '' : `<button class="swdel" data-del="${m.id}">Delete</button>`}<div class="lrow accrow" role="button" tabindex="0" data-m="${m.id}" ${m.id === me.id ? '' : 'data-swipe'}><span class="av">${ini(m.name)}</span>
+        <span class="who"><strong>${esc(m.name)}${m.id === me.id ? ' (you)' : ''}${m.admin ? ' <span class="pill tag">Admin</span>' : ''}</strong><small>${m.email ? esc(m.email) : 'No email · can’t sign in'}</small></span>
+        <span class="accend"><span class="accst ${m.signedIn ? 'on' : m.email ? 'inv' : ''}">${status(m)}</span><button class="favstar" data-fav="${m.id}" aria-pressed="${fav}" aria-label="${fav ? 'Remove from' : 'Add to'} favourites">${fav ? '★' : '☆'}</button></span></div></div>` }
+      const starred = shown.filter(m => favs.includes(m.id))
+      return (starred.length ? `<h3 class="favhead">★ Favourites</h3><div class="card list">${starred.map(row).join('')}</div><h3 class="favhead">All members</h3>` : '')
+        + `<div class="card list">${shown.map(row).join('') || '<div class="empty-state">No one matches.</div>'}</div>`
+    })()}
     <div class="hint">Swipe a member left to delete them.</div>
   </div>`
 
@@ -48,6 +53,14 @@ export function draw({ list, me, requests }) {
     await keepScroll(render)
     toast(`${r.name}’s request declined`)
   }))
+  document.querySelectorAll('[data-fav]').forEach(b => (b.onclick = async ev => {
+    ev.stopPropagation() // don't open the member
+    const id = +b.dataset.fav, on = b.getAttribute('aria-pressed') !== 'true'
+    await api.setFavourite(id, on)
+    await keepScroll(render)
+    toast(on ? 'Added to favourites' : 'Removed from favourites')
+  }))
+  document.querySelectorAll('[data-m]').forEach(b => (b.onkeydown = e => { if ((e.key === 'Enter' || e.key === ' ') && e.target === b) { e.preventDefault(); b.click() } }))
   document.querySelectorAll('[data-m]').forEach(b => (b.onclick = () => {
     if (b.dataset.swiped === '1') { b.dataset.swiped = ''; return } // that was a swipe, not a tap
     if (b.classList.contains('open')) { slide(b, 0); return } // tapping an open row closes it

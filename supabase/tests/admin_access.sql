@@ -159,6 +159,17 @@ do $$ declare e text; begin
                                                                 and t.hook('decline.me@example.invalid') ? 'error');
 end $$;
 
+-- ------------------------------------------------------------------ favourites
+do $$ declare e text; begin
+  perform t.act_as(0);
+  perform t.ok('Favourites: can star a member', t.err('insert into public.member_favourites values (0, 2)') is null);
+  perform t.ok('Favourites: cannot add to someone else''s', t.err('insert into public.member_favourites values (1, 2)') is not null);
+  perform t.done();
+  perform t.act_as(1);
+  perform t.ok('Favourites: others cannot see mine', (select count(*) from public.member_favourites where member_id = 0) = 0);
+  perform t.done();
+end $$;
+
 -- ------------------------------------------------------------------ deleting members
 insert into public.members (name, email) values ('Delete Me', 'delete.me@example.invalid');
 insert into auth.users (id, email, aud, role) values (gen_random_uuid(), 'delete.me@example.invalid', 'authenticated', 'authenticated');

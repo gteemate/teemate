@@ -484,3 +484,9 @@ img{max-width:100%}
 .swipe:first-child{border-top:0}
 .swipe .accrow{position:relative;z-index:1;background:var(--surface);border-top:0;transition:transform .2s ease;touch-action:pan-y;user-select:none}
 .swdel{position:absolute;right:0;top:0;bottom:0;width:92px;border:0;background:var(--loss);color:var(--on-loss);font:800 15px var(--sys);cursor:pointer}
+/* favourites in Members & access */
+.accend{display:flex;align-items:center;gap:6px}
+.favstar{background:none;border:0;font-size:22px;line-height:1;padding:4px 2px;color:var(--muted);cursor:pointer}
+.favstar[aria-pressed="true"]{color:#E0A800}
+.accrow{cursor:pointer}
+.favhead{margin-bottom:-4px}

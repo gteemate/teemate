@@ -126,6 +126,16 @@ export async function saveMember(m) {
   return id
 }
 
+/** My favourite members (ids), for Members & access. */
+export async function getFavourites() {
+  return must(await sb.from('member_favourites').select('fav_id')).map(r => r.fav_id)
+}
+
+export async function setFavourite(id, on) {
+  if (on) must(await sb.from('member_favourites').upsert({ member_id: await myId(), fav_id: id }, { ignoreDuplicates: true }))
+  else must(await sb.from('member_favourites').delete().eq('fav_id', id))
+}
+
 /** People who asked for access: [{ id, name, email, createdAt }], oldest first. Admins only. */
 export async function getAccessRequests() {
   return must(await sb.from('access_requests').select('id, name, email, created_at').order('created_at'))
