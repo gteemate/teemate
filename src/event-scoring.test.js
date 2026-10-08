@@ -213,3 +213,29 @@ describe('leagues', () => {
     expect(r.players.find(p => p.name === 'P6')).toMatchObject({ rounds: 0, total: 0 })
   })
 })
+
+import { balanceTeams } from './event-scoring.js'
+describe('balancing league teams by handicap', () => {
+  const idx = id => id // handicap index = id, for easy checking
+  it('deals snake-style so averages are close', () => {
+    const t = balanceTeams([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], idx, 3, 4)
+    const teams = [0, 1, 2].map(k => Object.keys(t).filter(id => t[id] === k).map(Number))
+    // Team 1 gets 1, 6, 7, 12; team 2 gets 2, 5, 8, 11; team 3 gets 3, 4, 9, 10 → all average 6.5
+    expect(teams).toEqual([[1, 6, 7, 12], [2, 5, 8, 11], [3, 4, 9, 10]])
+  })
+  it('never overfills a team; extras stay unassigned', () => {
+    const t = balanceTeams([1, 2, 3, 4, 5, 6, 7], idx, 2, 3)
+    expect(Object.keys(t)).toHaveLength(6)
+    expect(t[7]).toBeUndefined()
+  })
+  it('120 players into 10 teams of 12: every team full, averages within a point', () => {
+    const ids = Array.from({ length: 120 }, (_, i) => i + 1)
+    const index = id => ((id * 37) % 360) / 10 // a spread from 0 to 36
+    const t = balanceTeams(ids, index, 10, 12)
+    const avg = k => { const m = ids.filter(id => t[id] === k); return [m.length, m.reduce((s, id) => s + index(id), 0) / m.length] }
+    const all = Array.from({ length: 10 }, (_, k) => avg(k))
+    expect(all.every(([n]) => n === 12)).toBe(true)
+    const avgs = all.map(([, a]) => a)
+    expect(Math.max(...avgs) - Math.min(...avgs)).toBeLessThan(1)
+  })
+})

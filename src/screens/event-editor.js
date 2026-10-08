@@ -4,6 +4,7 @@ import * as api from '../api.js'
 import { S } from '../state.js'
 import { $, esc, ini, sur, header, keepScroll, top0, render, toast, fmtHcp } from '../ui.js'
 import { addDaysIso, eventDates, isoDate, today } from '../dates.js'
+import { balanceTeams } from '../event-scoring.js'
 
 export const EVENT_TYPES = {
   ryder: { name: 'Ryder Cup', desc: 'Two teams. Pairs play better-ball matches, 1 point each.', formats: [['bbl', 'Better ball · off the low'], ['bbstab', 'Better ball · Stableford'], ['bbscr', 'Better ball · scratch']] },
@@ -27,15 +28,15 @@ export async function load() {
   if (!S.ev) {
     const e = S.evId && events.find(x => x.id === S.evId)
     S.ev = e ? structuredClone(e) : {
-      name: '', startDate: addDaysIso(isoDate(today()), 1), days: 1, style: 'ryder', fmt: 'bbl', club: S.evScope === 'club',
+      name: '', startDate: addDaysIso(isoDate(today()), 1), days: 1, style: 'ryder', fmt: 'bbl', club: S.evScope === 'club', everyone: S.evScope === 'club',
       players: S.evScope === 'club' ? [] : [me.id], team: {}, matches: {}, A: { name: 'Blues', col: '#19335A' }, B: { name: 'Reds', col: '#762A43' },
     }
-    if (!e && S.evNew === 'league') Object.assign(S.ev, { style: 'league', fmt: 'beststab', weeks: 6, bestOf: 7, teams: leagueTeams(10), club: false })
+    if (!e && S.evNew === 'league') Object.assign(S.ev, { style: 'league', fmt: 'beststab', weeks: 6, bestOf: 7, teams: leagueTeams(10), club: true, everyone: false })
   }
   return { members, me }
 }
 
-const leave = async () => { S.ev = null; S.evQ = ''; S.evSwap = null; cache = null; S.aview = 'events'; await render(); top0() }
+const leave = async () => { S.ev = null; S.evQ = ''; S.evSwap = null; S.evTeam = null; cache = null; S.aview = 'events'; await render(); top0() }
 const teamOf = (ev, id) => ev.team[id]
 const sideIds = (ev, t) => ev.players.filter(id => teamOf(ev, id) === t)
 
@@ -96,8 +97,10 @@ export function draw({ members, me }) {
       <h3>Format</h3>
       <div class="games">${Object.entries(EVENT_TYPES).filter(([, t]) => !t.adminOnly || (me.admin && S.evScope === 'club')).map(([k, t]) => `<button class="gamecard" role="radio" aria-checked="${ev.style === k}" data-style="${k}"><span class="radio"></span><span class="who"><strong>${t.name}</strong><small>${t.desc}</small></span></button>`).join('')}</div>
       ${EVENT_TYPES[ev.style].formats.length > 1 ? `<div class="card evsec"><label for="ev-fmt">${ev.style === 'ryder' ? 'Match format' : 'Scoring'}</label><select id="ev-fmt" class="plainsel">${EVENT_TYPES[ev.style].formats.map(([k, n]) => `<option value="${k}" ${ev.fmt === k ? 'selected' : ''}>${n}</option>`).join('')}</select></div>` : ''}
-      ${ev.style === 'league' ? '<div class="hint">Only the league’s players (and admins) see a league.</div>' : me.admin && S.evScope === 'club' ? `<div class="card evsec"><div class="actrow"><span class="who"><strong>Club event</strong><small>Everyone in the club sees it on the Leaderboard</small></span><button class="switch" role="switch" aria-checked="${ev.club}" id="ev-club" aria-label="Club event"><span></span></button></div>
-        <span class="hint">${ev.club ? 'Everyone in the club will see this event.' : 'Only the players in it will see this event.'}</span></div>` : '<div class="hint">Only the players you pick will see this event.</div>'}`
+      ${ev.club && me.admin ? `<div class="card evsec"><b>Who can see it</b>
+        <div class="seg" role="group" aria-label="Who can see it"><button data-vis="all" aria-pressed="${!!ev.everyone}">All members</button><button data-vis="entrants" aria-pressed="${!ev.everyone}">Entrants only</button></div>
+        <span class="hint">${ev.everyone ? 'Every member sees it on their Leaderboard tab.' : `Only the ${ev.style === 'league' ? 'league’s players' : 'players in it'} (and admins) see it.`}</span></div>`
+      : '<div class="hint">Only the players you pick will see this event.</div>'}`
   } else if (step === 2) {
     const q = (S.evQ || '').trim().toLowerCase()
     const list = members.filter(m => !q || m.name.toLowerCase().includes(q) || (m.gui || '').includes(q))
@@ -120,17 +123,33 @@ export function draw({ members, me }) {
       ${Array.from({ length: ev.days }, (_, i) => i + 1).map(d => `<div class="card evsec"><div class="pinhead"><h4 style="font-size:20px">Day ${d} · ${eventDates(addDaysIso(ev.startDate, d - 1), 1)}</h4><button class="linkbtn" data-draw="${d}">${(ev.matches[d] ?? []).length ? 'Redraw' : 'Draw matches'}</button></div>
         ${(ev.matches[d] ?? []).map((m, k) => `<div class="matchedit"><span style="color:${ev.A.col}">${who(d, m.a[0])} &amp; ${who(d, m.a[1])}</span><span class="v">v</span><span class="r" style="color:${ev.B.col}">${who(d, m.b[0])} &amp; ${who(d, m.b[1])}</span></div>`).join('') || '<span class="hint">Not drawn yet.</span>'}</div>`).join('')}`
   } else if (step === 6) {
-    const t = Math.min(S.evTeam ?? 0, ev.teams.length - 1), team = ev.teams[t]
+    // S.evTeam: -1 = the entrants list; 0.. = a team.
+    const t = S.evTeam == null ? -1 : Math.min(S.evTeam, ev.teams.length - 1), team = ev.teams[t]
     const inTeam = k => ev.players.filter(id => ev.team[id] === k)
+    const avg = ids => (ids.length ? (ids.reduce((x, id) => x + (byId(id)?.hcp ?? 0), 0) / ids.length).toFixed(1) : '–')
     const q = (S.evQ || '').trim().toLowerCase()
     const list = members.filter(m => !q || m.name.toLowerCase().includes(q) || (m.gui || '').includes(q))
-    const filled = ev.players.length, places = ev.teams.reduce((s2, x) => s2 + (x.size ?? 12), 0)
-    body = `<div class="hint"><b>${filled} of ${places} places filled.</b> You can save now and fill teams later as members join.</div>
-      <div class="tabs-pill" role="group" aria-label="Team">${ev.teams.map((x, k) => `<button data-team="${k}" aria-pressed="${k === t}"><i class="fl" style="background:${x.col}"></i>${esc(x.name)} ${inTeam(k).length}/${x.size ?? 12}</button>`).join('')}</div>
-      <div class="card evsec"><div class="trowin"><input id="lg-tn" value="${esc(team.name)}" maxlength="24" aria-label="Team name"><input type="color" id="lg-tc" value="${team.col}" aria-label="Team colour"></div>
-        <span class="hint">${inTeam(t).length ? inTeam(t).map(id => esc(name(id))).join(', ') : 'No players yet. Pick members below.'}</span></div>
-      <div class="search"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="ev-q" type="search" placeholder="Name or GUI number" value="${esc(S.evQ || '')}" autocomplete="off"></div>
-      <div class="pick">${list.map(m2 => { const k = ev.team[m2.id], on = k === t; return `<button class="brow" data-lgp="${m2.id}" aria-pressed="${on}"><span class="av">${ini(m2.name)}</span><span class="who"><strong>${esc(m2.name)}</strong><small>Index ${fmtHcp(m2.hcp)}${k != null && !on ? ` · in ${esc(ev.teams[k].name)} (tap to move)` : ''}</small></span><span class="check">${on ? '✓' : ''}</span></button>` }).join('')}</div>`
+    const places = ev.teams.reduce((s2, x) => s2 + (x.size ?? 12), 0)
+    const assigned = ev.players.filter(id => ev.team[id] != null).length, unassigned = ev.players.length - assigned
+    const tabs = `<div class="tabs-pill" role="group" aria-label="Team"><button data-team="-1" aria-pressed="${t === -1}">Entrants ${ev.players.length}</button>${ev.teams.map((x, k) => `<button data-team="${k}" aria-pressed="${k === t}"><i class="fl" style="background:${x.col}"></i>${esc(x.name)} ${inTeam(k).length}/${x.size ?? 12}</button>`).join('')}</div>`
+    const search = `<div class="search"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="ev-q" type="search" placeholder="Name or GUI number" value="${esc(S.evQ || '')}" autocomplete="off"></div>`
+    const summary = `<div class="hint"><b>${ev.players.length} entrants · ${assigned} of ${places} team places filled${unassigned ? ` · ${unassigned} not on a team yet` : ''}.</b> You can save now and add more as members join.</div>`
+    if (t === -1) {
+      const notIn = list.filter(m => !ev.players.includes(m.id))
+      body = `${summary}${tabs}
+        <div class="card evsec"><b>Entrants</b><span class="hint">Everyone who has entered. Add them here, then balance the teams by handicap: the lowest handicaps are dealt out first, snake-style, so every team gets a similar average. You can move players afterwards.</span>
+          <button class="primary" id="lg-bal" ${ev.players.length ? '' : 'disabled'}>Balance teams by handicap</button>
+          ${ev.players.length > places ? `<span class="gerr">${ev.players.length - places} more entrants than places: they’ll stay off the teams. Add teams or places in Details.</span>` : ''}</div>
+        ${search}
+        ${notIn.length ? `<button class="ghost" id="lg-addall">Add all ${notIn.length} listed</button>` : ''}
+        <div class="pick">${list.map(m2 => { const on = ev.players.includes(m2.id), k = ev.team[m2.id]; return `<button class="brow" data-ent="${m2.id}" aria-pressed="${on}"><span class="av">${ini(m2.name)}</span><span class="who"><strong>${esc(m2.name)}</strong><small>Index ${fmtHcp(m2.hcp)}${on ? (k != null ? ` · ${esc(ev.teams[k].name)}` : ' · not on a team') : ''}</small></span><span class="check">${on ? '✓' : ''}</span></button>` }).join('')}</div>`
+    } else {
+      body = `${summary}${tabs}
+        <div class="card evsec"><div class="trowin"><input id="lg-tn" value="${esc(team.name)}" maxlength="24" aria-label="Team name"><input type="color" id="lg-tc" value="${team.col}" aria-label="Team colour"></div>
+          <span class="hint">${inTeam(t).length ? `${inTeam(t).length} players · average index ${avg(inTeam(t))}: ${inTeam(t).map(id => esc(name(id))).join(', ')}` : 'No players yet. Pick members below, or balance from Entrants.'}</span></div>
+        ${search}
+        <div class="pick">${list.map(m2 => { const k = ev.team[m2.id], on = k === t; return `<button class="brow" data-lgp="${m2.id}" aria-pressed="${on}"><span class="av">${ini(m2.name)}</span><span class="who"><strong>${esc(m2.name)}</strong><small>Index ${fmtHcp(m2.hcp)}${k != null && !on ? ` · in ${esc(ev.teams[k].name)} (tap to move)` : ''}</small></span><span class="check">${on ? '✓' : ''}</span></button>` }).join('')}</div>`
+    }
   } else if (ev.style === 'league') {
     const places = ev.teams.reduce((s2, x) => s2 + (x.size ?? 12), 0)
     body = `<div class="card evsec"><h4>${esc(ev.name)}</h4><div class="sumgrid">
@@ -139,7 +158,7 @@ export function draw({ members, me }) {
         <span>Teams</span><b>${ev.teams.length} · ${ev.teams.map(x => esc(x.name)).join(', ')}</b>
         <span>Players</span><b>${ev.players.length} of ${places} places filled</b>
         <span>Entering</span><b>Players choose before they play; one round a week</b>
-        <span>Who sees it</span><b>Only the league’s players (and admins)</b></div></div>
+        <span>Who sees it</span><b>${ev.everyone ? 'All members' : 'Only the league’s players (and admins)'}</b></div></div>
       <div class="hint">Players see it on their Leaderboard tab while it runs: a team table and an individual table.</div>
       ${ev.id ? '<button class="ghost accremove" id="ev-del">Delete league</button>' : ''}`
   } else {
@@ -150,7 +169,7 @@ export function draw({ members, me }) {
         <span>Players</span><b>${ev.players.length} members</b>
         ${ev.style !== 'individual' ? `<span>Teams</span><b>${esc(ev.A.name)} ${A.length} · ${esc(ev.B.name)} ${B.length}</b>` : ''}
         ${ev.style === 'ryder' ? `<span>Matches</span><b>${Object.values(ev.matches).flat().length} · 1 point each</b>` : ''}
-        <span>Who sees it</span><b>${ev.club ? 'Everyone in the club' : 'Only these players'}</b>
+        <span>Who sees it</span><b>${ev.everyone ? 'All members' : 'Only the players in it'}</b>
         <span>Scoring</span><b>Live from each player’s own card</b></div></div>
       <div class="hint">Players see it on their Leaderboard tab on the day${ev.days > 1 ? 's' : ''}. ${me.admin ? 'As an admin you can change it any time.' : 'You can change it until the first day.'}</div>
       ${ev.id ? '<button class="ghost accremove" id="ev-del">Delete event</button>' : ''}`
@@ -173,7 +192,7 @@ export function draw({ members, me }) {
     const was = ev.style
     ev.style = b.dataset.style
     ev.fmt = EVENT_TYPES[ev.style].formats[0][0]
-    if (ev.style === 'league' && was !== 'league') { ev.weeks ??= 6; ev.bestOf ??= 7; ev.teams = leagueTeams(10, ev.teams ?? []); ev.team = {}; ev.players = []; ev.club = false; ev.days = 1 }
+    if (ev.style === 'league' && was !== 'league') { ev.weeks ??= 6; ev.bestOf ??= 7; ev.teams = leagueTeams(10, ev.teams ?? []); ev.team = {}; ev.players = []; ev.club = true; ev.everyone = false; ev.days = 1 }
     if (ev.style !== 'league' && was === 'league') { ev.team = {}; ev.players = [me.id] }
     redraw()
   }))
@@ -190,16 +209,32 @@ export function draw({ members, me }) {
     redraw()
   }))
   document.querySelectorAll('[data-team]').forEach(b => (b.onclick = () => { read(); S.evTeam = +b.dataset.team; redraw() }))
+  document.querySelectorAll('[data-ent]').forEach(b => (b.onclick = () => {
+    const id = +b.dataset.ent
+    if (ev.players.includes(id)) { ev.players = ev.players.filter(x => x !== id); delete ev.team[id] } else ev.players = [...ev.players, id]
+    redraw()
+  }))
+  on('lg-addall', () => {
+    const q = (S.evQ || '').trim().toLowerCase()
+    const add = members.filter(m => (!q || m.name.toLowerCase().includes(q) || (m.gui || '').includes(q)) && !ev.players.includes(m.id)).map(m => m.id)
+    ev.players = [...ev.players, ...add]
+    redraw()
+    toast(`${add.length} entrants added`)
+  })
+  on('lg-bal', () => {
+    ev.team = balanceTeams(ev.players, id => byId(id)?.hcp ?? 54, ev.teams.length, ev.teams.map(x => x.size ?? 12))
+    redraw()
+    toast('Teams balanced by handicap')
+  })
   document.querySelectorAll('[data-lgp]').forEach(b => (b.onclick = () => {
     read()
     const id = +b.dataset.lgp, t = S.evTeam ?? 0
-    if (ev.team[id] === t) delete ev.team[id]
-    else ev.team[id] = t // picks, or moves from another team
-    ev.players = Object.keys(ev.team).map(Number)
+    if (ev.team[id] === t) delete ev.team[id] // off the team, still an entrant
+    else { ev.team[id] = t; if (!ev.players.includes(id)) ev.players = [...ev.players, id] } // picks, or moves from another team
     redraw()
   }))
   if ($('ev-date')) $('ev-date').onchange = () => { read(); redraw() }
-  on('ev-club', () => { read(); ev.club = !ev.club; redraw() })
+  document.querySelectorAll('[data-vis]').forEach(b => (b.onclick = () => { read(); ev.everyone = b.dataset.vis === 'all'; redraw() }))
   const qi = $('ev-q')
   if (qi) qi.oninput = () => { S.evQ = qi.value; const p = qi.selectionStart; render().then(() => { const n = $('ev-q'); n.focus(); n.setSelectionRange(p, p) }) }
   document.querySelectorAll('[data-pick]').forEach(b => (b.onclick = () => {

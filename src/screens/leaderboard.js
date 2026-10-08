@@ -1,5 +1,5 @@
 // Leaderboard tab: today's field (gross, net, Stableford, birdies), or an event that's on today
-// (club events for everyone; other events for the players in them).
+// (all-member events for everyone; other events for the players in them).
 import * as api from '../api.js'
 import { S } from '../state.js'
 import { $, esc, ini, header, keepScroll, top0, render } from '../ui.js'
@@ -12,7 +12,7 @@ export async function load() {
   const [all, me] = await Promise.all([api.getEvents(), api.getMe()])
   const t = isoDate(today())
   // Events on today that are for me to see here: club events, or ones I'm in or set up.
-  const events = all.filter(e => e.startDate <= t && eventLastDay(e) >= t && (e.club || e.players.includes(me.id) || e.createdBy?.id === me.id))
+  const events = all.filter(e => e.startDate <= t && eventLastDay(e) >= t && (e.everyone || e.players.includes(me.id) || e.createdBy?.id === me.id))
   if (S.lbv === 'event') S.lbv = events[0]?.id ?? 'today' // first visit: show the event if there is one
   const ev = events.find(e => e.id === S.lbv)
   if (ev) return { events, board: await loadBoard(ev.id) }

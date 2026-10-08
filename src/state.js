@@ -23,5 +23,6 @@ export const S = {
   accEdit: null, accQ: '', accConfirm: false, accPrefill: null, // accEdit: null | 'new' | member id
   // events admin
   evScope: 'player', // events area: 'player' (Admin → Events) or 'club' (Club admin → Club events)
-  evId: null, evStep: 1, evNew: null, // evNew: 'league' when starting a new league ev: null, evQ: '', evSwap: null, evTeam: 0, // event being set up (draft), its step, player search, a pending swap
+  evId: null, evStep: 1, evNew: null, // evNew: 'league' when starting a new league
+  ev: null, evQ: '', evSwap: null, evTeam: null, // event draft, player search, pending swap; league setup: null = entrants, 0.. = a team
 }

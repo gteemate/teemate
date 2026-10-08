@@ -17,7 +17,7 @@ export const canEdit = (e, me) => me.admin || (e.createdBy?.id === me.id && e.st
 
 export function draw({ events: all, me }) {
   const club = S.evScope === 'club' && me.admin
-  const isClub = e => e.club || e.style === 'league'
+  const isClub = e => e.club
   const events = club ? all.filter(isClub) : all.filter(e => !isClub(e) || e.players.includes(me.id))
   header(club ? 'Club events' : 'Events', club ? 'Club-wide events and leagues' : 'Set up matches and competitions in advance', toAdmin)
   const t = isoDate(today())
@@ -26,7 +26,7 @@ export function draw({ events: all, me }) {
     const mine = e.createdBy?.id === me.id, playing = e.players.includes(me.id), live = e.startDate <= t && lastDay(e) >= t
     const pills = [
       live ? '<span class="pill" style="background:var(--win)">On now</span>' : '',
-      e.club ? '<span class="pill" style="background:var(--loss)">Club event</span>' : '',
+      e.club ? `<span class="pill" style="background:var(--loss)">Club event${e.everyone ? '' : ' · entrants only'}</span>` : '',
       mine ? '<span class="pill">Yours</span>' : playing ? `<span class="pill ghosty">You’re playing${e.createdBy ? ` · set up by ${esc(e.createdBy.name.split(' ')[0])}` : ''}</span>` : '',
       e.style === 'league' ? `<span class="pill ghosty">${e.teams.length} teams · ${e.players.length} players · best ${e.bestOf} count</span>`
         : `<span class="pill ghosty">${e.players.length} players${e.style !== 'individual' ? ` · ${esc(e.A.name)} v ${esc(e.B.name)}` : ''}</span>`,

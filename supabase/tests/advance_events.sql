@@ -41,6 +41,8 @@ do $$ declare e text; v bigint; begin
   perform t.ok('Change: can edit my own before it starts', t.val(format($q$with u as (update public.events set name = 'Declan''s Trophy' where id = %s returning 1) select count(*) from u$q$, v)) = 1);
   e := t.err(format($q$update public.events set club = true where id = %s$q$, v));
   perform t.ok('Change: cannot turn it into a club event', e is not null, e);
+  e := t.err(format($q$update public.events set everyone = true where id = %s$q$, v));
+  perform t.ok('Change: a player cannot show their event to all members', e is not null, e);
   perform t.done();
 
   perform t.act_as(3); perform t.ok('See: a player in it can', (select count(*) from public.events where id = v) = 1);
@@ -54,7 +56,17 @@ do $$ declare e text; v bigint; begin
   update public.members set user_id = (select id from auth.users where email = 'ev-test-9@example.invalid') where id = 9;
   perform t.act_as(9);
   perform t.ok('See: someone not in a private event cannot', (select count(*) from public.events where id = v) = 0);
-  perform t.ok('See: everyone sees club events', (select count(*) from public.events where club) >= 1);
+  perform t.ok('See: everyone sees all-member events', (select count(*) from public.events where everyone) >= 1);
+  perform t.done();
+  -- a club event for entrants only
+  perform t.act_as(0);
+  insert into public.events (name, start_date, style, fmt, club, everyone, players) values ('Entrants Only Cup', current_date + 3, 'individual', 'stab', true, false, '{2}') returning id into v;
+  perform t.done();
+  perform t.act_as(9);
+  perform t.ok('See: an entrants-only club event is hidden from non-entrants', (select count(*) from public.events where id = v) = 0);
+  perform t.done();
+  perform t.act_as(2);
+  perform t.ok('See: an entrant sees an entrants-only club event', (select count(*) from public.events where id = v) = 1);
   perform t.done();
 
   -- once it has started, only admins can change it

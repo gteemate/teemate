@@ -241,3 +241,24 @@ function rankBy(list, value) {
     x.tied = sorted.filter(y => value(y) === value(x)).length > 1
   })
 }
+
+/**
+ * Deal players into teams so the teams' handicaps balance: sort by handicap index and deal
+ * snake-style (1→N, then N→1, …), skipping full teams. Anyone left when every team is full stays
+ * unassigned. Returns { [playerId]: teamIndex }.
+ */
+export function balanceTeams(ids, indexOf, nTeams, sizes) {
+  const cap = k => (Array.isArray(sizes) ? sizes[k] : sizes) ?? Infinity
+  const count = Array(nTeams).fill(0), out = {}
+  const order = [...ids].sort((a, b) => indexOf(a) - indexOf(b) || a - b)
+  let i = 0
+  for (const id of order) {
+    // next team in snake order that has room
+    for (let tries = 0; tries < 2 * nTeams; tries++, i++) {
+      const round = Math.floor(i / nTeams), pos = i % nTeams
+      const k = round % 2 ? nTeams - 1 - pos : pos
+      if (count[k] < cap(k)) { out[id] = k; count[k]++; i++; break }
+    }
+  }
+  return out
+}
