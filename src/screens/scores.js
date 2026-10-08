@@ -32,10 +32,11 @@ export async function load() {
   return { course, members, guests, L: buildLibrary(games), me, teeTimes, events }
 }
 
-// Player event banners, the "play an event" link, and any invitation waiting for my answer.
-function eventsTop(events, me) {
+// Player event banners go at the top of the Scores tab; the "play an event" link at the bottom.
+const eventsTop = (events, me) => banners(events, me)
+function eventsBottom(events) {
   const busy = events.some(e => e.status === 'pending' || e.status === 'accepted')
-  return banners(events, me) + (busy ? '' : '<button class="linkbtn" id="pe-new" style="align-self:flex-start">+ Play an event with other groups</button>')
+  return busy ? '' : '<button class="linkbtn" id="pe-new" style="align-self:flex-start">+ Play an event with other groups</button>'
 }
 function bindEvents(events, me) {
   bindBanners(events, me)
@@ -137,6 +138,7 @@ export function draw({ course, members, guests, L, me, teeTimes, events }) {
     ${body}
     <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span class="hint">${round.done[i] ? 'Saved' : 'Gross scores. Shots applied automatically.'}</span>${verdict}</div>
     ${!G.pairs && gs.thru ? `<h3>Standings</h3>${standings(ps, gs, g)}` : ''}
+    ${eventsBottom(events)}
   </div>
   <div class="cta">${fin
     ? round.submitted[round.game] ? '<button class="primary" id="newr">Start a new round</button>' : '<button class="primary" id="submit">Finish round</button>'
@@ -220,7 +222,8 @@ function startScreen({ course, L, me, teeTimes, events }) {
     ${teeTimes.length ? teeTimes.map(s => `<button class="card evrow" data-slot="${s.id}"><span class="who"><strong>Start card for your ${hhmm(s.time)}</strong><small>${names(s)}</small></span><span class="pill">${s.players.length} players</span></button>`).join('')
       : '<div class="empty-state">You’re not on a tee time today. Pick who you’re playing with instead.</div>'}
     <button class="ghost" id="pick">${teeTimes.length ? 'Pick players instead' : 'Pick players'}</button>
-    <div class="hint">Cards are for 2 to 4 players. Better-ball games need four.</div></div>`
+    <div class="hint">Cards are for 2 to 4 players. Better-ball games need four.</div>
+    ${eventsBottom(events)}</div>`
   document.querySelectorAll('[data-slot]').forEach(b => (b.onclick = async () => {
     const s = teeTimes.find(x => x.id === +b.dataset.slot)
     if (s.players.length < 2) { toast('You’re the only one on that tee time so far'); return }
