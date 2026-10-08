@@ -105,7 +105,7 @@ export function draw({ course, members, guests, L, me, teeTimes, events, leagues
     const p = ps[k], gr = round.scores[i][k], sh = c.sh[k]
     const hc = p.guestId ? (p.hcp == null ? `<button class="sethcp" data-gh="${k}">Set handicap</button>` : `<button class="linkbtn h" data-gh="${k}" aria-label="Change ${esc(p.name)}'s handicap">(${ph[k]})</button>`) : `<span class="h">(${ph[k]})</span>`
     return `<div class="pcard${best(k) ? ' counts' : ''}"><span class="av${p.guestId ? ' gst' : ''}">${ini(p.name)}</span><span class="who"><strong>${esc(p.name)} ${hc}</strong>
-      <span class="pills">${sh ? `<span class="pill">${sh} shot${sh > 1 ? 's' : ''}</span>` : ''}<span class="pill">${pts ? `${c.pts[k]} pts` : G.allow ? `net ${c.net[k]}` : `gross ${gr}`}</span></span></span>
+      <span class="pills">${sh ? `<span class="pill">${sh} shot${sh > 1 ? 's' : ''}</span>` : ''}<span class="pill">${pts ? `${c.pts[k]} pts` : G.allow ? `net ${c.net[k]}` : `gross ${gr}`}</span>${leagueBadges(round.lineup[k]?.m, leagues, entries)}</span></span>
       <span class="stepper"><button data-k="${k}" data-d="-1" aria-label="One fewer for ${esc(p.name)}">−</button><output class="${round.done[i] ? '' : 'draft'}">${gr}</output><button data-k="${k}" data-d="1" aria-label="One more for ${esc(p.name)}">+</button></span></div>`
   }
 
@@ -147,7 +147,7 @@ export function draw({ course, members, guests, L, me, teeTimes, events, leagues
 
   const fin = gs.finished && round.done[i]
   const hcpNote = noHcp.length ? `<div class="hcpnote">${noHcp.map(p => esc(p.name.split(' ')[0])).join(' and ')} ${noHcp.length > 1 ? 'have' : 'has'} no handicap yet, so ${noHcp.length > 1 ? 'they play' : 'plays'} off an index of 0 until you set one. Shots and points update as soon as you do.</div>` : ''
-  $('main').innerHTML = `<div class="screen">${eventsTop(events, me)}${leagueBox(leagues, entries, members)}${grid}${hcpNote}
+  $('main').innerHTML = `<div class="screen">${eventsTop(events, me)}${leagueHint(leagues)}${grid}${hcpNote}
     <div class="matchline"><button class="gamesel" id="gchip" aria-expanded="${!!S.gmenu}" aria-controls="gmenu">${esc(LG.name)}${CHEV}</button><b>${esc(line)}</b></div>
     ${gamebar}
     ${body}
@@ -226,25 +226,26 @@ function standings(ps, gs, g) {
   return `<div class="card list">${rows.map((r, n) => `<div class="lrow" style="grid-template-columns:24px 44px 1fr auto"><span style="font-weight:800;text-align:center">${n + 1}</span><span class="av">${ini(r.p.name)}</span><span class="who"><strong>${esc(r.p.name)}${r.k === 0 ? ' (you)' : ''}</strong></span><span class="hcp">${g === 'stroke' ? toPar(r.v) : r.v}<small>${unit}</small></span></div>`).join('')}</div>`
 }
 
-// League entry: players choose before they play. One entered round a week; locked after hole 1.
-function leagueBox(leagues, entries, members) {
-  if (!leagues.length) return ''
-  const started = round.done.some(Boolean)
-  return leagues.map(e => {
-    const week = leagueWeek(e, isoDate(today()))
-    const ids = round.lineup.map(x => x.m).filter(id => e.players.includes(id))
-    const rows = ids.map(id => {
-      const here = entries.some(x => x.eventId === e.id && x.memberId === id && x.roundId === round.id)
-      const elsewhere = !here && entries.some(x => x.eventId === e.id && x.memberId === id && x.week === week)
-      const name = esc(members.find(m => m.id === id)?.name ?? '')
-      const btn = elsewhere ? '<span class="hint">entered another round this week</span>'
-        : started ? `<b class="${here ? 'lgin' : 'hint'}">${here ? 'Entered ✓' : 'Not entered'}</b>`
-        : `<button class="${here ? 'primary' : 'ghost'} lgbtn" data-lg-e="${e.id}" data-lg-m="${id}" data-lg-on="${here}">${here ? 'Entered ✓' : 'Enter'}</button>`
-      return `<div class="lgrow"><span>${name}</span>${btn}</div>`
-    }).join('')
-    return `<div class="card lgbox"><div class="pinhead"><b>🏆 ${esc(e.name)} · week ${week}</b><span class="hint">${started ? 'locked' : 'before you tee off'}</span></div>${rows}
-      ${started ? '' : `<span class="hint">Enter now if this round counts for the league. One round a week each; entries lock when hole 1 is saved.</span>`}</div>`
+// League entry: players choose before they play (one entered round a week; locked once hole 1 is
+// saved). Shown as a small badge on each player's card: "+ WL" to enter before teeing off, then
+// "WL" on the cards whose round counts.
+const initials = name => name.split(/\s+/).filter(Boolean).map(w => w[0].toUpperCase()).join('').slice(0, 3)
+function leagueBadges(memberId, leagues, entries) {
+  if (memberId == null || !leagues.length) return ''
+  const started = round.done.some(Boolean), week = leagueWeekNow
+  return leagues.filter(e => e.players.includes(memberId)).map(e => {
+    const here = entries.some(x => x.eventId === e.id && x.memberId === memberId && x.roundId === round.id)
+    const elsewhere = !here && entries.some(x => x.eventId === e.id && x.memberId === memberId && x.week === week(e))
+    const tag = esc(initials(e.name))
+    if (here && started) return `<span class="pill wlpill on" title="This round counts for ${esc(e.name)}">${tag}</span>`
+    if (started || elsewhere) return '' // not entered (or entered with another card this week)
+    return `<button class="pill wlpill ${here ? 'on' : 'off'}" data-lg-e="${e.id}" data-lg-m="${memberId}" data-lg-on="${here}" aria-label="${here ? 'Remove from' : 'Enter in'} ${esc(e.name)}">${here ? `${tag} ✓` : `+ ${tag}`}</button>`
   }).join('')
+}
+const leagueWeekNow = e => leagueWeek(e, isoDate(today()))
+function leagueHint(leagues) {
+  if (!leagues.length || round.done.some(Boolean)) return ''
+  return `<div class="hint">${leagues.map(e => `Tap <b>+ ${esc(initials(e.name))}</b> on a player to enter this round in ${esc(e.name)} (week ${leagueWeekNow(e)}).`).join(' ')} Entries lock when hole 1 is saved.</div>`
 }
 function bindLeagueBox(leagues) {
   document.querySelectorAll('[data-lg-e]').forEach(b => (b.onclick = async () => {
