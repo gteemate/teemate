@@ -519,3 +519,16 @@ button.wlpill{cursor:pointer}
 .capgrid{display:grid;grid-template-columns:auto 1fr;gap:8px 10px;align-items:center;margin:4px 0 8px}
 .capgrid label{display:flex;align-items:center;gap:6px;font-weight:700;font-size:14px;white-space:nowrap}
 .capgrid select{min-width:0;width:100%}
+/* league: "count today's round?" */
+.lgline{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;border-radius:16px;border:1.5px solid var(--loss);background:var(--surface);font-size:14px}
+.lgline b{color:var(--loss)}
+.lgline.locked{border-style:dashed;color:var(--muted)}
+.lgsheet .kicker{color:var(--loss);font-weight:800;font-size:13px;letter-spacing:.04em;text-transform:uppercase}
+.lgsheet{gap:10px;max-height:90vh;overflow-y:auto}
+.ask{display:grid;grid-template-columns:44px 1fr;gap:10px 12px;align-items:center;padding:12px 14px;background:var(--surface);border:1px solid var(--line);border-radius:18px}
+.ask .who small{color:var(--muted)}
+.ask .yn{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.yn button{padding:11px 0;border-radius:14px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink);font:700 15px var(--sys);cursor:pointer}
+.yn button.yes[aria-pressed="true"]{background:var(--loss);border-color:var(--loss);color:var(--on-loss)}
+.yn button.no[aria-pressed="true"]{background:var(--sunk);border-color:var(--muted)}
+.ask.done{opacity:.65}

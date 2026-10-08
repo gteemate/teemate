@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sign-up mockup</title>
+<style>
+:root{
+  --bg:#f4f4f7; --surface:#ffffff; --sunk:#e9eaf0; --ink:#151a26; --muted:#676c7a; --line:#dfe2ea;
+  --green:#19335A; --on-green:#f4f6fb; --leaf:#dfe6f1; --leaf-line:#19335A; --ok:#2f7d4f; --err:#a8324f;
+  --shadow:rgba(25,51,90,.4);
+  --sys:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f121a; --surface:#181d29; --sunk:#202636; --ink:#eef0f6; --muted:#9ba1b2; --line:#2a3142;
+  --green:#2d548f; --on-green:#f4f6fb; --leaf:#22324d; --leaf-line:#8fb0e6; --ok:#6cc391; --err:#e58aa6;
+  --shadow:rgba(0,0,0,.6); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f121a; --surface:#181d29; --sunk:#202636; --ink:#eef0f6; --muted:#9ba1b2; --line:#2a3142;
+  --green:#2d548f; --on-green:#f4f6fb; --leaf:#22324d; --leaf-line:#8fb0e6; --ok:#6cc391; --err:#e58aa6;
+  --shadow:rgba(0,0,0,.6); color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--sunk);color:var(--ink);font-family:var(--sys);font-size:15px;padding:24px 16px}
+button,input{font-family:var(--sys)}
+button{cursor:pointer}
+button:focus-visible,input:focus-visible{outline:2px solid var(--leaf-line);outline-offset:2px}
+.wrap{display:flex;gap:40px;justify-content:center;align-items:flex-start;flex-wrap:wrap}
+.notes{max-width:330px;min-width:0;padding-top:30px}
+.notes h1{font-size:30px;font-weight:800;letter-spacing:-.02em;line-height:1.05;margin:0 0 10px;text-wrap:balance}
+.notes p{color:var(--muted);line-height:1.55;margin:0 0 12px}
+.steps{display:flex;flex-direction:column;gap:8px;margin:16px 0}
+.steps button{text-align:left;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:14px;padding:10px 14px;font-size:14px;font-weight:600}
+.steps button[aria-pressed="true"]{background:var(--green);color:var(--on-green);border-color:var(--green)}
+.steps small{display:block;font-weight:500;opacity:.75;margin-top:2px}
+.phone{width:100%;max-width:390px;height:800px;background:var(--bg);border-radius:40px;border:1px solid var(--line);
+  box-shadow:0 30px 60px -30px var(--shadow);overflow:hidden;display:flex;flex-direction:column;position:relative}
+.scr{flex:1;overflow-y:auto;padding:28px 22px 24px;display:flex;flex-direction:column;gap:14px}
+.brand{display:flex;flex-direction:column;align-items:center;gap:8px;margin:40px 0 18px;text-align:center}
+.logo{width:76px;height:76px;border-radius:22px;background:var(--green);color:var(--on-green);display:grid;place-items:center;font-size:38px}
+.brand h2{font-size:38px;font-weight:800;letter-spacing:-.03em;margin:6px 0 0}
+.brand p{color:var(--muted);margin:0;font-size:16px}
+.big{display:flex;flex-direction:column;gap:4px;text-align:left;padding:18px 20px;border-radius:20px;border:2px solid var(--line);background:var(--surface);color:var(--ink)}
+.big b{font-size:20px;font-weight:800}
+.big span{color:var(--muted);font-size:14px}
+.big.primary{background:var(--green);border-color:var(--green);color:var(--on-green)}
+.big.primary span{color:inherit;opacity:.8}
+.back{align-self:flex-start;background:none;border:0;color:var(--muted);font-size:15px;font-weight:600;padding:4px 0}
+h3{font-size:32px;font-weight:800;letter-spacing:-.025em;margin:0;line-height:1.05}
+.lead{color:var(--muted);margin:-4px 0 4px;line-height:1.45}
+label{font-size:13px;font-weight:700;color:var(--muted);margin-bottom:-8px}
+.in{position:relative}
+input{width:100%;padding:14px;border-radius:14px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:16px}
+.eye{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:0;color:var(--muted);font-size:18px;padding:6px}
+.hint{font-size:13px;color:var(--muted);margin-top:-6px}
+.cta{padding:14px 22px 22px;border-top:1px solid var(--line);background:var(--bg)}
+.go{width:100%;padding:16px;border-radius:16px;border:0;background:var(--green);color:var(--on-green);font-size:17px;font-weight:800}
+.switch{background:none;border:0;color:var(--green);font-weight:700;font-size:15px;padding:10px;width:100%}
+.err{color:var(--err);font-size:14px;font-weight:600;min-height:1em;margin:0}
+.wait{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:12px}
+.ring{width:84px;height:84px;border-radius:50%;border:6px solid var(--leaf);border-top-color:var(--green);animation:spin 1.4s linear infinite}
+@media (prefers-reduced-motion:reduce){.ring{animation:none}}
+@keyframes spin{to{transform:rotate(360deg)}}
+.wait h3{font-size:28px}
+.wait p{color:var(--muted);line-height:1.5;margin:0;max-width:290px}
+.chip{display:inline-flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:7px 12px;font-size:13px;color:var(--muted);font-weight:600}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--ok)}
+.tick{width:84px;height:84px;border-radius:50%;background:var(--ok);color:#fff;display:grid;place-items:center;font-size:44px;font-weight:800}
+.fade{animation:fade .35s ease-out}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}}
+@media (max-width:460px){body{padding:0}.notes{max-width:none;padding:20px 16px 0}.phone{border-radius:0;max-width:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="notes">
+    <h1>Simpler sign-up</h1>
+    <p>The first screen shows two clear buttons: <b>I'm new</b> or <b>I've got an account</b>.</p>
+    <p>Signing up is one page: name, email and password. That sends the request to the admin and keeps you signed in.</p>
+    <p>While you wait, the app checks for approval every few seconds. The moment the admin approves, it goes straight into TeeMate without asking you to sign in again. If you close it and come back later, it opens straight in too.</p>
+    <p>If your email is already on the members list, you skip the waiting step entirely.</p>
+    <div class="steps" role="group" aria-label="Mockup screen">
+      <button data-go="welcome" aria-pressed="true">1 · Welcome<small>Sign up or sign in</small></button>
+      <button data-go="signup" aria-pressed="false">2 · Sign up<small>Everything on one page</small></button>
+      <button data-go="wait" aria-pressed="false">3 · Waiting for approval<small>Checks automatically</small></button>
+      <button data-go="in" aria-pressed="false">4 · Approved<small>Straight in, no second sign-in</small></button>
+      <button data-go="signin" aria-pressed="false">Sign in<small>For returning players</small></button>
+    </div>
+    <p>Tap through on the phone too. On the waiting screen, “Simulate admin approves” stands in for the admin tapping Approve.</p>
+  </div>
+  <div class="phone" id="phone"></div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id)
+let timer = null
+const eye = id => `<button type="button" class="eye" aria-label="Show password" data-eye="${id}">👁</button>`
+const screens = {
+  welcome: () => `<div class="scr fade">
+    <div class="brand"><div class="logo">⛳</div><h2>TeeMate</h2><p>Tee times, scores and leagues for the club</p></div>
+    <button class="big primary" data-go="signup"><b>I'm new · Sign up</b><span>Takes a minute. The club admin approves you.</span></button>
+    <button class="big" data-go="signin"><b>I've got an account · Sign in</b><span>Email and password</span></button>
+  </div>`,
+  signup: () => `<div class="scr fade">
+    <button class="back" data-go="welcome">‹ Back</button>
+    <h3>Sign up</h3>
+    <p class="lead">Fill this in once. The club admin approves you, then you're straight in.</p>
+    <label for="n">Your name</label><input id="n" autocomplete="name" placeholder="e.g. Pete Reid">
+    <label for="e">Email</label><input id="e" type="email" autocomplete="email" placeholder="you@example.com">
+    <label for="p">Choose a password</label><div class="in"><input id="p" type="password" autocomplete="new-password" placeholder="At least 8 characters">${eye('p')}</div>
+    <div class="hint">You'll use this to sign in on other phones. Only typed once — tap 👁 to check it.</div>
+    <p class="err" id="err" role="alert"></p>
+  </div>
+  <div class="cta"><button class="go" id="send">Sign up</button><button class="switch" data-go="signin">Already have an account? Sign in</button></div>`,
+  wait: () => `<div class="scr fade"><div class="wait">
+    <div class="ring" aria-hidden="true"></div>
+    <h3>Waiting for approval</h3>
+    <p>Thanks, ${esc(window.who || 'Pete')}. Your request is with the club admin. Keep this open, or come back later: it opens straight in once you're approved.</p>
+    <span class="chip"><span class="dot"></span>Checking automatically</span>
+  </div>
+  <button class="switch" id="approve" style="opacity:.6;font-size:13px">▶ Simulate admin approves</button>
+  <button class="switch" style="color:var(--muted);font-weight:600" data-go="welcome">Wrong email? Start again</button></div>`,
+  in: () => `<div class="scr fade"><div class="wait">
+    <div class="tick">✓</div>
+    <h3>You're in!</h3>
+    <p>The admin approved you. Opening TeeMate…</p>
+  </div></div>`,
+  signin: () => `<div class="scr fade">
+    <button class="back" data-go="welcome">‹ Back</button>
+    <h3>Sign in</h3>
+    <label for="se">Email</label><input id="se" type="email" autocomplete="email" placeholder="you@example.com">
+    <label for="sp">Password</label><div class="in"><input id="sp" type="password" autocomplete="current-password">${eye('sp')}</div>
+    <div class="hint">Forgotten it? Ask the club admin to reset your login.</div>
+  </div>
+  <div class="cta"><button class="go">Sign in</button><button class="switch" data-go="signup">New here? Sign up</button></div>`,
+}
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
+function go(k) {
+  clearTimeout(timer)
+  $('phone').innerHTML = screens[k]()
+  document.querySelectorAll('[data-go]').forEach(b => b.setAttribute('aria-pressed', b.dataset.go === k))
+  $('phone').querySelectorAll('[data-go]').forEach(b => (b.onclick = () => go(b.dataset.go)))
+  $('phone').querySelectorAll('[data-eye]').forEach(b => (b.onclick = () => { const i = $(b.dataset.eye); i.type = i.type === 'password' ? 'text' : 'password' }))
+  if ($('send')) $('send').onclick = () => {
+    const n = $('n').value.trim(), e = $('e').value.trim(), p = $('p').value
+    const err = !n ? 'Enter your name.' : !/^\S+@\S+\.\S+$/.test(e) ? 'Enter your email address.' : p.length < 8 ? 'Passwords need at least 8 characters.' : ''
+    if (err) { $('err').textContent = err; return }
+    window.who = n.split(' ')[0]
+    go('wait')
+  }
+  if ($('approve')) $('approve').onclick = () => go('in')
+  if (k === 'in') timer = setTimeout(() => {
+    $('phone').innerHTML = `<div class="scr fade"><h3>Admin</h3><p class="lead">Signed in as ${esc(window.who || 'Pete')} · this is the normal app home.</p></div>`
+  }, 1800)
+}
+document.querySelectorAll('.steps [data-go]').forEach(b => (b.onclick = () => go(b.dataset.go)))
+go('welcome')
+</script>
+</body>
+</html>

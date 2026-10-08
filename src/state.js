@@ -14,7 +14,7 @@ export const S = {
   // leaderboard
   lbm: 'net', lbv: 'event', evDay: 1, lgView: 'teams', lgWeek: null, // league board: 'teams' or 'individual'; lgWeek null = whole season
   // tee times and booking
-  day: 0, filter: 'all', slotId: null, picked: [], guests: [], gmodal: false, lastBooking: null,
+  day: 0, filter: 'all', slotId: null, picked: [], guests: [], gmodal: false, lgAns: {}, lgLater: null, lgOpenSheet: false, lastBooking: null,
   // buddies
   bseg: 'mine', q: '', qCaret: null, bfrom: null, // bfrom: where to offer a way back to ('book' | 'players')
   // games admin
