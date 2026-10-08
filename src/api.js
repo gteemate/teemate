@@ -7,8 +7,7 @@ import { createClient } from '@supabase/supabase-js'
 import { isoDate, today } from './dates.js'
 
 const sb = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_ANON_KEY, {
-  // Implicit flow: the magic link works even if it's opened on a different device from the one that asked for it.
-  auth: { flowType: 'implicit', persistSession: true, detectSessionInUrl: true },
+  auth: { persistSession: true, detectSessionInUrl: false },
 })
 
 const must = ({ data, error }) => {
@@ -17,18 +16,34 @@ const must = ({ data, error }) => {
 }
 const todayIso = () => isoDate(today())
 
-/* ---------- Sign-in ---------- */
+/* ---------- Sign-in (email + password; no emails are sent) ---------- */
 
 export async function getSession() {
   return must(await sb.auth.getSession()).session
 }
 
-/** Email a magic sign-in link that brings the user back to this app. */
-export async function sendMagicLink(email) {
-  must(await sb.auth.signInWithOtp({
-    email: email.trim().toLowerCase(),
-    options: { emailRedirectTo: location.origin + import.meta.env.BASE_URL },
-  }))
+export async function signIn(email, password) {
+  const { error } = await sb.auth.signInWithPassword({ email: email.trim().toLowerCase(), password })
+  if (error) {
+    throw new Error(/invalid login credentials/i.test(error.message)
+      ? 'Wrong email or password. First time here? Create your account instead.'
+      : error.message)
+  }
+}
+
+/** First sign-in: create a login with a password. Only emails an admin has approved are accepted. */
+export async function createAccount(email, password) {
+  const { data, error } = await sb.auth.signUp({ email: email.trim().toLowerCase(), password })
+  if (error) {
+    throw new Error(/already registered|already exists/i.test(error.message)
+      ? "There's already an account for that email. Sign in instead, or ask the admin to reset your login."
+      : error.message)
+  }
+  if (!data.session) throw new Error('Account created, but sign-in failed. Try signing in.')
+}
+
+export async function changePassword(password) {
+  must(await sb.auth.updateUser({ password }))
 }
 
 export async function signOut() {
@@ -83,8 +98,8 @@ export async function getAccessList() {
 }
 
 /**
- * Add (no id) or update a member. An email gives them access; a blank email removes it
- * (and deletes their login). Returns the member id.
+ * Add (no id) or update a member. An email approves them to create an account; a blank email
+ * removes access (and deletes their login). Returns the member id.
  */
 export async function saveMember(m) {
   const id = must(await sb.rpc('admin_save_member', {
@@ -93,6 +108,11 @@ export async function saveMember(m) {
   }))
   me = undefined // in case I edited myself
   return id
+}
+
+/** Delete a member's login (e.g. forgotten password) but keep their email approved. */
+export async function resetLogin(id) {
+  must(await sb.rpc('admin_reset_login', { p_id: id }))
 }
 
 /* ---------- Course and pins ---------- */

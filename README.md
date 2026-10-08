@@ -23,7 +23,9 @@ Copy `.env.example` to `.env` and fill it in.
 - **Database** in `supabase/`: migrations (tables, Row Level Security, functions), generated seed, and tests.
   Tee times are booked only through `book_tee_time()`, which checks spaces and guest points in one
   transaction, so double bookings and negative points can't happen.
-- **Sign-in** is an emailed magic link. A login is linked to a member by email.
+- **Sign-in** is email + password; no emails are sent. An admin approves an email (Admin → Members & access);
+  that person creates their own password the first time. Any other email is refused by a Supabase
+  before-user-created hook. Forgotten password: the admin uses Reset login.
 
 ## Database commands
 

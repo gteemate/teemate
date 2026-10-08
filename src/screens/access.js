@@ -10,15 +10,16 @@ export async function load() {
   return { list, me }
 }
 
-const status = m => (!m.email ? 'No access' : m.signedIn ? 'Signed in' : 'Invited')
+// signedIn = they've created their account (a login exists)
+const status = m => (!m.email ? 'No access' : m.signedIn ? 'Has account' : 'Approved')
 
 export function draw({ list, me }) {
   const withAccess = list.filter(m => m.email), signedIn = list.filter(m => m.signedIn)
-  header('Members & access', `<b>${withAccess.length}</b> with access · ${signedIn.length} signed in`, () => { S.accEdit = null; S.accQ = ''; toAdmin() })
+  header('Members & access', `<b>${withAccess.length}</b> approved · ${signedIn.length} with accounts`, () => { S.accEdit = null; S.accQ = ''; toAdmin() })
   const q = S.accQ.trim().toLowerCase()
   const shown = q ? list.filter(m => m.name.toLowerCase().includes(q) || (m.email || '').includes(q) || (m.gui || '').includes(q)) : list
   $('main').innerHTML = `<div class="screen">
-    <div class="hint">Only the emails here can sign in. Anyone else asking for a sign-in link is turned away.</div>
+    <div class="hint">Only approved emails can create an account. Once approved, they tap “Create your account” on the sign-in screen and choose a password.</div>
     <button class="primary" id="addm">+ Add member</button>
     <div class="search"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="accq" type="search" placeholder="Name, email or GUI" value="${esc(S.accQ)}" autocomplete="off"></div>
     <div class="card list">${shown.map(m => `<button class="lrow accrow" data-m="${m.id}"><span class="av">${ini(m.name)}</span>
@@ -40,12 +41,13 @@ function editSheet(m, me) {
   $('modal').innerHTML = `<div class="overlay" id="ovl"><form class="sheet" id="mform" novalidate aria-labelledby="mtitle">
     <h4 id="mtitle">${isNew ? 'Add member' : esc(m.name)}</h4>
     <label for="m-name">Full name</label><input id="m-name" autocomplete="off" value="${esc(m.name)}" placeholder="e.g. Paul Hughes">
-    <label for="m-email">Email <span class="opt">gives them access</span></label><input id="m-email" type="email" inputmode="email" autocomplete="off" value="${esc(m.email || '')}" placeholder="Leave blank for no access" ${self ? 'readonly' : ''}>
+    <label for="m-email">Email <span class="opt">approves them to sign in</span></label><input id="m-email" type="email" inputmode="email" autocomplete="off" value="${esc(m.email || '')}" placeholder="Leave blank for no access" ${self ? 'readonly' : ''}>
     <div class="tnames"><div><label for="m-gui">GUI number <span class="opt">optional</span></label><input id="m-gui" inputmode="numeric" autocomplete="off" value="${esc(m.gui || '')}"></div>
       <div><label for="m-hcp">Handicap index</label><input id="m-hcp" inputmode="decimal" autocomplete="off" value="${m.hcp}"></div></div>
     ${sw('m-com', m.committee, 'Committee', 'Can set pins, games and events')}
     ${sw('m-adm', m.admin, 'Admin', self ? 'You can’t remove your own admin rights' : 'Can give and remove access', self)}
     <p class="gerr" id="merr" role="alert"></p>
+    ${!isNew && m.signedIn && !self ? '<button type="button" class="ghost" id="mreset">Reset login</button><span class="hint">For a forgotten password: deletes their login (scores and bookings stay) so they can create a new password.</span>' : ''}
     ${!isNew && m.email && !self ? `<button type="button" class="ghost accremove" id="mrem">${S.accConfirm ? `Tap again to remove ${esc(m.name.split(' ')[0])}’s access` : 'Remove access'}</button>` : ''}
     <div class="gm-btns"><button type="button" class="ghost" id="mcancel">Cancel</button><button type="submit" class="primary" id="msave">${isNew ? 'Add member' : 'Save'}</button></div>
   </form></div>`
@@ -80,8 +82,23 @@ function editSheet(m, me) {
   $('mform').onsubmit = e => {
     e.preventDefault()
     const hadAccess = !!m.email
-    save({}, n => (isNew ? (n.email ? `${n.name.trim()} added. They can sign in now` : `${n.name.trim()} added without access`)
-      : !hadAccess && n.email.trim() ? `${n.name.trim()} can sign in now` : hadAccess && !n.email.trim() ? `${n.name.trim()}’s access removed` : 'Saved'))
+    save({}, n => (isNew ? (n.email ? `${n.name.trim()} approved. They can create their account now` : `${n.name.trim()} added without access`)
+      : !hadAccess && n.email.trim() ? `${n.name.trim()} approved. They can create their account now` : hadAccess && !n.email.trim() ? `${n.name.trim()}’s access removed` : 'Saved'))
+  }
+  const reset = $('mreset')
+  if (reset) reset.onclick = async () => {
+    if (reset.dataset.armed !== '1') { reset.dataset.armed = '1'; reset.textContent = `Tap again to reset ${m.name.split(' ')[0]}’s login`; return }
+    reset.disabled = true
+    try {
+      await api.resetLogin(m.id)
+    } catch (err) {
+      $('merr').textContent = err.message
+      reset.disabled = false
+      return
+    }
+    S.accEdit = null
+    await keepScroll(render)
+    toast(`${m.name}’s login reset. They can create a new password`)
   }
   const rem = $('mrem')
   if (rem) rem.onclick = () => {

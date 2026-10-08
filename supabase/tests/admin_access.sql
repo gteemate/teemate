@@ -100,5 +100,27 @@ do $$ begin
     t.hook('declan.new@example.invalid') = '{}'::jsonb and t.hook('access-test-1@example.invalid') ? 'error');
 end $$;
 
+-- ------------------------------------------------------------------ reset login (forgotten password)
+insert into public.members (name, email) values ('Reset Me', 'reset.me@example.invalid');
+insert into auth.users (id, email, aud, role) values (gen_random_uuid(), 'reset.me@example.invalid', 'authenticated', 'authenticated');
+do $$ declare v_id bigint := (select id from public.members where email = 'reset.me@example.invalid'); e text; begin
+  update public.members set admin = false where id = 1; -- Declan was made admin above
+  perform t.act_as(1);
+  e := t.err(format('select public.admin_reset_login(%s)', v_id));
+  perform t.ok('Reset login: non-admins cannot', e is not null, e);
+  perform t.done();
+  perform t.act_as(0);
+  perform public.admin_reset_login(v_id);
+  e := t.err('select public.admin_reset_login(0)');
+  perform t.ok('Reset login: admin cannot reset their own', e like '%own login%', e);
+  perform t.done();
+  perform t.ok('Reset login: login deleted', not exists (select 1 from auth.users where email = 'reset.me@example.invalid'));
+  perform t.ok('Reset login: email stays approved', (select email from public.members where id = v_id) = 'reset.me@example.invalid'
+                                                  and t.hook('reset.me@example.invalid') = '{}'::jsonb);
+end $$;
+insert into auth.users (id, email, aud, role) values (gen_random_uuid(), 'reset.me@example.invalid', 'authenticated', 'authenticated');
+select t.ok('Reset login: new account re-links to the same member',
+  (select user_id from public.members where email = 'reset.me@example.invalid') = (select id from auth.users where email = 'reset.me@example.invalid'));
+
 select test, ok, detail from t.results order by n;
 rollback;

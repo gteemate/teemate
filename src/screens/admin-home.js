@@ -1,7 +1,8 @@
 // Admin tab home: tiles for each admin area.
 import * as api from '../api.js'
 import { S } from '../state.js'
-import { $, esc, header, top0, render } from '../ui.js'
+import { $, esc, header, top0, render, toast } from '../ui.js'
+import { passwordSheet } from './login.js'
 import { isoDate, today } from '../dates.js'
 import { buildLibrary } from '../games.js'
 
@@ -29,8 +30,9 @@ export function draw({ me, sheet, bookings, buddies, L, active, points }) {
     <button class="atile row" data-a="points"><span class="e">🎟️</span><b>Guest points</b><span>${left} of ${points.allowance} left this year</span></button>
   </div>
   ${committee ? '<div class="hint">Pins, Games and Events only show for committee members.</div>' : ''}
-  <button class="signout" id="signout">Sign out</button></div>`
+  <div class="bk-btns"><button class="signout" id="chpw">Change password</button><button class="signout" id="signout">Sign out</button></div></div>`
   $('signout').onclick = () => api.signOut()
+  $('chpw').onclick = () => passwordSheet(ok => ok && toast('Password changed'))
   document.querySelectorAll('[data-a]').forEach(b => (b.onclick = async () => {
     S.aview = b.dataset.a
     if (S.aview === 'buddies') { S.bseg = 'mine'; S.bfrom = null }
