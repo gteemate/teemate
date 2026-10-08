@@ -10,3 +10,6 @@ export const nextDays = n => [...Array(n)].map((_, i) => { const d = today(); d.
 export const dayMonth = d => `${d.getDate()} ${MN[d.getMonth()]}`
 export const longDay = d => `${DN[d.getDay()]} ${d.getDate()} ${MN[d.getMonth()]}`
 export const hhmm = m => `${p2(Math.floor(m / 60))}:${p2(m % 60)}`
+export const addDaysIso = (iso, n) => { const d = fromIso(iso); d.setDate(d.getDate() + n); return isoDate(d) }
+/** "Sat 17 Oct" or "Sat 17 – Sun 18 Oct" for an event's days. */
+export const eventDates = (iso, days) => (days > 1 ? `${longDay(fromIso(iso))} – ${longDay(fromIso(addDaysIso(iso, days - 1)))}` : longDay(fromIso(iso)))

@@ -135,3 +135,49 @@ describe('reading scores from each group’s card', () => {
     expect(groups[0].players.map(p => [p.courseHcp, p.team])).toEqual([[10, 'A'], [0, 'B']])
   })
 })
+
+import { grossOnDay, scoreAdvanceEvent } from './event-scoring.js'
+describe('events set up in advance', () => {
+  const players = { 1: 'Declan', 2: 'Aoife', 3: 'Ciarán', 4: 'Siobhán' }
+  const player = id => ({ name: players[id] ?? 'Nobody', courseHcp: 0 })
+  // Cards on day 1: Declan and Ciarán on one card, Aoife and Siobhán on another (different tee times).
+  const card = (ids, rows) => ({ lineup: ids.map(m => ({ m })), scores: FLAT.map((_, i) => rows[i] ?? ids.map(() => 4)), done: FLAT.map((_, i) => i < rows.length) })
+  const day1 = [card([1, 3], [[3, 4], [4, 5]]), card([2, 4], [[4, 4], [4, 4]])]
+
+  it('reads each member’s scores from whichever card they’re on', () => {
+    expect(grossOnDay(day1, 2, FLAT).slice(0, 3)).toEqual([4, 4, null])
+    expect(grossOnDay(day1, 9, FLAT).every(x => x === null)).toBe(true)
+  })
+
+  it('Ryder Cup: a drawn match is scored even when the four are on different cards', () => {
+    const ev = { style: 'ryder', fmt: 'bbscr', days: 2, players: [1, 2, 3, 4], team: { 1: 'A', 3: 'A', 2: 'B', 4: 'B' },
+      matches: { 1: [{ a: [1, 3], b: [2, 4] }], 2: [{ a: [1, 2], b: [3, 4] }] } }
+    const r = scoreAdvanceEvent(ev, FLAT, { 1: day1 }, player, 0)
+    // Hole 1: A best 3 v B 4 → A. Hole 2: A best 4 v B 4 → halved. A 1 up thru 2.
+    expect(r.byDay[1][0].res).toMatchObject({ st: 'live', d: 1, thru: 2 })
+    expect(r.byDay[2][0].res.st).toBe('ns') // no cards on day 2 yet
+    expect(r.score).toMatchObject({ pA: 1, pB: 0, tot: 2 })
+  })
+
+  it('Team Stableford adds everyone’s points across the days', () => {
+    const ev = { style: 'teams', fmt: 'teamstab', days: 2, players: [1, 2, 3, 4], team: { 1: 'A', 3: 'A', 2: 'B', 4: 'B' }, matches: {} }
+    const day2 = [card([1], [[4]])]
+    const r = scoreAdvanceEvent(ev, FLAT, { 1: day1, 2: day2 }, player, 1)
+    // A: Declan 3+2 (day 1) + 2 (day 2) = 7, Ciarán 2+1 = 3 → 10. B: Aoife 4, Siobhán 4 → 8.
+    expect(r.totals).toEqual({ A: 10, B: 8 })
+    expect(r.players[0]).toMatchObject({ name: 'Declan', pts: 7 })
+  })
+
+  it('Individual Stableford: highest first; not started go last', () => {
+    const ev = { style: 'individual', fmt: 'stab', days: 1, players: [1, 2, 3, 4, 9], team: {}, matches: {} }
+    const r = scoreAdvanceEvent(ev, FLAT, { 1: day1 }, player, 1)
+    expect(r.rows.map(x => [x.name, x.pts, x.pos])).toEqual([['Declan', 5, 1], ['Aoife', 4, 2], ['Siobhán', 4, 2], ['Ciarán', 3, 4], ['Nobody', 0, null]])
+    expect(r.rows[1].tied).toBe(true)
+  })
+
+  it('Individual net: lowest to par first', () => {
+    const ev = { style: 'individual', fmt: 'net', days: 1, players: [1, 3], team: {}, matches: {} }
+    const r = scoreAdvanceEvent(ev, FLAT, { 1: day1 }, player, 1)
+    expect(r.rows.map(x => [x.name, x.net])).toEqual([['Declan', -1], ['Ciarán', 1]])
+  })
+})

@@ -367,27 +367,39 @@ export async function getCardsForTeeTimes(date, slotIds) {
   return Object.fromEntries(rows.map(r => [r.slot_id, toRound(r)])) // latest card per tee time wins
 }
 
-/* ---------- Team events ---------- */
+/* ---------- Events set up in advance ---------- */
 
-const EVENT_COLS = 'id, name, team_a, team_b, active, days, course, format, players, team, matches'
-const toEvent = e => ({ id: e.id, name: e.name, A: e.team_a, B: e.team_b, active: e.active, days: e.days, course: e.course, format: e.format, players: e.players, team: e.team, matches: e.matches })
+const EVENT_COLS = 'id, name, team_a, team_b, club, start_date, days, style, fmt, players, team, matches, creator:created_by(id, name)'
+const toEvent = e => ({
+  id: e.id, name: e.name, A: e.team_a, B: e.team_b, club: e.club, startDate: e.start_date, days: e.days,
+  style: e.style, fmt: e.fmt, players: e.players, team: e.team, matches: e.matches, createdBy: e.creator,
+})
 
+/** Events I can see: club events, ones I set up, and ones I'm playing in (RLS decides). */
 export async function getEvents() {
-  return must(await sb.from('events').select(EVENT_COLS).order('id')).map(toEvent)
+  return must(await sb.from('events').select(EVENT_COLS).order('start_date')).map(toEvent)
 }
 
-export async function createEvent() {
-  return toEvent(must(await sb.from('events').insert({
-    name: 'New event', team_a: { name: 'Team A', col: '#19335A' }, team_b: { name: 'Team B', col: '#762A43' },
-    days: 1, course: 'Ailsa · White tees', format: 'Better ball · off the low',
-  }).select(EVENT_COLS).single()))
-}
-
-/** Save an event. Only one event can be active, so activating one deactivates the rest. */
+/** Create (no id) or update an event. Returns its id. */
 export async function saveEvent(e) {
-  must(await sb.from('events').update({
-    name: e.name, team_a: e.A, team_b: e.B, days: e.days, course: e.course, format: e.format,
-    players: e.players, team: e.team, matches: e.matches,
-  }).eq('id', e.id))
-  must(await sb.rpc('set_active_event', { p_event_id: e.id, p_active: e.active }))
+  const row = {
+    name: e.name, team_a: e.A, team_b: e.B, club: !!e.club, start_date: e.startDate, days: e.days,
+    style: e.style, fmt: e.fmt, players: e.players, team: e.team, matches: e.matches,
+  }
+  if (e.id) {
+    const rows = must(await sb.from('events').update(row).eq('id', e.id).select('id'))
+    if (!rows.length) throw new Error('This event can’t be changed now. It has started, or it isn’t yours.')
+    return e.id
+  }
+  return must(await sb.from('events').insert(row).select('id').single()).id
+}
+
+export async function deleteEvent(id) {
+  const rows = must(await sb.from('events').delete().eq('id', id).select('id'))
+  if (!rows.length) throw new Error('This event can’t be deleted now. It has started, or it isn’t yours.')
+}
+
+/** Everyone's cards on some dates (for scoring events): [{ date, lineup, scores, done }]. */
+export async function getCardsOn(dates) {
+  return must(await sb.from('rounds').select('date, lineup, scores, done, updated_at').in('date', dates).order('updated_at'))
 }

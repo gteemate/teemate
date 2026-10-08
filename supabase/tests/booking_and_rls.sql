@@ -172,10 +172,8 @@ do $$ declare new_id bigint; begin
   perform t.ok('Admin: can publish pins', t.err($q$insert into public.pin_sheets (course_id, date, pins) values (1, current_date + 1, '[]')$q$) is null);
   perform t.ok('Admin: can change games', t.err($q$insert into public.game_settings values ('skins', false, null)$q$) is null);
   perform t.ok('Admin: sees everyone''s guest points', t.val('select count(distinct member_id) from public.guest_visits') > 2);
-  insert into public.events (name, team_a, team_b, course, format) values ('Test', '{}', '{}', 'Ailsa', 'x') returning id into new_id;
-  perform public.set_active_event(new_id, true);
-  perform t.ok('Admin: only one event is active at a time', (select count(*) from public.events where active) = 1
-                                                               and (select active from public.events where id = new_id));
+  insert into public.events (name, start_date, style, fmt, club) values ('Club Test', current_date + 5, 'teams', 'teamstab', true) returning id into new_id;
+  perform t.ok('Admin: can create a club event', new_id is not null);
   perform t.done();
 end $$;
 

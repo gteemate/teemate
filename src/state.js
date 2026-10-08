@@ -22,5 +22,5 @@ export const S = {
   // members & access (admin)
   accEdit: null, accQ: '', accConfirm: false, accPrefill: null, // accEdit: null | 'new' | member id
   // events admin
-  evId: null, evStep: 1,
+  evId: null, evStep: 1, ev: null, evQ: '', evSwap: null, // event being set up (draft), its step, player search, a pending swap
 }

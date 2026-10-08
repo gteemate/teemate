@@ -58,8 +58,9 @@ insert into public.pin_sheets (course_id, date, set_at, set_by, pins)
 ${rows('rounds', ['date', 'created_by', 'lineup', 'game', 'pairing', 'scores', 'done'],
   [['current_date', S.ME_ID, j(mine.players.map(m => ({ m }))), q(mine.game), mine.pairing, j(mine.scores), j(mine.done)]])}
 ${rows('rounds', ['date', 'created_by', 'lineup', 'game', 'scores', 'done', 'tee_time'], field)}
-${rows('events', ['id', 'name', 'team_a', 'team_b', 'active', 'days', 'course', 'format', 'players', 'team', 'matches'],
-  S.EVENTS.map(e => [e.id, q(e.name), j(e.A), j(e.B), e.active, e.days, q(e.course), q(e.format), arr(e.players), j(e.team), j(e.matches)]))}
+${rows('events', ['id', 'name', 'team_a', 'team_b', 'club', 'start_date', 'days', 'style', 'fmt', 'players', 'team', 'matches', 'created_by'],
+  S.EVENTS.map(e => [e.id, q(e.name), j(e.A), j(e.B), true, 'current_date', e.days, q('ryder'), q('bbl'), arr(e.players), j(e.team),
+    j(Object.fromEntries(Object.entries(e.matches).map(([d, ms]) => [d, ms.map(({ a, b, tee }) => ({ a, b, tee }))]))), S.ME_ID]))}
 -- Tee sheet for the next 7 days, with other members already booked on some times.
 do $$
 declare

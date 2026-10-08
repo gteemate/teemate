@@ -48,7 +48,7 @@ export const EVENT_FORMATS = {
   ],
 }
 // Which club game setting supplies the handicap allowance for each event format.
-export const EVENT_ALLOWANCE_GAME = { best2: 'stab', all4: 'stab', teamstab: 'stab', bestball: 'bbl', bbl: 'bbl', bbstab: 'bbstab', bbscr: 'bbscr' }
+export const EVENT_ALLOWANCE_GAME = { best2: 'stab', all4: 'stab', teamstab: 'stab', stab: 'stab', net: 'stroke', bestball: 'bbl', bbl: 'bbl', bbstab: 'bbstab', bbscr: 'bbscr' }
 export const eventFormatName = k => Object.values(EVENT_FORMATS).flat().find(f => f.k === k)?.name ?? k
 
 // Better-ball pairings as player indexes [a1, a2, b1, b2]; player 0 is always "you".

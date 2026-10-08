@@ -125,3 +125,70 @@ export function scorePlayerEvent({ style, format }, holes, groups, allow) {
   if (style === 'ryder') return { kind: 'ryder', ...ryderMatches(holes, groups, format, allow) }
   return { kind: 'teams', ...teamStableford(holes, groups, allow) }
 }
+
+/* ---------- Events set up in advance ---------- */
+
+/** A member's gross scores on a day, from whichever card they're on (saved holes only). */
+export function grossOnDay(rounds, memberId, holes) {
+  const r = [...rounds].reverse().find(x => x.lineup.some(e => e.m === memberId)) // latest card wins
+  if (!r) return holes.map(() => null)
+  const k = r.lineup.findIndex(e => e.m === memberId)
+  return holes.map((_, i) => (r.done[i] ? r.scores[i][k] : null))
+}
+
+/**
+ * Score an event set up in advance.
+ *   event:    { style: 'ryder'|'teams'|'individual', fmt, days, players: [ids], team: { id: 'A'|'B' }, matches: { day: [{ a, b }] } }
+ *   dayCards: { [day]: rounds on that day }       player(id) → { name, courseHcp }
+ *   allow:    handicap allowance (fraction)
+ */
+export function scoreAdvanceEvent(event, holes, dayCards, player, allow) {
+  const days = Array.from({ length: event.days }, (_, i) => i + 1)
+  const P = (id, team, d) => ({ id, name: player(id).name, team, courseHcp: player(id).courseHcp, gross: grossOnDay(dayCards[d] ?? [], id, holes) })
+
+  if (event.style === 'ryder') {
+    const byDay = {}
+    for (const d of days) {
+      const groups = (event.matches[d] ?? []).map((m, i) => ({
+        key: `${d}-${i}`, name: `Match ${i + 1}`,
+        players: [...m.a.map(id => P(id, 'A', d)), ...m.b.map(id => P(id, 'B', d))],
+      }))
+      byDay[d] = ryderMatches(holes, groups, event.fmt, allow).matches
+    }
+    return { kind: 'ryder', byDay, score: teamEventScore(Object.values(byDay).flat()) }
+  }
+
+  // Per player, per day: points (or net to par) over the holes they've saved.
+  const rows = event.players.map(id => {
+    const perDay = days.map(d => {
+      const p = P(id, event.team[id], d), thru = groupThru([p])
+      const ph = playingHandicaps([p.courseHcp], allow)[0]
+      let pts = 0, net = 0
+      for (let i = 0; i < thru; i++) {
+        const sh = shotsOnHole(ph, holes[i].si)
+        pts += stablefordPoints(p.gross[i], holes[i].par, sh)
+        net += p.gross[i] - sh - holes[i].par
+      }
+      return { thru, pts, net }
+    })
+    return { id, name: player(id).name, team: event.team[id], perDay, pts: perDay.reduce((t, x) => t + x.pts, 0), net: perDay.reduce((t, x) => t + x.net, 0) }
+  })
+
+  if (event.style === 'teams') {
+    const totals = { A: 0, B: 0 }
+    rows.forEach(r => (totals[r.team] += r.pts))
+    return { kind: 'teams', totals, players: rows.sort((a, b) => b.pts - a.pts) }
+  }
+  // Individual: Stableford highest first, net lowest first; players who haven't started go last.
+  const started = r => r.perDay.some(x => x.thru)
+  const key = r => (event.fmt === 'net' ? r.net : -r.pts)
+  rows.sort((a, b) => started(b) - started(a) || key(a) - key(b))
+  let pos = 0, prev = null
+  rows.forEach((r, i) => {
+    if (!started(r)) { r.pos = null; return }
+    if (key(r) !== prev) { pos = i + 1; prev = key(r) }
+    r.pos = pos
+    r.tied = rows.filter(x => started(x) && key(x) === key(r)).length > 1
+  })
+  return { kind: 'individual', rows }
+}

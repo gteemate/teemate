@@ -1,33 +1,47 @@
-// Leaderboard tab: today's field (gross, net, Stableford, birdies), or the active team event.
+// Leaderboard tab: today's field (gross, net, Stableford, birdies), or an event that's on today
+// (club events for everyone; other events for the players in them).
 import * as api from '../api.js'
 import { S } from '../state.js'
 import { $, esc, ini, header, keepScroll, top0, render } from '../ui.js'
 import { courseHandicap, roundSummary, toPar } from '../scoring.js'
 import { teeRating } from '../games.js'
-import { longDay, today } from '../dates.js'
-import * as eventBoard from './event-board.js'
+import { longDay, today, isoDate, addDaysIso } from '../dates.js'
+import { loadBoard, boardHtml, bindBoard } from './event-board.js'
 
 export async function load() {
-  const [events, members] = await Promise.all([api.getEvents(), api.getMembers()])
-  const event = events.find(e => e.active)
-  if (event && S.lbv === 'event') return { event, members }
-  const [course, rounds, me] = await Promise.all([api.getCourse(), api.getTodayRounds(today()), api.getMe()])
-  return { event, course, rounds, me }
+  const [all, me] = await Promise.all([api.getEvents(), api.getMe()])
+  const t = isoDate(today())
+  // Events on today that are for me to see here: club events, or ones I'm in or set up.
+  const events = all.filter(e => e.startDate <= t && addDaysIso(e.startDate, e.days - 1) >= t && (e.club || e.players.includes(me.id) || e.createdBy?.id === me.id))
+  if (S.lbv === 'event') S.lbv = events[0]?.id ?? 'today' // first visit: show the event if there is one
+  const ev = events.find(e => e.id === S.lbv)
+  if (ev) return { events, board: await loadBoard(ev.id) }
+  S.lbv = 'today'
+  const [course, rounds] = await Promise.all([api.getCourse(), api.getTodayRounds(today())])
+  return { events, course, rounds, me }
 }
 
 export function draw(data) {
-  if (data.event && S.lbv === 'event') eventBoard.draw(data)
-  else todayBoard(data)
+  if (data.board?.e) {
+    header(esc(data.board.e.name), `${data.board.e.players.length} players`)
+    $('main').innerHTML = boardHtml(data.board, lbSeg(data.events))
+    bindBoard()
+    bindLbSeg()
+  } else todayBoard(data)
 }
 
-export function lbSeg(e) {
-  return e ? `<div class="seg" role="group"><button data-lv="today" aria-pressed="${S.lbv === 'today'}">Today</button><button data-lv="event" aria-pressed="${S.lbv === 'event'}">${esc(e.name)}</button></div>` : ''
+export function lbSeg(events) {
+  if (!events.length) return ''
+  const opts = [['today', 'Today'], ...events.map(e => [e.id, esc(e.name)])]
+  return opts.length === 2
+    ? `<div class="seg" role="group">${opts.map(([k, n]) => `<button data-lv="${k}" aria-pressed="${String(S.lbv) === String(k)}">${n}</button>`).join('')}</div>`
+    : `<div class="tabs-pill" role="group">${opts.map(([k, n]) => `<button data-lv="${k}" aria-pressed="${String(S.lbv) === String(k)}">${n}</button>`).join('')}</div>`
 }
 export function bindLbSeg() {
-  document.querySelectorAll('[data-lv]').forEach(b => (b.onclick = async () => { S.lbv = b.dataset.lv; await render(); top0() }))
+  document.querySelectorAll('[data-lv]').forEach(b => (b.onclick = async () => { S.lbv = b.dataset.lv === 'today' ? 'today' : +b.dataset.lv; S.evDay = null; await render(); top0() }))
 }
 
-function todayBoard({ event, course, rounds, me }) {
+function todayBoard({ events, course, rounds, me }) {
   const m = S.lbm
   header('Leaderboard', `${esc(course.name)} · ${longDay(today())} · White tees`)
   const rows = rounds.map(r => ({ ...r, ...roundSummary(course.holes, r.gross, courseHandicap(r.member.hcp, teeRating(course))), ch: courseHandicap(r.member.hcp, teeRating(course)) }))
@@ -46,7 +60,7 @@ function todayBoard({ event, course, rounds, me }) {
     return `<div class="lbrow${isMe(r) ? ' me' : ''}"><span class="lpos">${tie ? 'T' : ''}${pos}</span><span class="av">${ini(r.member.name)}</span><span class="who"><strong>${esc(r.member.name)}${isMe(r) ? ' (you)' : ''}${r.member.guest ? ' <span class="pill tag">Guest</span>' : ''}</strong><small>${sub(r)}${r.live && r.thru < 18 ? ' <span class="livedot">● live</span>' : ''}</small></span><span class="lval${neg ? ' under' : ''}">${val(r)}</span></div>`
   }).join('') + waiting.map(r => `<div class="lbrow wait"><span class="lpos">–</span><span class="av">${ini(r.member.name)}</span><span class="who"><strong>${esc(r.member.name)}</strong><small>yet to play${r.teeTime ? ` · tees ${r.teeTime}` : ''}</small></span><span class="lval">–</span></div>`).join('')
   const note = { gross: 'Strokes to par, no handicap.', net: 'Strokes to par after full course-handicap shots.', stab: 'Stableford points with full course-handicap shots.', birdies: "Gross birdies or better on today's round." }[m]
-  $('main').innerHTML = `<div class="screen">${lbSeg(event)}
+  $('main').innerHTML = `<div class="screen">${lbSeg(events)}
     <div class="tabs-pill" role="group" aria-label="Leaderboard type">${[['gross', 'Gross'], ['net', 'Net'], ['stab', 'Stableford'], ['birdies', 'Birdies']].map(([k, l]) => `<button data-m="${k}" aria-pressed="${m === k}">${l}</button>`).join('')}</div>
     <div class="hint">${note}</div>
     <div class="lblist">${html}</div>

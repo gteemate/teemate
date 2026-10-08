@@ -1,4 +1,10 @@
-/* Layout: phone app shell matching the member's existing app — off-white ground, heavy system headings, leaf-green cards, text-only tab bar */
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Event setup mockup</title>
+<style>/* Layout: phone app shell matching the member's existing app — off-white ground, heavy system headings, leaf-green cards, text-only tab bar */
 :root{
   --bg:#f4f4f7; --surface:#ffffff; --sunk:#e9eaf0; --ink:#151a26; --muted:#676c7a; --line:#dfe2ea;
   --green:#19335A; --on-green:#f4f6fb; --leaf:#dfe6f1; --leaf-2:#ffffff; --leaf-line:#19335A; --pill:#19335A;
@@ -450,22 +456,172 @@ img{max-width:100%}
 .pinline .hint{font-size:14px}
 .pinseg button{width:auto;padding:7px 10px}
 .pinfoot{display:flex;justify-content:space-between;align-items:center;gap:8px}
-/* events list */
-.evcard{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px 16px}
-.evcard .who small{display:block}
-.pillrow{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
-.pill.ghosty{background:var(--sunk);color:var(--ink)}
-/* event wizard */
-.wiz{display:flex;gap:6px;margin:0 0 4px}
-.wiz span{flex:1;height:5px;border-radius:999px;background:var(--sunk)}
-.wiz span.on{background:var(--green)}
-.daychips{display:flex;gap:6px}
-.daychips button{flex:1;border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:11px 0;font-weight:700;color:var(--ink);cursor:pointer}
-.daychips button[aria-pressed="true"]{background:var(--green);color:var(--on-green);border-color:var(--green)}
-.sumgrid{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:14px}
-.sumgrid span{color:var(--muted)}
-.matchedit{display:grid;grid-template-columns:1fr auto 1fr;gap:6px;align-items:center;padding:10px 0;border-top:1px solid var(--line);font-size:14px;font-weight:600}
-.matchedit .r{text-align:right}
-.matchedit .v{color:var(--muted);font-weight:500}
-.swapname{background:none;border:0;padding:2px 3px;border-radius:6px;font:inherit;color:inherit;cursor:pointer}
-.swapname.on{background:var(--leaf);outline:2px solid var(--leaf-line)}
+</style>
+<style>
+  .notes{max-width:320px}
+  .notes h1{font-size:26px}
+  .stepnav{display:flex;flex-direction:column;gap:6px;margin-top:14px}
+  .stepnav button{text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px;font:600 14px var(--sys);color:var(--ink);cursor:pointer}
+  .stepnav button[aria-pressed="true"]{background:var(--green);color:var(--on-green);border-color:var(--green)}
+  .notes .say{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--loss);border-radius:12px;padding:10px 12px;margin-top:14px;color:var(--ink);font-size:14px;line-height:1.5}
+  .mockflag{position:absolute;top:10px;right:14px;background:var(--loss);color:#fff;font-size:11px;font-weight:800;padding:3px 8px;border-radius:999px;z-index:5;letter-spacing:.04em}
+  .wiz{display:flex;gap:6px;margin:0 0 4px}
+  .wiz span{flex:1;height:5px;border-radius:999px;background:var(--sunk)}
+  .wiz span.on{background:var(--green)}
+  .evcard{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px 16px}
+  .evcard .who small{display:block}
+  .pillrow{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+  .pill.ghosty{background:var(--sunk);color:var(--ink)}
+  .datepick{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .daychips{display:flex;gap:6px}
+  .daychips button{flex:1;border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:10px 0;font-weight:700;color:var(--ink)}
+  .daychips button[aria-pressed="true"]{background:var(--green);color:var(--on-green);border-color:var(--green)}
+  .count{font-weight:800}
+  .sumgrid{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:14px}
+  .sumgrid span{color:var(--muted)}
+  .matchedit{display:grid;grid-template-columns:1fr auto 1fr;gap:6px;align-items:center;padding:10px 0;border-top:1px solid var(--line);font-size:14px;font-weight:600}
+  .matchedit:first-child{border-top:0}
+  .matchedit .r{text-align:right}
+  .matchedit .v{color:var(--muted);font-weight:500}
+  .swap{font-size:12px;color:var(--muted);text-align:center}
+  main{position:relative}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <aside class="notes">
+    <h1>Events set up in advance</h1>
+    <p>A clickable mockup of the new <b>Admin → Events</b> for players. Tap through the steps on the left, or use the buttons in the phone.</p>
+    <div class="stepnav" id="nav"></div>
+    <div class="say" id="say"></div>
+  </aside>
+  <div class="phone" id="app">
+    <span class="mockflag">MOCKUP</span>
+    <header class="top" id="hdr"></header>
+    <main id="main"></main>
+    <nav class="tabs" aria-label="Main"><button>Scores</button><button>Leaderboard</button><button>Course</button><button aria-current="page">Admin</button></nav>
+  </div>
+</div>
+<script>
+const $ = id => document.getElementById(id)
+const P = ['Gary Cochrane','Declan Murphy','Aoife Brennan',"Ciarán O'Neill",'Siobhán Kelly','Mark Doherty','Niall Gallagher','Peter Walsh','Róisín McCarthy','Eoin Fitzgerald','Tom Byrne','Liam Quinn','Orla Ryan']
+const ini = n => n.split(' ').map(x => x[0]).join('').slice(0, 2)
+const sur = n => n.split(' ').slice(-1)[0]
+const S = { step: 0, style: 'ryder', days: 2, club: false, picked: [0,1,2,3,4,5,6,7], team: { 0:'A',1:'A',5:'A',7:'A',2:'B',3:'B',4:'B',6:'B' } }
+const A = () => S.picked.filter(i => S.team[i] === 'A'), B = () => S.picked.filter(i => S.team[i] === 'B')
+
+const STEPS = [
+  ['Events list', 'Admin → Events. Every player can create events. Yours and the club’s show here; club events (made by an admin) are seen by everyone.'],
+  ['1 · Details', 'Name, start date and 1–3 days, and the format. Admins also get a “Club event” switch so the whole club sees it on the Leaderboard.'],
+  ['2 · Players', 'Pick members from the club list (search by name or GUI). Members only: guests can’t be added in advance.'],
+  ['3 · Teams', 'For Ryder Cup and Team Stableford: two teams with names and colours. Auto-balance by handicap, then tweak.'],
+  ['4 · Draw', 'Ryder Cup only: pairs against pairs for each day. Draw at random or set them yourself. Players should book tee times together with their match.'],
+  ['5 · Review', 'Check and save. Players in it see it on their Leaderboard tab from the first day; it’s private to them unless it’s a club event.'],
+  ['On the day', 'What players see: the event board, scored live from everyone’s own card. No extra score entry.'],
+]
+
+function header(t, sub, back = true) { $('hdr').innerHTML = `${back ? '<button class="back" data-go="-1">‹ Back</button>' : ''}<h2>${t}</h2>${sub ? `<div class="sub">${sub}</div>` : ''}` }
+const wiz = n => `<div class="wiz">${[1,2,3,4,5].map(i => `<span class="${i <= n ? 'on' : ''}"></span>`).join('')}</div>`
+const next = (label, to) => `<div class="cta"><button class="primary" data-step="${to}">${label}</button></div>`
+
+const screens = [
+  // 0 · list
+  () => { header('Events', 'Set up matches and competitions in advance', false)
+    return `<div class="screen">
+      <button class="primary" data-step="1">+ New event</button>
+      <h3>Coming up</h3>
+      <div class="card evcard"><div class="who"><strong>Saturday Fourball Cup</strong><small>Ryder Cup · better ball · Sat 17 – Sun 18 Oct</small><div class="pillrow"><span class="pill">Yours</span><span class="pill ghosty">8 players · Blues v Reds</span></div></div><span class="linkbtn">Edit</span></div>
+      <div class="card evcard"><div class="who"><strong>Autumn Cup</strong><small>Club event · Ryder Cup · Sat 24 Oct</small><div class="pillrow"><span class="pill" style="background:var(--loss)">Club event</span><span class="pill ghosty">12 players</span></div></div><span class="linkbtn">View</span></div>
+      <div class="card evcard"><div class="who"><strong>Thursday roll-up</strong><small>Individual Stableford · Thu 15 Oct</small><div class="pillrow"><span class="pill ghosty">You’re playing · set up by Declan</span></div></div><span class="linkbtn">View</span></div>
+      <h3>Finished</h3>
+      <div class="card evcard" style="opacity:.75"><div class="who"><strong>September Shield</strong><small>Team Stableford · Blues 142 – 137 Reds</small></div><span class="linkbtn">Results</span></div>
+    </div>` },
+  // 1 · details
+  () => { header('New event', 'Details')
+    const styles = [['ryder','Ryder Cup','Two teams. Pairs play better-ball matches, 1 point each.'],['teams','Team Stableford','Two teams. Everyone’s Stableford points count for their team.'],['individual','Individual','A leaderboard of everyone: Stableford or net.']]
+    return `<div class="screen">${wiz(1)}
+      <div class="card evsec"><h4>Event</h4>
+        <label>Name</label><input value="Saturday Fourball Cup">
+        <div class="datepick"><div><label>First day</label><input value="Sat 17 Oct"></div><div><label>Days</label><div class="daychips">${[1,2,3].map(n => `<button data-days="${n}" aria-pressed="${S.days===n}">${n}</button>`).join('')}</div></div></div>
+        <span class="hint">${S.days > 1 ? `Sat 17 – ${['','Sun 18','Mon 19'][S.days-1]} Oct. Points add up across the days.` : 'One day.'}</span>
+      </div>
+      <h3>Format</h3>
+      <div class="games">${styles.map(([k,n,d]) => `<button class="gamecard" role="radio" aria-checked="${S.style===k}" data-style="${k}"><span class="radio"></span><span class="who"><strong>${n}</strong><small>${d}</small></span></button>`).join('')}</div>
+      ${S.style === 'ryder' ? `<div class="card evsec"><label>Match format</label><select class="plainsel"><option>Better ball · off the low</option><option>Better ball · Stableford</option><option>Better ball · scratch</option></select></div>`
+        : S.style === 'individual' ? `<div class="card evsec"><label>Scoring</label><select class="plainsel"><option>Stableford</option><option>Net strokeplay</option></select></div>` : ''}
+      <div class="card evsec"><div class="actrow"><span class="who"><strong>Club event</strong><small>Admins only · everyone in the club sees it on the Leaderboard</small></span><button class="switch" role="switch" aria-checked="${S.club}" data-club><span></span></button></div>
+        <span class="hint">${S.club ? 'Everyone in the club will see this event.' : 'Only the players you pick will see this event.'}</span></div>
+    </div>${next('Next: players', 2)}` },
+  // 2 · players
+  () => { header('New event', 'Players')
+    return `<div class="screen">${wiz(2)}
+      <div class="search"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input placeholder="Name or GUI number"></div>
+      <div class="hint"><span class="count">${S.picked.length} picked</span>${S.style === 'ryder' ? ' · Ryder Cup needs a multiple of 4 (pairs v pairs)' : ''}</div>
+      <div class="pick">${P.map((n,i) => { const on = S.picked.includes(i); return `<button class="brow" data-pick="${i}" aria-pressed="${on}"><span class="av">${ini(n)}</span><span class="who"><strong>${n}${i===0?' (you)':''}</strong><small>Index ${[12.4,8.2,15.1,4.6,22,10.3,18.7,6.9,13.5,2.1,24.8,9.9,16.2][i]}</small></span><span class="check">${on?'✓':''}</span></button>` }).join('')}</div>
+    </div>${next(S.style === 'individual' ? 'Next: review' : 'Next: teams', S.style === 'individual' ? 5 : 3)}` },
+  // 3 · teams
+  () => { header('New event', 'Teams')
+    return `<div class="screen">${wiz(3)}
+      <div class="card evsec"><div class="tnames"><div><label>Team name</label><div class="trowin"><input value="Blues"><input type="color" value="#19335a"></div></div><div><label>Team name</label><div class="trowin"><input value="Reds"><input type="color" value="#762a43"></div></div></div></div>
+      <div class="tcards"><div style="background:#19335a"><small>Blues</small><b>${A().length}</b><small>avg index 9.6</small></div><div style="background:#762a43"><small>Reds</small><b>${B().length}</b><small>avg index 15.1</small></div></div>
+      <div class="bk-btns"><button class="ghost">Auto-balance by handicap</button><button class="ghost">Shuffle</button></div>
+      <div class="card evsec"><div class="tlist">${S.picked.map(i => `<div class="trow"><span class="who"><strong>${P[i]}</strong><small>Index ${[12.4,8.2,15.1,4.6,22,10.3,18.7,6.9][i] ?? ''}</small></span><span class="tseg"><button data-tm="${i}" data-t="A" aria-pressed="${S.team[i]==='A'}" style="--tc:#19335a">Blues</button><button data-tm="${i}" data-t="B" aria-pressed="${S.team[i]==='B'}" style="--tc:#762a43">Reds</button></span></div>`).join('')}</div></div>
+    </div>${next(S.style === 'ryder' ? 'Next: draw' : 'Next: review', S.style === 'ryder' ? 4 : 5)}` },
+  // 4 · draw
+  () => { header('New event', 'Draw')
+    const day = (d, m) => `<div class="card evsec"><div class="pinhead"><h4 style="font-size:20px">Day ${d} · ${d===1?'Sat 17':'Sun 18'} Oct</h4><span class="linkbtn">Redraw</span></div>
+      ${m.map(([a1,a2,b1,b2]) => `<div class="matchedit"><span style="color:#19335a">${sur(P[a1])} &amp; ${sur(P[a2])}</span><span class="v">v</span><span class="r" style="color:#762a43">${sur(P[b1])} &amp; ${sur(P[b2])}</span></div>`).join('')}
+      <span class="swap">Tap a player to swap them with someone on their team</span></div>`
+    return `<div class="screen">${wiz(4)}
+      <div class="hint">Each match is a four-ball. Players book a tee time together as usual; the board scores each match from their cards.</div>
+      ${day(1, [[0,1,2,3],[5,7,4,6]])}${S.days > 1 ? day(2, [[0,5,3,6],[1,7,2,4]]) : ''}
+    </div>${next('Next: review', 5)}` },
+  // 5 · review
+  () => { header('New event', 'Review')
+    const fmt = { ryder: 'Ryder Cup · better ball off the low', teams: 'Team Stableford', individual: 'Individual Stableford' }[S.style]
+    return `<div class="screen">${wiz(5)}
+      <div class="card evsec"><h4>Saturday Fourball Cup</h4><div class="sumgrid">
+        <span>When</span><b>${S.days > 1 ? `Sat 17 – ${['','Sun 18','Mon 19'][S.days-1]} Oct (${S.days} days)` : 'Sat 17 Oct'}</b>
+        <span>Format</span><b>${fmt}</b>
+        <span>Players</span><b>${S.picked.length} members</b>
+        ${S.style !== 'individual' ? `<span>Teams</span><b>Blues ${A().length} · Reds ${B().length}</b>` : ''}
+        ${S.style === 'ryder' ? `<span>Matches</span><b>${2 * S.days} (${S.days} day${S.days>1?'s':''} × 2) · ${2 * S.days} points</b>` : ''}
+        <span>Who sees it</span><b>${S.club ? 'Everyone in the club' : 'Only these players'}</b>
+        <span>Scoring</span><b>Live from each player’s own card</b></div></div>
+      <div class="hint">Players see it on their Leaderboard tab from the first day. You can edit it until the first day starts.</div>
+    </div>${next('Save event', 6)}` },
+  // 6 · on the day
+  () => { header('Saturday Fourball Cup', 'Ryder Cup · better ball · Day 1 of 2')
+    return `<div class="screen">
+      <div class="seg"><button aria-pressed="false">Today</button><button aria-pressed="true">Fourball Cup</button></div>
+      <div class="card evscore"><div class="tug"><i class="ta" style="width:62.5%;background:#19335a"></i><i class="tb" style="width:37.5%;background:#762a43"></i><span class="mid"></span></div>
+        <div class="evteams"><div><span class="tn" style="color:#19335a">Blues</span><span class="tp" style="color:#19335a">2½ <small>projected</small></span><small>1 confirmed</small></div>
+        <div class="r"><span class="tn" style="color:#762a43">Reds</span><span class="tp" style="color:#762a43">1½ <small>projected</small></span><small>0 confirmed</small></div></div>
+        <div class="evfoot">2½ to win · 4 points available</div></div>
+      <div class="tabs-pill"><button aria-pressed="true">Day 1</button><button aria-pressed="false">Day 2</button></div>
+      <div class="card mcard"><div class="mtitle">Match 1 · 08:10</div><div class="mgrid"><div class="mside"><span class="pairav"><span class="av" style="border-color:#19335a">GC</span><span class="av" style="border-color:#19335a">DM</span></span><span>Cochrane<br>Murphy</span></div><div class="mstat"><b class="ms-big" style="color:#19335a">Blues 3&amp;2</b><small>Final</small></div><div class="mside r"><span class="pairav"><span class="av" style="border-color:#762a43">AB</span><span class="av" style="border-color:#762a43">CO</span></span><span>Brennan<br>O'Neill</span></div></div></div>
+      <div class="card mcard"><div class="mtitle">Match 2 · 08:20</div><div class="mgrid"><div class="mside"><span class="pairav"><span class="av" style="border-color:#19335a">MD</span><span class="av" style="border-color:#19335a">PW</span></span><span>Doherty<br>Walsh</span></div><div class="mstat"><b class="ms-big" style="color:#762a43">1 up</b><small>thru 12 <span class="livedot">● live</span></small></div><div class="mside r"><span class="pairav"><span class="av" style="border-color:#762a43">SK</span><span class="av" style="border-color:#762a43">NG</span></span><span>Kelly<br>Gallagher</span></div></div></div>
+      <div class="hint" style="text-align:center">Scores come from each player’s card and update as holes are saved.</div>
+    </div>` },
+]
+
+function draw() {
+  $('nav').innerHTML = STEPS.map(([t], i) => `<button data-step="${i}" aria-pressed="${S.step === i}">${t}</button>`).join('')
+  $('say').textContent = STEPS[S.step][1]
+  $('main').innerHTML = screens[S.step]()
+  $('main').scrollTop = 0
+}
+document.addEventListener('click', e => {
+  const t = e.target.closest('button'); if (!t) return
+  if (t.dataset.step) { S.step = +t.dataset.step; return draw() }
+  if (t.dataset.go) { S.step = Math.max(0, S.step - 1); if (S.step === 4 && S.style !== 'ryder') S.step = S.style === 'individual' ? 2 : 3; return draw() }
+  if (t.dataset.days) { S.days = +t.dataset.days; return draw() }
+  if (t.dataset.style) { S.style = t.dataset.style; return draw() }
+  if ('club' in t.dataset) { S.club = !S.club; return draw() }
+  if (t.dataset.pick) { const i = +t.dataset.pick; S.picked = S.picked.includes(i) ? S.picked.filter(x => x !== i) : [...S.picked, i]; if (!S.team[i]) S.team[i] = A().length <= B().length ? 'A' : 'B'; return draw() }
+  if (t.dataset.tm) { S.team[+t.dataset.tm] = t.dataset.t; return draw() }
+})
+draw()
+</script>
+</body>
+</html>
