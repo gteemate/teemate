@@ -1,21 +1,23 @@
 // Admin → Events (every player): events set up in advance — mine and ones I'm in.
 // Club admin → Club events (S.evScope 'club'): club-wide events and leagues, set up by admins.
+// Matches set up on the day from the Scores tab (player events) are listed here too, to view or call off.
 import * as api from '../api.js'
 import { S } from '../state.js'
 import { $, esc, header, top0, render } from '../ui.js'
 import { eventDates, eventLastDay, isoDate, today } from '../dates.js'
 import { EVENT_TYPES } from './event-editor.js'
 import { toAdmin } from './nav.js'
+import { eventTitle, eventSubtitle, stateLine, bindCancel } from './player-events.js'
 
 export async function load() {
-  const [events, me] = await Promise.all([api.getEvents(), api.getMe()])
-  return { events, me }
+  const [events, me, matches] = await Promise.all([api.getEvents(), api.getMe(), api.getMyPlayerEvents()])
+  return { events, me, matches: matches.filter(e => e.status === 'pending' || e.status === 'accepted') }
 }
 
 export const lastDay = eventLastDay
 export const canEdit = (e, me) => me.admin || (e.createdBy?.id === me.id && e.startDate > isoDate(today()))
 
-export function draw({ events: all, me }) {
+export function draw({ events: all, me, matches }) {
   const club = S.evScope === 'club' && me.admin
   const isClub = e => e.club
   const events = club ? all.filter(isClub) : all.filter(e => !isClub(e) || e.players.includes(me.id))
@@ -36,6 +38,8 @@ export function draw({ events: all, me }) {
   }
   $('main').innerHTML = `<div class="screen">
     ${club ? '<div class="bk-btns"><button class="primary" id="newev">+ New club event</button><button class="primary" id="newlg">+ New league</button></div>' : '<button class="primary" id="newev">+ New event</button>'}
+    ${!club && matches.length ? `<h3>Matches from the Scores tab</h3>${matches.map(e => `<div class="card evcard"><div class="who"><strong>${eventTitle(e)}</strong><small>${eventSubtitle(e)}</small><small class="pestate">${stateLine(e, me)}</small></div>
+      <div class="peacts">${e.status === 'accepted' ? `<button class="linkbtn" data-pe-board="${e.id}">Live board</button>` : `<button class="linkbtn" data-pe-scores="${e.id}">Open</button>`}<button class="linkbtn" data-pe-cancel="${e.id}">${e.createdBy.id === me.id ? 'Cancel' : 'Call off'}</button></div></div>`).join('')}` : ''}
     <h3>Coming up</h3>${upcoming.length ? upcoming.map(card).join('') : `<div class="empty-state">${club ? 'No club events or leagues coming up.' : 'No events coming up. Set one up for your group.'}</div>`}
     ${done.length ? `<h3>Finished</h3>${done.map(card).join('')}` : ''}
   </div>`
@@ -44,5 +48,8 @@ export function draw({ events: all, me }) {
   const lg = $('newlg')
   if (lg) lg.onclick = () => start('league')
   document.querySelectorAll('[data-edit]').forEach(b => (b.onclick = async () => { S.ev = null; S.evId = +b.dataset.edit; S.evStep = 1; S.aview = 'event'; await render(); top0() }))
+  bindCancel()
+  document.querySelectorAll('[data-pe-board]').forEach(b => (b.onclick = async () => { S.peId = +b.dataset.peBoard; S.tab = 'scores'; S.sview = 'pevent'; await render(); top0() }))
+  document.querySelectorAll('[data-pe-scores]').forEach(b => (b.onclick = async () => { S.peDismissed.delete(+b.dataset.peScores); S.tab = 'scores'; S.sview = 'card'; await render(); top0() }))
   document.querySelectorAll('[data-view]').forEach(b => (b.onclick = async () => { S.evId = +b.dataset.view; S.evDay = 1; S.aview = 'evboard'; await render(); top0() }))
 }

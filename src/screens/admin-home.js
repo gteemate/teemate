@@ -8,12 +8,14 @@ import { buildLibrary } from '../games.js'
 
 export async function load() {
   const me = await api.getMe()
-  const [sheet, bookings, buddies, games, events, points, requests] = await Promise.all([
+  const [sheet, bookings, buddies, games, events, points, requests, matches] = await Promise.all([
     api.getTeeSheet(isoDate(today())), api.getMyBookings(), api.getBuddies(), api.getGameSettings(), api.getEvents(), api.getGuestPoints(),
     me.admin ? api.getAccessRequests() : [],
+    api.getMyPlayerEvents(),
   ])
   const live = events.filter(e => eventLastDay(e) >= isoDate(today()))
-  const upcoming = live.filter(e => !e.club && e.style !== 'league').length, clubEvents = live.filter(e => e.club || e.style === 'league').length
+  // events set up in advance, plus matches set up on the day from the Scores tab
+  const upcoming = live.filter(e => !e.club && e.style !== 'league').length + matches.filter(e => e.status === 'pending' || e.status === 'accepted').length, clubEvents = live.filter(e => e.club || e.style === 'league').length
   return { me, sheet, bookings, buddies, L: buildLibrary(games), upcoming, clubEvents, points, requests }
 }
 

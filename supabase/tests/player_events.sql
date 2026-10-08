@@ -102,11 +102,12 @@ do $$ declare e text; v bigint; ab bigint[] := array[t.s('B')]; names jsonb := '
   perform t.ok('Answer: on once every invited group accepts', (select status from public.player_events where id = v) = 'accepted');
 
   -- cancel
-  perform t.act_as(3);
-  perform t.ok('Cancel: only the person who proposed it', t.err(format('select public.cancel_player_event(%s)', v)) like '%Only the person who proposed%');
+  perform t.act_as(9);
+  perform t.ok('Cancel: someone not playing in it cannot', t.err(format('select public.cancel_player_event(%s)', v)) like '%someone playing in it%');
   perform t.done();
-  perform t.act_as(1); perform public.cancel_player_event(v); perform t.done();
-  perform t.ok('Cancel: proposer can', (select status from public.player_events where id = v) = 'cancelled');
+  perform t.act_as(8); perform public.cancel_player_event(v); perform t.done();
+  perform t.ok('Cancel: anyone playing in it can call it off, and it says who',
+    (select status = 'cancelled' and cancel_note like 'Called off by %' and cancelled_by = 8 from public.player_events where id = v));
 
   -- Ryder Cup, own teams, and one decline stops it
   perform t.act_as(1);

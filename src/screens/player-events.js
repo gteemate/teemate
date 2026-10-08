@@ -32,7 +32,7 @@ export function teamLists(e) {
   return ['A', 'B'].map(k => ({ name: esc(e.teamNames[k]), players: names(e.players.filter(p => p.team === k)) }))
 }
 
-function stateLine(e, me) {
+export function stateLine(e, me) {
   const mine = myGroup(e, me.id)
   const waiting = asked(e).filter(g => !g.answer).map(g => hhmm(g.time))
   const accepted = asked(e).filter(g => g.answer === 'accepted').map(g => hhmm(g.time))
@@ -55,19 +55,24 @@ export function banners(events, me) {
     const acts = []
     if (toAnswer(e, mine)) acts.push(`<button class="linkbtn" data-pe-open="${e.id}">Answer</button>`)
     if (e.status === 'accepted') acts.push(`<button class="linkbtn" data-pe-board="${e.id}">Live board</button>`)
-    if ((e.status === 'pending' || e.status === 'accepted') && e.createdBy.id === me.id) acts.push(`<button class="linkbtn" data-pe-cancel="${e.id}">Cancel</button>`)
+    if (e.status === 'pending' || e.status === 'accepted') acts.push(`<button class="linkbtn" data-pe-cancel="${e.id}">${e.createdBy.id === me.id ? 'Cancel' : 'Call off'}</button>`)
     return `<div class="card pebanner pe-${e.status}"><div class="who"><strong>${eventTitle(e)}</strong><small>${eventSubtitle(e)}</small><small class="pestate">${stateLine(e, me)}</small></div><div class="peacts">${acts.join('')}</div></div>`
   }).join('')
 }
 
-export function bindBanners(events, me) {
-  document.querySelectorAll('[data-pe-seen]').forEach(b => (b.onclick = () => { try { localStorage.setItem(seenKey(b.dataset.peSeen), '1') } catch { /* shows again next time */ } keepScroll(render) }))
+/** Cancel / Call off buttons (data-pe-cancel): two taps, then everyone else in it is told. */
+export function bindCancel() {
   document.querySelectorAll('[data-pe-cancel]').forEach(b => (b.onclick = async () => {
     if (b.dataset.armed !== '1') { b.dataset.armed = '1'; b.textContent = 'Sure?'; return }
     await api.cancelPlayerEvent(+b.dataset.peCancel)
     await keepScroll(render)
-    toast('Event cancelled')
+    toast('Called off. Everyone in it will see it’s off')
   }))
+}
+
+export function bindBanners(events, me) {
+  document.querySelectorAll('[data-pe-seen]').forEach(b => (b.onclick = () => { try { localStorage.setItem(seenKey(b.dataset.peSeen), '1') } catch { /* shows again next time */ } keepScroll(render) }))
+  bindCancel()
   document.querySelectorAll('[data-pe-open]').forEach(b => (b.onclick = () => { S.peDismissed.delete(+b.dataset.peOpen); invitePopup(events.find(e => e.id === +b.dataset.peOpen), me) }))
   document.querySelectorAll('[data-pe-board]').forEach(b => (b.onclick = async () => { S.peId = +b.dataset.peBoard; S.sview = 'pevent'; await render(); top0() }))
 }
