@@ -432,3 +432,15 @@ img{max-width:100%}
 .grouprow .who strong{font-size:16px}
 .grouprow .gtime{font-size:18px;font-weight:800;font-variant-numeric:tabular-nums}
 .grouprow .who small{line-height:1.35;margin-top:2px}
+/* admin home */
+.ptstile{grid-column:1/-1;text-align:left;color:var(--ink);cursor:pointer;font:inherit}
+.ptstile .ptsrow small{display:block}
+.adminhead{display:flex;align-items:baseline;gap:8px;margin-top:14px}
+.adminhead .hint{font-weight:500;font-size:13px}
+.acct{grid-template-columns:repeat(2,minmax(0,1fr))} /* always equal halves, even on narrow screens */
+.acct button{width:100%;padding:13px 10px;line-height:1.2}
+.ptsmini{font-size:14px;color:var(--muted);background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:8px 12px}
+.ptsmini b{color:var(--ink);font-size:16px}
+.ptsmini.low{border-color:var(--loss)}
+.ptsmini.low b{color:var(--loss)}
+.atile.row .rt{display:flex;flex-direction:column;gap:2px;min-width:0}
