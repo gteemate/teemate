@@ -79,6 +79,14 @@ export function bindBoard() {
   document.querySelectorAll('[data-evday]').forEach(b => (b.onclick = () => { S.evDay = +b.dataset.evday; keepScroll(render) }))
   document.querySelectorAll('[data-lgview]').forEach(b => (b.onclick = () => { S.lgView = b.dataset.lgview; keepScroll(render) }))
   document.querySelectorAll('[data-lgweek]').forEach(b => (b.onclick = () => { S.lgWeek = b.dataset.lgweek === 'season' ? 'season' : +b.dataset.lgweek; keepScroll(render) }))
+  // Remember which teams are open between redraws.
+  document.querySelectorAll('[data-lgteam]').forEach(d => d.addEventListener('toggle', () => { const k = +d.dataset.lgteam; d.open ? S.lgOpen.add(k) : S.lgOpen.delete(k) }))
+  const all = document.getElementById('lg-all')
+  if (all) all.onclick = () => {
+    const teams = [...document.querySelectorAll('[data-lgteam]')].map(d => +d.dataset.lgteam)
+    S.lgOpen = S.lgOpen.size === teams.length ? new Set() : new Set(teams)
+    keepScroll(render)
+  }
 }
 
 // A league: team table (season or one week) and an individual table.
@@ -97,15 +105,31 @@ function leagueHtml({ e, members, course, L, entries, cards, me }, top) {
   let body
   if (view === 'teams') {
     const rows = wk === 'season' ? r.teams : [...r.teams].sort((a, b) => b.perWeek[wk - 1].score - a.perWeek[wk - 1].score)
+    const byId = new Map(r.players.map(p => [p.id, p]))
+    S.lgOpen ??= new Set(myTeam != null ? [myTeam] : [])
     let pos = 0, prev = null
-    body = `<div class="lblist">${rows.map((t, i) => {
+    body = `<div class="lgteams">${rows.map((t, i) => {
       const v = wk === 'season' ? t.total : t.perWeek[wk - 1].score
       if (v !== prev) { pos = i + 1; prev = v }
       const w = wk === 'season' ? null : t.perWeek[wk - 1]
-      const sub = wk === 'season' ? `${t.perWeek.filter(x => x.entered).length} of ${e.weeks} weeks played · ${(n => `${n} player${n === 1 ? '' : 's'}`)(Object.values(e.team ?? {}).filter(x => x === t.idx).length)}`
+      const members = Object.keys(e.team).map(Number).filter(id => e.team[id] === t.idx).map(id => byId.get(id)).filter(Boolean)
+      const sub = wk === 'season' ? `${t.perWeek.filter(x => x.entered).length} of ${e.weeks} weeks played · ${members.length} player${members.length === 1 ? '' : 's'}`
         : `${w.entered} entered · best ${Math.min(e.bestOf, w.entered)} count${w.live ? ' <span class="livedot">● live</span>' : ''}`
-      return `<div class="lbrow${t.idx === myTeam ? ' me' : ''}"><span class="lpos">${pos}</span><span class="av" style="border-color:${t.col}">${ini(t.name)}</span><span class="who"><strong>${esc(t.name)}${t.idx === myTeam ? ' (your team)' : ''}</strong><small>${sub}</small></span><span class="lval">${v}</span></div>`
-    }).join('')}</div>`
+      // Players: this week's points (counting scores highlighted), or season points and how often they counted.
+      const list = members.map(p => {
+        if (wk === 'season') {
+          const counted = t.perWeek.filter(x => x.counting.includes(p.id)).length
+          return { p, v: p.total, has: p.rounds > 0, counts: false, note: p.rounds ? `${p.rounds} round${p.rounds === 1 ? '' : 's'} · counted ${counted}×` : 'no rounds yet' }
+        }
+        const pw = p.perWeek[wk]
+        return { p, v: pw ? pw.pts : null, has: !!pw, counts: w.counting.includes(p.id), note: pw ? (pw.thru === 18 ? 'Finished' : `thru ${pw.thru} <span class="livedot">● live</span>`) : 'not entered' }
+      }).sort((a, b) => b.has - a.has || (b.v ?? 0) - (a.v ?? 0) || a.p.name.localeCompare(b.p.name))
+      return `<details class="lgteam${t.idx === myTeam ? ' me' : ''}" data-lgteam="${t.idx}" ${S.lgOpen.has(t.idx) ? 'open' : ''}>
+        <summary class="lbrow"><span class="lpos">${pos}</span><span class="av" style="border-color:${t.col}">${ini(t.name)}</span><span class="who"><strong>${esc(t.name)}${t.idx === myTeam ? ' (your team)' : ''}</strong><small>${sub}</small></span><span class="lval">${v}</span></summary>
+        <div class="lgplayers">${list.map(x => `<div class="lgp${x.counts ? ' counts' : ''}${x.has ? '' : ' none'}${x.p.id === me.id ? ' mine' : ''}"><span class="who"><strong>${esc(x.p.name)}${x.p.id === me.id ? ' (you)' : ''}</strong><small>${x.note}</small></span>${x.counts ? '<span class="cnt">counts</span>' : ''}<b>${x.v ?? '–'}</b></div>`).join('') || '<div class="hint">No players yet.</div>'}</div>
+      </details>`
+    }).join('')}</div>
+    <div class="hint">${wk === 'season' ? 'Tap a team to see its players’ season points.' : `Tap a team to see its players. Highlighted scores are the best ${e.bestOf} that count this week.`} <button class="linkbtn" id="lg-all">${S.lgOpen.size === r.teams.length ? 'Close all' : 'Open all'}</button></div>`
   } else {
     const rows = r.players.filter(p => (wk === 'season' ? p.rounds : p.perWeek[wk]))
       .map(p => ({ ...p, v: wk === 'season' ? p.total : p.perWeek[wk].pts, thru: wk === 'season' ? null : p.perWeek[wk].thru }))

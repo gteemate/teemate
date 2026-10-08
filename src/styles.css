@@ -490,3 +490,17 @@ img{max-width:100%}
 .favstar[aria-pressed="true"]{color:#E0A800}
 .accrow{cursor:pointer}
 .favhead{margin-bottom:-4px}
+/* league: teams with their players' scores */
+.lgteams{display:flex;flex-direction:column;gap:10px}
+.lgteam{background:var(--surface);border:1px solid var(--line);border-radius:20px;overflow:hidden}
+.lgteam.me{border-color:var(--leaf-line)}
+.lgteam>summary{list-style:none;cursor:pointer;border:0;border-radius:0;background:none}
+.lgteam>summary::-webkit-details-marker{display:none}
+.lgteam[open]>summary{border-bottom:1px solid var(--line)}
+.lgplayers{display:flex;flex-direction:column;padding:6px 10px 10px}
+.lgp{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:8px 8px;border-radius:12px}
+.lgp b{font-size:18px;font-weight:800;min-width:28px;text-align:right;font-variant-numeric:tabular-nums}
+.lgp.counts{background:var(--leaf);box-shadow:inset 3px 0 0 var(--leaf-line)}
+.lgp.none{opacity:.6}
+.lgp.mine strong{text-decoration:underline;text-underline-offset:3px}
+.lgp .cnt{font-size:11px;font-weight:800;color:var(--green);text-transform:uppercase;letter-spacing:.05em}
