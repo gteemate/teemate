@@ -1,28 +1,34 @@
 // Scores tab: hole-by-hole scorecard for the group, with the game drop-down and pairings.
 import * as api from '../api.js'
 import { S } from '../state.js'
-import { $, esc, ini, sur, header, keepScroll, top0, render, toast } from '../ui.js'
+import { $, esc, ini, sur, header, keepScroll, top0, render, toast, parseHcp, fmtHcp } from '../ui.js'
+import { today, hhmm } from '../dates.js'
 import { holeGrid } from '../course-art.js'
 import { courseHandicap, playingHandicaps, holeCalc, betterBallWinner, gameState, upText, toPar } from '../scoring.js'
 import { buildLibrary, playable, gameSpec, resolveGame, teeRating, PAIRINGS } from '../games.js'
 
 // The round is kept here between redraws so unsaved stepper changes survive; api.saveRound() persists it.
+// round.lineup: the card's players in order, each { m: memberId } or { g: guestId }; the first is you.
 let round
 
-export const newRound = (course, players, game) => ({
-  players, game, pairing: 0, submitted: {},
-  scores: course.holes.map(h => players.map(() => h.par)),
+export const newRound = (course, lineup, game, slotId = null) => ({
+  lineup, slotId, game, pairing: 0, submitted: {},
+  scores: course.holes.map(h => lineup.map(() => h.par)),
   done: course.holes.map(() => false),
 })
 export const played = r => { const i = r.done.findIndex(d => !d); return i === -1 ? r.done.length : i }
 
+/** A card's line-up from a tee time: me first, then everyone else on it (members and guests). */
+export function lineupFromTeeTime(slot, meId) {
+  const others = slot.players.filter(p => p.memberId !== meId).slice(0, 3)
+  return [{ m: meId }, ...others.map(p => (p.guest ? { g: p.id } : { m: p.memberId }))]
+}
+
 export async function load() {
-  const [course, members, games, me, buddies] = await Promise.all([api.getCourse(), api.getMembers(), api.getGameSettings(), api.getMe(), api.getBuddies()])
-  const L = buildLibrary(games)
+  const [course, members, games, me, teeTimes] = await Promise.all([api.getCourse(), api.getMembers(), api.getGameSettings(), api.getMe(), api.getMyTeeTimes(today())])
   round ??= await api.getCurrentRound()
-  // No card yet today: start one with your first three buddies. It's saved when the first hole is.
-  if (!round && buddies.length >= 3) setRound(newRound(course, [me.id, ...buddies.slice(0, 3)], L.pref[4]))
-  return { course, members, L }
+  const guests = round ? await api.getGuests(round.lineup.filter(e => e.g != null).map(e => e.g)) : []
+  return { course, members, guests, L: buildLibrary(games), me, teeTimes }
 }
 
 export function setRound(r) {
@@ -32,18 +38,20 @@ export function setRound(r) {
 
 const CHEV = '<svg class="cv" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>'
 
-export function draw({ course, members, L }) {
-  if (!round) {
-    header('Scores', '')
-    $('main').innerHTML = `<div class="screen"><div class="empty-state">Add at least three buddies to start a scorecard.</div><button class="primary" id="addb">Find buddies</button></div>`
-    $('addb').onclick = async () => { S.tab = 'admin'; S.aview = 'buddies'; S.bseg = 'find'; S.bfrom = null; await render(); top0() }
-    return
-  }
-  round.game = resolveGame(L, round.game)
+export function draw({ course, members, guests, L, me, teeTimes }) {
+  if (!round) return startScreen({ course, L, me, teeTimes })
+  // Players on the card. A guest without a handicap plays off 0 until someone sets it.
+  const ps = round.lineup.map(e => {
+    if (e.m != null) { const m = members.find(x => x.id === e.m); return { name: m.name, hcp: m.hcp, guestId: null } }
+    const gst = guests.find(x => x.id === e.g)
+    return { name: gst?.name ?? 'Guest', hcp: gst?.hcp ?? null, guestId: e.g }
+  })
+  const n = ps.length
+  round.game = resolveGame(L, round.game, n)
   S.ch ??= Math.min(played(round), 17)
-  const byId = id => members.find(m => m.id === id)
-  const ps = round.players.map(byId), o = PAIRINGS[round.pairing], LG = L.lib[round.game], G = gameSpec(LG), g = G.kind
-  const ph = playingHandicaps(ps.map(p => courseHandicap(p.hcp, teeRating(course))), G.allow, G.offLow)
+  const o = PAIRINGS[round.pairing], LG = L.lib[round.game], G = gameSpec(LG), g = G.kind
+  const ph = playingHandicaps(ps.map(p => courseHandicap(p.hcp ?? 0, teeRating(course))), G.allow, G.offLow)
+  const noHcp = ps.filter(p => p.guestId && p.hcp == null)
   const i = S.ch, h = course.holes[i], P = played(round)
   const c = holeCalc(h, round.scores[i], ph, o), gs = gameState(G, course.holes, ph, round.scores, P, o)
   const pts = G.cmp === 'pts' || g === 'stab'
@@ -63,9 +71,9 @@ export function draw({ course, members, L }) {
   const grid = holeGrid(i, j => { const r = cellText(j); return `<span class="res ${r.cls}">${r.t}</span>` }, 'data-j')
 
   const gamebar = S.gmenu ? `<div class="card gmenu" id="gmenu">
-    <div class="gm-sec"><span class="gm-lbl">Game</span><div class="games" role="radiogroup" aria-label="Game">${playable(L).map(x => `<button class="gamecard sm" role="radio" aria-checked="${x.k === round.game}" data-gm="${x.k}"><span class="radio"></span><span class="who"><strong>${esc(x.name)}${x.k === L.pref[4] ? ' ★' : ''}</strong><small>${esc(x.sub)}${x.pct != null ? ` ${x.pct}%` : ''}</small></span></button>`).join('')}</div></div>
+    <div class="gm-sec"><span class="gm-lbl">Game</span><div class="games" role="radiogroup" aria-label="Game">${playable(L, n).map(x => `<button class="gamecard sm" role="radio" aria-checked="${x.k === round.game}" data-gm="${x.k}"><span class="radio"></span><span class="who"><strong>${esc(x.name)}${x.k === L.pref[4] ? ' ★' : ''}</strong><small>${esc(x.sub)}${x.pct != null ? ` ${x.pct}%` : ''}</small></span></button>`).join('')}</div></div>
     ${G.pairs ? `<div class="gm-sec"><span class="gm-lbl">Pairs</span><div class="games" role="radiogroup" aria-label="Pairs">${PAIRINGS.map((pp, n) => `<button class="gamecard sm" role="radio" aria-checked="${round.pairing === n}" data-pr="${n}"><span class="radio"></span><span class="who"><strong>You & ${esc(ps[pp[1]].name)}</strong><small>v ${esc(ps[pp[2]].name)} & ${esc(ps[pp[3]].name)}</small></span></button>`).join('')}</div></div>` : ''}
-    <div class="gm-sec"><span class="gm-lbl">Players and shots</span><div class="gm-players">${ps.map((p, k) => `<div><span>${esc(p.name)}${k === 0 ? ' (you)' : ''}</span><b>${ph[k]}</b></div>`).join('')}</div>
+    <div class="gm-sec"><span class="gm-lbl">Players and shots</span><div class="gm-players">${ps.map((p, k) => `<div><span>${esc(p.name)}${k === 0 ? ' (you)' : ''}${p.guestId ? ` · guest · ${p.hcp == null ? '<button class="linkbtn" data-gh="' + k + '">set handicap</button>' : `index ${fmtHcp(p.hcp)} <button class="linkbtn" data-gh="${k}">change</button>`}` : ''}</span><b>${ph[k]}</b></div>`).join('')}</div>
       <span class="hint">${G.offLow ? 'Shots off the lowest playing handicap.' : G.allow ? `Playing handicap at ${Math.round(G.allow * 100)}% of course handicap.` : 'Scratch: no shots.'} Course handicaps from the white tees (${teeRating(course).rating} / ${teeRating(course).slope}).</span></div>
     <div class="gm-btns"><button class="ghost" id="chg">Change players</button><button class="primary" id="gdone">Done</button></div></div>` : ''
 
@@ -77,7 +85,8 @@ export function draw({ course, members, L }) {
   }
   const card = k => {
     const p = ps[k], gr = round.scores[i][k], sh = c.sh[k]
-    return `<div class="pcard${best(k) ? ' counts' : ''}"><span class="av">${ini(p.name)}</span><span class="who"><strong>${esc(p.name)} <span class="h">(${ph[k]})</span></strong>
+    const hc = p.guestId ? (p.hcp == null ? `<button class="sethcp" data-gh="${k}">Set handicap</button>` : `<button class="linkbtn h" data-gh="${k}" aria-label="Change ${esc(p.name)}'s handicap">(${ph[k]})</button>`) : `<span class="h">(${ph[k]})</span>`
+    return `<div class="pcard${best(k) ? ' counts' : ''}"><span class="av${p.guestId ? ' gst' : ''}">${ini(p.name)}</span><span class="who"><strong>${esc(p.name)} ${hc}</strong>
       <span class="pills">${sh ? `<span class="pill">${sh} shot${sh > 1 ? 's' : ''}</span>` : ''}<span class="pill">${pts ? `${c.pts[k]} pts` : G.allow ? `net ${c.net[k]}` : `gross ${gr}`}</span></span></span>
       <span class="stepper"><button data-k="${k}" data-d="-1" aria-label="One fewer for ${esc(p.name)}">−</button><output class="${round.done[i] ? '' : 'draft'}">${gr}</output><button data-k="${k}" data-d="1" aria-label="One more for ${esc(p.name)}">+</button></span></div>`
   }
@@ -95,7 +104,7 @@ export function draw({ course, members, L }) {
   const body = G.pairs
     ? `<div class="sidehead"><b>You & ${esc(sur(ps[o[1]].name))}</b><span>${sideLbl('A')}</span></div>${card(o[0])}${card(o[1])}
        <div class="sidehead"><b>${esc(pairName('B')).replace(' / ', ' &amp; ')}</b><span>${sideLbl('B')}</span></div>${card(o[2])}${card(o[3])}`
-    : [0, 1, 2, 3].map(card).join('')
+    : ps.map((_, k) => card(k)).join('')
 
   let line
   if (!gs.thru) line = 'Not started'
@@ -108,7 +117,8 @@ export function draw({ course, members, L }) {
   }
 
   const fin = gs.finished && round.done[i]
-  $('main').innerHTML = `<div class="screen">${grid}
+  const hcpNote = noHcp.length ? `<div class="hcpnote">${noHcp.map(p => esc(p.name.split(' ')[0])).join(' and ')} ${noHcp.length > 1 ? 'have' : 'has'} no handicap yet, so ${noHcp.length > 1 ? 'they play' : 'plays'} off an index of 0 until you set one. Shots and points update as soon as you do.</div>` : ''
+  $('main').innerHTML = `<div class="screen">${grid}${hcpNote}
     <div class="matchline"><button class="gamesel" id="gchip" aria-expanded="${!!S.gmenu}" aria-controls="gmenu">${esc(LG.name)}${CHEV}</button><b>${esc(line)}</b></div>
     ${gamebar}
     ${body}
@@ -130,9 +140,12 @@ export function draw({ course, members, L }) {
       await api.saveRound(round)
       keepScroll(render)
     }))
-    $('chg').onclick = async () => { S.gmenu = false; S.pickTmp = round.players.slice(1); S.sview = 'players'; await render(); top0() }
+    $('chg').onclick = async () => { S.gmenu = false; S.pickTmp = round.lineup.slice(1).filter(e => e.m != null).map(e => e.m); S.sview = 'players'; await render(); top0() }
     $('gdone').onclick = () => { S.gmenu = false; render() }
   }
+
+  // Guest handicaps can be set or changed at any time; everything recalculates.
+  document.querySelectorAll('[data-gh]').forEach(b => (b.onclick = () => guestHcpSheet(ps[+b.dataset.gh])))
 
   // Scorecard
   document.querySelectorAll('[data-j]').forEach(b => (b.onclick = () => {
@@ -165,7 +178,7 @@ export function draw({ course, members, L }) {
     toast('Round saved. Your scores are on the leaderboard')
   })
   on('newr', async () => {
-    setRound(newRound(course, round.players, round.game))
+    setRound(newRound(course, round.lineup, round.game, round.slotId))
     await api.saveRound(round)
     if (G.pairs) S.gmenu = true
     await render()
@@ -182,4 +195,57 @@ function standings(ps, gs, g) {
 
 export function getRound() {
   return round
+}
+
+// No card yet today: start one from your tee time (all four, guests included), or pick buddies.
+function startScreen({ course, L, me, teeTimes }) {
+  header('Scores', 'Start today’s card')
+  const names = s => s.players.map(p => esc(p.memberId === me.id ? 'You' : p.name) + (p.guest ? ' <span class="pill tag">Guest</span>' : '')).join(', ')
+  $('main').innerHTML = `<div class="screen">
+    ${teeTimes.length ? teeTimes.map(s => `<button class="card evrow" data-slot="${s.id}"><span class="who"><strong>Start card for your ${hhmm(s.time)}</strong><small>${names(s)}</small></span><span class="pill">${s.players.length} players</span></button>`).join('')
+      : '<div class="empty-state">You’re not on a tee time today. Pick who you’re playing with instead.</div>'}
+    <button class="ghost" id="pick">${teeTimes.length ? 'Pick players instead' : 'Pick players'}</button>
+    <div class="hint">Cards are for 2 to 4 players. Better-ball games need four.</div></div>`
+  document.querySelectorAll('[data-slot]').forEach(b => (b.onclick = async () => {
+    const s = teeTimes.find(x => x.id === +b.dataset.slot)
+    if (s.players.length < 2) { toast('You’re the only one on that tee time so far'); return }
+    const lineup = lineupFromTeeTime(s, me.id)
+    setRound(newRound(course, lineup, resolveGame(L, L.pref[4], lineup.length), s.id))
+    if (lineup.length === 4 && L.lib[round.game]?.play?.pairs) S.gmenu = true
+    await render()
+    top0()
+    toast(`Card started for your ${hhmm(s.time)}`)
+  }))
+  $('pick').onclick = async () => { S.pickTmp = []; S.sview = 'players'; await render(); top0() }
+}
+
+// Set, change or clear a guest's handicap index.
+function guestHcpSheet(p) {
+  $('modal').innerHTML = `<div class="overlay" id="ovl"><form class="sheet" id="hform" novalidate aria-labelledby="htitle">
+    <h4 id="htitle">${esc(p.name)}’s handicap</h4>
+    <label for="h-idx">Handicap index</label><input id="h-idx" inputmode="decimal" autocomplete="off" value="${p.hcp == null ? '' : fmtHcp(p.hcp)}" placeholder="e.g. 18.4, or +2">
+    <span class="hint">No official handicap? Agree one with them. You can change it any time, even mid-round.</span>
+    <p class="gerr" id="herr" role="alert"></p>
+    <div class="gm-btns"><button type="button" class="ghost" id="hcancel">Cancel</button><button type="submit" class="primary" id="hsave">Save</button></div>
+  </form></div>`
+  setTimeout(() => $('h-idx')?.focus(), 30)
+  const close = () => { $('modal').innerHTML = '' }
+  $('hcancel').onclick = close
+  $('ovl').onclick = e => { if (e.target.id === 'ovl') close() }
+  $('hform').onsubmit = async e => {
+    e.preventDefault()
+    const h = parseHcp($('h-idx').value)
+    if (Number.isNaN(h)) { $('herr').textContent = 'Enter a handicap index between +10 and 54, e.g. 18.4.'; return }
+    $('hsave').disabled = true
+    try {
+      await api.setGuestHandicap(p.guestId, h)
+    } catch (err) {
+      $('herr').textContent = err.message
+      $('hsave').disabled = false
+      return
+    }
+    close()
+    await keepScroll(render)
+    toast(h == null ? `${p.name}’s handicap cleared` : `${p.name} now plays off ${fmtHcp(h)}`)
+  }
 }

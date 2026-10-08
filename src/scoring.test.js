@@ -145,6 +145,18 @@ describe('skins', () => {
   })
 })
 
+describe('cards with fewer than four players', () => {
+  it('Stableford with two players', () => {
+    const s = gameState({ kind: 'stab' }, FLAT, [0, 18], [[4, 5], [3, 6]], 2)
+    expect(s.totals).toEqual([5, 3])
+  })
+  it('skins with three players', () => {
+    const s = gameState({ kind: 'skins' }, FLAT, [0, 0, 0], [[4, 4, 5], [3, 4, 4]], 2)
+    expect(s.holes.map(h => h.winner)).toEqual([-1, 0])
+    expect(s.totals).toEqual([2, 0, 0])
+  })
+})
+
 describe('net strokeplay and leaderboard', () => {
   it('net to par per player', () => {
     const s = gameState({ kind: 'stroke' }, FLAT, [0, 2, 0, 0], [[5, 5, 4, 3], [4, 5, 4, 3]], 2)

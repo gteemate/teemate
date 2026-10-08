@@ -400,3 +400,8 @@ img{max-width:100%}
 .reqrow:first-child{border-top:0}
 .reqbtns{display:flex;gap:6px}
 .reqbtns button{padding:8px 12px;font-size:14px;border-radius:12px}
+/* guests on the scorecard */
+.sethcp{border:1.5px solid var(--loss);color:var(--loss);background:none;border-radius:999px;padding:2px 9px;font-size:12px;font-weight:800;cursor:pointer;vertical-align:1px;margin-left:2px}
+.pcard .linkbtn.h{font-size:inherit;font-weight:500;color:var(--muted);padding:0}
+.hcpnote{background:var(--surface);border:1.5px solid var(--loss);border-radius:16px;padding:10px 14px;font-size:14px;line-height:1.4}
+.gm-players .linkbtn{font-size:13px;padding:0 2px}

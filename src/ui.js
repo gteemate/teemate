@@ -6,6 +6,17 @@ export const sur = n => n.split(' ').slice(-1)[0]
 export const nn = n => String(n).padStart(2, '0')
 export const asset = p => import.meta.env.BASE_URL + p
 
+/** Handicap index typed by a person: "12.4", "12,4", "+2" (a plus handicap, stored as −2).
+ *  Returns a number, null for blank, or NaN if it isn't a handicap. */
+export function parseHcp(text) {
+  const t = String(text ?? '').trim().replace(',', '.')
+  if (!t) return null
+  const n = Number(t.startsWith('+') ? '-' + t.slice(1) : t)
+  return Number.isFinite(n) && n >= -10 && n <= 54 ? Math.round(n * 10) / 10 : NaN
+}
+/** Show a stored handicap index the golf way: −2 → "+2". */
+export const fmtHcp = h => (h == null ? '–' : h < 0 ? `+${-h}` : String(h))
+
 export function toast(t) {
   const el = $('toast')
   el.textContent = t

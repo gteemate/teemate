@@ -176,6 +176,23 @@ export async function bookTeeTime({ slotId, memberIds = [], guests = [] }) {
   return must(await sb.rpc('book_tee_time', { p_slot_id: slotId, p_member_ids: memberIds, p_guests: guests }))
 }
 
+/** My tee times on a date, each with everyone on it (members and guests, with handicaps). */
+export async function getMyTeeTimes(date) {
+  const meId = await myId()
+  return (await getTeeSheet(isoDate(date))).filter(s => s.players.some(p => p.memberId === meId))
+}
+
+/** Guests by booking id: [{ id, name, club, hcp }] (hcp null if not set yet). */
+export async function getGuests(ids) {
+  if (!ids.length) return []
+  return must(await sb.rpc('get_guests', { p_ids: ids })).map(g => ({ ...g, hcp: g.hcp == null ? null : Number(g.hcp) }))
+}
+
+/** Set or clear (null) a guest's handicap index. Anyone on that tee time can, at any time. */
+export async function setGuestHandicap(guestId, hcp) {
+  must(await sb.rpc('set_guest_handicap', { p_guest_id: guestId, p_hcp: hcp }))
+}
+
 export async function getMyBookings() {
   return must(await sb.rpc('get_my_bookings'))
 }
@@ -229,8 +246,9 @@ export async function setPreferredGame(groupSize, k) {
 
 /* ---------- Rounds and leaderboard ---------- */
 
-const ROUND_COLS = 'id, created_by, players, game, pairing, scores, done, submitted, tee_time'
-const toRound = r => ({ id: r.id, players: r.players, game: r.game, pairing: r.pairing, scores: r.scores, done: r.done, submitted: r.submitted })
+// lineup: the card's players in order, each { m: memberId } or { g: guestId }; the first is the card's owner.
+const ROUND_COLS = 'id, created_by, lineup, slot_id, game, pairing, scores, done, submitted, tee_time'
+const toRound = r => ({ id: r.id, lineup: r.lineup, slotId: r.slot_id, game: r.game, pairing: r.pairing, scores: r.scores, done: r.done, submitted: r.submitted })
 
 /** My scorecard for today, or null if I haven't started one. */
 export async function getCurrentRound() {
@@ -241,28 +259,36 @@ export async function getCurrentRound() {
 
 /** Insert or update my scorecard. A new round gets its id set. */
 export async function saveRound(round) {
-  const row = { players: round.players, game: round.game, pairing: round.pairing, scores: round.scores, done: round.done, submitted: round.submitted, updated_at: new Date().toISOString() }
+  const row = { lineup: round.lineup, slot_id: round.slotId ?? null, game: round.game, pairing: round.pairing, scores: round.scores, done: round.done, submitted: round.submitted, updated_at: new Date().toISOString() }
   if (round.id) must(await sb.from('rounds').update(row).eq('id', round.id))
   else round.id = must(await sb.from('rounds').insert({ ...row, date: todayIso() }).select('id').single()).id
 }
 
-/** Everyone's round today: [{ member, gross: [...completed holes], teeTime?, live }]. My group comes first. */
+/**
+ * Everyone's round today: [{ member, gross: [...completed holes], teeTime?, live }]. My group comes first.
+ * Guests appear as member-like entries { id: 'g<id>', name, hcp, guest: true } (hcp 0 until it's set).
+ */
 export async function getTodayRounds(date = today()) {
   const [rounds, members, meId] = await Promise.all([
     sb.from('rounds').select(ROUND_COLS).eq('date', isoDate(date)).order('id').then(must),
     getMembers(),
     myId(),
   ])
-  const byId = new Map(members.map(m => [m.id, m]))
+  const guests = await getGuests([...new Set(rounds.flatMap(r => r.lineup.filter(e => e.g != null).map(e => e.g)))])
+  const byKey = new Map([
+    ...members.map(m => [`m${m.id}`, m]),
+    ...guests.map(g => [`g${g.id}`, { id: `g${g.id}`, name: g.name, hcp: g.hcp ?? 0, guest: true }]),
+  ])
   rounds.sort((a, b) => (b.created_by === meId) - (a.created_by === meId))
   const seen = new Set(), out = []
   for (const r of rounds) {
     let played = r.done.findIndex(d => !d)
     if (played === -1) played = r.done.length
-    r.players.forEach((id, k) => {
-      if (seen.has(id) || !byId.has(id)) return
-      seen.add(id)
-      out.push({ member: byId.get(id), gross: r.scores.slice(0, played).map(s => s[k]), teeTime: r.tee_time ?? undefined, live: true })
+    r.lineup.forEach((e, k) => {
+      const key = e.m != null ? `m${e.m}` : `g${e.g}`
+      if (seen.has(key) || !byKey.has(key)) return
+      seen.add(key)
+      out.push({ member: byKey.get(key), gross: r.scores.slice(0, played).map(s => s[k]), teeTime: r.tee_time ?? undefined, live: true })
     })
   }
   return out

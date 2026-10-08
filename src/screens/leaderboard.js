@@ -43,7 +43,7 @@ function todayBoard({ event, course, rounds, me }) {
     if (v !== prev) { pos = i + 1; prev = v }
     const tie = played.filter(x => key(x) === v).length > 1
     const neg = (m === 'gross' && r.g < 0) || (m === 'net' && r.n < 0)
-    return `<div class="lbrow${isMe(r) ? ' me' : ''}"><span class="lpos">${tie ? 'T' : ''}${pos}</span><span class="av">${ini(r.member.name)}</span><span class="who"><strong>${esc(r.member.name)}${isMe(r) ? ' (you)' : ''}</strong><small>${sub(r)}${r.live && r.thru < 18 ? ' <span class="livedot">● live</span>' : ''}</small></span><span class="lval${neg ? ' under' : ''}">${val(r)}</span></div>`
+    return `<div class="lbrow${isMe(r) ? ' me' : ''}"><span class="lpos">${tie ? 'T' : ''}${pos}</span><span class="av">${ini(r.member.name)}</span><span class="who"><strong>${esc(r.member.name)}${isMe(r) ? ' (you)' : ''}${r.member.guest ? ' <span class="pill tag">Guest</span>' : ''}</strong><small>${sub(r)}${r.live && r.thru < 18 ? ' <span class="livedot">● live</span>' : ''}</small></span><span class="lval${neg ? ' under' : ''}">${val(r)}</span></div>`
   }).join('') + waiting.map(r => `<div class="lbrow wait"><span class="lpos">–</span><span class="av">${ini(r.member.name)}</span><span class="who"><strong>${esc(r.member.name)}</strong><small>yet to play${r.teeTime ? ` · tees ${r.teeTime}` : ''}</small></span><span class="lval">–</span></div>`).join('')
   const note = { gross: 'Strokes to par, no handicap.', net: 'Strokes to par after full course-handicap shots.', stab: 'Stableford points with full course-handicap shots.', birdies: "Gross birdies or better on today's round." }[m]
   $('main').innerHTML = `<div class="screen">${lbSeg(event)}

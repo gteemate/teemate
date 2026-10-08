@@ -28,7 +28,7 @@ function fieldScores(m, thru) {
 const mine = S.CURRENT_ROUND
 const field = S.FIELD.filter(([id]) => !mine.players.includes(id)).map(([id, thru, tee]) => {
   const m = S.MEMBERS.find(x => x.id === id), gross = thru ? fieldScores(m, thru) : []
-  return ['current_date', id, arr([id]), q('stroke'),
+  return ['current_date', id, j([{ m: id }]), q('stroke'),
     j(par.map((p, i) => [gross[i] ?? p])), j(par.map((_, i) => i < gross.length)), q(tee ?? null)]
 })
 
@@ -55,9 +55,9 @@ insert into public.pin_sheets (course_id, date, set_at, set_by, pins)
   values (1, current_date, (current_date + time ${q(S.PIN_SHEET.setAt)}) at time zone 'Europe/Dublin', null, ${j(S.PIN_SHEET.pins)});
 
 -- My group's card in progress, and others out today.
-${rows('rounds', ['date', 'created_by', 'players', 'game', 'pairing', 'scores', 'done'],
-  [['current_date', S.ME_ID, arr(mine.players), q(mine.game), mine.pairing, j(mine.scores), j(mine.done)]])}
-${rows('rounds', ['date', 'created_by', 'players', 'game', 'scores', 'done', 'tee_time'], field)}
+${rows('rounds', ['date', 'created_by', 'lineup', 'game', 'pairing', 'scores', 'done'],
+  [['current_date', S.ME_ID, j(mine.players.map(m => ({ m }))), q(mine.game), mine.pairing, j(mine.scores), j(mine.done)]])}
+${rows('rounds', ['date', 'created_by', 'lineup', 'game', 'scores', 'done', 'tee_time'], field)}
 ${rows('events', ['id', 'name', 'team_a', 'team_b', 'active', 'days', 'course', 'format', 'players', 'team', 'matches'],
   S.EVENTS.map(e => [e.id, q(e.name), j(e.A), j(e.B), e.active, e.days, q(e.course), q(e.format), arr(e.players), j(e.team), j(e.matches)]))}
 -- Tee sheet for the next 7 days, with other members already booked on some times.

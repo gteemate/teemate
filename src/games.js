@@ -43,14 +43,17 @@ export function buildLibrary({ settings, pref }) {
   return { sections, lib, pref }
 }
 
-export const playable = L => L.sections[4].games.filter(x => x.play && x.on)
+// Games that can be scored on a card of n players. Pairs games need four.
+export const playable = (L, n = 4) => L.sections[4].games.filter(x => x.play && x.on && (n === 4 || !x.play.pairs))
 export const gameSpec = x => ({ ...x.play, allow: x.pct == null ? 0 : x.pct / 100 })
 
-/** The game to use: the chosen one if it's on and playable, else the club's preferred 4-ball game, else the first playable. */
-export function resolveGame(L, k) {
-  if (L.lib[k]?.on && L.lib[k].play) return k
-  const p = L.lib[L.pref[4]]
-  return p?.play && p.on ? p.k : playable(L)[0]?.k
+/** The game to use on a card of n players: the chosen one if it's on and playable, else the
+ *  club's preferred 4-ball game, else the first playable. */
+export function resolveGame(L, k, n = 4) {
+  const ok = x => x && playable(L, n).includes(x)
+  if (ok(L.lib[k])) return k
+  if (ok(L.lib[L.pref[4]])) return L.pref[4]
+  return playable(L, n)[0]?.k
 }
 
 /** Slope, rating and par for course-handicap maths. */

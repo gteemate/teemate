@@ -31,10 +31,10 @@ create function t.val(p_sql text) returns bigint language plpgsql as $$
 declare v bigint; begin execute p_sql into v; return v; end $$;
 grant execute on all functions in schema t to anon, authenticated;
 
--- Test logins for: Gary (0, admin), Declan (1), Aoife (2, no guest points left).
+-- Test logins for: Gary (0, admin), Declan (1), Aoife (2, no guest points left), Ciarán (3).
 insert into auth.users (id, email, aud, role)
-  select gen_random_uuid(), 'rls-test-' || i || '@example.invalid', 'authenticated', 'authenticated' from generate_series(0, 2) i;
-insert into t.users select i, (select id from auth.users where email = 'rls-test-' || i || '@example.invalid') from generate_series(0, 2) i;
+  select gen_random_uuid(), 'rls-test-' || i || '@example.invalid', 'authenticated', 'authenticated' from generate_series(0, 3) i;
+insert into t.users select i, (select id from auth.users where email = 'rls-test-' || i || '@example.invalid') from generate_series(0, 3) i;
 update public.members m set user_id = u.uid from t.users u where m.id = u.member_id;
 
 -- Some tee times to book on, a few days out so nothing from the seed is on them.
@@ -68,8 +68,8 @@ do $$ declare e text; begin
   perform t.ok('Member: sees only own guest points', t.val('select count(*) from public.guest_visits where member_id <> 1') = 0
                                                    and t.val('select count(*) from public.guest_visits') = 2);
   perform t.ok('Member: cannot edit someone else''s scorecard', t.val($q$with u as (update public.rounds set game = 'x' where created_by = 0 returning 1) select count(*) from u$q$) = 0);
-  perform t.ok('Member: can start own scorecard', t.err('insert into public.rounds (players) values (''{1,2,3,4}'')') is null);
-  perform t.ok('Member: cannot start a card as someone else', t.err('insert into public.rounds (created_by, players) values (0, ''{0}'')') is not null);
+  perform t.ok('Member: can start own scorecard', t.err($q$insert into public.rounds (lineup) values ('[{"m":1},{"m":2}]')$q$) is null);
+  perform t.ok('Member: cannot start a card as someone else', t.err($q$insert into public.rounds (created_by, lineup) values (0, '[{"m":0}]')$q$) is not null);
   perform t.done();
 end $$;
 
@@ -132,6 +132,35 @@ do $$ declare e text; used int; i int; begin
   perform t.ok('Points: used exactly the allowance (36), never more', used = 36, used::text);
   perform t.ok('Backstop: database rejects a points row that would overdraw',
     t.err($q$insert into public.guest_visits (member_id, date, guest_name, course_id, points) values (2, current_date, 'x', 1, 3)$q$) is not null);
+end $$;
+
+-- ------------------------------------------------------------------ guest handicaps
+do $$ declare s3 bigint := (select id from t.slot where start_time = 690); r jsonb; gid bigint; e text; begin
+  perform t.act_as(3); -- Ciarán books with Declan and two guests
+  r := public.book_tee_time(s3, '{1}', '[{"name":"Sam Guest","hcp":18.5},{"name":"No Handicap Yet"}]');
+  perform t.done();
+  select id into gid from public.booking_players where slot_id = s3 and guest_name = 'Sam Guest';
+  perform t.ok('Guest handicap: set when booking', (select guest_hcp from public.booking_players where id = gid) = 18.5);
+  perform t.ok('Guest handicap: can be left blank', (select guest_hcp from public.booking_players where slot_id = s3 and guest_name = 'No Handicap Yet') is null);
+  perform t.act_as(3);
+  e := t.err(format($q$select public.book_tee_time(%s, '{}', '[{"name":"Silly","hcp":99}]')$q$, (select id from t.slot where start_time = 700)));
+  perform t.ok('Guest handicap: out of range refused at booking', e like '%between +10 and 54%', e);
+  perform t.done();
+  perform t.act_as(1); -- Declan is in the same four-ball but didn't book the guest
+  e := t.err(format('select public.set_guest_handicap(%s, 12.3)', gid));
+  perform t.ok('Guest handicap: anyone in the four-ball can change it', e is null, e);
+  perform t.ok('Guest handicap: shown on the tee sheet and to the card', (select (x->>'hcp')::numeric from jsonb_array_elements(public.get_guests(array[gid])) x) = 12.3);
+  e := t.err(format('select public.set_guest_handicap(%s, -60)', gid));
+  perform t.ok('Guest handicap: out of range refused', e like '%between +10 and 54%', e);
+  perform t.done();
+  perform t.act_as(2); -- Aoife isn't on that tee time
+  e := t.err(format('select public.set_guest_handicap(%s, 5)', gid));
+  perform t.ok('Guest handicap: someone not in the four-ball cannot', e like '%Only players on that tee time%', e);
+  perform t.done();
+  perform t.act_as(3);
+  perform public.set_guest_handicap(gid, null);
+  perform t.done();
+  perform t.ok('Guest handicap: can be cleared again', (select guest_hcp from public.booking_players where id = gid) is null);
 end $$;
 
 -- ------------------------------------------------------------------ admin (Gary)

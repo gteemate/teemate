@@ -1,7 +1,7 @@
 // Admin → Tee times → a time: choose buddies and guests, then confirm.
 import * as api from '../api.js'
 import { S } from '../state.js'
-import { $, esc, ini, header, keepScroll, top0, render, toast } from '../ui.js'
+import { $, esc, ini, header, keepScroll, top0, render, toast, parseHcp, fmtHcp } from '../ui.js'
 import { isoDate, nextDays, dayMonth, longDay, hhmm } from '../dates.js'
 
 export async function load() {
@@ -29,7 +29,7 @@ export function draw({ date, slot: s, me, myB, points }) {
 
   let slots = `<div class="pslot filled"><span class="av">${ini(me.name)}</span><span class="who"><strong>${esc(me.name)} (you)</strong><small>GUI ${me.gui} · HCP ${me.hcp}</small></span><span></span></div>`
   S.picked.forEach(id => { const m = byId(id); slots += `<div class="pslot filled"><span class="av">${ini(m.name)}</span><span class="who"><strong>${esc(m.name)}</strong><small>GUI ${m.gui} · HCP ${m.hcp}</small></span><button class="x" data-rm="${id}" aria-label="Remove ${esc(m.name)}">×</button></div>` })
-  S.guests.forEach((g, n) => { slots += `<div class="pslot filled guest"><span class="av gst">${ini(g.name)}</span><span class="who"><strong>${esc(g.name)} <span class="pill tag">Guest</span></strong><small>${[g.club, g.gui && 'GUI ' + g.gui].filter(Boolean).map(esc).join(' · ') || 'No home club'}</small></span><span class="gright"><span class="ptag">−${cost} pts</span><button class="x" data-rg="${n}" aria-label="Remove guest ${esc(g.name)}">×</button></span></div>` })
+  S.guests.forEach((g, n) => { slots += `<div class="pslot filled guest"><span class="av gst">${ini(g.name)}</span><span class="who"><strong>${esc(g.name)} <span class="pill tag">Guest</span></strong><small>${[g.club, g.gui && 'GUI ' + g.gui, g.hcp != null ? 'HCP ' + fmtHcp(g.hcp) : 'handicap later'].filter(Boolean).map(esc).join(' · ')}</small></span><span class="gright"><span class="ptag">−${cost} pts</span><button class="x" data-rg="${n}" aria-label="Remove guest ${esc(g.name)}">×</button></span></div>` })
   for (let k = 1 + used; k < free; k++) slots += '<div class="pslot"><span class="av empty">+</span><span class="who"><strong style="color:var(--muted);font-weight:600">Open space</strong><small>Pick a buddy or add a guest</small></span><span></span></div>'
   s.players.forEach(p => (slots += `<div class="pslot other"><span class="av other">${ini(p.name)}</span><span class="who"><strong>${esc(p.name)}</strong><small>Already booked</small></span><span></span></div>`))
 
@@ -75,6 +75,7 @@ function guestForm(points, after) {
     <label for="g-name">Full name</label><input id="g-name" autocomplete="off" placeholder="e.g. Paul Hughes">
     <label for="g-club">Home club <span class="opt">optional</span></label><input id="g-club" autocomplete="off" placeholder="Leave blank if not a club member">
     <label for="g-gui">GUI number <span class="opt">optional</span></label><input id="g-gui" inputmode="numeric" autocomplete="off" placeholder="On their handicap card, if they have one">
+    <label for="g-hcp">Handicap index <span class="opt">optional · you can set it later on the scorecard</span></label><input id="g-hcp" inputmode="decimal" autocomplete="off" placeholder="e.g. 18.4, or +2">
     <p class="gerr" id="gerr" role="alert"></p>
     <div class="gcost"><span>Uses <b>${points.cost} points</b> on the ${esc(points.course)}</span><span>${after} → <b>${after - points.cost}</b> left</span></div>
     <div class="gm-btns"><button type="button" class="ghost" id="gcancel">Cancel</button><button type="submit" class="primary">Add guest</button></div>
@@ -85,10 +86,11 @@ function guestForm(points, after) {
   $('ovl').onclick = e => { if (e.target.id === 'ovl') close() }
   $('gform').onsubmit = e => {
     e.preventDefault()
-    const name = $('g-name').value.trim(), club = $('g-club').value.trim(), gui = $('g-gui').value.replace(/\s/g, '')
-    const err = !name ? "Enter your guest's name." : gui && !/^\d{6,10}$/.test(gui) ? 'GUI numbers are 6–10 digits. Check their handicap card, or leave it blank.' : ''
+    const name = $('g-name').value.trim(), club = $('g-club').value.trim(), gui = $('g-gui').value.replace(/\s/g, ''), hcp = parseHcp($('g-hcp').value)
+    const err = !name ? "Enter your guest's name." : gui && !/^\d{6,10}$/.test(gui) ? 'GUI numbers are 6–10 digits. Check their handicap card, or leave it blank.'
+      : Number.isNaN(hcp) ? 'Handicap index should be between +10 and 54, e.g. 18.4. Or leave it blank for now.' : ''
     if (err) { $('gerr').textContent = err; return }
-    S.guests.push({ name, club, gui })
+    S.guests.push({ name, club, gui, hcp })
     S.gmodal = false
     keepScroll(render)
     toast(`${name} added · ${points.cost} points`)
