@@ -36,6 +36,7 @@ insert into auth.users (id, email, aud, role)
   select gen_random_uuid(), 'rls-test-' || i || '@example.invalid', 'authenticated', 'authenticated' from generate_series(0, 3) i;
 insert into t.users select i, (select id from auth.users where email = 'rls-test-' || i || '@example.invalid') from generate_series(0, 3) i;
 update public.members m set user_id = u.uid from t.users u where m.id = u.member_id;
+update public.members set admin = (id = 0) where id between 0 and 3; -- test roles: Gary is the admin here
 
 -- Some tee times to book on, a few days out so nothing from the seed is on them.
 insert into public.tee_slots (course_id, date, start_time) select 1, current_date + 10, 600 + 10 * i from generate_series(0, 9) i;
@@ -53,9 +54,9 @@ do $$ begin
 end $$;
 
 -- ------------------------------------------------------------------ an ordinary member (Declan)
-do $$ declare e text; begin
+do $$ declare e text; total bigint := (select count(*) from public.members); begin
   perform t.act_as(1);
-  perform t.ok('Member: sees the member list', t.val('select count(*) from public.members') = 13);
+  perform t.ok('Member: sees the member list', t.val('select count(*) from public.members') = total);
   perform t.ok('Member: cannot see emails', t.err('select email from public.members') is not null);
   perform t.ok('Member: cannot see another member''s buddies', t.val('select count(*) from public.buddies') = 0);
   perform t.ok('Member: can add own buddy', t.err('insert into public.buddies values (1, 9)') is null);

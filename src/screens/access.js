@@ -28,9 +28,10 @@ export function draw({ list, me, requests }) {
     <h3>Members</h3>
     <button class="primary" id="addm">+ Add member</button>
     <div class="search"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="accq" type="search" placeholder="Name, email or GUI" value="${esc(S.accQ)}" autocomplete="off"></div>
-    <div class="card list">${shown.map(m => `<button class="lrow accrow" data-m="${m.id}"><span class="av">${ini(m.name)}</span>
+    <div class="card list">${shown.map(m => `<div class="swipe">${m.id === me.id ? '' : `<button class="swdel" data-del="${m.id}">Delete</button>`}<button class="lrow accrow" data-m="${m.id}" ${m.id === me.id ? '' : 'data-swipe'}><span class="av">${ini(m.name)}</span>
       <span class="who"><strong>${esc(m.name)}${m.id === me.id ? ' (you)' : ''}${m.admin ? ' <span class="pill tag">Admin</span>' : ''}</strong><small>${m.email ? esc(m.email) : 'No email · can’t sign in'}</small></span>
-      <span class="accst ${m.signedIn ? 'on' : m.email ? 'inv' : ''}">${status(m)}</span></button>`).join('') || '<div class="empty-state">No one matches.</div>'}</div>
+      <span class="accst ${m.signedIn ? 'on' : m.email ? 'inv' : ''}">${status(m)}</span></button></div>`).join('') || '<div class="empty-state">No one matches.</div>'}</div>
+    <div class="hint">Swipe a member left to delete them.</div>
   </div>`
 
   $('addm').onclick = () => { S.accEdit = 'new'; S.accPrefill = null; S.accConfirm = false; keepScroll(render) }
@@ -47,11 +48,62 @@ export function draw({ list, me, requests }) {
     await keepScroll(render)
     toast(`${r.name}’s request declined`)
   }))
-  document.querySelectorAll('[data-m]').forEach(b => (b.onclick = () => { S.accEdit = +b.dataset.m; S.accConfirm = false; keepScroll(render) }))
+  document.querySelectorAll('[data-m]').forEach(b => (b.onclick = () => {
+    if (b.dataset.swiped === '1') { b.dataset.swiped = ''; return } // that was a swipe, not a tap
+    if (b.classList.contains('open')) { slide(b, 0); return } // tapping an open row closes it
+    S.accEdit = +b.dataset.m; S.accConfirm = false; keepScroll(render)
+  }))
+  bindSwipes()
+  document.querySelectorAll('[data-del]').forEach(b => (b.onclick = () => confirmDelete(b, list.find(m => m.id === +b.dataset.del))))
   const qi = $('accq')
   qi.oninput = () => { S.accQ = qi.value; const p = qi.selectionStart; render().then(() => { const n = $('accq'); n.focus(); n.setSelectionRange(p, p) }) }
 
   if (S.accEdit != null) editSheet(S.accEdit === 'new' ? { name: '', email: '', gui: '', hcp: 54, admin: false, ...S.accPrefill } : list.find(m => m.id === S.accEdit), me)
+}
+
+// Swipe a row left to reveal Delete (pointer events: works with touch and a mouse drag).
+const OPEN = -92
+function slide(row, x) {
+  row.style.transform = x ? `translateX(${x}px)` : ''
+  row.classList.toggle('open', x !== 0)
+}
+function bindSwipes() {
+  document.querySelectorAll('[data-swipe]').forEach(row => {
+    let start = null, base = 0, x = 0
+    row.onpointerdown = e => { start = e.clientX; base = row.classList.contains('open') ? OPEN : 0; x = base; row.style.transition = 'none' }
+    row.onpointermove = e => {
+      if (start == null) return
+      const dx = e.clientX - start
+      if (Math.abs(dx) > 8) { row.dataset.swiped = '1'; try { row.setPointerCapture(e.pointerId) } catch {} } // keep following the finger off the row
+      x = Math.max(OPEN, Math.min(0, base + dx))
+      row.style.transform = `translateX(${x}px)`
+    }
+    const end = () => {
+      if (start == null) return
+      start = null
+      row.style.transition = ''
+      if (row.dataset.swiped !== '1') return
+      const open = x < OPEN / 2
+      document.querySelectorAll('[data-swipe].open').forEach(r => r !== row && slide(r, 0)) // one open at a time
+      slide(row, open ? OPEN : 0)
+    }
+    row.onpointerup = end
+    row.onpointercancel = end
+  })
+}
+async function confirmDelete(btn, m, ask = 'Sure?') {
+  if (btn.dataset.armed !== '1') { btn.dataset.armed = '1'; btn.textContent = ask; return }
+  btn.disabled = true
+  try {
+    await api.deleteMember(m.id)
+  } catch (err) {
+    toast(err.message)
+    btn.disabled = false
+    return
+  }
+  S.accEdit = null
+  await keepScroll(render)
+  toast(`${m.name} deleted`)
 }
 
 function editSheet(m, me) {
@@ -66,6 +118,7 @@ function editSheet(m, me) {
     ${sw('m-adm', m.admin, 'Admin', self ? 'You can’t remove your own admin rights' : 'Can approve access, run club events, set pins and games', self)}
     <p class="gerr" id="merr" role="alert"></p>
     ${!isNew && m.signedIn && !self ? '<button type="button" class="ghost" id="mreset">Reset login</button><span class="hint">For a forgotten password: deletes their login (scores and bookings stay) so they can create a new password.</span>' : ''}
+    ${!isNew && !self ? '<button type="button" class="ghost accremove" id="mdel">Delete member</button><span class="hint">Deletes them completely, with their bookings, guest points and the scorecards they started.</span>' : ''}
     ${!isNew && m.email && !self ? `<button type="button" class="ghost accremove" id="mrem">${S.accConfirm ? `Tap again to remove ${esc(m.name.split(' ')[0])}’s access` : 'Remove access'}</button>` : ''}
     <div class="gm-btns"><button type="button" class="ghost" id="mcancel">Cancel</button><button type="submit" class="primary" id="msave">${isNew ? (S.accPrefill ? 'Approve' : 'Add member') : 'Save'}</button></div>
   </form></div>`
@@ -119,6 +172,8 @@ function editSheet(m, me) {
     await keepScroll(render)
     toast(`${m.name}’s login reset. They can create a new password`)
   }
+  const del = $('mdel')
+  if (del) del.onclick = () => confirmDelete(del, m, `Tap again to delete ${m.name.split(' ')[0]}`)
   const rem = $('mrem')
   if (rem) rem.onclick = () => {
     if (!S.accConfirm) { S.accConfirm = true; rem.textContent = `Tap again to remove ${m.name.split(' ')[0]}’s access`; return }

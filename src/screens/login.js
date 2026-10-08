@@ -2,7 +2,7 @@
 // Also the screen for a login that isn't on the members list.
 import * as api from '../api.js'
 import { S } from '../state.js'
-import { $, esc, header, render } from '../ui.js'
+import { $, esc, header, render, passwordInput } from '../ui.js'
 
 const MIN = 8
 
@@ -14,8 +14,8 @@ export function draw() {
   $('main').innerHTML = `<div class="screen"><form class="card evsec" id="login" novalidate>
     <h4>${create ? 'Create account' : 'Sign in'}</h4>
     <label for="email">Email</label><input id="email" type="email" autocomplete="email" inputmode="email" placeholder="you@example.com" value="${esc(S.loginEmail)}">
-    <label for="pw">${create ? 'Choose a password' : 'Password'}</label><input id="pw" type="password" autocomplete="${create ? 'new-password' : 'current-password'}" ${create ? `placeholder="At least ${MIN} characters"` : ''}>
-    ${create ? '<label for="pw2">Password again</label><input id="pw2" type="password" autocomplete="new-password">' : ''}
+    <label for="pw">${create ? 'Choose a password' : 'Password'}</label>${passwordInput('pw', `autocomplete="${create ? 'new-password' : 'current-password'}" ${create ? `placeholder="At least ${MIN} characters"` : ''}`)}
+    ${create ? `<label for="pw2">Password again</label>${passwordInput('pw2', 'autocomplete="new-password"')}` : ''}
     <p class="gerr" id="err" role="alert"></p>
     <button class="primary" type="submit" id="go">${create ? 'Create account' : 'Sign in'}</button>
     <span class="hint">${create ? 'Your email has to be approved by the club admin first.' : 'Forgotten your password? Ask the club admin to reset your login.'}</span>
@@ -104,8 +104,8 @@ export function drawNotMember({ email }) {
 export function passwordSheet(onDone) {
   $('modal').innerHTML = `<div class="overlay" id="ovl"><form class="sheet" id="pwform" novalidate aria-labelledby="pwt">
     <h4 id="pwt">Change password</h4>
-    <label for="npw">New password</label><input id="npw" type="password" autocomplete="new-password" placeholder="At least ${MIN} characters">
-    <label for="npw2">New password again</label><input id="npw2" type="password" autocomplete="new-password">
+    <label for="npw">New password</label>${passwordInput('npw', `autocomplete="new-password" placeholder="At least ${MIN} characters"`)}
+    <label for="npw2">New password again</label>${passwordInput('npw2', 'autocomplete="new-password"')}
     <p class="gerr" id="pwerr" role="alert"></p>
     <div class="gm-btns"><button type="button" class="ghost" id="pwcancel">Cancel</button><button type="submit" class="primary" id="pwsave">Save password</button></div>
   </form></div>`

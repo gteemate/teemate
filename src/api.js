@@ -136,6 +136,11 @@ export async function requestAccess(email, name) {
   must(await sb.rpc('request_access', { p_email: email, p_name: name }))
 }
 
+/** Delete a member completely (admins): their login, bookings, guest points and the cards they created go too. */
+export async function deleteMember(id) {
+  must(await sb.rpc('admin_delete_member', { p_id: id }))
+}
+
 /** Delete a member's login (e.g. forgotten password) but keep their email approved. */
 export async function resetLogin(id) {
   must(await sb.rpc('admin_reset_login', { p_id: id }))
@@ -254,20 +259,6 @@ export async function getGameSettings() {
 /** Save my preferred game for 2-, 3- or 4-ball cards. */
 export async function setMyGamePref(groupSize, k) {
   must(await sb.from('member_game_prefs').upsert({ member_id: await myId(), group_size: groupSize, game_key: k }))
-}
-
-/** changes: { on?: boolean, pct?: number } */
-export async function updateGame(k, changes) {
-  const cur = must(await sb.from('game_settings').select('enabled, allowance_pct').eq('game_key', k).maybeSingle())
-  must(await sb.from('game_settings').upsert({
-    game_key: k,
-    enabled: changes.on ?? cur?.enabled ?? true,
-    allowance_pct: changes.pct ?? cur?.allowance_pct ?? null,
-  }))
-}
-
-export async function setPreferredGame(groupSize, k) {
-  must(await sb.from('game_prefs').upsert({ group_size: groupSize, game_key: k }))
 }
 
 /* ---------- Rounds and leaderboard ---------- */

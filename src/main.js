@@ -18,7 +18,6 @@ import * as booked from './screens/booked.js'
 import * as bookings from './screens/bookings.js'
 import * as buddies from './screens/buddies.js'
 import * as pins from './screens/pins.js'
-import * as games from './screens/games.js'
 import * as points from './screens/points.js'
 import * as events from './screens/events.js'
 import * as eventEditor from './screens/event-editor.js'
@@ -27,7 +26,7 @@ import * as access from './screens/access.js'
 import * as myGames from './screens/my-games.js'
 
 // Each screen exports an optional async load() and a sync draw(data).
-const ADMIN = { home: adminHome, tee: teeTimes, book: booking, booked, mine: bookings, buddies, pins, games, points, events, event: eventEditor, evboard: eventBoardScreen, access, colours, mygames: myGames }
+const ADMIN = { home: adminHome, tee: teeTimes, book: booking, booked, mine: bookings, buddies, pins, points, events, event: eventEditor, evboard: eventBoardScreen, access, colours, mygames: myGames }
 function screenFor() {
   if (S.tab === 'scores') return S.sview === 'players' ? players : S.sview === 'challenge' ? challenge : S.sview === 'pevent' ? eventLive : scores
   if (S.tab === 'lb') return leaderboard

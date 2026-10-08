@@ -159,5 +159,24 @@ do $$ declare e text; begin
                                                                 and t.hook('decline.me@example.invalid') ? 'error');
 end $$;
 
+-- ------------------------------------------------------------------ deleting members
+insert into public.members (name, email) values ('Delete Me', 'delete.me@example.invalid');
+insert into auth.users (id, email, aud, role) values (gen_random_uuid(), 'delete.me@example.invalid', 'authenticated', 'authenticated');
+do $$ declare v bigint := (select id from public.members where email = 'delete.me@example.invalid'); e text; begin
+  update public.members set admin = false where id = 1;
+  perform t.act_as(1);
+  e := t.err(format('select public.admin_delete_member(%s)', v));
+  perform t.ok('Delete: non-admins cannot', e like '%Only admins%', e);
+  perform t.done();
+  perform t.act_as(0);
+  e := t.err('select public.admin_delete_member(0)');
+  perform t.ok('Delete: an admin cannot delete themselves', e like '%delete yourself%', e);
+  perform public.admin_delete_member(v);
+  perform t.done();
+  perform t.ok('Delete: member and their login are gone',
+    not exists (select 1 from public.members where id = v) and not exists (select 1 from auth.users where email = 'delete.me@example.invalid'));
+  perform t.ok('Delete: they can no longer sign up', t.hook('delete.me@example.invalid') ? 'error');
+end $$;
+
 select test, ok, detail from t.results order by n;
 rollback;

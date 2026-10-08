@@ -474,3 +474,13 @@ img{max-width:100%}
 .lgrow{display:flex;justify-content:space-between;align-items:center;gap:8px;font-weight:600}
 .lgbtn{flex:0 0 auto;padding:7px 14px;font-size:14px;border-radius:12px}
 .lgin{color:var(--win)}
+/* password box with show/hide eye */
+.pwwrap{position:relative;display:block}
+.pwwrap input{padding-right:46px}
+.pweye{position:absolute;right:4px;top:50%;transform:translateY(-50%);background:none;border:0;color:var(--muted);padding:8px;cursor:pointer;display:grid;place-items:center}
+.pweye[aria-pressed="true"]{color:var(--ink)}
+/* swipe a member row left to reveal Delete */
+.swipe{position:relative;overflow:hidden;border-top:1px solid var(--line)}
+.swipe:first-child{border-top:0}
+.swipe .accrow{position:relative;z-index:1;background:var(--surface);border-top:0;transition:transform .2s ease;touch-action:pan-y;user-select:none}
+.swdel{position:absolute;right:0;top:0;bottom:0;width:92px;border:0;background:var(--loss);color:var(--on-loss);font:800 15px var(--sys);cursor:pointer}

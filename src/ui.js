@@ -14,6 +14,23 @@ export function parseHcp(text) {
   const n = Number(t.startsWith('+') ? '-' + t.slice(1) : t)
   return Number.isFinite(n) && n >= -10 && n <= 54 ? Math.round(n * 10) / 10 : NaN
 }
+/** A password box with an eye button to show or hide what's typed. */
+export const passwordInput = (id, attrs = '') =>
+  `<span class="pwwrap"><input id="${id}" type="password" ${attrs}><button type="button" class="pweye" data-eye="${id}" aria-label="Show password" aria-pressed="false">${EYE}</button></span>`
+const EYE = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>'
+const EYE_OFF = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18M10.6 5.1A10.6 10.6 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.2 4.1M6.6 6.6C3.9 8.4 2 12 2 12s3.6 7 10 7a10 10 0 0 0 5.4-1.6M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>'
+// One listener for every eye button in the app (only in a browser, not in tests).
+if (typeof document !== 'undefined') document.addEventListener('click', e => {
+  const b = e.target.closest('[data-eye]')
+  if (!b) return
+  const input = document.getElementById(b.dataset.eye), show = input.type === 'password'
+  input.type = show ? 'text' : 'password'
+  b.innerHTML = show ? EYE_OFF : EYE
+  b.setAttribute('aria-pressed', show)
+  b.setAttribute('aria-label', show ? 'Hide password' : 'Show password')
+  input.focus()
+})
+
 /** Show a stored handicap index the golf way: −2 → "+2". */
 export const fmtHcp = h => (h == null ? '–' : h < 0 ? `+${-h}` : String(h))
 
