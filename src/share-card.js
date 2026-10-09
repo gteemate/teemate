@@ -1,13 +1,12 @@
-// Account's shareable handicap card: the text a member shares (name, club, handicap index, GUI — nothing
-// else, since shared text gets forwarded on), the same text as a QR code, and the phone's share sheet.
+// Account's shareable handicap card: the message a member shares (name, club, handicap index and their friend link),
+// the link as a QR code, and the phone's share sheet.
 import qrcode from 'qrcode-generator'
 import { fmtHcp } from './ui.js'
 
-/** "James Smith\nRoyal Portrush GC\nHandicap index 14.5\nGUI 4536292\n(shared from TeeMate, 9 Oct 2026)" */
-export function shareText(me, clubName, on = new Date()) {
-  const when = on.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
-  return [me.name, clubName || null, `Handicap index ${fmtHcp(me.hcp)}`, me.gui ? `GUI ${me.gui}` : 'GUI not added', `(shared from TeeMate, ${when})`]
-    .filter(Boolean).join('\n')
+/** "James Smith · Royal Portrush GC · Handicap index 14.5\nAdd me as a friend on TeeMate: <link>" (nothing else:
+ *  shared text gets forwarded on). The link opens the Add friend page with these details (friend-link.js). */
+export function shareText(me, clubName, link) {
+  return `${[me.name, clubName || null, `Handicap index ${fmtHcp(me.hcp)}`].filter(Boolean).join(' · ')}\nAdd me as a friend on TeeMate: ${link}`
 }
 
 const code = text => { const q = qrcode(0, 'M'); q.addData(text, 'Byte'); q.make(); return q }
@@ -25,12 +24,12 @@ export function qrPng(text, size = 600) {
 }
 
 /**
- * Share the card through the phone's share sheet (WhatsApp, Mail, Messages…): text and QR picture where the
+ * Share the card through the phone's share sheet (WhatsApp, Mail, Messages…): text and the link's QR picture where the
  * phone can share files, otherwise the text, otherwise copy it. Returns 'shared' | 'copied' | 'cancelled'.
  */
-export async function shareCard(text, name) {
+export async function shareCard(text, name, link = text) {
   try {
-    const png = await qrPng(text)
+    const png = await qrPng(link)
     const file = png && new File([png], `${name.replace(/[^\w]+/g, '-')}-handicap.png`, { type: 'image/png' })
     if (file && navigator.canShare?.({ files: [file] })) { await navigator.share({ title: `${name}'s handicap`, text, files: [file] }); return 'shared' }
     if (navigator.share) { await navigator.share({ title: `${name}'s handicap`, text }); return 'shared' }

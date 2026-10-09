@@ -8,6 +8,7 @@ import { isoDate, today, eventLastDay } from '../dates.js'
 import { buildLibrary } from '../games.js'
 import { timeLabel } from '../release.js'
 import { shareText, qrSvg, shareCard } from '../share-card.js'
+import { friendLink } from '../friend-link.js'
 
 export async function load() {
   const me = await api.getMe()
@@ -26,16 +27,16 @@ export async function load() {
 
 export function draw({ me, clubName, rules, waitingReqs, bookings, buddies, L, upcoming, clubEvents, points, requests }) {
   header('Account', `Signed in as <b>${esc(me.name)}</b>`, async () => { S.aview = 'home'; await render(); top0() }, 'Home')
-  const card = shareText(me, clubName)
+  const link = friendLink(me, clubName, location.origin + import.meta.env.BASE_URL), card = shareText(me, clubName, link)
   const used = points.mine.reduce((t, x) => t + x.points, 0), left = points.allowance - used
   const guests = Math.floor(left / points.cost)
   // Player items first (what every member sees), then admin-only items in one section at the end.
   $('main').innerHTML = `<div class="screen">
   <div class="sharecard">
-    <div class="qr" role="img" aria-label="QR code with your handicap details">${qrSvg(card)}</div>
+    <div class="qr" role="img" aria-label="QR code: your friend link with your handicap details">${qrSvg(link)}</div>
     <div class="sc-nm">${esc(me.name)}</div>${clubName ? `<div class="sc-cl">${esc(clubName)}</div>` : ''}
     <div class="sc-fx"><span>Handicap index <b class="num">${fmtHcp(me.hcp)}</b></span><span>${me.gui ? `GUI <b class="num">${esc(me.gui)}</b>` : 'GUI not added'}</span></div>
-    <div class="sc-up">Scan with a phone camera, or share it</div>
+    <div class="sc-up">Scan it or share it: it opens TeeMate to add you as a friend</div>
   </div>
   <div class="bk-btns"><button class="primary" id="share">Share</button><button class="ghost" id="copycard">Copy details</button></div>
   <h3>Your account</h3>
@@ -59,7 +60,7 @@ export function draw({ me, clubName, rules, waitingReqs, bookings, buddies, L, u
   <h3>Your account</h3>
   <div class="bk-btns acct"><button class="ghost" id="chpw">Change password</button><button class="ghost" id="signout">Sign out</button></div>
   </div>`
-  $('share').onclick = async () => { const r = await shareCard(card, me.name); if (r === 'copied') toast('Details copied: paste them into a message') }
+  $('share').onclick = async () => { const r = await shareCard(card, me.name, link); if (r === 'copied') toast('Details copied: paste them into a message') }
   $('copycard').onclick = async () => {
     try { await navigator.clipboard.writeText(card); toast('Details copied') } catch { toast('Couldn’t copy on this phone: use Share instead') }
   }
