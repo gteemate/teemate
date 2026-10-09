@@ -1,7 +1,8 @@
 import './styles.css'
 import { S } from './state.js'
 import * as api from './api.js'
-import { $, esc, header, setRender, toast, top0 } from './ui.js'
+import { $, esc, header, setRender, setDefaultBack, toast, top0 } from './ui.js'
+import { navStack } from './nav-stack.js'
 import * as login from './screens/login.js'
 import * as colours from './screens/colours.js'
 import * as bookingRules from './screens/booking-rules.js'
@@ -37,6 +38,20 @@ function screenFor() {
   return ADMIN[S.aview] || home
 }
 
+// Where the member has been, for the back arrows. A place is the screen state, with the parts that
+// don't apply to a tab left out ('-'), so returning to a tab doesn't depend on stale sub-screens.
+const place = () => (S.tab === 'home' ? { tab: 'home', aview: S.aview, sview: '-' } : { tab: S.tab, aview: '-', sview: S.tab === 'scores' ? S.sview : '-' })
+const nav = navStack({ tab: 'home', aview: 'home', sview: '-' })
+setDefaultBack(() => (nav.canGoBack() ? async () => {
+  const p = nav.back()
+  S.tab = p.tab
+  if (p.aview !== '-') S.aview = p.aview
+  if (p.sview !== '-') S.sview = p.sview
+  S.gmodal = false
+  await render()
+  top0()
+} : null))
+
 // When the app opens: Scores while you're mid-round (a hole saved on today's card, not finished),
 // otherwise Home. Chosen once per visit; after that the tabs stay where you put them.
 let startTabChosen = false
@@ -56,10 +71,10 @@ async function render() {
     if (!session) screen = login
     else if (!me) screen = { draw: () => login.drawNotMember({ email: session.user.email }) }
     else {
-      if (!startTabChosen) { startTabChosen = true; S.tab = await chooseStartTab(); if (S.tab === 'home') S.aview = 'home' }
+      if (!startTabChosen) { startTabChosen = true; S.tab = await chooseStartTab(); if (S.tab === 'home') S.aview = 'home'; else S.sview = 'card'; nav.reset(place()) }
+      nav.visit(place())
       screen = screenFor()
     }
-    document.querySelectorAll('nav.tabs button').forEach(b => b.setAttribute('aria-current', b.dataset.tab === S.tab ? 'page' : 'false'))
     data = screen.load ? await screen.load() : undefined
   } catch (err) {
     if (mine !== seq) return
@@ -92,13 +107,4 @@ api.onAuthChange((event, session) => {
 // A failed save or button action shouldn't fail silently.
 addEventListener('unhandledrejection', e => { console.error(e.reason); toast(e.reason?.message || 'Something went wrong') })
 
-document.querySelectorAll('nav.tabs button').forEach(b => (b.onclick = async () => {
-  const t = b.dataset.tab
-  if (t === 'scores' && S.tab === 'scores') S.sview = 'card' // tapping Scores again leaves the player picker
-  if (t === 'home') S.aview = 'home'
-  S.tab = t
-  S.gmodal = false
-  await render()
-  top0()
-}))
 render()

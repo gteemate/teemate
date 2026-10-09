@@ -42,9 +42,14 @@ export function toast(t) {
   toast.t = setTimeout(() => (el.hidden = true), Math.max(1900, t.length * 60)) // longer messages stay up long enough to read
 }
 
+// Every screen but Home gets a back arrow: its own handler if it passes one, otherwise back along the
+// trail of screens the member came through (main.js sets that with setDefaultBack).
+let defaultBack = () => null
+export const setDefaultBack = f => (defaultBack = f)
 export function header(title, sub, back, backLabel = 'Back') {
-  $('hdr').innerHTML = `${back ? `<button class="back" id="back">‹ ${backLabel}</button>` : ''}<h2>${title}</h2>${sub ? `<div class="sub">${sub}</div>` : ''}`
-  if (back) $('back').onclick = back
+  const go = back ?? defaultBack()
+  $('hdr').innerHTML = `${go ? `<button class="back" id="back">‹ ${backLabel}</button>` : ''}<h2>${title}</h2>${sub ? `<div class="sub">${sub}</div>` : ''}`
+  if (go) $('back').onclick = go
 }
 
 const scroller = () => (matchMedia('(max-width:460px)').matches ? document.scrollingElement || document.documentElement : $('main'))
