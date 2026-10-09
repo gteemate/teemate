@@ -1,9 +1,11 @@
 // Scores tab: hole-by-hole scorecard for the group, with the game drop-down and pairings.
 import * as api from '../api.js'
 import { S } from '../state.js'
-import { $, esc, ini, sur, header, keepScroll, top0, render, toast, parseHcp, fmtHcp } from '../ui.js'
-import { today, hhmm, isoDate, eventLastDay, leagueWeek } from '../dates.js'
+import { $, esc, ini, sur, header, keepScroll, top0, render, toast, fmtHcp } from '../ui.js'
+import { today, hhmm, isoDate, eventLastDay } from '../dates.js'
 import { banners, bindBanners, pendingInvite, invitePopup } from './player-events.js'
+import { leagueBadges, bindLeagueBox } from './scores-league.js'
+import { guestHcpSheet } from './scores-guest.js'
 import { holeGrid } from '../course-art.js'
 import { courseHandicap, playingHandicaps, holeCalc, gameState, upText, toPar } from '../scoring.js'
 import { buildLibrary, playable, gameSpec, resolveGame, preferredGame, teeRating, PAIRINGS } from '../games.js'
@@ -138,7 +140,7 @@ export function draw({ course, members, guests, L, me, teeTimes, events, leagues
     const p = ps[k], gr = round.scores[i][k], sh = c.sh[k]
     const hc = p.guestId ? (p.hcp == null ? `<button class="sethcp" data-gh="${k}">Set handicap</button>` : `<button class="linkbtn h" data-gh="${k}" aria-label="Change ${esc(p.name)}'s handicap">(${ph[k]})</button>`) : `<span class="h">(${ph[k]})</span>`
     return `<div class="pcard${best(k) ? ' counts' : ''}"><span class="av${p.guestId ? ' gst' : ''}">${ini(p.name)}</span><span class="who"><strong>${esc(p.name)} ${hc}</strong>
-      <span class="pills">${sh ? `<span class="pill">${sh} shot${sh > 1 ? 's' : ''}</span>` : ''}<span class="pill">${pts ? `${c.pts[k]} pts` : G.allow ? `net ${c.net[k]}` : `gross ${gr}`}</span>${leagueBadges(round.lineup[k]?.m, leagues, entries)}</span></span>
+      <span class="pills">${sh ? `<span class="pill">${sh} shot${sh > 1 ? 's' : ''}</span>` : ''}<span class="pill">${pts ? `${c.pts[k]} pts` : G.allow ? `net ${c.net[k]}` : `gross ${gr}`}</span>${leagueBadges(round, round.lineup[k]?.m, leagues, entries)}</span></span>
       <span class="stepper"><button data-k="${k}" data-d="-1" aria-label="One fewer for ${esc(p.name)}">−</button><output class="${round.done[i] ? '' : 'draft'}">${gr}</output><button data-k="${k}" data-d="1" aria-label="One more for ${esc(p.name)}">+</button></span></div>`
   }
 
@@ -209,7 +211,7 @@ export function draw({ course, members, guests, L, me, teeTimes, events, leagues
   }
 
   bindEvents(events, me)
-  bindLeagueBox(leagues, entries, members)
+  bindLeagueBox(round, leagues, entries, members)
 
   document.querySelectorAll('[data-chk-ok]').forEach(b => (b.onclick = () => { round.checks.splice(+b.dataset.chkOk, 1); keepScroll(render) }))
   document.querySelectorAll('[data-chk-go]').forEach(b => (b.onclick = () => { const c = round.checks.splice(+b.dataset.chkGo, 1)[0]; S.ch = c.i; keepScroll(render) }))
@@ -265,104 +267,6 @@ function standings(ps, gs, g) {
   return `<div class="card list">${rows.map((r, n) => `<div class="lrow" style="grid-template-columns:24px 44px 1fr auto"><span style="font-weight:800;text-align:center">${n + 1}</span><span class="av">${ini(r.p.name)}</span><span class="who"><strong>${esc(r.p.name)}${r.k === 0 ? ' (you)' : ''}</strong></span><span class="hcp">${g === 'stroke' ? toPar(r.v) : r.v}<small>${unit}</small></span></div>`).join('')}</div>`
 }
 
-// League entry: before hole 1 the card keeper is asked, once, whether today's round counts for each
-// league player on the card (one entered round a week each; locked once hole 1 is saved). Players
-// whose round counts get a badge on the card; tapping a badge before hole 1 changes the answers.
-const initials = name => name.split(/\s+/).filter(Boolean).map(w => w[0].toUpperCase()).join('').slice(0, 3)
-const leagueWeekNow = e => leagueWeek(e, isoDate(today()))
-const entered = (entries, e, id) => round.id != null && entries.some(x => x.eventId === e.id && x.memberId === id && x.roundId === round.id)
-const enteredElsewhere = (entries, e, id) => !entered(entries, e, id) && entries.some(x => x.eventId === e.id && x.memberId === id && x.week === leagueWeekNow(e))
-const leaguePlayers = e => round.lineup.filter(x => x.m != null && e.players.includes(x.m)).map(x => x.m)
-const firstName = (members, id) => (members.find(m => m.id === id)?.name ?? '').split(' ')[0]
-
-// Counting: a solid badge. Before hole 1, league players get a badge to tap (outlined if not
-// counting) that reopens the question; after that only the counting ones show, and can't change.
-function leagueBadges(memberId, leagues, entries) {
-  if (memberId == null) return ''
-  const started = round.done.some(Boolean)
-  return leagues.filter(e => e.players.includes(memberId)).map(e => {
-    const on = entered(entries, e, memberId), tag = esc(initials(e.name))
-    if (started || enteredElsewhere(entries, e, memberId)) return on ? `<span class="pill wlpill on" title="This round counts for ${esc(e.name)}">${tag}</span>` : ''
-    return `<button class="pill wlpill ${on ? 'on' : 'off'}" data-lgask aria-label="${on ? 'Counting for' : 'Not counting for'} ${esc(e.name)}. Change">${tag}</button>`
-  }).join('')
-}
-
-// Answered (or put off) per card in this visit; answered also remembered on this phone.
-const askedKey = () => `teemate.lgAsked.${round.id}`
-function answered() {
-  if (S.lgLater === round) return true
-  try { return round.id != null && localStorage.getItem(askedKey()) === '1' } catch { return false }
-}
-function markAnswered() { try { localStorage.setItem(askedKey(), '1') } catch { /* fine: it asks again */ } }
-
-function leagueSheet(leagues, entries, members) {
-  const list = leagues.filter(e => leaguePlayers(e).length)
-  const ans = S.lgAns
-  const name = id => members.find(m => m.id === id)?.name ?? ''
-  const askable = list.flatMap(e => leaguePlayers(e).filter(id => !enteredElsewhere(entries, e, id)).map(id => `${e.id}:${id}`))
-  const ready = askable.every(k => ans[k] != null)
-  $('modal').innerHTML = `<div class="overlay" id="ovl"><div class="sheet lgsheet" role="dialog" aria-labelledby="lgq">
-    ${list.map(e => `<span class="kicker">🏆 ${esc(e.name)} · Week ${leagueWeekNow(e)}</span>`).join('')}
-    <h4 id="lgq">Count today's round?</h4>
-    <p class="hint">Their Stableford score goes towards their team's total for the week. Only one round a week counts.</p>
-    ${askable.length > 1 ? `<button class="ghost" id="lg-all">Yes for everyone</button>` : ''}
-    ${list.map(e => leaguePlayers(e).map(id => {
-      const team = e.teams?.[e.team?.[id]]?.name, me = id === round.lineup[0].m
-      if (enteredElsewhere(entries, e, id)) return `<div class="ask prev"><span class="av">${ini(name(id))}</span><span class="who"><strong>${esc(name(id))}</strong><small>${team ? esc(team) + ' · ' : ''}already counted a round this week</small></span></div>`
-      const k = `${e.id}:${id}`
-      return `<div class="ask"><span class="av">${ini(name(id))}</span><span class="who"><strong>${esc(name(id))}${me ? ' (you)' : ''}</strong><small>${team ? esc(team) : ''}</small></span>
-        <div class="yn"><button class="yes" data-yn="${k}" data-v="1" aria-pressed="${ans[k] === true}">Yes, count it</button><button class="no" data-yn="${k}" data-v="0" aria-pressed="${ans[k] === false}">Not this one</button></div></div>`
-    }).join('')).join('')}
-    <div class="gm-btns"><button type="button" class="ghost" id="lg-later">Ask me later</button><button class="primary" id="lg-done" ${ready ? '' : 'disabled'}>Done</button></div>
-    <span class="hint" style="text-align:center">Tap the ${esc(list.map(e => initials(e.name)).join('/'))} badge on a player to change this until hole 1 is saved.</span>
-  </div></div>`
-  const redraw = () => leagueSheet(leagues, entries, members)
-  document.querySelectorAll('[data-yn]').forEach(b => (b.onclick = () => { ans[b.dataset.yn] = b.dataset.v === '1'; redraw() }))
-  if ($('lg-all')) $('lg-all').onclick = () => { askable.forEach(k => (ans[k] = true)); redraw() }
-  const close = () => { S.lgOpenSheet = false; $('modal').innerHTML = '' }
-  $('lg-later').onclick = () => { S.lgLater = round; close(); keepScroll(render) }
-  $('ovl').onclick = e => { if (e.target.id === 'ovl') { S.lgLater = round; close(); keepScroll(render) } }
-  $('lg-done').onclick = async () => {
-    $('lg-done').disabled = true
-    try {
-      if (!round.id) await api.saveRound(round) // the card needs to exist to be entered
-      for (const e of list) {
-        const ids = leaguePlayers(e).filter(id => ans[`${e.id}:${id}`] != null)
-        const yes = ids.filter(id => ans[`${e.id}:${id}`] && !entered(entries, e, id)), no = ids.filter(id => !ans[`${e.id}:${id}`] && entered(entries, e, id))
-        if (yes.length) await api.enterLeague(round.id, e.id, yes)
-        if (no.length) await api.leaveLeague(round.id, e.id, no)
-      }
-    } catch (err) {
-      toast(err.message)
-      $('lg-done').disabled = false
-      return
-    }
-    markAnswered()
-    close()
-    const n = Object.values(ans).filter(Boolean).length
-    await keepScroll(render)
-    toast(n ? `${n} counting for the league this week` : 'Not counting this round')
-  }
-}
-
-function bindLeagueBox(leagues, entries, members) {
-  if (!leagues.some(e => leaguePlayers(e).length) || round.done.some(Boolean)) return
-  const open = () => {
-    // start from what's saved: entered = yes; asked before and not entered = no
-    S.lgAns = {}
-    for (const e of leagues) for (const id of leaguePlayers(e)) if (!enteredElsewhere(entries, e, id)) {
-      if (entered(entries, e, id)) S.lgAns[`${e.id}:${id}`] = true
-      else if (answered() && S.lgLater !== round) S.lgAns[`${e.id}:${id}`] = false
-    }
-    S.lgOpenSheet = true
-    leagueSheet(leagues, entries, members)
-  }
-  document.querySelectorAll('[data-lgask]').forEach(b => (b.onclick = open))
-  // Ask straight away on a fresh card, unless everyone has already counted a round this week.
-  const anyAskable = leagues.some(e => leaguePlayers(e).some(id => !enteredElsewhere(entries, e, id)))
-  if (S.lgOpenSheet || (anyAskable && !answered() && !leagues.some(e => leaguePlayers(e).some(id => entered(entries, e, id))))) open()
-}
-
 export function getRound() {
   return round
 }
@@ -388,35 +292,4 @@ function startScreen({ course, L, me, teeTimes, events }) {
     toast(`Card started for your ${hhmm(s.time)}`)
   }))
   $('pick').onclick = async () => { S.pickTmp = []; S.sview = 'players'; await render(); top0() }
-}
-
-// Set, change or clear a guest's handicap index.
-function guestHcpSheet(p) {
-  $('modal').innerHTML = `<div class="overlay" id="ovl"><form class="sheet" id="hform" novalidate aria-labelledby="htitle">
-    <h4 id="htitle">${esc(p.name)}’s handicap</h4>
-    <label for="h-idx">Handicap index</label><input id="h-idx" inputmode="decimal" autocomplete="off" value="${p.hcp == null ? '' : fmtHcp(p.hcp)}" placeholder="e.g. 18.4, or +2">
-    <span class="hint">No official handicap? Agree one with them. You can change it any time, even mid-round.</span>
-    <p class="gerr" id="herr" role="alert"></p>
-    <div class="gm-btns"><button type="button" class="ghost" id="hcancel">Cancel</button><button type="submit" class="primary" id="hsave">Save</button></div>
-  </form></div>`
-  setTimeout(() => $('h-idx')?.focus(), 30)
-  const close = () => { $('modal').innerHTML = '' }
-  $('hcancel').onclick = close
-  $('ovl').onclick = e => { if (e.target.id === 'ovl') close() }
-  $('hform').onsubmit = async e => {
-    e.preventDefault()
-    const h = parseHcp($('h-idx').value)
-    if (Number.isNaN(h)) { $('herr').textContent = 'Enter a handicap index between +10 and 54, e.g. 18.4.'; return }
-    $('hsave').disabled = true
-    try {
-      await api.setGuestHandicap(p.guestId, h)
-    } catch (err) {
-      $('herr').textContent = err.message
-      $('hsave').disabled = false
-      return
-    }
-    close()
-    await keepScroll(render)
-    toast(h == null ? `${p.name}’s handicap cleared` : `${p.name} now plays off ${fmtHcp(h)}`)
-  }
 }
