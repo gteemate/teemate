@@ -2,11 +2,11 @@
 import * as api from '../api.js'
 import { S } from '../state.js'
 import { $, esc, ini, header, keepScroll, top0, render, toast, parseHcp, fmtHcp } from '../ui.js'
-import { isoDate, nextDays, dayMonth, longDay, hhmm } from '../dates.js'
+import { isoDate, nextDays, dayMonth, longDay, hhmm, fromIso } from '../dates.js'
 import { nextFreeNote } from '../release.js'
 
 export async function load() {
-  const date = nextDays(S.day + 1)[S.day] // the day picked on Book tee times
+  const date = S.reqMode ? fromIso(S.reqDate) : nextDays(S.day + 1)[S.day] // the day picked on the tee sheet (or for a request)
   const [sheet, me, members, buddies, points] = await Promise.all([api.getTeeSheet(isoDate(date)), api.getMe(), api.getMembers(), api.getBuddies(), api.getGuestPoints()])
   return { date, slot: sheet.find(s => s.id === S.slotId), me, members, buddies, points }
 }
@@ -18,7 +18,7 @@ const sub = m => [m.gui && 'GUI ' + m.gui, m.hcp != null && 'HCP ' + fmtHcp(m.hc
 export function draw({ date, slot: s, me, members, buddies, points }) {
   if (!s) { back(); return }
   const free = s.capacity - s.players.length, max = free - 1, fee = s.twilight ? 25 : 0, cost = points.cost
-  header(hhmm(s.time), `${longDay(date)} · 1st tee`, back)
+  header(S.reqMode ? `Request ${hhmm(s.time)}` : hhmm(s.time), `${longDay(date)} · 1st tee`, back)
   if (free <= 0) { // someone else took the last space while this screen was open
     $('main').innerHTML = `<div class="done"><div class="flagmark">⛳</div><h4>This time is now full</h4>
       <p>${s.players.map(p => esc(p.name)).join(', ')}</p><button class="primary" id="other">Pick another time</button></div>`
@@ -42,8 +42,10 @@ export function draw({ date, slot: s, me, members, buddies, points }) {
     ${max === 0 ? `<div class="hint">Only one space left, so this one's just you.</div>` : ''}
     <div class="card ptsbox"><div class="ptsrow"><span><b>Guest points</b><small>${points.allowance} a year · resets 1 Jan</small></span><span class="ptsnum">${after}<small> left</small></span></div>${bar(after, points.allowance)}
       <span class="hint">${S.guests.length ? `This booking uses ${cost * S.guests.length} of your ${left} points.` : left < cost ? "You don't have enough guest points left for this course." : `You have ${left} points left this year.`}</span></div>
+  ${S.reqMode ? `<div class="card evsec"><label for="rq-why">Why do you need this time?</label><textarea id="rq-why" class="plainsel" rows="3" maxlength="500" placeholder="e.g. Visitors flying in from Boston for one weekend">${esc(S.reqReason)}</textarea>
+    <span class="hint">An admin approves (it’s booked for you straight away) or declines with a note. Nothing is held while you wait.</span></div>` : ''}
   </div>
-  <div class="cta"><div class="tot">${1 + used} player${used ? 's' : ''}<b>${fee ? `€${fee * (1 + S.picked.length)}` : "Members' time"}</b></div><button class="primary" id="confirm">Confirm booking</button></div>`
+  <div class="cta"><div class="tot">${1 + used} player${used ? 's' : ''}<b>${fee ? `€${fee * (1 + S.picked.length)}` : "Members' time"}</b></div><button class="primary" id="confirm">${S.reqMode ? 'Send request' : 'Confirm booking'}</button></div>`
 
   const taken = new Set([me.id, ...S.picked, ...s.players.map(p => p.memberId)])
   if (S.gmodal === 'pick') pickSheet(members.filter(m => !taken.has(m.id)), buddies, canGuest, points, left)
@@ -51,7 +53,20 @@ export function draw({ date, slot: s, me, members, buddies, points }) {
   document.querySelectorAll('[data-open]').forEach(b => (b.onclick = () => { S.gmodal = 'pick'; keepScroll(render) }))
   document.querySelectorAll('[data-rm]').forEach(b => (b.onclick = () => { S.picked = S.picked.filter(x => x !== +b.dataset.rm); keepScroll(render) }))
   document.querySelectorAll('[data-rg]').forEach(b => (b.onclick = () => { S.guests.splice(+b.dataset.rg, 1); keepScroll(render) }))
+  if ($('rq-why')) $('rq-why').oninput = e => { S.reqReason = e.target.value } // kept while players are added
   $('confirm').onclick = async e => {
+    if (S.reqMode) {
+      if (!S.reqReason.trim()) { toast('Say why you need this time'); $('rq-why').focus(); return }
+      e.target.disabled = true
+      try {
+        await api.requestTeeTime({ slotId: s.id, memberIds: S.picked, guests: S.guests, reason: S.reqReason })
+      } catch (err) { toast(err.message); e.target.disabled = false; return }
+      Object.assign(S, { guests: [], picked: [], reqMode: false, reqReason: '', aview: 'mine' })
+      await render()
+      top0()
+      toast('Request sent. The answer will show in Booking.')
+      return
+    }
     e.target.disabled = true
     try {
       S.lastBooking = await api.bookTeeTime({ slotId: s.id, memberIds: S.picked, guests: S.guests })

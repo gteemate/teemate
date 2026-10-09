@@ -587,3 +587,4 @@ button.wlpill{cursor:pointer}
 h4,.sheet h4{font-family:var(--display);font-weight:600;letter-spacing:0}
 .mypts .big,.status .big{font-family:var(--display);font-weight:600;letter-spacing:0}
 .card > b:first-child,.evsec > b:first-child{font-family:var(--display);font-weight:600;font-size:18px}
+.reqdate{display:grid;gap:6px;padding:6px 16px 4px}

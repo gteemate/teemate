@@ -22,6 +22,7 @@ export const S = {
   // members & access (admin)
   accEdit: null, accQ: '', accConfirm: false, accPrefill: null, // accEdit: null | 'new' | member id
   // events admin
+  reqMode: false, reqDate: null, reqReason: '', // Request a tee time: on, the day, the reason being typed
   compTab: 'entered', // Competitions: entered | open | events | history
   evScope: 'player', // events area: 'player' (Admin → Events) or 'club' (Club admin → Club events)
   evId: null, evStep: 1, evNew: null, // evNew: 'league' when starting a new league

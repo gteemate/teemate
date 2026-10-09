@@ -54,6 +54,7 @@ function details(b, me) {
 }
 
 export function draw({ bookings, me }) {
+  S.reqMode = false // back at your bookings: Add a booking books; Request asks
   header('Booking', bookings.length ? `<b>${bookings.length}</b> coming up` : 'Nothing booked yet')
   const who = b => b.people.filter(p => p.inBooking).map(p => (p.memberId === me.id ? 'You' : p.name) + (p.guest ? ' (guest)' : '')).join(', ')
   const day = b => { const d = fromIso(b.date); return `<span class="bk-d"><b class="num">${d.getDate()}</b><small>${b.date === isoDate(today()) ? 'Today' : DN[d.getDay()]}</small></span>` }
@@ -63,9 +64,11 @@ export function draw({ bookings, me }) {
         <div class="card bk swrow" data-swipe data-bk="${b.id}">${day(b)}<span class="bk-m"><span class="bk-t num">${hhmm(b.time)}</span><span class="sub">${esc(who(b))}</span></span>${b.mine ? '' : `<span class="pill">Booked by ${esc((b.bookedBy ?? 'a member').split(' ')[0])}</span>`}</div></div>`).join('')}</div>
       <div class="hint">Tap a booking to see who’s playing. Swipe it left to delete it${bookings.some(b => !b.mine) ? ', or to withdraw from one someone else made for you' : ''}. Guest points come back when you delete.</div>`
     : '<div class="empty-state">No upcoming rounds.<br>Add a booking and it will show here.</div>'}
-    <button class="primary" id="bt">+ Add a booking</button></div>`
+    <button class="primary" id="bt">+ Add a booking</button>
+    <button class="ghost dashed" id="rq">Request a tee time further ahead</button></div>`
   const bt = $('bt')
-  if (bt) bt.onclick = async () => { S.aview = 'tee'; await render(); top0() }
+  if (bt) bt.onclick = async () => { S.reqMode = false; S.aview = 'tee'; await render(); top0() }
+  $('rq').onclick = async () => { S.reqMode = true; S.reqDate = null; S.reqReason = ''; S.aview = 'tee'; await render(); top0() }
   bindSwipes()
   document.querySelectorAll('[data-bk]').forEach(r => (r.onclick = () => { if (!swipeSwallowsClick(r)) details(bookings.find(b => b.id === +r.dataset.bk), me) }))
   document.querySelectorAll('[data-cancel]').forEach(btn => (btn.onclick = async () => {
