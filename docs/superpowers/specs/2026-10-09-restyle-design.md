@@ -78,24 +78,33 @@ the scorecard. **Every function TeeMate has today keeps a home.**
 2. Navigation: the stack, back arrows everywhere, tab bar removed; Home = disc + four tiles + Next up.
 3. Account with the QR card and Share.
 4. Booking: your bookings first, + Add a booking, booking details.
-5. Competitions: Entered / Open / Events / History, boards, invitation screen, create.
-6. Scoring: New round → Scoring round? → round with Score / Leaderboard / Course.
+5. Competitions: Entered / Open (with Enter / Withdraw) / Events / History, boards, invitation screen, create.
+6. Scoring: New round → Scoring round? (leagues and events ticked to count) → round with Score / Leaderboard / Course.
 7. Friends, and a final pass over every admin screen.
 
 ## Testing
 
 - `npm test` green at every stage, plus tests first for: Next up choice, round-has-leaderboard rule,
-  Competitions lists (entered / open / events / history), share text.
+  Competitions lists (entered / open / events / history), share text; database tests for self-entry and event entries; `scoreAdvanceEvent` tests for entered-cards-only (and history unchanged).
 - Each stage drawn in the preview with sample data at 375 and 320 px; the user checks it live on a phone
   before the next stage.
 
-## Questions to settle before building (also asked in chat)
+## Settled (user, 2026-10-09)
 
-1. **Open tab**: today members can't enter club competitions themselves (admins add entrants). Show
-   upcoming club competitions for information, or add self-entry (new)?
-2. **Events on Scoring round?**: events count automatically today (no entry step); leagues need ticking.
-   Show events as ticked and locked ("counts automatically"), or only list leagues?
-3. **QR**: name, club, handicap index and GUI only (no email or phone)?
+1. **Open tab: members enter themselves.** An admin marks a club competition "Members can enter"
+   (new `events.self_entry boolean`, default off; existing events unchanged). Open lists those that
+   haven't started; **Enter** adds you to `players`, **Withdraw** takes you off, both until the day it
+   starts. For a league, a member who enters is an entrant without a team until the admin balances
+   teams (as when an admin adds them). New functions `enter_event(id)` / `withdraw_event(id)` (checks:
+   self-entry on, not started, signed-in member); admins keep full control in Club events.
+2. **Events count only if ticked**, like leagues. On **Scoring round?** every competition you're in that
+   day is listed: leagues (this week's entry, as now) and events set up in advance (club or player).
+   Ticking an event records that this card counts for it (new `event_entries(event_id, member_id,
+   round_id)`, one card per member per event day, locked once hole 1 is saved, like league entries).
+   `scoreAdvanceEvent` uses only entered cards. Matches between groups (accepted invitations) stay as
+   they are: accepting is the choice. Events already played keep their results (they're scored from
+   cards that existed then; a one-off migration enters those cards so history doesn't change).
+3. **QR**: name, club, handicap index and GUI only.
 
 ## Not in this change
 
