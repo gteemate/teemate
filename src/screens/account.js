@@ -40,7 +40,7 @@ export function draw({ me, clubName, rules, bookings, buddies, L, upcoming, club
   <h3>Your account</h3>
   <div class="agrid">
     <button class="atile" data-a="mine"><span class="e">📋</span><b>Bookings</b><span>${bookings.length ? `${bookings.length} upcoming` : 'Nothing booked yet'}</span></button>
-    <button class="atile" data-a="buddies"><span class="e">👥</span><b>Buddies</b><span>${buddies.length} playing partner${buddies.length === 1 ? '' : 's'}</span></button>
+    <button class="atile" data-a="buddies"><span class="e">👥</span><b>Friends</b><span>${buddies.length} playing partner${buddies.length === 1 ? '' : 's'}</span></button>
     <button class="atile row" data-a="events"><span class="e">🏆</span><span class="rt"><b>Events</b><span>${upcoming ? `${upcoming} coming up · set one up for your group` : 'Set up a match or competition in advance'}</span></span></button>
     <button class="atile row" data-a="course"><span class="e">⛳</span><span class="rt"><b>Course guide</b><span>Every hole, tees and today's pins</span></span></button>
     <button class="atile row" data-a="mygames"><span class="e">🎯</span><span class="rt"><b>Games</b></span></button>

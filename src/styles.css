@@ -582,3 +582,8 @@ button.wlpill{cursor:pointer}
 .rstatus b{color:var(--gold);font-weight:700}
 .gamebox{display:grid;gap:8px;padding:14px 16px}
 .gamebox .linkbtn{justify-self:start}
+
+/* Serif for titles and the numbers that matter, everywhere (stage 7 pass) */
+h4,.sheet h4{font-family:var(--display);font-weight:600;letter-spacing:0}
+.mypts .big,.status .big{font-family:var(--display);font-weight:600;letter-spacing:0}
+.card > b:first-child,.evsec > b:first-child{font-family:var(--display);font-weight:600;font-size:18px}

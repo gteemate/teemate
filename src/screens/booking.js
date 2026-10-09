@@ -81,7 +81,7 @@ function pickSheet(choices, buddies, canGuest, points, left) {
   const mine = choices.filter(m => buddies.includes(m.id))
   const list = q => {
     const words = q.toLowerCase().split(/\s+/).filter(Boolean)
-    if (!words.length) return mine.length ? `<div class="hint">Your buddies</div>${mine.map(row).join('')}` : '<div class="empty-state">Search for a member above.</div>'
+    if (!words.length) return mine.length ? `<div class="hint">Your playing partners</div>${mine.map(row).join('')}` : '<div class="empty-state">Search for a member above.</div>'
     const hits = choices.filter(m => words.every(w => m.name.toLowerCase().includes(w))).slice(0, 30)
     return hits.length ? hits.map(row).join('') : '<div class="empty-state">No members match.</div>'
   }

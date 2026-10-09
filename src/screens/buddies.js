@@ -2,7 +2,6 @@
 import * as api from '../api.js'
 import { S } from '../state.js'
 import { $, esc, ini, header, keepScroll, top0, render, toast } from '../ui.js'
-import { toAdmin } from './nav.js'
 
 export async function load() {
   const [members, buddies, me] = await Promise.all([api.getMembers(), api.getBuddies(), api.getMe()])
@@ -10,7 +9,7 @@ export async function load() {
 }
 
 export function draw({ members, buddies }) {
-  header('Buddies', `<b>${buddies.length}</b> playing partners`, toAdmin)
+  header('Friends', `<b>${buddies.length}</b> playing partner${buddies.length === 1 ? '' : 's'}`)
   const q = S.q.trim().toLowerCase().replace(/[\s']/g, '').replace(/^gui/, '')
   const mine = members.filter(m => buddies.includes(m.id))
   const res = q ? members.filter(m => m.name.toLowerCase().replace(/[\s']/g, '').includes(q) || (m.gui || '').includes(q)) : []
@@ -19,11 +18,11 @@ export function draw({ members, buddies }) {
     return `<div class="lrow"><span class="av">${ini(m.name)}</span><span class="who"><strong>${esc(m.name)}</strong><small>${m.gui ? 'GUI ' + m.gui : 'No GUI number'}</small></span><span style="display:flex;gap:12px;align-items:center"><span class="hcp">${m.hcp}<small>HCP</small></span>${S.bseg === 'find' ? `<button class="add${on ? ' on' : ''}" data-b="${m.id}">${on ? 'Added' : 'Add'}</button>` : `<button class="x" data-b="${m.id}" aria-label="Remove ${esc(m.name)}">×</button>`}</span></div>`
   }
   let body
-  if (S.bseg === 'mine') body = mine.length ? `<div class="card list">${mine.map(row).join('')}</div>` : '<div class="empty-state">No buddies yet. Switch to Find members to add some.</div>'
+  if (S.bseg === 'mine') body = mine.length ? `<div class="card list">${mine.map(row).join('')}</div>` : '<div class="empty-state">No playing partners yet. Switch to Find members to add some.</div>'
   else body = !q ? '<div class="empty-state">Search by name or GUI number.<br>Try “Walsh” or “10845519”.</div>' : res.length ? `<div class="card list">${res.map(row).join('')}</div>` : `<div class="empty-state">No member matches “${esc(S.q)}”. Check the GUI number on their handicap card.</div>`
   const back = S.bfrom === 'players' ? '<button class="primary" id="backPick">Back to choosing players</button>' : S.bfrom === 'book' ? '<button class="primary" id="backBook">Back to booking</button>' : ''
   $('main').innerHTML = `<div class="screen">
-    <div class="seg" role="group"><button data-s="mine" aria-pressed="${S.bseg === 'mine'}">My buddies</button><button data-s="find" aria-pressed="${S.bseg === 'find'}">Find members</button></div>
+    <div class="seg" role="group"><button data-s="mine" aria-pressed="${S.bseg === 'mine'}">Playing partners</button><button data-s="find" aria-pressed="${S.bseg === 'find'}">Find members</button></div>
     ${S.bseg === 'find' ? `<div class="search"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="q" type="search" placeholder="Name or GUI number" value="${esc(S.q)}" autocomplete="off"></div>` : ''}
     ${body}${back}</div>`
 
