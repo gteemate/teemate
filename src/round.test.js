@@ -29,3 +29,21 @@ describe('countsForOptions: what "Scoring round?" offers', () => {
     expect(r).toEqual([])
   })
 })
+
+import { roundBoard } from './round.js'
+describe('roundBoard: the Leaderboard tab in a round (null = general round, no tab)', () => {
+  const base = { cardId: 9, lineup: [{ m: 1 }, { m: 2 }], events: [], leagueEntries: [], eventEntries: [], playerEvents: [], date: D }
+  it('general round: no leaderboard', () => expect(roundBoard(base)).toBeNull())
+  it('this card counts for a league: its board', () => expect(roundBoard({ ...base, leagueEntries: [{ eventId: 2, week: 1, memberId: 1, roundId: 9 }] })).toEqual({ view: 'evboard', id: 2 }))
+  it('a league entry for another card does not count', () => expect(roundBoard({ ...base, leagueEntries: [{ eventId: 2, week: 1, memberId: 1, roundId: 8 }] })).toBeNull())
+  it('this card ticked for an event: its board', () => expect(roundBoard({ ...base, eventEntries: [{ eventId: 7, day: 1, memberId: 2, roundId: 9 }] })).toEqual({ view: 'evboard', id: 7 }))
+  it('an accepted match today with someone on the card: the match board', () => {
+    const pe = { id: 5, date: D, status: 'accepted', players: [{ memberId: 2 }] }
+    expect(roundBoard({ ...base, playerEvents: [pe] })).toEqual({ view: 'pevent', id: 5 })
+    expect(roundBoard({ ...base, playerEvents: [{ ...pe, status: 'pending' }] })).toBeNull()
+  })
+  it('an older event that counts every card, on today, with someone on the card in it', () => {
+    expect(roundBoard({ ...base, events: [event({ id: 4, entryRequired: false, players: [2] })] })).toEqual({ view: 'evboard', id: 4 })
+    expect(roundBoard({ ...base, events: [event({ id: 4, entryRequired: true, players: [2] })] })).toBeNull() // needs a tick
+  })
+})

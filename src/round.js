@@ -23,3 +23,18 @@ export function countsForOptions({ lineup, events, leagueEntries, date }) {
   }
   return out
 }
+
+/**
+ * The Leaderboard tab in a round: { view: 'evboard' | 'pevent', id } for the competition this card counts for, or
+ * null for a general round (no tab). A league or event this card was ticked for; else an accepted match today with
+ * someone on the card; else an older event that counts every card, on today, with someone on the card in it.
+ */
+export function roundBoard({ cardId, lineup, events, leagueEntries, eventEntries, playerEvents, date }) {
+  const onCard = lineup.filter(x => x.m != null).map(x => x.m)
+  const ticked = [...leagueEntries, ...eventEntries].find(x => x.roundId === cardId)
+  if (ticked) return { view: 'evboard', id: ticked.eventId }
+  const match = playerEvents.find(e => e.date === date && e.status === 'accepted' && e.players.some(p => onCard.includes(p.memberId)))
+  if (match) return { view: 'pevent', id: match.id }
+  const auto = events.find(e => e.style !== 'league' && !e.entryRequired && e.startDate <= date && eventLastDay(e) >= date && e.players.some(m => onCard.includes(m)))
+  return auto ? { view: 'evboard', id: auto.id } : null
+}

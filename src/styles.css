@@ -22,7 +22,10 @@ body{background:var(--sunk);color:var(--ink);font-family:var(--sys);font-size:15
 @media (max-width:460px){body{padding-inline:0;padding-block:0}
   .phone{border-radius:0;border:0;height:auto;min-height:100vh;max-width:none;box-shadow:none;overflow:visible}
   main{overflow:visible;padding-bottom:calc(24px + env(safe-area-inset-bottom,0px))}
-  .cta{bottom:calc(58px + env(safe-area-inset-bottom,0px))}
+  .cta{bottom:env(safe-area-inset-bottom,0px)} /* the footer sits on the bottom edge… */
+  .withbar .cta{bottom:calc(var(--barh) + env(safe-area-inset-bottom,0px))} /* …or just above the round bar */
+  .withbar main{padding-bottom:calc(var(--barh) + 24px + env(safe-area-inset-bottom,0px))}
+  .roundbar{position:fixed;left:0;right:0;bottom:0;z-index:10;padding-bottom:calc(10px + env(safe-area-inset-bottom,0px))}
   .toast{position:fixed;bottom:calc(80px + env(safe-area-inset-bottom,0px))}}
 button{font-family:var(--sys)}
 button:focus-visible,input:focus-visible{outline:2px solid var(--leaf-line);outline-offset:2px}
@@ -150,14 +153,16 @@ table.lb td small{color:var(--muted);font-size:12px}
 .matchline b{font-size:21px;font-weight:800;color:var(--muted)}
 .sidehead{display:flex;justify-content:space-between;align-items:baseline;margin:4px 2px -2px;font-size:14px;color:var(--muted);font-weight:600}
 .sidehead b{color:var(--ink)}
-.pcard{display:grid;grid-template-columns:48px 1fr auto;gap:12px;align-items:center;padding:14px;border-radius:22px;background:var(--surface);border:2px solid var(--line)}
-.pcard.counts{background:var(--leaf);border-color:var(--leaf-line)}
+.pcard{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;padding:14px 16px;border-radius:20px;background:var(--surface);border:1px solid var(--line)}
+.pcard>.av{display:none} /* the name is enough on the scorecard; more room for it and the stepper */
+.pcard.counts{background:var(--surface);border-color:#8a7640} /* the score that counts for the side */
+.pcard .who strong{display:block;overflow-wrap:anywhere}
 .pcard .who strong{font-size:17px}
 .pcard .who .h{color:var(--muted);font-weight:500}
 .pills{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
 .stepper{display:flex;align-items:center;gap:6px}
-.stepper button{width:48px;height:48px;border-radius:14px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:24px;font-weight:600;cursor:pointer;line-height:1}
-.stepper output{width:34px;text-align:center;font-size:30px;font-weight:800;font-variant-numeric:tabular-nums}
+.stepper button{width:48px;height:48px;border-radius:14px;border:1px solid var(--line);background:var(--leaf);color:var(--ink);font-size:24px;font-weight:600;cursor:pointer;line-height:1}
+.stepper output{width:34px;text-align:center;font-family:var(--display);font-size:32px;font-weight:400;font-variant-numeric:tabular-nums}
 .stepper output.draft{color:var(--muted)}
 .stepper.sm button{width:36px;height:36px;border-radius:11px;font-size:19px}
 .stepper.sm output{font-size:20px;width:30px}
@@ -564,3 +569,16 @@ button.wlpill{cursor:pointer}
 .tick .box{width:28px;height:28px;border-radius:8px;border:2px solid var(--muted);display:grid;place-items:center;color:var(--on-gold);font-weight:800}
 .tick[aria-pressed="true"] .box{background:var(--gold);border-color:var(--gold)}
 .tick .tt{display:block;font-size:17px;font-weight:600}
+
+/* The round bar: Score · [Leaderboard] · Course, only on a round's screens */
+:root{--barh:62px}
+.roundbar{display:flex;border-top:1px solid var(--line);background:var(--sunk);flex-shrink:0}
+.roundbar button{flex:1;min-width:0;border:0;background:none;color:var(--muted);font:600 12px var(--sys);padding:9px 0 12px;display:grid;justify-items:center;gap:3px;cursor:pointer}
+.roundbar button[aria-current="page"]{color:var(--gold)}
+.roundbar svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.roundbar button:focus-visible{outline:2px solid var(--gold);outline-offset:-2px}
+/* The scorecard: one small status line; the game at the bottom */
+.rstatus{font-size:14px;color:var(--muted);padding:0 2px}
+.rstatus b{color:var(--gold);font-weight:700}
+.gamebox{display:grid;gap:8px;padding:14px 16px}
+.gamebox .linkbtn{justify-self:start}

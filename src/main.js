@@ -54,6 +54,42 @@ setDefaultBack(() => (nav.canGoBack() ? async () => {
   top0()
 } : null))
 
+// The round bar: Score · [Leaderboard] · Course on a round's screens. Leaderboard only when the card counts for a
+// competition (S.roundBoard, worked out by the scorecard). Switching with it keeps Home underneath, so back = Home.
+const ICONS = {
+  score: '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/>',
+  lb: '<path d="M5 20V12M12 20V5M19 20v-7M3 20h18"/>',
+  course: '<path d="M6 21V4l11 4-11 4"/>',
+}
+function roundTab() {
+  const b = S.roundBoard
+  if (S.tab === 'scores' && S.sview === 'card' && scores.getRound()?.id) return 'score'
+  if (!S.roundBar) return null
+  if (S.tab === 'course') return 'course'
+  if (b && ((b.view === 'evboard' && S.tab === 'home' && S.aview === 'evboard' && S.evId === b.id) || (b.view === 'pevent' && S.tab === 'scores' && S.sview === 'pevent' && S.peId === b.id))) return 'lb'
+  return null
+}
+function drawRoundBar() {
+  const on = roundTab(), bar = $('roundbar')
+  S.roundBar = !!on
+  bar.hidden = !on
+  $('app').classList.toggle('withbar', !!on)
+  if (!on) return
+  const tabs = [['score', 'Score'], ...(S.roundBoard ? [['lb', 'Leaderboard']] : []), ['course', 'Course']]
+  bar.innerHTML = tabs.map(([k, n]) => `<button data-rt="${k}" aria-current="${k === on ? 'page' : 'false'}"><svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[k]}</svg>${n}</button>`).join('')
+  bar.querySelectorAll('[data-rt]').forEach(b => (b.onclick = async () => {
+    const k = b.dataset.rt, rb = S.roundBoard
+    if (k === 'score') { S.tab = 'scores'; S.sview = 'card' }
+    if (k === 'course') { S.tab = 'course'; S.hole = S.ch ?? 0 } // opens on the hole you're playing
+    if (k === 'lb' && rb.view === 'pevent') { S.tab = 'scores'; S.sview = 'pevent'; S.peId = rb.id }
+    if (k === 'lb' && rb.view === 'evboard') { S.tab = 'home'; S.aview = 'evboard'; S.evId = rb.id; S.evDay = 1 }
+    S.roundBar = true
+    nav.reset(place()) // back from any round tab goes Home
+    await render()
+    top0()
+  }))
+}
+
 // When the app opens: Scores while you're mid-round (a hole saved on today's card, not finished),
 // otherwise Home. Chosen once per visit; after that the tabs stay where you put them.
 let startTabChosen = false
@@ -89,6 +125,7 @@ async function render() {
   $('dateWrap').innerHTML = ''
   $('modal').innerHTML = ''
   screen.draw(data)
+  drawRoundBar()
 }
 setRender(render)
 

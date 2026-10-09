@@ -5,6 +5,7 @@ import { $, esc, ini, sur, header, keepScroll, top0, render, toast, fmtHcp } fro
 import { today, hhmm, isoDate, eventLastDay } from '../dates.js'
 import { banners, bindBanners, pendingInvite, invitePopup } from './player-events.js'
 import { leagueBadges, bindLeagueBox } from './scores-league.js'
+import { roundBoard } from '../round.js'
 import { guestHcpSheet } from './scores-guest.js'
 import { holeGrid } from '../course-art.js'
 import { courseHandicap, playingHandicaps, holeCalc, gameState, upText, toPar } from '../scoring.js'
@@ -36,6 +37,10 @@ export async function load() {
   const t = isoDate(today())
   const leagues = round ? allEvents.filter(e => e.style === 'league' && e.startDate <= t && eventLastDay(e) >= t && round.lineup.some(x => e.players.includes(x.m))) : []
   const entries = await api.getLeagueEntries(leagues.map(e => e.id))
+  // The round's Leaderboard tab: the competition this card counts for (none for a general round).
+  const onToday = round ? allEvents.filter(e => e.style !== 'league' && e.startDate <= t && eventLastDay(e) >= t && round.lineup.some(x => e.players.includes(x.m))) : []
+  const eventEntries = round?.id ? await api.getEventEntries(onToday.map(e => e.id)) : []
+  S.roundBoard = round?.id ? roundBoard({ cardId: round.id, lineup: round.lineup, events: allEvents, leagueEntries: entries, eventEntries, playerEvents: events, date: t }) : null
   return { course, members, guests, L: buildLibrary(games), me, teeTimes, events, leagues, entries }
 }
 
@@ -123,7 +128,6 @@ export function draw({ course, members, guests, L, me, teeTimes, events, leagues
   const grid = holeGrid(i, j => { const r = cellText(j); return `<span class="res ${r.cls}">${r.t}</span>` }, 'data-j')
 
   const gamebar = S.gmenu ? `<div class="card gmenu" id="gmenu">
-    <div class="gm-sec"><span class="gm-lbl">Game</span><div class="games" role="radiogroup" aria-label="Game">${playable(L, n).map(x => `<button class="gamecard sm" role="radio" aria-checked="${x.k === round.game}" data-gm="${x.k}"><span class="radio"></span><span class="who"><strong>${esc(x.name)}${x.k === preferredGame(L, n) ? ' ★' : ''}</strong><small>${esc(x.sub)}${x.pct != null ? ` ${x.pct}%` : ''}</small></span></button>`).join('')}</div></div>
     ${G.pairs ? `<div class="gm-sec"><span class="gm-lbl">Pairs</span><div class="games" role="radiogroup" aria-label="Pairs">${PAIRINGS.map((pp, n) => `<button class="gamecard sm" role="radio" aria-checked="${round.pairing === n}" data-pr="${n}"><span class="radio"></span><span class="who"><strong>You & ${esc(ps[pp[1]].name)}</strong><small>v ${esc(ps[pp[2]].name)} & ${esc(ps[pp[3]].name)}</small></span></button>`).join('')}</div></div>` : ''}
     <div class="gm-sec"><span class="gm-lbl">Players and shots</span><div class="gm-players">${ps.map((p, k) => `<div><span>${esc(p.name)}${k === 0 ? ' (you)' : ''}${p.guestId ? ` · guest · ${p.hcp == null ? '<button class="linkbtn" data-gh="' + k + '">set handicap</button>' : `index ${fmtHcp(p.hcp)} <button class="linkbtn" data-gh="${k}">change</button>`}` : ''}</span><b>${ph[k]}</b></div>`).join('')}</div>
       <span class="hint">${G.offLow ? 'Shots off the lowest playing handicap.' : G.allow ? `Playing handicap at ${Math.round(G.allow * 100)}% of course handicap.` : 'Scratch: no shots.'} Course handicaps from the white tees (${teeRating(course).rating} / ${teeRating(course).slope}).</span></div>
@@ -174,11 +178,14 @@ export function draw({ course, members, guests, L, me, teeTimes, events, leagues
   }).join('')
   const hcpNote = noHcp.length ? `<div class="hcpnote">${noHcp.map(p => esc(p.name.split(' ')[0])).join(' and ')} ${noHcp.length > 1 ? 'have' : 'has'} no handicap yet, so ${noHcp.length > 1 ? 'they play' : 'plays'} off an index of 0 until you set one. Shots and points update as soon as you do.</div>` : ''
   $('main').innerHTML = `<div class="screen">${eventsTop(events, me)}${grid}${checks}${hcpNote}
-    <div class="matchline"><button class="gamesel" id="gchip" aria-expanded="${!!S.gmenu}" aria-controls="gmenu">${esc(LG.name)}${CHEV}</button><b>${esc(line)}</b></div>
-    ${gamebar}
+    <div class="rstatus"><b>${esc(line)}</b> · ${esc(LG.name)}</div>
     ${body}
     <span class="hint">${round.done[i] ? 'Saved' : 'Gross scores. Shots applied automatically.'}</span>
     ${!G.pairs && g !== 'match1' && gs.thru ? `<h3>Standings</h3>${standings(ps, gs, g)}` : ''}
+    <div class="card gamebox"><label class="kicker" for="gsel">Game</label>
+      <select id="gsel" class="plainsel">${playable(L, n).map(x => `<option value="${x.k}" ${x.k === round.game ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select>
+      <button class="linkbtn" id="gchip" aria-expanded="${!!S.gmenu}" aria-controls="gmenu">Pairs, players &amp; shots ${S.gmenu ? '▴' : '›'}</button></div>
+    ${gamebar}
     ${eventsBottom(events)}
   </div>
   <div class="cta">${fin
@@ -186,7 +193,8 @@ export function draw({ course, members, guests, L, me, teeTimes, events, leagues
     : `<button class="ghost" id="prevh" ${i === 0 ? 'disabled' : ''}>‹</button><button class="primary" id="save">${round.done[i] ? 'Next hole' : `Save hole ${i + 1}`}</button>`}</div>`
 
   // Game menu
-  $('gchip').onclick = async () => { S.gmenu = !S.gmenu; await render(); top0() }
+  $('gchip').onclick = async () => { S.gmenu = !S.gmenu; await keepScroll(render) }
+  $('gsel').onchange = async e => { round.game = e.target.value; await api.saveRound(round); keepScroll(render) }
   if (S.gmenu) {
     document.querySelectorAll('[data-gm]').forEach(b => (b.onclick = async () => { round.game = b.dataset.gm; await api.saveRound(round); keepScroll(render) }))
     document.querySelectorAll('[data-pr]').forEach(b => (b.onclick = async () => {
