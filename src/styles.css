@@ -597,3 +597,7 @@ h4,.sheet h4{font-family:var(--display);font-weight:600;letter-spacing:0}
 .comp .why{font-style:italic;color:var(--ink)}
 .rqst.ok{color:var(--live)} .rqst.no{color:var(--loss)}
 .comp.short{border-color:var(--loss)}
+/* Booking details: scores entered, so deleting takes the scorecard too */
+.sheet .warn-box{display:flex;flex-direction:column;gap:2px;padding:12px 14px;border:1px solid var(--loss);background:rgba(194,122,143,.12)}
+.sheet .warn-box strong{color:var(--loss)}
+.sheet .warn-box span{font-size:14px;color:var(--ink)}

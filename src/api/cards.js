@@ -26,9 +26,10 @@ export async function getRound(id) {
   return r && toView(toCard(r), await myId())
 }
 
-/** Delete a scorecard I started. */
+/** Delete a scorecard I'm on (anyone on it can, not only whoever started it). */
 export async function deleteRound(id) {
-  must(await sb.from('rounds').delete().eq('id', id))
+  const gone = must(await sb.from('rounds').delete().eq('id', id).select('id'))
+  if (!gone.length) throw new Error('That scorecard couldn’t be deleted. Only players on it can delete it.')
 }
 
 const toRow = c => ({ lineup: c.lineup, slot_id: c.slotId ?? null, game: c.game, pairing: c.pairing, scores: c.scores, entered: c.entered ?? null, done: c.done, submitted: c.submitted })

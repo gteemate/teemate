@@ -49,6 +49,10 @@ update public.club_settings set release_days = 30, release_weekends_only = false
 -- Each test tee time on its own day, so the 2-hour rule between one member's tee times doesn't get in the way.
 -- t.slot is exactly the ones made here, never real tee times on those days.
 create table t.slot_ids (id bigint primary key);
+-- The real tee sheet may already hold an empty tee time at one of these minutes: set it aside (rolled back).
+delete from public.tee_slots s using generate_series(0, 11) i
+ where s.course_id = 1 and s.date = current_date + 10 + i and s.start_time = 600 + 10 * i
+   and not exists (select 1 from public.bookings b where b.slot_id = s.id);
 with made as (insert into public.tee_slots (course_id, date, start_time)
   select 1, current_date + 10 + i, 600 + 10 * i from generate_series(0, 11) i returning id)
 insert into t.slot_ids select id from made;

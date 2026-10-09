@@ -15,10 +15,13 @@ export async function load() {
   return { bookings, me, requests: requests.filter(recent) }
 }
 
+// Holes saved on this tee time's scorecard: deleting the booking then asks first, and deletes the card too.
+const scored = b => b.mine && b.scoredHoles > 0
+
 async function cancel(b) {
   let r
   try {
-    r = await api.cancelBooking(b.id)
+    r = await api.cancelBooking(b.id, scored(b))
   } catch (err) {
     toast(err.message)
     return false
@@ -26,7 +29,7 @@ async function cancel(b) {
   resetRound() // Scores reloads, in case the card for that tee time went too
   await keepScroll(render)
   toast(r.result === 'deleted'
-    ? `${hhmm(b.time)} booking deleted${r.pointsBack ? ` · ${r.pointsBack} guest points back` : ''}`
+    ? `${hhmm(b.time)} booking deleted${r.cardsRemoved && scored(b) ? ' with its scorecard' : ''}${r.pointsBack ? ` · ${r.pointsBack} guest points back` : ''}`
     : `You’ve withdrawn from the ${hhmm(b.time)} booking`)
   return true
 }
@@ -35,15 +38,17 @@ async function cancel(b) {
 function details(b, me) {
   const person = p => `<div class="lrow"><span class="av${p.guest ? ' gst' : ''}">${ini(p.name)}</span><span class="who"><strong>${esc(p.name)}${p.memberId === me.id ? ' (you)' : ''}</strong><small>${p.guest ? `Guest${p.club ? ' · ' + esc(p.club) : ''}` : 'Member'}</small></span><span class="hcp">${fmtHcp(p.hcp == null ? null : Number(p.hcp))}<small>HI</small></span></div>`
   const ours = b.people.filter(p => p.inBooking), others = b.people.filter(p => !p.inBooking)
-  const act = b.mine ? 'Delete booking' : 'Withdraw from this booking'
+  const act = scored(b) ? 'Delete booking and scores' : b.mine ? 'Delete booking' : 'Withdraw from this booking'
+  const holes = n => `${n} hole${n === 1 ? '' : 's'}`
   $('modal').innerHTML = `<div class="overlay" id="ovl"><div class="sheet" role="dialog" aria-labelledby="bkt">
     <span class="kicker">${longDay(fromIso(b.date))}</span>
     <h4 id="bkt">${hhmm(b.time)} · 1st tee</h4>
     <span class="hint">${b.mine ? 'You booked this' : `Booked by ${esc(b.bookedBy ?? 'another member')}`}</span>
     <div class="card list">${ours.map(person).join('')}</div>
     ${others.length ? `<span class="hint">Also on this tee time</span><div class="card list">${others.map(person).join('')}</div>` : ''}
-    <span class="hint">${b.mine ? `Deleting takes everyone in your booking off this time${b.guests ? ' and gives your guest points back' : ''}.` : 'Withdrawing takes just you off. The rest of the booking stays.'} A scorecard for it goes too, unless holes have been saved.</span>
-    <div class="gm-btns"><button type="button" class="ghost" id="bk-close">Close</button><button class="primary" id="bk-act">${act}</button></div>
+    ${scored(b) ? `<div class="card warn-box"><strong>Scores entered for ${holes(b.scoredHoles)}</strong><span>Deleting this booking also deletes the scorecard for this round.${b.guests ? ' Your guest points come back.' : ''}</span></div>`
+      : `<span class="hint">${b.mine ? `Deleting takes everyone in your booking off this time${b.guests ? ' and gives your guest points back' : ''}.` : 'Withdrawing takes just you off. The rest of the booking stays.'} ${!b.mine && b.scoredHoles > 0 ? 'The group’s scorecard stays.' : 'A scorecard for it goes too, unless holes have been saved.'}</span>`}
+    <div class="gm-btns"><button type="button" class="ghost" id="bk-close">${scored(b) ? 'Keep it' : 'Close'}</button><button class="primary" id="bk-act">${act}</button></div>
   </div></div>`
   const close = () => { $('modal').innerHTML = '' }
   $('bk-close').onclick = close
@@ -88,6 +93,7 @@ export function draw({ bookings, me, requests }) {
   document.querySelectorAll('[data-bk]').forEach(r => (r.onclick = () => { if (!swipeSwallowsClick(r)) details(bookings.find(b => b.id === +r.dataset.bk), me) }))
   document.querySelectorAll('[data-cancel]').forEach(btn => (btn.onclick = async () => {
     const b = bookings.find(x => x.id === +btn.dataset.cancel)
+    if (scored(b)) return details(b, me) // scores entered: say so first
     if (btn.dataset.armed !== '1') { btn.dataset.armed = '1'; btn.textContent = 'Sure?'; return }
     btn.disabled = true
     if (!(await cancel(b))) btn.disabled = false

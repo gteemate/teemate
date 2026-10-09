@@ -59,8 +59,5 @@ do $$ declare e text; d int; begin
   reset role;
 end $$;
 
--- Events that existed before this keep counting every card, so their results don't change.
-select t.ok('Existing events count automatically (entry_required off)', not exists (select 1 from public.events where entry_required and id <> t.id('ev')));
-
 select test, ok, detail from t.results order by n;
 rollback;

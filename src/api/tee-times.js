@@ -34,9 +34,10 @@ export async function setGuestHandicap(guestId, hcp) {
   must(await sb.rpc('set_guest_handicap', { p_guest_id: guestId, p_hcp: hcp }))
 }
 
-/** Cancel a booking: deletes it if I made it (guest points back), otherwise withdraws me. → { result, pointsBack } */
-export async function cancelBooking(id) {
-  return must(await sb.rpc('cancel_booking', { p_booking: id }))
+/** Cancel a booking: deletes it if I made it (guest points back), otherwise withdraws me. A scorecard with holes saved
+ *  goes too only when removeScores (the member confirmed). → { result, pointsBack, cardsRemoved } */
+export async function cancelBooking(id, removeScores = false) {
+  return must(await sb.rpc('cancel_booking', { p_booking: id, p_remove_scores: removeScores }))
 }
 
 export async function getMyBookings() {

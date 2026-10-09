@@ -81,12 +81,14 @@ do $$ declare e text; lg bigint; r1 bigint; r2 bigint; w int; begin
   perform t.act_as(4);
   update public.rounds set game = 'stab', done = jsonb_set(done, '{0}', 'true') where id = r2;
   perform t.ok('Shared card: a player on the card can save to it', (select game = 'stab' and done->>0 = 'true' from public.rounds where id = r2));
-  delete from public.rounds where id = r2;
-  perform t.ok('Shared card: only the starter can delete it', (select count(*) from public.rounds where id = r2) = 1);
   perform t.done();
   perform t.act_as(3);
   update public.rounds set game = 'skins' where id = r2;
   perform t.ok('Shared card: someone not on it cannot change it', (select game from public.rounds where id = r2) = 'stab');
+  perform t.done();
+  perform t.act_as(4);
+  delete from public.rounds where id = r2;
+  perform t.ok('Shared card: any player on it can delete it, not only the starter', (select count(*) from public.rounds where id = r2) = 0);
   perform t.done();
   perform t.act_as(3);
   insert into public.rounds (lineup, scores, done) values ('[{"m":3},{"m":4}]', '[]', (select jsonb_agg(false) from generate_series(1,18))) returning id into r2;
