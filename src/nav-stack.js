@@ -1,7 +1,7 @@
 // The trail of screens the member has been through, so every screen's back arrow returns to where they
 // came from. A screen is a place { tab, aview, sview } (the existing screen state). Home is always at the
-// bottom. A screen's own back button that goes to the previous place counts as going back, so the trail
-// never loops.
+// bottom. Going to a screen already on the trail (e.g. a screen's own back button to an earlier screen)
+// returns to it and drops what came after, so the trail never loops.
 const same = (a, b) => a.tab === b.tab && a.aview === b.aview && a.sview === b.sview
 const isHome = p => p.tab === 'home' && p.aview === 'home'
 
@@ -14,7 +14,8 @@ export function navStack(home) {
     visit(place) {
       if (same(place, current())) return
       if (isHome(place)) { trail = [home]; return }
-      if (trail.length > 1 && same(place, trail[trail.length - 2])) { trail.pop(); return }
+      const i = trail.findIndex(p => same(p, place)) // already on the trail: go back to it (no loops)
+      if (i >= 0) { trail = trail.slice(0, i + 1); return }
       trail.push({ ...place })
     },
     back() {

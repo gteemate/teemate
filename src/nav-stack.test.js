@@ -45,3 +45,18 @@ describe('navStack: where the back arrow goes', () => {
     expect(n.back()).toEqual(HOME) // Home is always underneath
   })
 })
+
+describe('navStack: jumping back to a screen further up the trail', () => {
+  it('after booking, Booked → your bookings → back goes Home (no loop)', () => {
+    const n = navStack(HOME)
+    for (const v of ['mine', 'tee', 'book', 'booked']) n.visit(at('home', v)) // Booking → Add → time → Booked
+    n.visit(at('home', 'mine')) // Booked's own back arrow: to your bookings
+    expect(n.back()).toEqual(HOME)
+  })
+  it('going to any screen already on the trail returns to it (drops what came after)', () => {
+    const n = navStack(HOME)
+    for (const v of ['account', 'events', 'event', 'evboard']) n.visit(at('home', v))
+    n.visit(at('home', 'account'))
+    expect(n.back()).toEqual(HOME)
+  })
+})
