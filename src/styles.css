@@ -529,3 +529,15 @@ button.wlpill{cursor:pointer}
 .sc-fx{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;font-family:var(--display);font-size:16px;margin-top:4px}
 .sc-fx>span{white-space:nowrap}
 .sc-up{font-size:12px;color:#6b6f7c}
+
+/* Booking: your bookings, each with a date block */
+.bklist{display:grid;gap:8px}
+.bk{display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px 14px;cursor:pointer}
+.bk-d{display:grid;justify-items:center;border-right:1px solid var(--line);padding-right:10px}
+.bk-d b{font-family:var(--display);font-size:26px;line-height:1}
+.bk-d small{font-size:12px;color:var(--muted)}
+.bk-m{display:grid;gap:2px;min-width:0}
+.bk-t{font-family:var(--display);font-size:21px}
+.bklist .swipe{border-top:0;border-radius:20px} /* separate cards, not a lined list */
+.bklist .swdel{visibility:hidden;border-radius:20px} /* hidden behind the rounded card until you swipe */
+.bklist .swipe:has(.swrow[style*="translateX"]) .swdel{visibility:visible}

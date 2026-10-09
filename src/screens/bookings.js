@@ -1,10 +1,9 @@
-// Admin → Bookings: my upcoming rounds. Tap one for who's playing; delete it (if I made it; guest
+// Booking (the Booking tile on Home): my upcoming rounds, then + Add a booking (the tee sheet). Tap one for who's playing; delete it (if I made it; guest
 // points come back) or withdraw (if someone else booked me in) from there, or by swiping it left.
 import * as api from '../api.js'
 import { S } from '../state.js'
-import { $, esc, ini, header, keepScroll, render, toast, fmtHcp } from '../ui.js'
-import { fromIso, longDay, hhmm } from '../dates.js'
-import { toAdmin } from './nav.js'
+import { $, esc, ini, header, keepScroll, render, toast, fmtHcp, top0 } from '../ui.js'
+import { DN, fromIso, longDay, hhmm, isoDate, today } from '../dates.js'
 import { bindSwipes, swipeSwallowsClick } from '../swipe.js'
 import { resetRound } from './scores.js'
 
@@ -55,14 +54,18 @@ function details(b, me) {
 }
 
 export function draw({ bookings, me }) {
-  header('Bookings', bookings.length ? `<b>${bookings.length}</b> upcoming` : 'Nothing booked yet', toAdmin)
+  header('Booking', bookings.length ? `<b>${bookings.length}</b> coming up` : 'Nothing booked yet')
+  const who = b => b.people.filter(p => p.inBooking).map(p => (p.memberId === me.id ? 'You' : p.name) + (p.guest ? ' (guest)' : '')).join(', ')
+  const day = b => { const d = fromIso(b.date); return `<span class="bk-d"><b class="num">${d.getDate()}</b><small>${b.date === isoDate(today()) ? 'Today' : DN[d.getDay()]}</small></span>` }
   $('main').innerHTML = `<div class="screen">${bookings.length
-    ? `<div class="card list">${bookings.map(b => `<div class="swipe"><button class="swdel" data-cancel="${b.id}">${b.mine ? 'Delete' : 'Withdraw'}</button>
-        <div class="lrow swrow bkrow" data-swipe data-bk="${b.id}"><span style="font-size:22px;font-weight:800">${hhmm(b.time)}</span><span class="who"><strong>${longDay(fromIso(b.date))}</strong><small>${b.players.map(esc).join(', ')}</small></span></div></div>`).join('')}</div>
-      <div class="hint">Tap a booking to see who’s playing. Swipe it left to delete it${bookings.some(b => !b.mine) ? ', or to withdraw from one someone else made for you' : ''}. Guest points come back when you delete a booking with guests.</div>`
-    : '<div class="empty-state">No upcoming rounds.<br>Book a tee time and it will show here.</div><button class="primary" id="bt">Book a tee time</button>'}</div>`
+    ? `<span class="kicker">Coming up</span>
+      <div class="bklist">${bookings.map(b => `<div class="swipe"><button class="swdel" data-cancel="${b.id}">${b.mine ? 'Delete' : 'Withdraw'}</button>
+        <div class="card bk swrow" data-swipe data-bk="${b.id}">${day(b)}<span class="bk-m"><span class="bk-t num">${hhmm(b.time)}</span><span class="sub">${esc(who(b))}</span></span>${b.mine ? '' : `<span class="pill">Booked by ${esc((b.bookedBy ?? 'a member').split(' ')[0])}</span>`}</div></div>`).join('')}</div>
+      <div class="hint">Tap a booking to see who’s playing. Swipe it left to delete it${bookings.some(b => !b.mine) ? ', or to withdraw from one someone else made for you' : ''}. Guest points come back when you delete.</div>`
+    : '<div class="empty-state">No upcoming rounds.<br>Add a booking and it will show here.</div>'}
+    <button class="primary" id="bt">+ Add a booking</button></div>`
   const bt = $('bt')
-  if (bt) bt.onclick = () => { S.aview = 'tee'; render() }
+  if (bt) bt.onclick = async () => { S.aview = 'tee'; await render(); top0() }
   bindSwipes()
   document.querySelectorAll('[data-bk]').forEach(r => (r.onclick = () => { if (!swipeSwallowsClick(r)) details(bookings.find(b => b.id === +r.dataset.bk), me) }))
   document.querySelectorAll('[data-cancel]').forEach(btn => (btn.onclick = async () => {
