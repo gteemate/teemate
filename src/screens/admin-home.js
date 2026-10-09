@@ -6,21 +6,23 @@ import { $, esc, header, top0, render, toast } from '../ui.js'
 import { passwordSheet } from './login.js'
 import { isoDate, today, eventLastDay } from '../dates.js'
 import { buildLibrary } from '../games.js'
+import { timeLabel } from '../release.js'
 
 export async function load() {
   const me = await api.getMe()
-  const [bookings, buddies, games, events, points, requests, matches] = await Promise.all([
+  const [bookings, buddies, games, events, points, requests, rules, matches] = await Promise.all([
     api.getMyBookings(), api.getBuddies(), api.getGameSettings(), api.getEvents(), api.getGuestPoints(),
     me.admin ? api.getAccessRequests() : [],
+    me.admin ? api.getBookingRules() : null,
     api.getMyPlayerEvents(),
   ])
   const live = events.filter(e => eventLastDay(e) >= isoDate(today()))
   // events set up in advance, plus matches set up on the day from the Scores tab
   const upcoming = live.filter(e => !e.club && e.style !== 'league').length + matches.filter(e => e.status === 'pending' || e.status === 'accepted').length, clubEvents = live.filter(e => e.club || e.style === 'league').length
-  return { me, bookings, buddies, L: buildLibrary(games), upcoming, clubEvents, points, requests }
+  return { me, rules, bookings, buddies, L: buildLibrary(games), upcoming, clubEvents, points, requests }
 }
 
-export function draw({ me, bookings, buddies, L, upcoming, clubEvents, points, requests }) {
+export function draw({ me, rules, bookings, buddies, L, upcoming, clubEvents, points, requests }) {
   header('Account', `Signed in as <b>${esc(me.name)}</b>`, async () => { S.aview = 'home'; await render(); top0() }, 'Home')
   const used = points.mine.reduce((t, x) => t + x.points, 0), left = points.allowance - used
   const guests = Math.floor(left / points.cost)
@@ -37,6 +39,7 @@ export function draw({ me, bookings, buddies, L, upcoming, clubEvents, points, r
   <div class="agrid">
     <button class="atile row" data-a="clubevents"><span class="e">🏆</span><span class="rt"><b>Club events</b><span>${clubEvents ? `${clubEvents} running or coming up · ` : ''}club-wide events and leagues</span></span></button>
     <button class="atile row" data-a="access"><span class="e">🔑</span><span class="rt"><b>Members &amp; access</b><span>${requests.length ? `<b class="reqcount">${requests.length} access request${requests.length > 1 ? 's' : ''}</b>` : 'Choose who can sign in'}</span></span></button>
+    <button class="atile row" data-a="rules"><span class="e">⏰</span><span class="rt"><b>Booking rules</b><span>${rules ? `Tee times open ${timeLabel(rules.time)}, ${rules.days} day${rules.days === 1 ? '' : 's'} before · ${rules.weekendsOnly ? 'weekends only' : 'every day'}` : 'When tee times open for booking'}</span></span></button>
     <button class="atile row" data-a="colours"><span class="e">🎨</span><span class="rt"><b>Club name &amp; colours</b><span>The name on the membership card, and two colours that theme the app</span></span></button>
     <button class="atile row" data-a="pins"><span class="e">⛳</span><span class="rt"><b>Pins</b><span>Set today's flags</span></span></button>
   </div>` : ''}
