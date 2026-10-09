@@ -82,10 +82,10 @@ async function test() {
 }
 
 // Real concurrency: many simultaneous requests (separate connections) racing for the same
-// spaces and the same guest points. Creates temporary logins and tee times, then removes them.
+// spaces and the same guest points. Uses tee times 1–7 days ahead, which are already released. Creates temporary logins and tee times, then removes them.
 // Everything race() creates, so a run that died part-way is cleared by the next one.
-const raceSlots = (t = '') => `(${t}date = current_date + 12 and (${t}start_time between 1 and 13 or ${t}start_time between 300 and 350 or ${t}start_time between 400 and 450))
-  or (${t}date between current_date + 13 and current_date + 24 and ${t}start_time = 1)`
+const raceSlots = (t = '') => `(${t}date = current_date + 7 and (${t}start_time between 1 and 13 or ${t}start_time between 300 and 350 or ${t}start_time between 400 and 450))
+  or (${t}date between current_date + 1 and current_date + 7 and ${t}start_time = 30)`
 const raceCleanUp = () => query(`
   delete from public.guest_visits where booking_player_id in (select bp.id from public.booking_players bp join public.tee_slots s on s.id = bp.slot_id where ${raceSlots('s.')});
   delete from public.tee_slots where ${raceSlots()};
@@ -99,20 +99,20 @@ async function race() {
       select gen_random_uuid(), '${tag}-' || i || '@example.invalid', 'authenticated', 'authenticated' from generate_series(1, 8) i;
     update public.members m set user_id = u.id from auth.users u
      where u.email = '${tag}-' || m.id || '@example.invalid' and m.user_id is null;
-    insert into public.tee_slots (course_id, date, start_time) select 1, current_date + 12, i from generate_series(1, 13) i
+    insert into public.tee_slots (course_id, date, start_time) select 1, current_date + 7, i from generate_series(1, 13) i
       on conflict do nothing;
-    insert into public.tee_slots (course_id, date, start_time) select 1, current_date + 12, 300 + 10 * i from generate_series(0, 5) i
+    insert into public.tee_slots (course_id, date, start_time) select 1, current_date + 7, 300 + 10 * i from generate_series(0, 5) i
       on conflict do nothing;
-    insert into public.tee_slots (course_id, date, start_time) select 1, current_date + 13 + i, 1 from generate_series(0, 11) i
+    insert into public.tee_slots (course_id, date, start_time) select 1, current_date + i, 30 from generate_series(1, 7) i
       on conflict do nothing;
-    insert into public.tee_slots (course_id, date, start_time) select 1, current_date + 12, 400 + 10 * i from generate_series(0, 5) i
+    insert into public.tee_slots (course_id, date, start_time) select 1, current_date + 7, 400 + 10 * i from generate_series(0, 5) i
       on conflict do nothing;
     select (select json_agg(json_build_object('m', m.id, 'uid', m.user_id) order by m.id) from public.members m
              join auth.users u on u.id = m.user_id where u.email like '${tag}-%') as users,
-           (select json_agg(id order by start_time) from public.tee_slots where date = current_date + 12 and start_time between 1 and 13) as slots,
-           (select json_agg(id order by start_time) from public.tee_slots where date = current_date + 12 and start_time between 300 and 350) as close,
-           (select json_agg(id order by date) from public.tee_slots where date between current_date + 13 and current_date + 24 and start_time = 1) as days,
-           (select json_agg(id order by start_time) from public.tee_slots where date = current_date + 12 and start_time between 400 and 450) as mine;`)
+           (select json_agg(id order by start_time) from public.tee_slots where date = current_date + 7 and start_time between 1 and 13) as slots,
+           (select json_agg(id order by start_time) from public.tee_slots where date = current_date + 7 and start_time between 300 and 350) as close,
+           (select json_agg(id order by date) from public.tee_slots where date between current_date + 1 and current_date + 7 and start_time = 30) as days,
+           (select json_agg(id order by start_time) from public.tee_slots where date = current_date + 7 and start_time between 400 and 450) as mine;`)
   const { users, slots, close, days, mine } = ids[0]
   const as = (uid, call) => query(`begin;
     select set_config('request.jwt.claims', '{"sub":"${uid}","role":"authenticated"}', true);
@@ -128,11 +128,11 @@ async function race() {
     console.log(`    ${tally(r1)}\n    ${n === 4 ? '✓' : '✗'} players on the tee time: ${n} (must be 4)`)
 
     const declan = users.find(u => u.m === 1)
-    const [{ before }] = await query(`select coalesce(sum(points), 0)::int as before from public.guest_visits where member_id = 1 and date_trunc('year', date) = date_trunc('year', current_date + 12)`)
-    console.log(`\n2. Declan has ${36 - before} guest points; 12 one-guest bookings (3 pts each) on 12 different days, all at once`)
-    const r2 = await Promise.all(days.map(s => as(declan.uid, `public.book_tee_time(${s}, '{}', '[{"name":"Race Guest"}]')`)))
-    const [{ used }] = await query(`select sum(points)::int as used from public.guest_visits where member_id = 1 and date_trunc('year', date) = date_trunc('year', current_date + 12)`)
-    const pointsOk = used <= 36 && 36 - used < 3 // never over the allowance, and nothing left unused that a guest could have had
+    const [{ before }] = await query(`select coalesce(sum(points), 0)::int as before from public.guest_visits where member_id = 1 and date_trunc('year', date) = date_trunc('year', current_date + 7)`)
+    console.log(`\n2. Declan has ${36 - before} guest points; 7 two-guest bookings (6 pts each) on 7 different days, all at once`)
+    const r2 = await Promise.all(days.map(s => as(declan.uid, `public.book_tee_time(${s}, '{}', '[{"name":"Race Guest"},{"name":"Race Guest"}]')`)))
+    const [{ used }] = await query(`select sum(points)::int as used from public.guest_visits where member_id = 1 and date_trunc('year', date) = date_trunc('year', current_date + 7)`)
+    const pointsOk = used <= 36 && 36 - used < 6 // never over the allowance, and nothing left that another two-guest booking could have used
     console.log(`    ${tally(r2)}\n    ${pointsOk ? '✓' : '✗'} points used this year: ${used} of 36 (must not exceed 36)`)
 
     // Six people each book the same member onto a different tee time, 10 minutes apart, at the same moment.

@@ -20,6 +20,8 @@ grant execute on all functions in schema t to anon, authenticated;
 insert into auth.users (id, email, aud, role) select gen_random_uuid(), 'bc-test-' || i || '@example.invalid', 'authenticated', 'authenticated' from generate_series(1, 4) i;
 update public.members m set user_id = (select id from auth.users where email = 'bc-test-' || m.id || '@example.invalid') where m.id between 1 and 4;
 
+-- Booking rules aren't what these tests are about: open every tee time they use (12 days ahead).
+update public.club_settings set release_days = 13, release_weekends_only = false where id = 1;
 -- Tee times well out of the way of real bookings: 08:00, 09:00, 09:50, 10:10, 12:00
 insert into public.tee_slots (course_id, date, start_time) select 1, current_date + 12, x from unnest('{480,540,590,610,720}'::int[]) x;
 create view t.slot as select id, start_time from public.tee_slots where date = current_date + 12;

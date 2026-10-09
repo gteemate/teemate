@@ -42,6 +42,10 @@ update public.members m set user_id = u.uid from t.users u where m.id = u.member
 update public.members set admin = (id = 0) where id between 0 and 3; -- test roles: Gary is the admin here
 
 -- Some tee times to book on, a few days out so nothing from the seed is on them.
+-- Booking rules aren't what these tests are about: open every tee time they use (up to 21 days ahead,
+-- beyond the 13-day maximum, so the limit is lifted for this rolled-back run only).
+alter table public.club_settings drop constraint club_settings_release_days_check;
+update public.club_settings set release_days = 30, release_weekends_only = false where id = 1;
 -- Each test tee time on its own day, so the 2-hour rule between one member's tee times doesn't get in the way.
 -- t.slot is exactly the ones made here, never real tee times on those days.
 create table t.slot_ids (id bigint primary key);
