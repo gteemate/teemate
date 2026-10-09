@@ -125,6 +125,7 @@ async function render() {
   if (mine !== seq) return // a newer render started while we were loading
   $('dateWrap').innerHTML = ''
   $('modal').innerHTML = ''
+  $('app').classList.toggle('onhome', screen === home) // Home fills the screen, no scroll (a remote)
   screen.draw(data)
   drawRoundBar()
 }
