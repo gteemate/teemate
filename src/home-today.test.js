@@ -102,3 +102,21 @@ describe('nextUp: what Home leads with', () => {
     expect(r.needs).toHaveLength(1)
   })
 })
+
+describe('todayItems: answered tee time requests (shown once)', () => {
+  const me = { id: 1 }
+  const req = over => ({ id: 3, date: '2026-11-14', time: 490, status: 'approved', note: null, decidedAt: '2026-10-08T10:00:00Z', seen: false, ...over })
+  const base = { me, card: null, teeTimes: [], playerEvents: [], events: [], date: '2026-10-09' }
+  it('approved and not seen: a row that opens your bookings', () => {
+    expect(todayItems({ ...base, requests: [req()] })).toEqual([{ kind: 'request', title: 'Request approved: Sat 14 Nov 08:10', pill: null, detail: 'Booked. It’s in your bookings.', go: { tab: 'home', aview: 'mine' } }])
+  })
+  it('declined: the admin\'s note', () => expect(todayItems({ ...base, requests: [req({ status: 'declined', note: 'Full, try 08:30' })] })[0]).toMatchObject({ title: 'Request declined: Sat 14 Nov 08:10', detail: 'Full, try 08:30' }))
+  it('not shown once seen, while waiting, or after 7 days', () => {
+    expect(todayItems({ ...base, requests: [req({ seen: true }), req({ status: 'pending' }), req({ decidedAt: '2026-10-01T10:00:00Z' })] })).toEqual([])
+  })
+  it('needs you on Home, after any invitation', () => {
+    const r = nextUp([{ kind: 'invite' }, { kind: 'request' }, { kind: 'card' }])
+    expect(r.needs.map(x => x.kind)).toEqual(['invite', 'request'])
+    expect(r.next.kind).toBe('card')
+  })
+})

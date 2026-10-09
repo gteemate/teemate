@@ -1,6 +1,6 @@
 // Home tab: what goes on Today, and which tab the app opens on. Plain functions of data the
 // api already returns, so they're tested on their own (home-today.test.js).
-import { eventLastDay, hhmm } from './dates.js'
+import { eventLastDay, hhmm, longDay, fromIso } from './dates.js'
 import { GAME_DEFS, eventFormatName } from './games.js'
 
 /** Scores while I'm mid-round (a hole saved on today's card, not finished); otherwise Home. */
@@ -25,11 +25,16 @@ export function needsMyAnswer(e, me) {
  * a match on today, a club event or league I'm playing in today.
  * [{ kind, title, pill: null | { text, gold? }, detail, go }]; go = where tapping it takes you.
  */
-export function todayItems({ me, card, teeTimes, playerEvents, events, date }) {
+export function todayItems({ me, card, teeTimes, playerEvents, events, date, requests = [] }) {
   const items = []
   const todays = playerEvents.filter(e => e.date === date)
   for (const e of todays.filter(e => needsMyAnswer(e, me))) {
     items.push({ kind: 'invite', title: `Invitation from ${e.proposedBy.name}`, pill: { text: 'Answer', gold: true }, detail: times(e), go: { tab: 'scores' } })
+  }
+  // A tee time request an admin has answered in the last week, until you've seen it (opening Bookings marks it).
+  for (const r of requests.filter(r => (r.status === 'approved' || r.status === 'declined') && !r.seen && (fromIso(date) - fromIso(r.decidedAt.slice(0, 10))) / 864e5 <= 7)) {
+    items.push({ kind: 'request', title: `Request ${r.status}: ${longDay(fromIso(r.date))} ${hhmm(r.time)}`, pill: null,
+      detail: r.status === 'approved' ? 'Booked. It’s in your bookings.' : r.note || 'No reason given', go: { tab: 'home', aview: 'mine' } })
   }
   if (card) {
     const n = holesPlayed(card.done)
@@ -48,8 +53,9 @@ export function todayItems({ me, card, teeTimes, playerEvents, events, date }) {
   return items
 }
 
-/** What Home leads with: { next, needs, more } — invitations need you; the first other item is next up. */
+/** What Home leads with: { next, needs, more } — invitations and answered requests need you; the first other item is next up. */
 export function nextUp(items) {
-  const needs = items.filter(x => x.kind === 'invite'), rest = items.filter(x => x.kind !== 'invite')
+  const needsYou = x => x.kind === 'invite' || x.kind === 'request'
+  const needs = items.filter(needsYou), rest = items.filter(x => !needsYou(x))
   return { next: rest[0] ?? null, needs, more: rest.slice(1) }
 }

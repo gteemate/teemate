@@ -76,3 +76,30 @@ export async function getBookingRules() {
 export async function setBookingRules({ time, days, weekendsOnly }) {
   must(await sb.rpc('admin_set_booking_rules', { p_time: time, p_days: days, p_weekends_only: weekendsOnly }))
 }
+
+/* ---------- Tee time requests (a day not open yet; an admin approves = booked as you) ---------- */
+
+const toRequest = r => ({ id: r.id, memberId: r.member_id, member: r.member, slotId: r.slot_id, date: r.slot?.date, time: r.slot?.start_time,
+  memberIds: r.member_ids, guests: r.guests, reason: r.reason, status: r.status, note: r.admin_note, decidedAt: r.decided_at, seen: r.seen, createdAt: r.created_at })
+const REQUEST_COLS = 'id, member_id, slot_id, member_ids, guests, reason, status, admin_note, decided_at, seen, created_at, slot:slot_id(date, start_time), member:member_id(id, name)'
+
+/** Ask for a tee time on a day not open yet. Returns the request id. */
+export async function requestTeeTime({ slotId, memberIds = [], guests = [], reason }) {
+  return must(await sb.rpc('request_tee_time', { p_slot_id: slotId, p_member_ids: memberIds, p_guests: guests, p_reason: reason }))
+}
+export async function cancelTeeTimeRequest(id) { must(await sb.rpc('cancel_tee_time_request', { p_id: id })) }
+/** My requests, newest first. */
+export async function getMyTeeTimeRequests() {
+  const me = await myId()
+  return must(await sb.from('tee_time_requests').select(REQUEST_COLS).eq('member_id', me).order('created_at', { ascending: false })).map(toRequest)
+}
+/** Admins: every request, waiting ones first (oldest first), then recent answers. */
+export async function getTeeTimeRequests() {
+  const rows = must(await sb.from('tee_time_requests').select(REQUEST_COLS).order('created_at')).map(toRequest)
+  return [...rows.filter(r => r.status === 'pending'), ...rows.filter(r => r.status !== 'pending').reverse()]
+}
+/** Admins: approve (books it as the member) or decline with a note. */
+export async function decideTeeTimeRequest(id, approve, note = null) {
+  return must(await sb.rpc('admin_decide_tee_time_request', { p_id: id, p_approve: approve, p_note: note }))
+}
+export async function markTeeTimeRequestsSeen() { must(await sb.rpc('mark_tee_time_requests_seen')) }
