@@ -32,3 +32,6 @@ export function pickAlerts({ me, playerEvents, requests, date, now = Date.now(),
     }))
   return [...challenges, ...answered].filter(a => !hidden.has(a.key))
 }
+
+/** Look for alerts on a new screen, or at most once a minute while the same screen redraws (a scorecard redraws on every tap). */
+export const alertCheckDue = (lastPlace, place, lastAt, now) => lastPlace !== place || now - lastAt > 60e3

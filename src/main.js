@@ -131,10 +131,10 @@ async function render() {
   screen.draw(data)
   drawRoundBar()
   if (screen === login || $('app').classList.contains('signed-out')) $('alerts').innerHTML = ''
-  else checkAlerts()
+  else checkAlerts(JSON.stringify(place()))
 }
 // Back to the app from another app or the lock screen: anything new?
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && !$('app').classList.contains('signed-out')) checkAlerts() })
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && !$('app').classList.contains('signed-out')) checkAlerts(JSON.stringify(place()), true) })
 setRender(render)
 
 // Club colours: last-seen ones straight away (no flash), then the current ones from the club.

@@ -6,14 +6,21 @@ import * as api from './api.js'
 import { S } from './state.js'
 import { $, esc, render, toast } from './ui.js'
 import { isoDate, today } from './dates.js'
-import { pickAlerts } from './alerts.js'
+import { pickAlerts, alertCheckDue } from './alerts.js'
 
 const hidden = new Set() // Later, until the app is next opened
 const done = new Set() // answered or OK'd this visit (the server catches up on the next check)
 let shown = [], timer = null, busy = false
 
-/** Look for alerts and show the first one (debounced; a check already running is left to finish). */
-export function checkAlerts() {
+let lastPlace = null, lastAt = 0
+/**
+ * Look for alerts and show the first one: on a new screen (`place`), or `force` (the app came back to the front);
+ * a redraw of the same screen only looks once a minute. Debounced; a check already running is left to finish.
+ */
+export function checkAlerts(place, force = false) {
+  const now = Date.now()
+  if (!force && !alertCheckDue(lastPlace, place, lastAt, now)) return draw() // same screen redrawn: keep what's showing
+  lastPlace = place; lastAt = now
   clearTimeout(timer)
   timer = setTimeout(run, 300)
 }

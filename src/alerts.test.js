@@ -53,3 +53,12 @@ describe('pickAlerts: what drops down from the header', () => {
     expect(pickAlerts({ ...base, requests: [req()], playerEvents: [pe()], hidden: new Set(['pe:5']) }).map(x => x.key)).toEqual(['rq:3'])
   })
 })
+
+import { alertCheckDue } from './alerts.js'
+describe('alertCheckDue: when to look for new alerts', () => {
+  const t = 1_000_000
+  it('first time: yes', () => expect(alertCheckDue(null, 'home', 0, t)).toBe(true))
+  it('a different screen: yes', () => expect(alertCheckDue('home', 'scores/card', t, t + 1000)).toBe(true))
+  it('the same screen redrawn (a score tapped): no', () => expect(alertCheckDue('scores/card', 'scores/card', t, t + 1000)).toBe(false))
+  it('the same screen, but over a minute since the last look: yes', () => expect(alertCheckDue('scores/card', 'scores/card', t, t + 61e3)).toBe(true))
+})
