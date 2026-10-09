@@ -2,8 +2,8 @@
 // for me today (see home-today.js), and one big Book a tee time button.
 import * as api from '../api.js'
 import { S } from '../state.js'
-import { $, esc, header, render, top0, fmtHcp } from '../ui.js'
-import { isoDate, today, longDay } from '../dates.js'
+import { $, esc, render, top0, fmtHcp } from '../ui.js'
+import { isoDate, today } from '../dates.js'
 import { todayItems } from '../home-today.js'
 
 const ICON = { invite: '🏆', card: '📝', tee: '🗓️', match: '🏆', event: '🏅' }
@@ -17,7 +17,7 @@ export async function load() {
 }
 
 export function draw({ me, clubName, items }) {
-  header('TeeMate', longDay(today()))
+  $('hdr').innerHTML = `<div class="homedate">${today().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}</div>` // just the date: the card says the rest
   const row = (x, n) => `<button class="${x.kind === 'invite' ? 'wait' : x.pill ? 'live' : ''}" data-i="${n}"><span class="e" aria-hidden="true">${ICON[x.kind]}</span>
     <span><strong>${esc(x.title)}${x.pill ? `<span class="pill${x.pill.gold ? ' gold' : ''}">${esc(x.pill.text)}</span>` : ''}</strong><small>${esc(x.detail)}</small></span>
     <span class="go">${GO[x.kind]}</span></button>`
