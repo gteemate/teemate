@@ -510,7 +510,7 @@ button.wlpill{cursor:pointer}
 .today .e{font-size:22px;text-align:center}
 .today strong{display:block;font-size:15px}
 .today small{display:block;color:var(--muted);font-size:13px;margin-top:2px;line-height:1.3}
-.today .go{color:var(--green);font-weight:700;font-size:14px}
+.today .go{color:var(--win);font-weight:700;font-size:14px} /* --win: the main colour in light mode, a lighter version of it in dark */
 .today .live{border-color:var(--loss)}
 .today .wait{border-color:#e7b84a}
 .today .pill{background:var(--loss);color:var(--on-loss);font-size:11px;padding:1px 8px;margin-left:6px;vertical-align:1px}
