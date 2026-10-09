@@ -22,12 +22,12 @@ export function draw({ me, clubName, items }) {
     <span><strong>${esc(x.title)}${x.pill ? `<span class="pill${x.pill.gold ? ' gold' : ''}">${esc(x.pill.text)}</span>` : ''}</strong><small>${esc(x.detail)}</small></span>
     <span class="go">${GO[x.kind]}</span></button>`
   $('main').innerHTML = `<div class="screen">
-    <button class="card-m" id="account" aria-label="Membership card. Opens bookings, buddies, events, games and your account">
-      <span class="top"><span>${esc(clubName)}</span><span>${me.admin ? 'Admin' : 'Member'}</span></span>
-      <span class="nm">${esc(me.name)}</span>
-      <span class="mfacts"><span><small>Handicap index</small><b>${fmtHcp(me.hcp)}</b></span>
-        <span><small>GUI number</small>${me.gui ? `<b>${esc(me.gui)}</b>` : '<span class="muted">Not added</span>'}</span></span>
-      <span class="more">Bookings, buddies, events &amp; account <span aria-hidden="true">›</span></span>
+    <button class="mbadge" id="account" aria-label="Membership card. Opens bookings, buddies, events, games and your account">
+      ${clubName ? `<span class="mb-club">${esc(clubName)}</span>` : ''}
+      <span class="mb-nm">${esc(me.name)}</span>
+      <span class="mb-rule" aria-hidden="true"></span>
+      <span class="mb-fx"><span>Handicap index ${fmtHcp(me.hcp)}</span> · <span>${me.gui ? `GUI ${esc(me.gui)}` : 'GUI not added'}</span></span>
+      <span class="mb-more">Bookings, buddies, events &amp; account ›</span>
     </button>
     <h3>Today</h3>
     ${items.length ? `<div class="today">${items.map(row).join('')}</div>` : '<div class="empty-state">Nothing on today</div>'}
