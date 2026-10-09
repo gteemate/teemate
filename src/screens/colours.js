@@ -1,6 +1,7 @@
-// Admin → Club colours: two hex codes theme the whole app for everyone. Changes preview live.
+// Account → Club name & colours: the club name on the membership card, and two hex codes that theme
+// the whole app for everyone. Colour changes preview live.
 import * as api from '../api.js'
-import { $, header, render, toast } from '../ui.js'
+import { $, esc, header, render, toast } from '../ui.js'
 import { DEFAULT_THEME, applyTheme, isHex } from '../theme.js'
 import { toAdmin } from './nav.js'
 
@@ -10,11 +11,13 @@ export async function load() {
 
 export function draw({ saved }) {
   const leave = () => { applyTheme(saved); toAdmin() } // undo any unsaved preview
-  header('Club colours', 'Theme the whole app for everyone', leave)
+  header('Club name &amp; colours', 'The name on everyone’s membership card, and the app’s colours', leave)
   const row = (id, label, sub, v) => `<label for="${id}-hex">${label}</label><span class="hint">${sub}</span>
     <div class="colrow"><input type="color" id="${id}-pick" value="${v}" aria-label="${label} picker"><input type="text" id="${id}-hex" class="plainsel" value="${v}" maxlength="7" autocomplete="off" spellcheck="false"></div>`
   $('main').innerHTML = `<div class="screen">
     <div class="card evsec">
+      <label for="club-name">Club name</label><span class="hint">Shown at the top of every member’s card on Home. Leave it blank to show nothing.</span>
+      <input type="text" id="club-name" class="plainsel" value="${esc(saved.name ?? '')}" maxlength="60" autocomplete="off" placeholder="e.g. Royal Example Golf Club">
       ${row('main', 'Main colour', 'Buttons, header cards, selected days and options', saved.main)}
       ${row('accent', 'Accent colour', 'The selected tab, highlights and “they won the hole”', saved.accent)}
       <p class="gerr" id="cerr" role="alert"></p>
@@ -55,6 +58,8 @@ export function draw({ saved }) {
     if (!isHex(t.main) || !isHex(t.accent)) { preview(); return }
     $('csave').disabled = true
     try {
+      const name = $('club-name').value.trim()
+      if (name !== (saved.name ?? '')) await api.setClubName(name)
       await api.setTheme(t.main, t.accent)
     } catch (err) {
       $('cerr').textContent = err.message
@@ -63,6 +68,6 @@ export function draw({ saved }) {
     }
     applyTheme(t)
     await render()
-    toast('Club colours saved for everyone')
+    toast('Club name and colours saved for everyone')
   }
 }
