@@ -75,7 +75,10 @@ The card shows initials, name, club, handicap index, GUI number and "Shared 10 O
   handicap. The form shows the guest points cost ("Uses 3 points · 30 → 27 left"), and you tap **Add guest** to
   confirm. If you don't have enough guest points left, these rows are greyed out with "not enough guest points",
   like the guest button.
-- On a scorecard they're added through the existing guest route (`getGuests` / guest lineup entries).
+- **Scorecards:** a guest exists only as part of a booking (it uses guest points), so other-club friends reach a
+  scorecard by being booked: "Use your tee time" then puts them on the card, as with any guest. The scorecard's
+  own picker lists club friends only, favourites first. *(Changed while planning, 10 Oct: the earlier line here
+  assumed a guest could be added straight to a card.)*
 
 ## 4. Database
 
@@ -113,12 +116,10 @@ used plain ids are updated.
 
 ## 6. Save within reach on long lists
 
-Screens with long member lists and a Save/Next button at the bottom: Choose players (`players.js`), event players,
-league teams and captains (`event-editor.js`), and the booking picker sheet.
-- The button moves into a bar fixed to the bottom of the screen (the scorecard's `.cta` style), always visible,
-  with a count of who is picked ("6 picked").
-- A search box is added at the top of any list over 15 names, where one isn't there already.
-- The page's last row is never hidden behind the bar (bottom padding equal to the bar's height).
+Found while planning: the bottom bars (`.cta`) were meant to stay on screen, but on phones a later CSS rule
+(`main{overflow-y:auto}`) turned the page area into its own scrolling box, so each bar sat at the end of its list.
+Fixed separately (commit 5f522bd). The Choose players, event editor (including league Teams and Captains), and
+booking screens now keep Save, Next and Use these players in reach. The pickers keep their search boxes.
 
 ## Not included
 
