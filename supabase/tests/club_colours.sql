@@ -38,11 +38,35 @@ do $$ declare e text; begin
 
   perform t.act_as(0);
   perform public.admin_set_theme('#0b6e4f', '#c9a227');
-  perform t.ok('Colours: admin can change them (stored upper-case)', public.get_theme() = '{"main":"#0B6E4F","accent":"#C9A227"}'::jsonb, public.get_theme()::text);
+  perform t.ok('Colours: admin can change them (stored upper-case)', public.get_theme() @> '{"main":"#0B6E4F","accent":"#C9A227"}'::jsonb, public.get_theme()::text);
   e := t.err($q$select public.admin_set_theme('green', '#C9A227')$q$);
   perform t.ok('Colours: names or bad hex refused', e like '%6-digit hex%', e);
   e := t.err($q$select public.admin_set_theme('#0B6E4', '#C9A227')$q$);
   perform t.ok('Colours: short hex refused', e like '%6-digit hex%', e);
+  reset role;
+end $$;
+
+-- Club name: shown on the membership card; admins set it.
+do $$ declare e text; begin
+  perform set_config('request.jwt.claims', '{"role":"anon"}', true);
+  set local role anon;
+  perform t.ok('Club name: readable before signing in', public.get_theme() ? 'name', public.get_theme()::text);
+  e := t.err($q$select public.admin_set_club_name('Sneaky GC')$q$);
+  perform t.ok('Club name: visitors cannot change it', e is not null, e);
+  reset role;
+
+  perform t.act_as(1);
+  e := t.err($q$select public.admin_set_club_name('Sneaky GC')$q$);
+  perform t.ok('Club name: members (not admin) cannot change it', e like '%Only admins%', e);
+  reset role;
+
+  perform t.act_as(0);
+  perform public.admin_set_club_name('  Royal Test GC  ');
+  perform t.ok('Club name: admin sets it (trimmed)', public.get_theme()->>'name' = 'Royal Test GC', public.get_theme()::text);
+  e := t.err(format('select public.admin_set_club_name(%L)', repeat('x', 61)));
+  perform t.ok('Club name: over 60 characters refused', e like '%60 characters%', e);
+  perform public.admin_set_club_name('');
+  perform t.ok('Club name: can be cleared', public.get_theme()->>'name' = '', public.get_theme()::text);
   reset role;
 end $$;
 
