@@ -63,3 +63,16 @@ export async function getGuestPoints(year = String(today().getFullYear())) {
     members: members.map(m => ({ id: m.id, name: m.name, used: visits.filter(v => v.member_id === m.id).reduce((t, v) => t + v.points, 0) })),
   }
 }
+
+/* ---------- Release: when tee times open for booking ---------- */
+
+/** { time: '20:00', days: 8, weekendsOnly: false, now: Date } — now is the database's clock, for the countdown. */
+export async function getBookingRules() {
+  const r = must(await sb.rpc('get_booking_rules'))
+  return { time: r.time, days: r.days, weekendsOnly: r.weekendsOnly, now: new Date(r.now) }
+}
+
+/** Admins only. time 'HH:MM', days 1–13. */
+export async function setBookingRules({ time, days, weekendsOnly }) {
+  must(await sb.rpc('admin_set_booking_rules', { p_time: time, p_days: days, p_weekends_only: weekendsOnly }))
+}
