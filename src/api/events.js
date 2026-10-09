@@ -2,11 +2,12 @@ import { must, sb } from './client.js'
 
 /* ---------- Events set up in advance ---------- */
 
-const EVENT_COLS = 'id, name, team_a, team_b, club, everyone, start_date, days, style, fmt, players, team, matches, weeks, best_of, league_teams, captain_pool, creator:created_by(id, name)'
+const EVENT_COLS = 'id, name, team_a, team_b, club, everyone, start_date, days, style, fmt, players, team, matches, weeks, best_of, league_teams, captain_pool, self_entry, creator:created_by(id, name)'
 const toEvent = e => ({
   id: e.id, name: e.name, A: e.team_a, B: e.team_b, club: e.club, everyone: e.everyone, startDate: e.start_date, days: e.days,
   style: e.style, fmt: e.fmt, players: e.players, team: e.team, matches: e.matches, createdBy: e.creator,
   weeks: e.weeks, bestOf: e.best_of, teams: e.league_teams, captainPool: e.captain_pool ?? [], // leagues
+  selfEntry: !!e.self_entry, // members can enter themselves (club competitions)
 })
 
 /** Events I can see: club events, ones I set up, and ones I'm playing in (RLS decides). */
@@ -19,7 +20,7 @@ export async function saveEvent(e) {
   const row = {
     name: e.name, team_a: e.A, team_b: e.B, club: !!e.club, everyone: !!e.everyone, start_date: e.startDate, days: e.days,
     style: e.style, fmt: e.fmt, players: e.players, team: e.team, matches: e.matches,
-    weeks: e.weeks ?? null, best_of: e.bestOf ?? null, league_teams: e.teams ?? null, captain_pool: e.captainPool ?? [],
+    weeks: e.weeks ?? null, best_of: e.bestOf ?? null, league_teams: e.teams ?? null, captain_pool: e.captainPool ?? [], self_entry: !!e.club && !!e.selfEntry,
   }
   if (e.id) {
     const rows = must(await sb.from('events').update(row).eq('id', e.id).select('id'))
@@ -61,4 +62,14 @@ export async function enterLeague(roundId, eventId, memberIds) {
 
 export async function leaveLeague(roundId, eventId, memberIds) {
   must(await sb.rpc('leave_league', { p_round: roundId, p_event: eventId, p_members: memberIds }))
+}
+
+/** Enter a club competition open for entry, until the day it starts. */
+export async function enterEvent(id) {
+  must(await sb.rpc('enter_event', { p_id: id }))
+}
+
+/** Withdraw from a club competition open for entry, until the day it starts. */
+export async function withdrawEvent(id) {
+  must(await sb.rpc('withdraw_event', { p_id: id }))
 }
