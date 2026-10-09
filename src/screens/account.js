@@ -1,17 +1,18 @@
-// Account (opened from the membership card on Home; booking is on Home itself): player tiles first, then a Club admin section
+// Account (tap the disc on Home): your shareable handicap card (QR + Share), then player tiles, then a Club admin section
 // (admins only), then account buttons.
 import * as api from '../api.js'
 import { S } from '../state.js'
-import { $, esc, header, top0, render, toast } from '../ui.js'
+import { $, esc, header, top0, render, toast, fmtHcp } from '../ui.js'
 import { passwordSheet } from './login.js'
 import { isoDate, today, eventLastDay } from '../dates.js'
 import { buildLibrary } from '../games.js'
 import { timeLabel } from '../release.js'
+import { shareText, qrSvg, shareCard } from '../share-card.js'
 
 export async function load() {
   const me = await api.getMe()
-  const [bookings, buddies, games, events, points, requests, rules, matches] = await Promise.all([
-    api.getMyBookings(), api.getBuddies(), api.getGameSettings(), api.getEvents(), api.getGuestPoints(),
+  const [theme, bookings, buddies, games, events, points, requests, rules, matches] = await Promise.all([
+    api.getTheme(), api.getMyBookings(), api.getBuddies(), api.getGameSettings(), api.getEvents(), api.getGuestPoints(),
     me.admin ? api.getAccessRequests() : [],
     me.admin ? api.getBookingRules() : null,
     api.getMyPlayerEvents(),
@@ -19,15 +20,24 @@ export async function load() {
   const live = events.filter(e => eventLastDay(e) >= isoDate(today()))
   // events set up in advance, plus matches set up on the day from the Scores tab
   const upcoming = live.filter(e => !e.club && e.style !== 'league').length + matches.filter(e => e.status === 'pending' || e.status === 'accepted').length, clubEvents = live.filter(e => e.club || e.style === 'league').length
-  return { me, rules, bookings, buddies, L: buildLibrary(games), upcoming, clubEvents, points, requests }
+  return { me, clubName: theme?.name ?? '', rules, bookings, buddies, L: buildLibrary(games), upcoming, clubEvents, points, requests }
 }
 
-export function draw({ me, rules, bookings, buddies, L, upcoming, clubEvents, points, requests }) {
+export function draw({ me, clubName, rules, bookings, buddies, L, upcoming, clubEvents, points, requests }) {
   header('Account', `Signed in as <b>${esc(me.name)}</b>`, async () => { S.aview = 'home'; await render(); top0() }, 'Home')
+  const card = shareText(me, clubName)
   const used = points.mine.reduce((t, x) => t + x.points, 0), left = points.allowance - used
   const guests = Math.floor(left / points.cost)
   // Player items first (what every member sees), then admin-only items in one section at the end.
   $('main').innerHTML = `<div class="screen">
+  <div class="sharecard">
+    <div class="qr" role="img" aria-label="QR code with your handicap details">${qrSvg(card)}</div>
+    <div class="sc-nm">${esc(me.name)}</div>${clubName ? `<div class="sc-cl">${esc(clubName)}</div>` : ''}
+    <div class="sc-fx"><span>Handicap index <b class="num">${fmtHcp(me.hcp)}</b></span><span>${me.gui ? `GUI <b class="num">${esc(me.gui)}</b>` : 'GUI not added'}</span></div>
+    <div class="sc-up">Scan with a phone camera, or share it</div>
+  </div>
+  <div class="bk-btns"><button class="primary" id="share">Share</button><button class="ghost" id="copycard">Copy details</button></div>
+  <h3>Your account</h3>
   <div class="agrid">
     <button class="atile" data-a="mine"><span class="e">📋</span><b>Bookings</b><span>${bookings.length ? `${bookings.length} upcoming` : 'Nothing booked yet'}</span></button>
     <button class="atile" data-a="buddies"><span class="e">👥</span><b>Buddies</b><span>${buddies.length} playing partner${buddies.length === 1 ? '' : 's'}</span></button>
@@ -47,6 +57,10 @@ export function draw({ me, rules, bookings, buddies, L, upcoming, clubEvents, po
   <h3>Your account</h3>
   <div class="bk-btns acct"><button class="ghost" id="chpw">Change password</button><button class="ghost" id="signout">Sign out</button></div>
   </div>`
+  $('share').onclick = async () => { const r = await shareCard(card, me.name); if (r === 'copied') toast('Details copied: paste them into a message') }
+  $('copycard').onclick = async () => {
+    try { await navigator.clipboard.writeText(card); toast('Details copied') } catch { toast('Couldn’t copy on this phone: use Share instead') }
+  }
   $('signout').onclick = () => api.signOut()
   $('chpw').onclick = () => passwordSheet(ok => ok && toast('Password changed'))
   document.querySelectorAll('[data-a]').forEach(b => (b.onclick = async () => {

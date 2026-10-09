@@ -518,3 +518,14 @@ button.wlpill{cursor:pointer}
 .hnext.needs{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset,0 0 18px rgba(227,195,117,.3)}
 .hnext.more .hnt{font-size:17px}
 .htile:focus-visible,.hdisc:focus-visible,.hnext:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+
+/* Account: the shareable handicap card (QR of name, club, handicap index, GUI) */
+.sharecard{background:var(--cream);color:#16233b;border-radius:22px;padding:18px 18px 14px;display:grid;justify-items:center;gap:4px;text-align:center;
+  box-shadow:inset 0 0 0 4px var(--ring),inset 0 0 0 6px var(--cream),inset 0 0 0 7px rgba(0,0,0,.12)}
+.sharecard .qr{width:172px;height:172px;background:#fff;border-radius:12px;padding:8px;margin-bottom:6px}
+.sharecard .qr svg{display:block;width:100%;height:100%}
+.sc-nm{font-family:var(--display);font-size:24px;font-weight:600;overflow-wrap:anywhere}
+.sc-cl{font-size:12px;color:#5b3341;letter-spacing:.1em;text-transform:uppercase}
+.sc-fx{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;font-family:var(--display);font-size:16px;margin-top:4px}
+.sc-fx>span{white-space:nowrap}
+.sc-up{font-size:12px;color:#6b6f7c}
