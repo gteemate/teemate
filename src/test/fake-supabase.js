@@ -57,12 +57,25 @@ function query(db, phone, table) {
   return b
 }
 
+// Like the start_tee_time_card database function: today's unfinished card for the tee time that
+// I'm on, or a new one. (One step with no await, so it's atomic like the locked version.)
+function startTeeTimeCard(db, phone, card) {
+  const today = new Date(), iso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+  const ours = db.tables.rounds.filter(r => r.slot_id === card.slot_id && r.date === iso && contains(r.lineup, [{ m: phone.memberId }]) && !r.submitted?.[r.game])
+  const have = ours.sort((a, b) => b.id - a.id)[0]
+  if (have) return { id: have.id, updated_at: have.updated_at, joined: true }
+  const row = { ...copy(card), id: db.nextId++, created_by: phone.memberId, date: iso, updated_at: new Date(Date.parse('2026-01-01') + ++db.saves).toISOString() }
+  db.tables.rounds.push(row)
+  return { id: row.id, updated_at: row.updated_at, joined: false }
+}
+
 function client(db, phone) {
   return {
     from: table => query(db, phone, table),
-    async rpc(name) {
+    async rpc(name, args) {
       await trip()
       if (name === 'current_member_id') return { data: phone.memberId, error: null }
+      if (name === 'start_tee_time_card') return { data: startTeeTimeCard(db, phone, args.p_card), error: null }
       throw new Error(`fake-supabase: rpc ${name} not faked`)
     },
     auth: {

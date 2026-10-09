@@ -320,6 +320,24 @@ export async function deleteRound(id) {
   must(await sb.from('rounds').delete().eq('id', id))
 }
 
+const toRow = c => ({ lineup: c.lineup, slot_id: c.slotId ?? null, game: c.game, pairing: c.pairing, scores: c.scores, entered: c.entered ?? null, done: c.done, submitted: c.submitted })
+
+/** Make my unsaved copy into the group's card (both in my view), carrying across the scores I typed, matched by player. */
+function moveTyping(round, card) {
+  const key = e => (e.m != null ? `m${e.m}` : `g${e.g}`)
+  const at = new Map(card.lineup.map((e, k) => [key(e), k]))
+  const changed = new Set()
+  for (const c of round.changed ?? []) {
+    const [i, k] = c.split(':').map(Number), to = at.get(key(round.lineup[k]))
+    if (to == null) continue // not on the group's card
+    card.scores[i][to] = round.scores[i][k]
+    ;(card.entered ??= card.scores.map(row => row.map(() => null)))[i][to] = round.entered?.[i]?.[k] ?? null
+    changed.add(`${i}:${to}`)
+  }
+  card.done = card.done.map((d, i) => d || !!round.done[i])
+  Object.assign(round, card, { changed, checks: round.checks ?? [] })
+}
+
 /**
  * Insert or update a scorecard (in my view). A new round gets its id set.
  * round.changed: the "hole:player" scores I've typed in since loading (in my view). Only those can
@@ -332,10 +350,21 @@ export async function deleteRound(id) {
  * moment on the green can't wipe each other's scores. 6 tries: a four-ball all saving at once needs 4.
  */
 export async function saveRound(round) {
+  // A new card for a tee time: if someone in the group has already started today's card, it's that one
+  // (what I typed moves across to it), so a group never ends up split over two cards.
+  if (!round.id && round.slotId != null) {
+    const r = must(await sb.rpc('start_tee_time_card', { p_card: toRow(toStored(round)) }))
+    if (!r.joined) {
+      Object.assign(round, { id: r.id, createdBy: await myId(), updatedAt: r.updated_at, changed: new Set() })
+      return
+    }
+    const theirs = await getRound(r.id)
+    if (!theirs) throw new Error('This card has been deleted by someone in your group.')
+    moveTyping(round, theirs)
+  }
   const mine = toStored(round)
   let card = mine
   const changed = new Set([...(round.changed ?? [])].map(c => { const [i, v] = c.split(':'); return `${i}:${round.perm ? round.perm[v] : v}` }))
-  const toRow = c => ({ lineup: c.lineup, slot_id: c.slotId ?? null, game: c.game, pairing: c.pairing, scores: c.scores, entered: c.entered ?? null, done: c.done, submitted: c.submitted })
   if (round.id) {
     for (let tries = 1; ; tries++) {
       const cur = must(await sb.from('rounds').select('lineup, scores, entered, done, submitted, updated_at').eq('id', round.id).maybeSingle())
