@@ -141,10 +141,15 @@ export function grossOnDay(rounds, memberId, holes) {
  *   event:    { style: 'ryder'|'teams'|'individual', fmt, days, players: [ids], team: { id: 'A'|'B' }, matches: { day: [{ a, b }] } }
  *   dayCards: { [day]: rounds on that day }       player(id) → { name, courseHcp }
  *   allow:    handicap allowance (fraction)
+ *   entries:  [{ day, memberId, roundId }] — for an event with entryRequired, only these cards count
+ *             (ticked on "Scoring round?"); other events count every card, as they always have.
  */
-export function scoreAdvanceEvent(event, holes, dayCards, player, allow) {
+export function scoreAdvanceEvent(event, holes, dayCards, player, allow, entries = []) {
   const days = Array.from({ length: event.days }, (_, i) => i + 1)
-  const P = (id, team, d) => ({ id, name: player(id).name, team, courseHcp: player(id).courseHcp, gross: grossOnDay(dayCards[d] ?? [], id, holes) })
+  const cardsFor = (id, d) => (event.entryRequired
+    ? (dayCards[d] ?? []).filter(c => entries.some(x => x.day === d && x.memberId === id && x.roundId === c.id))
+    : dayCards[d] ?? [])
+  const P = (id, team, d) => ({ id, name: player(id).name, team, courseHcp: player(id).courseHcp, gross: grossOnDay(cardsFor(id, d), id, holes) })
 
   if (event.style === 'ryder') {
     const byDay = {}

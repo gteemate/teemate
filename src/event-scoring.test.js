@@ -175,6 +175,28 @@ describe('events set up in advance', () => {
     expect(r.rows[1].tied).toBe(true)
   })
 
+  describe('tick-to-count events (entryRequired)', () => {
+    const A = { ...day1[0], id: 101 }, B = { ...day1[1], id: 102 }
+    const ev = { style: 'individual', fmt: 'stab', days: 1, players: [1, 2, 3, 4], team: {}, matches: {} }
+    const ticks = [{ day: 1, memberId: 1, roundId: 101 }]
+    it('an event that counts every card scores exactly the same whatever the ticks (history unchanged)', () => {
+      const before = scoreAdvanceEvent(ev, FLAT, { 1: [A, B] }, player, 1)
+      expect(scoreAdvanceEvent({ ...ev, entryRequired: false }, FLAT, { 1: [A, B] }, player, 1, ticks)).toEqual(before)
+    })
+    it('an event that needs ticking counts only the ticked cards', () => {
+      const r = scoreAdvanceEvent({ ...ev, entryRequired: true }, FLAT, { 1: [A, B] }, player, 1, ticks)
+      expect(r.rows.map(x => [x.name, x.pts, x.pos])).toEqual([['Declan', 5, 1], ['Aoife', 0, null], ['Ciarán', 0, null], ['Siobhán', 0, null]])
+    })
+    it('nothing ticked: nobody has a score yet', () => {
+      const r = scoreAdvanceEvent({ ...ev, entryRequired: true }, FLAT, { 1: [A, B] }, player, 1, [])
+      expect(r.rows.every(x => x.pos == null)).toBe(true)
+    })
+    it('a tick for another card that day does not count this one', () => {
+      const r = scoreAdvanceEvent({ ...ev, entryRequired: true }, FLAT, { 1: [A, B] }, player, 1, [{ day: 1, memberId: 2, roundId: 101 }])
+      expect(r.rows.find(x => x.name === 'Aoife').pos).toBeNull() // Aoife ticked a card she isn't on
+    })
+  })
+
   it('Individual net: lowest to par first', () => {
     const ev = { style: 'individual', fmt: 'net', days: 1, players: [1, 3], team: {}, matches: {} }
     const r = scoreAdvanceEvent(ev, FLAT, { 1: day1 }, player, 1)

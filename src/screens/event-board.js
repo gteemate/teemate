@@ -19,9 +19,9 @@ export async function loadBoard(id) {
     return { e, members, course, L: buildLibrary(games), entries, cards, me: await api.getMe() }
   }
   const dates = Array.from({ length: e.days }, (_, i) => addDaysIso(e.startDate, i))
-  const cards = await api.getCardsOn(dates)
+  const [cards, entries] = await Promise.all([api.getCardsOn(dates), e.entryRequired ? api.getEventEntries([e.id]) : []])
   const dayCards = Object.fromEntries(dates.map((d, i) => [i + 1, cards.filter(c => c.date === d)]))
-  return { e, members, course, L: buildLibrary(games), dayCards, me: await api.getMe() }
+  return { e, members, course, L: buildLibrary(games), dayCards, entries, me: await api.getMe() }
 }
 
 /** Which day of the event today is (1-based), clamped to the event's days. */
@@ -29,12 +29,12 @@ export const dayOf = e => Math.min(e.days, Math.max(1, Math.round((fromIso(isoDa
 
 export function boardHtml(data, top = '') {
   if (data.e.style === 'league') return leagueHtml(data, top)
-  const { e, members, course, L, dayCards, me } = data
+  const { e, members, course, L, dayCards, entries, me } = data
   const tee = teeRating(course)
   const m = id => members.find(x => x.id === id)
   const player = id => ({ name: m(id)?.name ?? 'Former member', courseHcp: courseHandicap(m(id)?.hcp ?? 0, tee) })
   const g = L.lib[EVENT_ALLOWANCE_GAME[e.fmt]]
-  const r = scoreAdvanceEvent(e, course.holes, dayCards, player, g?.pct == null ? 0 : g.pct / 100)
+  const r = scoreAdvanceEvent(e, course.holes, dayCards, player, g?.pct == null ? 0 : g.pct / 100, entries)
   const day = Math.min(S.evDay || dayOf(e), e.days)
   const thruText = n => (n === 18 ? 'Finished' : n ? `thru ${n}` : 'not started')
   const notYet = e.startDate > isoDate(today())
