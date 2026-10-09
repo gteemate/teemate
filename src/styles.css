@@ -97,7 +97,7 @@ h3{font-family:var(--display);font-size:21px;font-weight:600;letter-spacing:0;ma
 .search svg{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--muted)}
 .seg{display:grid;grid-template-columns:1fr 1fr;background:var(--sunk);border-radius:14px;padding:4px}
 .seg button{border:0;background:none;padding:9px;border-radius:11px;font-weight:700;font-size:14px;color:var(--muted);cursor:pointer}
-.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.seg button[aria-pressed="true"]{background:var(--gold);color:var(--on-gold);box-shadow:none}
 .list{display:flex;flex-direction:column;overflow:hidden}
 .lrow{display:grid;grid-template-columns:44px 1fr auto;gap:12px;align-items:center;padding:12px 14px;border-top:1px solid var(--line)}
 .lrow:first-child{border-top:0}
@@ -541,3 +541,20 @@ button.wlpill{cursor:pointer}
 .bklist .swipe{border-top:0;border-radius:20px} /* separate cards, not a lined list */
 .bklist .swdel{visibility:hidden;border-radius:20px} /* hidden behind the rounded card until you swipe */
 .bklist .swipe:has(.swrow[style*="translateX"]) .swdel{visibility:visible}
+
+/* Competitions */
+.comp{display:grid;gap:7px;text-align:left;color:var(--ink);font:inherit;cursor:pointer;padding:14px 16px}
+.comp .ct{font-family:var(--display);font-size:21px;line-height:1.2}
+.comp .row{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.comp.gold{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset}
+.comp .link{color:var(--gold);font-weight:700;font-size:14px}
+.pill.gold{background:var(--gold);color:var(--on-gold)}
+.pill.live{background:#1f3b33;color:var(--live)}
+.cprog{display:flex;gap:5px}
+.cprog i{flex:1;height:5px;border-radius:9px;background:var(--line)}
+.cprog i.wk-done{background:var(--gold)}
+.cprog i.wk-now{background:#8a7640}
+.seg.seg4{display:flex;flex-wrap:nowrap}
+.seg.seg4 button{flex:1;min-width:0;padding-inline:4px}
+.primary.sm{flex:0 0 auto;padding:8px 16px;font-size:14px;border-radius:12px}
+.ghost.dashed{background:none;border:1.5px dashed var(--gold);color:var(--gold)}

@@ -12,6 +12,14 @@ const times = e => e.groups.map(g => hhmm(g.time)).join(' v ')
 // As on the Scores tab: the group whose version is on the table, or the host group.
 const proposerSlot = e => e.proposerSlot ?? e.groups.find(g => g.host)?.slot
 
+/** A player event (match) invitation my group still has to answer (not one my group proposed). */
+export function needsMyAnswer(e, me) {
+  if (e.status !== 'pending') return false
+  const mySlot = e.players.find(p => p.memberId === me.id)?.slot
+  const mine = e.groups.find(g => g.slot === mySlot)
+  return !!mine && mySlot !== proposerSlot(e) && mine.answer == null
+}
+
 /**
  * Rows for Today, in order: an invitation my group must answer, my card (or my tee time if no card yet),
  * a match on today, a club event or league I'm playing in today.
@@ -20,10 +28,7 @@ const proposerSlot = e => e.proposerSlot ?? e.groups.find(g => g.host)?.slot
 export function todayItems({ me, card, teeTimes, playerEvents, events, date }) {
   const items = []
   const todays = playerEvents.filter(e => e.date === date)
-  for (const e of todays.filter(e => e.status === 'pending')) {
-    const mySlot = e.players.find(p => p.memberId === me.id)?.slot
-    const mine = e.groups.find(g => g.slot === mySlot)
-    if (!mine || mySlot === proposerSlot(e) || mine.answer != null) continue
+  for (const e of todays.filter(e => needsMyAnswer(e, me))) {
     items.push({ kind: 'invite', title: `Invitation from ${e.proposedBy.name}`, pill: { text: 'Answer', gold: true }, detail: times(e), go: { tab: 'scores' } })
   }
   if (card) {

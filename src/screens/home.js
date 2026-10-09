@@ -49,7 +49,7 @@ export function draw({ me, clubName, items, card, teeTimes, buddies }) {
   $('account').onclick = () => go(() => { S.aview = 'account' })
   const TILE = {
     booking: () => { S.aview = 'mine' },
-    comp: () => { S.tab = 'lb' },
+    comp: () => { S.aview = 'comp' },
     friends: () => { S.aview = 'buddies'; S.bseg = 'mine'; S.bfrom = null },
     scoring: () => { S.tab = 'scores'; S.sview = 'card' },
   }
