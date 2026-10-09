@@ -24,7 +24,6 @@ export async function load() {
   return { events, me, todayCard, matches: matches.filter(e => e.status === 'pending' || e.status === 'accepted') }
 }
 
-export const lastDay = eventLastDay
 export const canEdit = (e, me) => me.admin || (e.createdBy?.id === me.id && e.startDate > isoDate(today()))
 
 export function draw({ events: all, me, matches, todayCard: tc }) {
@@ -33,9 +32,9 @@ export function draw({ events: all, me, matches, todayCard: tc }) {
   const events = club ? all.filter(isClub) : all.filter(e => !isClub(e) || e.players.includes(me.id))
   header(club ? 'Club events' : 'Events', club ? 'Club-wide events and leagues' : 'Set up matches and competitions in advance', toAdmin)
   const t = isoDate(today())
-  const upcoming = events.filter(e => lastDay(e) >= t), done = events.filter(e => lastDay(e) < t).reverse()
+  const upcoming = events.filter(e => eventLastDay(e) >= t), done = events.filter(e => eventLastDay(e) < t).reverse()
   const card = e => {
-    const mine = e.createdBy?.id === me.id, playing = e.players.includes(me.id), live = e.startDate <= t && lastDay(e) >= t
+    const mine = e.createdBy?.id === me.id, playing = e.players.includes(me.id), live = e.startDate <= t && eventLastDay(e) >= t
     const pills = [
       live ? '<span class="pill" style="background:var(--win)">On now</span>' : '',
       e.club ? `<span class="pill" style="background:var(--loss)">Club event${e.everyone ? '' : ' · entrants only'}</span>` : '',
@@ -44,7 +43,7 @@ export function draw({ events: all, me, matches, todayCard: tc }) {
         : `<span class="pill ghosty">${e.players.length} players${e.style !== 'individual' ? ` · ${esc(e.A.name)} v ${esc(e.B.name)}` : ''}</span>`,
     ].join('')
     return `<div class="card evcard"><div class="who"><strong>${esc(e.name)}</strong><small>${EVENT_TYPES[e.style].name} · ${e.style === 'league' ? `${e.weeks} weeks from ${eventDates(e.startDate, 1)}` : eventDates(e.startDate, e.days)}</small><div class="pillrow">${pills}</div></div>
-      <div class="peacts"><button class="linkbtn" data-view="${e.id}">${lastDay(e) < t ? 'Results' : 'View'}</button>${canEdit(e, me) ? `<button class="linkbtn" data-edit="${e.id}">Edit</button>` : ''}</div></div>`
+      <div class="peacts"><button class="linkbtn" data-view="${e.id}">${eventLastDay(e) < t ? 'Results' : 'View'}</button>${canEdit(e, me) ? `<button class="linkbtn" data-edit="${e.id}">Edit</button>` : ''}</div></div>`
   }
   $('main').innerHTML = `<div class="screen">
     ${club ? '<div class="bk-btns"><button class="primary" id="newev">+ New club event</button><button class="primary" id="newlg">+ New league</button></div>' : '<button class="primary" id="newev">+ New event</button>'}
