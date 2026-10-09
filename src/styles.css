@@ -110,7 +110,7 @@ h3{font-size:20px;font-weight:800;letter-spacing:-.01em;margin:8px 0 -4px}
 .add.on{background:var(--green);color:var(--on-green)}
 .empty-state{padding:28px 16px;text-align:center;color:var(--muted);font-size:15px;line-height:1.5}
 /* tab bar: text only */
-nav.tabs{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line);background:var(--surface);padding:14px 2px calc(16px + env(safe-area-inset-bottom,0px));flex-shrink:0}
+nav.tabs{display:flex;justify-content:space-evenly;border-top:1px solid var(--line);background:var(--surface);padding:14px 2px calc(16px + env(safe-area-inset-bottom,0px));flex-shrink:0}
 nav.tabs button{background:none;border:0;font-weight:600;font-size:16px;color:var(--muted);cursor:pointer;padding:4px 0;white-space:nowrap}
 nav.tabs button[aria-current="page"]{color:var(--loss);font-weight:800}
 /* confirmation + toast */
