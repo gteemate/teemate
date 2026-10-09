@@ -23,16 +23,24 @@ if (!token || !ref) {
   process.exit(1)
 }
 
-export async function query(sql) {
-  const res = await fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ query: sql }),
-  })
+// The Management API throttles bursts (429); wait and retry rather than fail half-way (e.g. mid clean-up).
+export async function query(sql, tries = 6) {
+  for (let i = 1; ; i++) {
+    const res = await send(sql)
+    if (res.status !== 429 || i === tries) return read(res)
+    await new Promise(r => setTimeout(r, 2000 * i))
+  }
+}
+const read = async res => {
   const body = await res.text()
   if (!res.ok) throw new Error(`${res.status}: ${body}`)
   return JSON.parse(body)
 }
+const send = sql => fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query: sql }),
+  })
 
 const sqlFiles = dir => (existsSync(dir) ? readdirSync(dir).filter(f => f.endsWith('.sql')).sort() : [])
 
@@ -75,7 +83,16 @@ async function test() {
 
 // Real concurrency: many simultaneous requests (separate connections) racing for the same
 // spaces and the same guest points. Creates temporary logins and tee times, then removes them.
+// Everything race() creates, so a run that died part-way is cleared by the next one.
+const raceSlots = (t = '') => `(${t}date = current_date + 12 and (${t}start_time between 1 and 13 or ${t}start_time between 300 and 350 or ${t}start_time between 400 and 450))
+  or (${t}date between current_date + 13 and current_date + 24 and ${t}start_time = 1)`
+const raceCleanUp = () => query(`
+  delete from public.guest_visits where booking_player_id in (select bp.id from public.booking_players bp join public.tee_slots s on s.id = bp.slot_id where ${raceSlots('s.')});
+  delete from public.tee_slots where ${raceSlots()};
+  delete from auth.users where email like 'race-%@example.invalid';`)
+
 async function race() {
+  await raceCleanUp()
   const tag = `race-${Date.now()}`
   const ids = await query(`
     insert into auth.users (id, email, aud, role)
@@ -84,10 +101,19 @@ async function race() {
      where u.email = '${tag}-' || m.id || '@example.invalid' and m.user_id is null;
     insert into public.tee_slots (course_id, date, start_time) select 1, current_date + 12, i from generate_series(1, 13) i
       on conflict do nothing;
+    insert into public.tee_slots (course_id, date, start_time) select 1, current_date + 12, 300 + 10 * i from generate_series(0, 5) i
+      on conflict do nothing;
+    insert into public.tee_slots (course_id, date, start_time) select 1, current_date + 13 + i, 1 from generate_series(0, 11) i
+      on conflict do nothing;
+    insert into public.tee_slots (course_id, date, start_time) select 1, current_date + 12, 400 + 10 * i from generate_series(0, 5) i
+      on conflict do nothing;
     select (select json_agg(json_build_object('m', m.id, 'uid', m.user_id) order by m.id) from public.members m
              join auth.users u on u.id = m.user_id where u.email like '${tag}-%') as users,
-           (select json_agg(id order by start_time) from public.tee_slots where date = current_date + 12 and start_time between 1 and 13) as slots;`)
-  const { users, slots } = ids[0]
+           (select json_agg(id order by start_time) from public.tee_slots where date = current_date + 12 and start_time between 1 and 13) as slots,
+           (select json_agg(id order by start_time) from public.tee_slots where date = current_date + 12 and start_time between 300 and 350) as close,
+           (select json_agg(id order by date) from public.tee_slots where date between current_date + 13 and current_date + 24 and start_time = 1) as days,
+           (select json_agg(id order by start_time) from public.tee_slots where date = current_date + 12 and start_time between 400 and 450) as mine;`)
+  const { users, slots, close, days, mine } = ids[0]
   const as = (uid, call) => query(`begin;
     select set_config('request.jwt.claims', '{"sub":"${uid}","role":"authenticated"}', true);
     set local role authenticated;
@@ -103,16 +129,30 @@ async function race() {
 
     const declan = users.find(u => u.m === 1)
     const [{ before }] = await query(`select coalesce(sum(points), 0)::int as before from public.guest_visits where member_id = 1 and date_trunc('year', date) = date_trunc('year', current_date + 12)`)
-    console.log(`\n2. Declan has ${36 - before} guest points; 12 one-guest bookings (3 pts each) on different times, all at once`)
-    const r2 = await Promise.all(slots.slice(1, 13).map(s => as(declan.uid, `public.book_tee_time(${s}, '{}', '[{"name":"Race Guest"}]')`)))
+    console.log(`\n2. Declan has ${36 - before} guest points; 12 one-guest bookings (3 pts each) on 12 different days, all at once`)
+    const r2 = await Promise.all(days.map(s => as(declan.uid, `public.book_tee_time(${s}, '{}', '[{"name":"Race Guest"}]')`)))
     const [{ used }] = await query(`select sum(points)::int as used from public.guest_visits where member_id = 1 and date_trunc('year', date) = date_trunc('year', current_date + 12)`)
-    console.log(`    ${tally(r2)}\n    ${used === 36 ? '✓' : '✗'} points used this year: ${used} of 36 (must not exceed 36)`)
-    return n === 4 && used === 36
+    const pointsOk = used <= 36 && 36 - used < 3 // never over the allowance, and nothing left unused that a guest could have had
+    console.log(`    ${tally(r2)}\n    ${pointsOk ? '✓' : '✗'} points used this year: ${used} of 36 (must not exceed 36)`)
+
+    // Six people each book the same member onto a different tee time, 10 minutes apart, at the same moment.
+    // The 2-hour rule must let only one through, even when they all check at once.
+    const target = users[users.length - 1], bookers = users.slice(1, 7)
+    console.log(`\n3. Six members each book member ${target.m} onto a different tee time 10 minutes apart, at the same moment`)
+    const r3 = await Promise.all(bookers.map((u, i) => as(u.uid, `public.book_tee_time(${close[i]}, '{${target.m}}')`)))
+    const [{ times }] = await query(`select count(*)::int as times from public.booking_players where member_id = ${target.m} and slot_id in (${close.join(',')})`)
+    console.log(`    ${tally(r3)}\n    ${times <= 1 ? '✓' : '✗'} member ${target.m} is on ${times} of the six tee times (must be at most 1)`)
+
+    // One member books themselves and a guest onto six tee times 10 minutes apart, all at once (two phones,
+    // double taps). With a guest the booking waits on a lock after the 2-hour check, which opens the window.
+    const me = users[2]
+    console.log(`\n4. Member ${me.m} books themselves and a guest onto six tee times 10 minutes apart, all at once`)
+    const r4 = await Promise.all(mine.map(s => as(me.uid, `public.book_tee_time(${s}, '{}', '[{"name":"Race Guest"}]')`)))
+    const [{ own }] = await query(`select count(*)::int as own from public.booking_players where member_id = ${me.m} and slot_id in (${mine.join(',')})`)
+    console.log(`    ${tally(r4)}\n    ${own <= 1 ? '✓' : '✗'} member ${me.m} is on ${own} of the six tee times (must be at most 1)`)
+    return n === 4 && pointsOk && times <= 1 && own <= 1
   } finally {
-    await query(`
-      delete from public.guest_visits where booking_player_id in (select bp.id from public.booking_players bp join public.tee_slots s on s.id = bp.slot_id where s.date = current_date + 12 and s.start_time between 1 and 13);
-      delete from public.tee_slots where date = current_date + 12 and start_time between 1 and 13;
-      delete from auth.users where email like '${tag}-%';`)
+    await raceCleanUp()
     console.log('\n    Cleaned up test logins, tee times, bookings and points.')
   }
 }
