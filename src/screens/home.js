@@ -82,6 +82,7 @@ export function draw({ me, clubName, card, pill, tee, buddies, invites, answered
     scoring: () => { S.tab = 'scores'; S.sview = 'card' },
   }
   document.querySelectorAll('[data-tile]').forEach(b => (b.onclick = () => go(TILE[b.dataset.tile])))
+  $('hwx').onclick = () => go(() => { S.aview = 'weather' })
   // The weather fills in when it arrives (never holds up Home); nothing shows without a course location.
   getWeather(loc).then(w => {
     const b = $('hwx')

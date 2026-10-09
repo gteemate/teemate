@@ -4,7 +4,7 @@ import * as api from '../api.js'
 import { $, esc, header, render, toast } from '../ui.js'
 import { DEFAULT_THEME, applyTheme, isHex } from '../theme.js'
 import { toAdmin } from './nav.js'
-import { searchPlaces } from '../weather.js'
+import { searchPlaces, parseLatLon } from '../weather.js'
 
 export async function load() {
   return { saved: await api.getTheme() }
@@ -26,8 +26,8 @@ export function draw({ saved }) {
     </div>
     <div class="card evsec" id="locsec">
       <label for="loc-q">Course location</label>
-      <span class="hint">For the wind and rain at the top of Home. ${saved.coursePlace ? `Now: <b>${esc(saved.coursePlace)}</b> <button class="linkbtn" id="loc-clear">Clear</button>` : 'Not set, so no weather on Home.'}</span>
-      <div class="colrow"><input type="search" id="loc-q" class="plainsel" autocomplete="off" placeholder="Town or postcode, e.g. Portrush"><button class="ghost" id="loc-find">Find</button></div>
+      <span class="hint">For the wind and rain on Home. Paste a point from a map app to put it on the course itself. ${saved.coursePlace ? `Now: <b>${esc(saved.coursePlace)}</b> <button class="linkbtn" id="loc-clear">Clear</button>` : 'Not set, so no weather on Home.'}</span>
+      <div class="colrow"><input type="search" id="loc-q" class="plainsel" autocomplete="off" placeholder="Town, or a point like 55.2066, -6.6519"><button class="ghost" id="loc-find">Find</button></div>
       <div class="card list" id="loc-res" hidden></div>
     </div>
     <h3>Preview</h3>
@@ -68,6 +68,8 @@ export function draw({ saved }) {
   }
   const find = async () => {
     const box = $('loc-res')
+    const pin = parseLatLon($('loc-q').value) // a point pasted from a map app: right on the course
+    if (pin) return saveLoc(pin.lat, pin.lon, 'Pinned point')
     let found
     try { found = await searchPlaces($('loc-q').value) } catch (err) { toast(err.message); return }
     box.hidden = false
