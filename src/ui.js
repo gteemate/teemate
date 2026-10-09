@@ -52,7 +52,7 @@ export function header(title, sub, back, backLabel = 'Back') {
   if (go) $('back').onclick = go
 }
 
-const scroller = () => (matchMedia('(max-width:460px)').matches ? document.scrollingElement || document.documentElement : $('main'))
+const scroller = () => (matchMedia('(max-width:460px),(max-height:500px)').matches ? document.scrollingElement || document.documentElement : $('main'))
 export async function keepScroll(fn) {
   const st = scroller().scrollTop
   await fn()
