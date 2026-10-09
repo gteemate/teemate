@@ -24,6 +24,8 @@ create function t.hook(p_email text) returns jsonb language sql as $$
   select public.hook_before_user_created(jsonb_build_object('user', jsonb_build_object('email', p_email))) $$;
 grant execute on all functions in schema t to anon, authenticated;
 
+-- Member 0 (these tests' admin) was a sample member and isn't on the live list any more: add one, rolled back with the rest.
+insert into public.members (id, name, hcp_index) values (0, 'Gary', 12.4) on conflict (id) do nothing;
 -- Test logins: member 0 as an admin, member 1 as an ordinary member.
 insert into auth.users (id, email, aud, role)
   select gen_random_uuid(), 'access-test-' || i || '@example.invalid', 'authenticated', 'authenticated' from generate_series(0, 1) i;

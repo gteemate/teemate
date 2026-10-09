@@ -61,7 +61,9 @@ async function test() {
   let failed = 0
   for (const f of sqlFiles(dir)) {
     console.log(`\n${f}`)
+    // A file that errors part-way still counts as failed, and the remaining files still run.
     const rows = await query(readFileSync(join(dir, f), 'utf8'))
+      .catch(e => [{ ok: false, test: 'File stopped with an error', detail: e.message.replace(/\\n/g, ' ').slice(0, 300) }])
     for (const r of rows) {
       console.log(`  ${r.ok ? '✓' : '✗'} ${r.test}${r.ok ? '' : `  →  ${r.detail}`}`)
       if (!r.ok) failed++

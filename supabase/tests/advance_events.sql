@@ -18,6 +18,8 @@ end $$;
 create function t.done() returns void language plpgsql as $$ begin reset role; end $$;
 grant execute on all functions in schema t to anon, authenticated;
 
+-- Member 0 (these tests' admin) was a sample member and isn't on the live list any more: add one, rolled back with the rest.
+insert into public.members (id, name, hcp_index) values (0, 'Gary', 12.4) on conflict (id) do nothing;
 insert into auth.users (id, email, aud, role) select gen_random_uuid(), 'ev-test-' || i || '@example.invalid', 'authenticated', 'authenticated' from generate_series(0, 4) i;
 update public.members m set user_id = (select id from auth.users where email = 'ev-test-' || m.id || '@example.invalid') where m.id between 0 and 4;
 update public.members set admin = (id = 0) where id between 0 and 4;

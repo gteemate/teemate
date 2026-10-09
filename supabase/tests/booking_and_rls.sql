@@ -26,11 +26,14 @@ create function t.err(p_sql text) returns text language plpgsql as $$
 begin execute p_sql; return null; exception when others then return sqlerrm; end $$;
 -- Players on a test tee time, as the tee sheet shows them to any member (not limited by RLS).
 create function t.taken(p_slot bigint) returns int language sql as $$
-  select jsonb_array_length(x->'players') from jsonb_array_elements(public.get_tee_sheet(current_date + 10)) x where (x->>'id')::bigint = p_slot $$;
+  select jsonb_array_length(x->'players') from jsonb_array_elements(public.get_tee_sheet((select date from public.tee_slots where id = p_slot))) x
+   where (x->>'id')::bigint = p_slot $$;
 create function t.val(p_sql text) returns bigint language plpgsql as $$
 declare v bigint; begin execute p_sql into v; return v; end $$;
 grant execute on all functions in schema t to anon, authenticated;
 
+-- Member 0 (these tests' admin) was a sample member and isn't on the live list any more: add one, rolled back with the rest.
+insert into public.members (id, name, hcp_index) values (0, 'Gary', 12.4) on conflict (id) do nothing;
 -- Test logins for: Gary (0, admin), Declan (1), Aoife (2, no guest points left), Ciarán (3).
 insert into auth.users (id, email, aud, role)
   select gen_random_uuid(), 'rls-test-' || i || '@example.invalid', 'authenticated', 'authenticated' from generate_series(0, 3) i;
@@ -39,9 +42,19 @@ update public.members m set user_id = u.uid from t.users u where m.id = u.member
 update public.members set admin = (id = 0) where id between 0 and 3; -- test roles: Gary is the admin here
 
 -- Some tee times to book on, a few days out so nothing from the seed is on them.
-insert into public.tee_slots (course_id, date, start_time) select 1, current_date + 10, 600 + 10 * i from generate_series(0, 9) i;
-create view t.slot as select id, start_time from public.tee_slots where date = current_date + 10;
+-- Each test tee time on its own day, so the 2-hour rule between one member's tee times doesn't get in the way.
+-- t.slot is exactly the ones made here, never real tee times on those days.
+create table t.slot_ids (id bigint primary key);
+with made as (insert into public.tee_slots (course_id, date, start_time)
+  select 1, current_date + 10 + i, 600 + 10 * i from generate_series(0, 11) i returning id)
+insert into t.slot_ids select id from made;
+create view t.slot as select s.id, s.start_time from public.tee_slots s join t.slot_ids using (id);
 grant select on t.slot to anon, authenticated;
+-- Guest points to start from (as in the sample data, not whatever the real members have used):
+-- Declan (1) has used 6 in two visits, Aoife (2) all 36, Ciarán (3) 3, Gary (0) none.
+delete from public.guest_visits where member_id in (0, 1, 2, 3);
+insert into public.guest_visits (member_id, date, guest_name, course_id, points)
+  select m, current_date + 10, 'Test Guest', 1, 3 from unnest(array[1, 1, 3] || array_fill(2, array[12])) m;
 
 -- ------------------------------------------------------------------ anonymous visitors
 do $$ begin
