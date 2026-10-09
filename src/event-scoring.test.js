@@ -259,3 +259,35 @@ describe('drawing league teams', () => {
     expect(ids.some(id => a[id] !== b[id])).toBe(true)
   })
 })
+
+import { drawCaptains } from './event-scoring.js'
+describe('drawCaptains: one captain per team, at random, from the candidates', () => {
+  const seeded = (seed = 1) => () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646
+  const players = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+  it('picks one for each team, all different, all from the candidates', () => {
+    const c = drawCaptains([2, 4, 6, 8, 10], players, 3, seeded())
+    expect(c).toHaveLength(3)
+    expect(new Set(c).size).toBe(3)
+    c.forEach(id => expect([2, 4, 6, 8, 10]).toContain(id))
+  })
+  it('more candidates than teams: the rest are just not picked', () => {
+    const c = drawCaptains([1, 2, 3, 4, 5, 6], players, 2, seeded())
+    expect(c).toHaveLength(2)
+    expect(c.every(id => id != null)).toBe(true)
+  })
+  it('fewer candidates than teams: the remaining teams get no captain', () => {
+    const c = drawCaptains([3, 7], players, 4, seeded())
+    expect(c.filter(id => id != null).sort()).toEqual([3, 7])
+    expect(c.filter(id => id == null)).toHaveLength(2)
+  })
+  it('a candidate who is not an entrant, or is listed twice, counts once or not at all', () => {
+    const c = drawCaptains([99, 5, 5], players, 2, seeded())
+    expect(c.filter(id => id != null)).toEqual([5])
+  })
+  it('no candidates: no captains', () => expect(drawCaptains([], players, 3, seeded())).toEqual([null, null, null]))
+  it('draws differ from one go to the next', () => {
+    const pool = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    const draws = [1, 2, 3, 4, 5].map(s => drawCaptains(pool, players, 3, seeded(s)).join(','))
+    expect(new Set(draws).size).toBeGreaterThan(1)
+  })
+})

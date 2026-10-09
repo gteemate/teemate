@@ -294,3 +294,14 @@ export function drawTeams(ids, indexOf, nTeams, sizes, captains = [], rand = Mat
   }
   return out
 }
+
+/**
+ * Captains drawn at random from the candidates: [memberId | null] for each team. Only entrants count,
+ * each once; candidates beyond the number of teams aren't picked (they play as ordinary entrants), and
+ * with too few candidates the last teams get none.
+ */
+export function drawCaptains(pool, players, nTeams, rand = Math.random) {
+  const left = [...new Set(pool)].filter(id => players.includes(id))
+  for (let i = left.length - 1; i > 0; i--) { const j = Math.floor(rand() * (i + 1)); [left[i], left[j]] = [left[j], left[i]] }
+  return Array.from({ length: nTeams }, (_, k) => left[k] ?? null)
+}

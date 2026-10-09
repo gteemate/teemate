@@ -37,6 +37,14 @@ do $$ declare e text; lg bigint; r1 bigint; r2 bigint; w int; begin
   perform t.ok('Setup: an admin can create a league', lg is not null);
   perform t.done();
 
+  -- Captain candidates: saved with the league; captains are drawn from them in the app.
+  perform t.act_as(5);
+  update public.events set captain_pool = '{1,3,4}' where id = lg;
+  perform t.ok('Captains: the candidate list is saved with the league', (select captain_pool from public.events where id = lg) = '{1,3,4}'::bigint[]);
+  perform t.done();
+  perform t.ok('Captains: a new league starts with no candidates',
+    (select column_default from information_schema.columns where table_schema = 'public' and table_name = 'events' and column_name = 'captain_pool') like '''{}''%');
+
   -- Declan's card with Declan and Aoife (both in), and Peter (not in the league)
   perform t.act_as(1);
   insert into public.rounds (lineup, scores, done) values ('[{"m":1},{"m":2},{"m":7}]', '[]', (select jsonb_agg(false) from generate_series(1,18))) returning id into r1;
