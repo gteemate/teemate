@@ -46,3 +46,18 @@ describe('getWeather', () => {
     expect(f).toHaveBeenCalledTimes(2)
   })
 })
+
+import { searchPlaces } from './weather.js'
+describe('searchPlaces (Club admin → Course location)', () => {
+  it('names, where they are, and the map point', async () => {
+    const f = fetchOf({ results: [{ name: 'Portrush', admin1: 'Northern Ireland', country: 'United Kingdom', latitude: 55.2, longitude: -6.65 }] })
+    expect(await searchPlaces(' Portrush ', f)).toEqual([{ name: 'Portrush', detail: 'Northern Ireland, United Kingdom', lat: 55.2, lon: -6.65 }])
+    expect(f.mock.calls[0][0]).toContain('geocoding-api.open-meteo.com/v1/search?name=Portrush&count=5')
+  })
+  it('nothing found: an empty list', async () => expect(await searchPlaces('zzqx', fetchOf({}))).toEqual([]))
+  it('nothing typed: nothing asked', async () => {
+    const f = fetchOf({})
+    expect(await searchPlaces('  ', f)).toEqual([])
+    expect(f).not.toHaveBeenCalled()
+  })
+})

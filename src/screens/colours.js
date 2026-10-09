@@ -1,9 +1,10 @@
-// Account → Club name & colours: the club name on the membership card, and two hex codes that theme
-// the whole app for everyone. Colour changes preview live.
+// Account → Club name & colours: the club name on the membership card, two hex codes that theme
+// the whole app for everyone (colour changes preview live), and the course location for the weather on Home.
 import * as api from '../api.js'
 import { $, esc, header, render, toast } from '../ui.js'
 import { DEFAULT_THEME, applyTheme, isHex } from '../theme.js'
 import { toAdmin } from './nav.js'
+import { searchPlaces } from '../weather.js'
 
 export async function load() {
   return { saved: await api.getTheme() }
@@ -22,6 +23,12 @@ export function draw({ saved }) {
       ${row('accent', 'Accent colour', 'The selected tab, highlights and “they won the hole”', saved.accent)}
       <p class="gerr" id="cerr" role="alert"></p>
       <div class="bk-btns"><button class="ghost" id="reset">TeeMate defaults</button><button class="primary" id="csave">Save for everyone</button></div>
+    </div>
+    <div class="card evsec" id="locsec">
+      <label for="loc-q">Course location</label>
+      <span class="hint">For the wind and rain at the top of Home. ${saved.coursePlace ? `Now: <b>${esc(saved.coursePlace)}</b> <button class="linkbtn" id="loc-clear">Clear</button>` : 'Not set, so no weather on Home.'}</span>
+      <div class="colrow"><input type="search" id="loc-q" class="plainsel" autocomplete="off" placeholder="Town or postcode, e.g. Portrush"><button class="ghost" id="loc-find">Find</button></div>
+      <div class="card list" id="loc-res" hidden></div>
     </div>
     <h3>Preview</h3>
     <div class="card preview">
@@ -53,6 +60,29 @@ export function draw({ saved }) {
     for (const k of ['main', 'accent']) { $(`${k}-hex`).value = DEFAULT_THEME[k]; $(`${k}-pick`).value = DEFAULT_THEME[k] }
     preview()
   }
+  // Course location: search, tap a result to save it.
+  const saveLoc = async (lat, lon, place) => {
+    try { await api.setCourseLocation(lat, lon, place) } catch (err) { toast(err.message); return }
+    await render()
+    toast(place ? 'Course location saved' : 'Course location cleared')
+  }
+  const find = async () => {
+    const box = $('loc-res')
+    let found
+    try { found = await searchPlaces($('loc-q').value) } catch (err) { toast(err.message); return }
+    box.hidden = false
+    box.innerHTML = found.length
+      ? found.map((r, n) => `<button class="brow" data-loc="${n}"><span class="who"><strong>${esc(r.name)}</strong><small>${esc(r.detail)}</small></span><span class="chev">›</span></button>`).join('')
+      : '<div class="empty-state">No places match. Try the nearest town.</div>'
+    box.querySelectorAll('[data-loc]').forEach(b => (b.onclick = () => {
+      const r = found[+b.dataset.loc]
+      saveLoc(r.lat, r.lon, [r.name, r.detail].filter(Boolean).join(', '))
+    }))
+  }
+  $('loc-find').onclick = find
+  $('loc-q').onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); find() } }
+  if ($('loc-clear')) $('loc-clear').onclick = () => saveLoc(null, null, null)
+
   $('csave').onclick = async () => {
     const t = current()
     if (!isHex(t.main) || !isHex(t.accent)) { preview(); return }

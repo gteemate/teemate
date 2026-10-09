@@ -245,3 +245,36 @@ it through an admin-only function, and returns it from `get_theme`.
   (permission denied), not PGRST202. Curl `rpc/get_theme`. Expected: 200 with `courseLat`.
 - [ ] **Step 5: Commit** with "Alerts drop down from the header: Accept/Decline challenges, answered requests". Then
   report to the user and ask to push.
+
+### Task 7: Weather screen (added by the user mid-build)
+
+**Files:**
+- Modify: `src/weather.js` (hourly data), `src/weather.test.js`, `src/screens/home.js` (`#hwx` becomes a button)
+- Create: `src/screens/weather.js` (aview `'weather'`), routing in `src/main.js`
+- Modify: `src/screens/colours.js` (a typed `lat, lon` saves directly)
+
+**Interfaces:**
+- Produces:
+  - `readForecast(json, nowIso): { now: { windMph, gustMph, dir, rainMm }, hours: [{ time: 'HH:MM', windMph, gustMph, dir, rainMm, rainPct }] } | null`,
+    with only the hours from the current hour onwards. `dir` is the degrees the wind comes from.
+  - `compass(deg): 'N'|'NE'|…|'NW'`.
+  - `getForecast(loc, fetchFn, now)`: the same cache rules as `getWeather`. `getWeather` derives its value from it.
+  - `parseLatLon(text): { lat, lon } | null`.
+
+- [ ] **Step 1: Failing tests.**
+  - `readForecast` on a sample with hourly 00:00–23:00 and current time 14:00 returns hours starting `14:00`,
+    with mph rounded.
+  - Missing hourly gives `null`.
+  - `compass(225)` is `'SW'`, `compass(359)` is `'N'`, and `compass(22.4)` is `'N'` (8 points).
+  - `parseLatLon('55.2066, -6.6519')` gives `{ lat: 55.2066, lon: -6.6519 }`. `'Portrush'` and `'95, 0'` give `null`.
+- [ ] **Step 2:** Run the tests. Expected: FAIL.
+- [ ] **Step 3: Implement.**
+  - The forecast URL adds `current=wind_speed_10m,wind_gusts_10m,wind_direction_10m` and
+    `hourly=wind_speed_10m,wind_gusts_10m,wind_direction_10m,precipitation,precipitation_probability`.
+  - The Weather screen shows: "Now", then the map (a 3×3 OSM tile mosaic at zoom 15 around the location, inside a
+    square with overflow hidden, centred), with an SVG arrow rotated `dir + 180` (the way the wind blows) and the
+    credit. Then the hour-by-hour list.
+  - In Home, the `#hwx` button opens it.
+  - In colours.js, if `parseLatLon` matches the search text, save it directly as the place "Pinned point".
+- [ ] **Step 4:** Run the tests and build, then preview the Weather screen with a stubbed forecast at phone size.
+- [ ] **Step 5: Commit** with "Weather screen: wind direction over the course map, hour by hour".

@@ -48,6 +48,21 @@ right, "Hole 4 · +1" on Scoring).
 - New module `src/weather.js`: `weatherUrl(lat, lon)` and `readWeather(json)` return `{ windMph, rainMm }`
   (rounded, or `null` if the shape is wrong), plus a cached `getWeather()`.
 
+## 3b. Weather screen (tap the weather)
+
+Added by the user after the design was agreed: tapping the weather in the header opens a **Weather** screen
+(back arrow returns Home).
+- **Now:** wind speed, gusts and direction ("14 mph from the SW, gusts 22"), and rain today.
+- **Wind on the course:** a map of the area around the course location (OpenStreetMap tiles, credited
+  "© OpenStreetMap contributors"), with a large arrow over it showing which way the wind is blowing.
+- **Hour by hour, for the rest of today:** time, wind (an arrow + mph), gusts, rain (mm) and chance of rain (%), so
+  you can judge whether to stop after 9 holes. Rows with rain are tinted.
+- The data comes from one Open-Meteo request (current + hourly), kept for 30 minutes like the header.
+- The map tiles come from tile.openstreetmap.org (only the course area is requested). If they don't load, the arrow
+  shows on a plain background.
+- **Course location:** the search also accepts a pasted `lat, lon` (for example from a map app), so an admin can
+  put the point on the course itself rather than the town.
+
 ## 4. Alerts drop-down
 
 **What drops down** (most urgent first):

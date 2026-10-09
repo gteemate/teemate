@@ -42,3 +42,15 @@ export async function getWeather(loc, fetchFn = fetch, now = Date.now()) {
     return null
   }
 }
+
+/** Club admin → Course location: places matching what was typed (town or postcode), from Open-Meteo's place search.
+ *  → [{ name, detail: 'Region, Country', lat, lon }] (up to 5). Throws if the search service can't be reached. */
+export async function searchPlaces(q, fetchFn = fetch) {
+  const name = q.trim()
+  if (!name) return []
+  const res = await fetchFn(`https://geocoding-api.open-meteo.com/v1/search?${new URLSearchParams({ name, count: 5, language: 'en', format: 'json' })}`)
+  if (!res.ok) throw new Error('The place search isn’t answering. Try again in a minute.')
+  const { results = [] } = await res.json()
+  return results.filter(r => Number.isFinite(r.latitude) && Number.isFinite(r.longitude))
+    .map(r => ({ name: r.name, detail: [r.admin1, r.country].filter(Boolean).join(', '), lat: r.latitude, lon: r.longitude }))
+}
