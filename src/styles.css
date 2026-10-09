@@ -517,3 +517,9 @@ button.wlpill{cursor:pointer}
 .bookbtn{width:100%;border:0;border-radius:18px;background:var(--green);color:var(--on-green);font:700 17px var(--sys);padding:16px;cursor:pointer}
 .mbadge:focus-visible,.today button:focus-visible,.bookbtn:focus-visible{outline:2px solid var(--loss);outline-offset:2px}
 .homedate{color:var(--muted);font-size:15px;font-weight:600;padding-top:2px}
+
+/* Book tee times: a day not released yet — when it opens, a countdown in the last 24 hours */
+.relbanner{display:flex;flex-direction:column;gap:3px;padding:13px 15px;border-radius:16px;background:var(--leaf);border:1px solid var(--leaf-line);color:var(--ink)}
+.relbanner b{font-size:16px}
+.relbanner span{font-size:14px;color:var(--muted);font-variant-numeric:tabular-nums}
+.slot.notyet{opacity:.55}

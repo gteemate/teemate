@@ -3,9 +3,10 @@ import * as api from '../api.js'
 import { S } from '../state.js'
 import { $, esc, ini, header, keepScroll, top0, render, toast, parseHcp, fmtHcp } from '../ui.js'
 import { isoDate, nextDays, dayMonth, longDay, hhmm } from '../dates.js'
+import { nextFreeNote } from '../release.js'
 
 export async function load() {
-  const date = nextDays(7)[S.day]
+  const date = nextDays(S.day + 1)[S.day] // the day picked on Book tee times
   const [sheet, me, members, buddies, points] = await Promise.all([api.getTeeSheet(isoDate(date)), api.getMe(), api.getMembers(), api.getBuddies(), api.getGuestPoints()])
   return { date, slot: sheet.find(s => s.id === S.slotId), me, members, buddies, points }
 }
@@ -55,7 +56,12 @@ export function draw({ date, slot: s, me, members, buddies, points }) {
     try {
       S.lastBooking = await api.bookTeeTime({ slotId: s.id, memberIds: S.picked, guests: S.guests })
     } catch (err) {
-      toast(err.message)
+      let msg = err.message
+      if (/just been taken/.test(msg)) { // lost it in a rush: say where there's still room
+        const fresh = await api.getTeeSheet(isoDate(date)).catch(() => null)
+        if (fresh) msg += ` ${nextFreeNote(fresh.filter(x => x.id !== s.id), s.time, 1 + S.picked.length + S.guests.length)}`
+      }
+      toast(msg)
       await keepScroll(render) // show the latest spaces and points
       return
     }

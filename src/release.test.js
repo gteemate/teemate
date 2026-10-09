@@ -25,3 +25,13 @@ describe('countdown', () => {
   it('part seconds round up (never shows 0s while still closed)', () => expect(countdown(300)).toBe('Opens in 1s'))
   it('time\'s up', () => expect(countdown(0)).toBe('Opening…'))
 })
+
+import { nextFreeNote } from './release.js'
+describe('nextFreeNote: after a time goes in the rush, the next one with room', () => {
+  const slot = (time, taken, capacity = 4) => ({ time, capacity, players: Array(taken).fill({}) })
+  const sheet = [slot(480, 4), slot(490, 4), slot(500, 1), slot(510, 3), slot(470, 0)]
+  it('the next later time with room for the group', () => expect(nextFreeNote(sheet, 480, 2)).toBe('08:20 has 3 spaces.'))
+  it('one space is "1 space"', () => expect(nextFreeNote(sheet, 500, 1)).toBe('08:30 has 1 space.'))
+  it('room only earlier in the day: offers it', () => expect(nextFreeNote([slot(470, 0), slot(480, 4)], 480, 1)).toBe('07:50 has 4 spaces.'))
+  it('nothing with room for the group', () => expect(nextFreeNote([slot(480, 4), slot(490, 3)], 480, 2)).toBe('No times left that day for 2 players.'))
+})

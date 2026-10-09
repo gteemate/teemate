@@ -46,3 +46,16 @@ export function countdown(ms) {
   if (m) return `Opens in ${m}m ${String(s).padStart(2, '0')}s`
   return `Opens in ${s}s`
 }
+
+const hm = m => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
+/**
+ * After a time goes in the rush: "08:20 has 3 spaces." — the next later tee time with room for the group
+ * (or, failing that, the latest earlier one), or "No times left that day for 2 players."
+ */
+export function nextFreeNote(sheet, afterTime, groupSize) {
+  const room = s => s.capacity - s.players.length
+  const fits = [...sheet].filter(s => room(s) >= groupSize).sort((a, b) => a.time - b.time)
+  const pick = fits.find(s => s.time > afterTime) ?? fits.filter(s => s.time < afterTime).pop()
+  if (!pick) return `No times left that day for ${groupSize} player${groupSize === 1 ? '' : 's'}.`
+  return `${hm(pick.time)} has ${room(pick)} space${room(pick) === 1 ? '' : 's'}.`
+}

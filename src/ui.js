@@ -39,7 +39,7 @@ export function toast(t) {
   el.textContent = t
   el.hidden = false
   clearTimeout(toast.t)
-  toast.t = setTimeout(() => (el.hidden = true), 1900)
+  toast.t = setTimeout(() => (el.hidden = true), Math.max(1900, t.length * 60)) // longer messages stay up long enough to read
 }
 
 export function header(title, sub, back, backLabel = 'Back') {
