@@ -11,8 +11,10 @@ details already filled in. If the sender is a member of the reader's club, they 
 own and is not limited to their club.
 
 Agreed in chat:
-- A friend from another club is a **contact card only** (name, club, handicap, GUI number). It isn't used in
-  bookings or scorecards.
+- A friend from another club is a **contact card** (name, club, handicap, GUI number). In a booking or on a
+  scorecard they're added as a **guest**, with their details filled in and the usual guest points cost.
+- **Favourites** are a starred few of your friends (from your club or other clubs). They come first in the pickers.
+- Long member lists keep their Save/Next button in reach (section 6).
 - Someone who opens the link but isn't signed in sees the card and a **Sign in to save** button, and the app
   returns to the page after sign-in.
 - **Option 1:** the details travel in the link itself (after `#`, so they never reach a web server). There is no
@@ -57,12 +59,23 @@ The card shows initials, name, club, handicap index, GUI number and "Shared 10 O
 - After saving: toast, then Friends opens. The pending link is cleared once the page has been shown signed in.
 - If the link can't be read: "This link isn't complete. Ask them to share it again."
 
-## 3. Friends
+## 3. Friends and favourites
 
-The Friends screen's **Playing partners** shows club friends as now, then an **Other clubs** list. Each contact card
-shows initials, name, club, handicap index and "updated 10 Oct". Tapping a card opens it with a **Remove**
-button (tap again to confirm). Contact cards appear nowhere else: not in bookings, scorecards or player pickers.
-The Account tile counts both, for example "3 friends".
+- The Friends screen's **Friends** tab lists **Favourites** (starred) first, then **Your club**, then
+  **Other clubs**. Each row has a star to tap on or off.
+- Contact cards show initials, name, club, handicap index and "updated 10 Oct". Tapping one opens it with
+  **Remove** (tap again to confirm).
+- The Account and Home tiles count all friends, for example "3 friends".
+
+**In the pickers** (booking "Add to your group" and the scorecard's Choose players):
+- With no search typed: **Favourites**, then **Your friends** (club), then **Friends from other clubs**, then the
+  search box covers all members as now.
+- Picking a club friend adds them as a member, as now.
+- Picking an other-club friend opens the existing **Add a guest** form, filled in with their name, club, GUI and
+  handicap. The form shows the guest points cost ("Uses 3 points · 30 → 27 left"), and you tap **Add guest** to
+  confirm. If you don't have enough guest points left, these rows are greyed out with "not enough guest points",
+  like the guest button.
+- On a scorecard they're added through the existing guest route (`getGuests` / guest lineup entries).
 
 ## 4. Database
 
@@ -72,22 +85,42 @@ New table `public.friend_contacts`:
 - RLS: owner only for select, insert, update and delete (`owner = current_member_id()`). Grants only to
   `authenticated`.
 - Limits: name 1–80 characters, club up to 80, hcp up to 8, gui up to 20.
+- `favourite boolean not null default false`.
 
-API (`src/api/members.js`): `getContacts()`, `saveContact(card, id?)`, `removeContact(id)`.
-Club friends keep the existing `buddies` functions.
+`public.buddies` gains `favourite boolean not null default false`. Members can already change only their own rows,
+which is checked in the test.
+
+
+API (`src/api/members.js`): `getContacts()`, `saveContact(card, id?)`, `removeContact(id)`,
+`setFavourite({ memberId | contactId }, on)`. `getBuddies()` returns `[{ id, favourite }]`, and the screens that
+used plain ids are updated.
 
 ## 5. Testing
 
 - `src/friend-link.test.js`: round trip with accents, apostrophes and `&`; missing club, GUI or handicap; `+2.1`;
   missing `n` or `m`; `m` not a number; too long; every row of the section 2 table.
 - `supabase/tests/friend_contacts.sql`: owner adds, updates and removes; another member sees none and can't
-  change them; visitors can't read them; field limits.
+  change them; visitors can't read them; field limits; favourites on contacts and buddies, own rows only.
+- A pure `pickerGroups({ members, buddies, contacts, picked, q })` gives the picker's sections in order. It's
+  tested for favourites first, no duplicates, already-picked people left out, and search still covering all
+  members.
+- Booking: picking an other-club friend fills in the guest form. The cost and points left are shown, and the
+  row is greyed out when you're short of points.
 - Preview at phone size with sample data: the Add friend page in each state, Friends with Other clubs, and the
   Account card's new message.
 - Before pushing: curl the new table with the publishable key, expecting the permission error rather than a
   "table not found" error.
 
+## 6. Save within reach on long lists
+
+Screens with long member lists and a Save/Next button at the bottom: Choose players (`players.js`), event players,
+league teams and captains (`event-editor.js`), and the booking picker sheet.
+- The button moves into a bar fixed to the bottom of the screen (the scorecard's `.cta` style), always visible,
+  with a count of who is picked ("6 picked").
+- A search box is added at the top of any list over 15 names, where one isn't there already.
+- The page's last row is never hidden behind the bar (bottom padding equal to the bar's height).
+
 ## Not included
 
-Contact cards in bookings or scorecards, accounts at other clubs, live handicaps for other-club contacts, and a
+Accounts at other clubs, live handicaps for other-club contacts, and a
 way to switch off your link.
