@@ -3,13 +3,16 @@
 import * as api from '../api.js'
 import { S } from '../state.js'
 import { $, esc, ini, header, keepScroll, render, toast, fmtHcp, top0 } from '../ui.js'
-import { DN, fromIso, longDay, hhmm, isoDate, today } from '../dates.js'
+import { DN, MN, fromIso, longDay, hhmm, isoDate, today } from '../dates.js'
+import { requestStatus } from '../requests.js'
 import { bindSwipes, swipeSwallowsClick } from '../swipe.js'
 import { resetRound } from './scores.js'
 
 export async function load() {
-  const [bookings, me] = await Promise.all([api.getMyBookings(), api.getMe()])
-  return { bookings, me }
+  const [bookings, me, requests] = await Promise.all([api.getMyBookings(), api.getMe(), api.getMyTeeTimeRequests()])
+  if (requests.some(r => (r.status === 'approved' || r.status === 'declined') && !r.seen)) api.markTeeTimeRequestsSeen().catch(() => {}) // seen now: Home stops showing them
+  const recent = r => r.status === 'pending' || (r.decidedAt && Date.now() - Date.parse(r.decidedAt) < 30 * 864e5)
+  return { bookings, me, requests: requests.filter(recent) }
 }
 
 async function cancel(b) {
@@ -53,7 +56,7 @@ function details(b, me) {
   }
 }
 
-export function draw({ bookings, me }) {
+export function draw({ bookings, me, requests }) {
   S.reqMode = false // back at your bookings: Add a booking books; Request asks
   header('Booking', bookings.length ? `<b>${bookings.length}</b> coming up` : 'Nothing booked yet')
   const who = b => b.people.filter(p => p.inBooking).map(p => (p.memberId === me.id ? 'You' : p.name) + (p.guest ? ' (guest)' : '')).join(', ')
@@ -64,9 +67,21 @@ export function draw({ bookings, me }) {
         <div class="card bk swrow" data-swipe data-bk="${b.id}">${day(b)}<span class="bk-m"><span class="bk-t num">${hhmm(b.time)}</span><span class="sub">${esc(who(b))}</span></span>${b.mine ? '' : `<span class="pill">Booked by ${esc((b.bookedBy ?? 'a member').split(' ')[0])}</span>`}</div></div>`).join('')}</div>
       <div class="hint">Tap a booking to see who’s playing. Swipe it left to delete it${bookings.some(b => !b.mine) ? ', or to withdraw from one someone else made for you' : ''}. Guest points come back when you delete.</div>`
     : '<div class="empty-state">No upcoming rounds.<br>Add a booking and it will show here.</div>'}
+    ${requests.length ? `<span class="kicker">Requests</span><div class="bklist">${requests.map(r => {
+      const st = requestStatus(r), d = fromIso(r.date)
+      return `<div class="card bk req ${st.tone}"><span class="bk-d"><b class="num">${d.getDate()}</b><small>${MN[d.getMonth()]}</small></span>
+        <span class="bk-m"><span class="bk-t num">${hhmm(r.time)}</span><span class="sub">${esc(r.reason)}</span><span class="rqst">${esc(st.text)}</span></span>
+        ${r.status === 'pending' ? `<button class="linkbtn" data-rqc="${r.id}">Cancel</button>` : '<span></span>'}</div>`
+    }).join('')}</div>` : ''}
     <button class="primary" id="bt">+ Add a booking</button>
     <button class="ghost dashed" id="rq">Request a tee time further ahead</button></div>`
   const bt = $('bt')
+  document.querySelectorAll('[data-rqc]').forEach(b => (b.onclick = async () => {
+    if (b.dataset.armed !== '1') { b.dataset.armed = '1'; b.textContent = 'Tap again to cancel'; return }
+    b.disabled = true
+    try { await api.cancelTeeTimeRequest(+b.dataset.rqc) } catch (err) { toast(err.message); b.disabled = false; return }
+    await keepScroll(render); toast('Request cancelled')
+  }))
   if (bt) bt.onclick = async () => { S.reqMode = false; S.aview = 'tee'; await render(); top0() }
   $('rq').onclick = async () => { S.reqMode = true; S.reqDate = null; S.reqReason = ''; S.aview = 'tee'; await render(); top0() }
   bindSwipes()

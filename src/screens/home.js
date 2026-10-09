@@ -16,10 +16,10 @@ const ICON = {
 const svg = k => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICON[k]}</svg>`
 
 export async function load() {
-  const [me, theme, card, teeTimes, playerEvents, events, buddies] = await Promise.all([
-    api.getMe(), api.getTheme(), api.getCurrentRound(), api.getMyTeeTimes(today()), api.getMyPlayerEvents(), api.getEvents(), api.getBuddies(),
+  const [me, theme, card, teeTimes, playerEvents, events, buddies, requests] = await Promise.all([
+    api.getMe(), api.getTheme(), api.getCurrentRound(), api.getMyTeeTimes(today()), api.getMyPlayerEvents(), api.getEvents(), api.getBuddies(), api.getMyTeeTimeRequests(),
   ])
-  const items = todayItems({ me, card, teeTimes, playerEvents, events, date: isoDate(today()) })
+  const items = todayItems({ me, card, teeTimes, playerEvents, events, requests, date: isoDate(today()) })
   return { me, clubName: theme?.name ?? '', items, card, teeTimes, buddies }
 }
 
@@ -27,14 +27,14 @@ export function draw({ me, clubName, items, card, teeTimes, buddies }) {
   $('hdr').innerHTML = `<div class="homedate">${today().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}</div>`
   const { next, needs, more } = nextUp(items)
   const tee = teeTimes[0]
-  const invites = needs.filter(x => x.kind === 'invite').length
+  const invites = needs.filter(x => x.kind === 'invite').length, answered = needs.some(x => x.kind === 'request')
   const tile = (k, label, sub, cls = '') => `<button class="htile ${cls}" data-tile="${k}">${svg(k)}<span>${label}<small>${sub}</small></span></button>`
   const row = (x, n, cls) => `<button class="card hnext ${cls}" data-i="${n}"><span class="kick">${cls === 'needs' ? 'Needs you' : n === 0 ? 'Next up' : 'Also today'}</span>
     <span class="hnt">${esc(x.title)}</span><span class="sub">${esc(x.detail)}${x.pill && cls !== 'needs' ? ` · ${esc(x.pill.text)}` : ''}</span></button>`
   const list = [...needs.map(x => ['needs', x]), ...(next ? [['next', next]] : []), ...more.map(x => ['more', x])]
   $('main').innerHTML = `<div class="screen">
     <div class="hquad">
-      ${tile('booking', 'Booking', tee ? `${hhmm(tee.time)} today` : 'Book a tee time')}
+      ${tile('booking', 'Booking', answered ? 'Request answered' : tee ? `${hhmm(tee.time)} today` : 'Book a tee time', answered ? 'glow' : '')}
       ${tile('comp', 'Competition', invites ? `${invites} invitation${invites > 1 ? 's' : ''}` : 'Your competitions', `r${invites ? ' glow' : ''}`)}
       ${tile('friends', 'Friends', `${buddies.length} playing partner${buddies.length === 1 ? '' : 's'}`, 'b')}
       ${tile('scoring', 'Scoring', card ? 'Round on the go' : tee ? `${hhmm(tee.time)} today` : 'Start a round', 'r b')}
@@ -58,6 +58,7 @@ export function draw({ me, clubName, items, card, teeTimes, buddies }) {
   document.querySelectorAll('.hnext').forEach((b, n) => (b.onclick = () => go(() => {
     const g = all[n].go
     S.tab = g.tab
+    if (g.aview) S.aview = g.aview
     if (g.tab === 'scores') { S.sview = g.sview ?? 'card'; if (g.peId) S.peId = g.peId }
     if (g.lbv) S.lbv = g.lbv
   })))
