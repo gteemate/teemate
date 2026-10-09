@@ -3,7 +3,7 @@
 //   accent — selected tab, highlights, "they won" results (default maroon)
 
 export const DEFAULT_THEME = { main: '#19335A', accent: '#762A43' }
-const LIGHT_BG = '#ffffff', DARK_SURFACE = '#181d29', DARK_TEXT = '#151a26', LIGHT_TEXT = '#f4f6fb'
+const DARK_TEXT = '#151a26', LIGHT_TEXT = '#f4f6fb'
 
 const rgb = hex => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16))
 const hex = c => '#' + c.map(v => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, '0')).join('')
@@ -19,33 +19,34 @@ const contrast = (a, b) => { const [x, y] = [luminance(a), luminance(b)].sort((p
 export const textOn = bg => (contrast(bg, DARK_TEXT) >= contrast(bg, LIGHT_TEXT) ? DARK_TEXT : LIGHT_TEXT)
 export const isHex = s => /^#[0-9a-f]{6}$/i.test(s)
 
-/** CSS custom properties for light and dark mode. */
+// The navy look's background shades, darkest first. A club's main colour is shaded to the same darkness
+// as each, so it keeps its hue (a green club gets green-tinted backgrounds) and light text always reads.
+const NAVY = { '--sunk': '#0f1830', '--bg': '#141f3b', '--surface': '#1b2a4b', '--leaf': '#22325a', '--line': '#2b3c63' }
+/** c mixed towards black (or white, if c is darker) until its luminance is lum. */
+function shadeTo(c, lum) {
+  const to = luminance(c) > lum ? '#000000' : '#ffffff'
+  let lo = 0, hi = 1
+  for (let i = 0; i < 30; i++) {
+    const mid = (lo + hi) / 2, l = luminance(mix(c, to, mid))
+    if (to === '#000000' ? l > lum : l < lum) lo = mid; else hi = mid
+  }
+  return mix(c, to, hi)
+}
+
+/** CSS custom properties from the club's two colours: main shades the backgrounds, accent is the disc ring. */
 export function themeVars({ main, accent }) {
-  const light = {
-    '--green': main, '--pill': main, '--leaf-line': main, '--win': main, '--loss': accent,
-    '--leaf': mix(main, LIGHT_BG, 0.86),
-    '--on-green': textOn(main), '--on-win': textOn(main), '--on-loss': textOn(accent),
-    '--shadow': `${main}66`,
-    '--flag-front': accent, '--flag-back': main, // pin flags: the exact club colours in both modes
+  const isNavy = main.toUpperCase() === DEFAULT_THEME.main
+  const shades = Object.fromEntries(Object.entries(NAVY).map(([k, v]) => [k, isNavy ? v : shadeTo(main, luminance(v))]))
+  const accentText = mix(accent, '#ffffff', 0.45) // the accent as text or a highlight on navy
+  return {
+    ...shades,
+    '--ring': accent, '--loss': accentText, '--on-loss': textOn(accentText),
+    '--flag-front': accent, '--flag-back': luminance(main) < 0.2 ? shadeTo(main, 0.2) : main, // pin flags show on dark greens
   }
-  const dMain = mix(main, LIGHT_BG, 0.15), dLine = mix(main, LIGHT_BG, 0.55), dAccent = mix(accent, LIGHT_BG, 0.45)
-  const dark = {
-    '--green': dMain, '--pill': dMain, '--leaf-line': dLine, '--win': dLine, '--loss': dAccent,
-    '--leaf': mix(main, DARK_SURFACE, 0.6),
-    '--on-green': textOn(dMain), '--on-win': textOn(dLine), '--on-loss': textOn(dAccent),
-    '--shadow': '#00000099',
-    '--flag-front': accent, '--flag-back': main,
-  }
-  return { light, dark }
 }
 
 const block = vars => Object.entries(vars).map(([k, v]) => `${k}:${v}`).join(';')
-export function themeCss(theme) {
-  const { light, dark } = themeVars(theme)
-  return `:root{${block(light)}}
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){${block(dark)}}}
-:root[data-theme="dark"]{${block(dark)}}`
-}
+export const themeCss = theme => `:root{${block(themeVars(theme))}}`
 
 const KEY = 'teemates-theme'
 /** Apply a theme to the page (or the stylesheet defaults when it's the default theme). */

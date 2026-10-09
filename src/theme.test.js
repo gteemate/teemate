@@ -11,17 +11,28 @@ describe('club colours', () => {
     expect(textOn('#F2D21B')).toBe('#151a26') // yellow → dark text
     expect(textOn('#FFFFFF')).toBe('#151a26')
   })
-  it('derives light and dark shades from two colours', () => {
-    const { light, dark } = themeVars({ main: '#0B6E4F', accent: '#C9A227' })
-    expect(light['--green']).toBe('#0B6E4F')
-    expect(light['--loss']).toBe('#C9A227')
-    expect(luminance(light['--leaf'])).toBeGreaterThan(0.7) // pale tint for selected cards
-    expect(luminance(dark['--leaf-line'])).toBeGreaterThan(luminance(dark['--leaf'])) // outline stands out in dark mode
-    expect(light['--on-loss']).toBe('#151a26') // gold accent gets dark text
+  it('the default club colours give the navy palette exactly', () => {
+    const v = themeVars({ main: '#19335A', accent: '#762A43' })
+    expect([v['--sunk'], v['--bg'], v['--surface'], v['--leaf'], v['--line']]).toEqual(['#0f1830', '#141f3b', '#1b2a4b', '#22325a', '#2b3c63'])
+    expect(v['--ring']).toBe('#762A43') // the disc ring is the accent colour
   })
-  it('pin flags are the exact club colours in both modes: accent at the front, main at the back', () => {
-    const { light, dark } = themeVars({ main: '#0B6E4F', accent: '#C9A227' })
-    for (const m of [light, dark]) expect([m['--flag-front'], m['--flag-back']]).toEqual(['#C9A227', '#0B6E4F'])
+  it('any main colour makes backgrounds as dark as the navy ones, so light text always reads', () => {
+    for (const main of ['#9fd3c7', '#F2D21B', '#0B6E4F', '#000000', '#ffffff']) {
+      const v = themeVars({ main, accent: '#C9A227' })
+      const nav = themeVars({ main: '#19335A', accent: '#762A43' })
+      for (const k of ['--sunk', '--bg', '--surface', '--leaf', '--line']) expect(Math.abs(luminance(v[k]) - luminance(nav[k]))).toBeLessThan(0.004)
+      expect(textOn(v['--bg'])).toBe('#f4f6fb')
+    }
+  })
+  it('keeps the club\'s hue: a green club gets green-tinted backgrounds', () => {
+    const [r, g, b] = [1, 3, 5].map(i => parseInt(themeVars({ main: '#0B6E4F', accent: '#C9A227' })['--bg'].slice(i, i + 2), 16))
+    expect(g).toBeGreaterThan(r)
+    expect(g).toBeGreaterThan(b)
+  })
+  it('pin flags: the accent at the front; the back flag a lighter main so it shows on dark backgrounds', () => {
+    const v = themeVars({ main: '#0B6E4F', accent: '#C9A227' })
+    expect(v['--flag-front']).toBe('#C9A227')
+    expect(luminance(v['--flag-back'])).toBeGreaterThan(0.15)
   })
   it('only accepts 6-digit hex', () => {
     expect([isHex('#19335A'), isHex('19335A'), isHex('#1935A'), isHex('green')]).toEqual([true, false, false, false])

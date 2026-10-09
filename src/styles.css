@@ -1,21 +1,19 @@
-/* Layout: phone app shell matching the member's existing app — off-white ground, heavy system headings, leaf-green cards, text-only tab bar */
+/* Layout: phone app shell in the club's navy (main colour) with gold for actions and "needs you", a cream
+   badge ringed in the accent colour, serif titles and big numbers. One look for everyone (no light mode). */
 :root{
-  --bg:#f4f4f7; --surface:#ffffff; --sunk:#e9eaf0; --ink:#151a26; --muted:#676c7a; --line:#dfe2ea;
-  --green:#19335A; --on-green:#f4f6fb; --leaf:#dfe6f1; --leaf-2:#ffffff; --leaf-line:#19335A; --pill:#19335A;
-  --win:#19335A; --loss:#762A43; --full:#c6cad5; --on-win:#ffffff; --on-loss:#ffffff; --shadow:rgba(25,51,90,.4);
-  --flag-front:#762A43; --flag-back:#19335A; /* pin flags: the club colours, same in dark mode */
+  --sunk:#0f1830; --bg:#141f3b; --surface:#1b2a4b; --leaf:#22325a; --line:#2b3c63;  /* from the club's main colour (theme.js) */
+  --ink:#e8ecf5; --muted:#9aa7c4;
+  --gold:#e3c375; --on-gold:#1a1606; --cream:#f3efe7; --live:#7fcca2;
+  --ring:#762A43;                                                                    /* the club's accent colour */
+  --green:var(--gold); --on-green:var(--on-gold); --leaf-2:var(--surface); --leaf-line:var(--gold);
+  --pill:var(--leaf); --on-pill:var(--ink);
+  --win:var(--gold); --on-win:var(--on-gold); --loss:#c27a8f; --on-loss:#151a26; --full:#3a4664; --shadow:rgba(0,0,0,.5);
+  --flag-front:#762A43; --flag-back:#6f8fd8; /* pin flags: accent at the front, a light main at the back */
   --rough:#6f9c55; --fair:#a3cf7c; --putt:#c6e9a4;
-  --sys:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
-  --serif:"Cinzel",Georgia,"Times New Roman",serif; --script:"Pinyon Script","Snell Roundhand",cursive;
+  --sys:"Source Sans 3",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --display:"Source Serif 4",Georgia,"Times New Roman",serif; --serif:var(--display);
+  color-scheme:dark;
 }
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
-  --bg:#0f121a; --surface:#181d29; --sunk:#202636; --ink:#eef0f6; --muted:#9ba1b2; --line:#2a3142;
-  --green:#2d548f; --on-green:#f4f6fb; --leaf:#22324d; --leaf-2:#181d29; --leaf-line:#8fb0e6; --pill:#2d548f;
-  --win:#8fb0e6; --loss:#e58aa6; --full:#3a4152; --on-win:#151a26; --on-loss:#151a26; --shadow:rgba(0,0,0,.6); color-scheme:dark}}
-:root[data-theme="dark"]{
-  --bg:#0f121a; --surface:#181d29; --sunk:#202636; --ink:#eef0f6; --muted:#9ba1b2; --line:#2a3142;
-  --green:#2d548f; --on-green:#f4f6fb; --leaf:#22324d; --leaf-2:#181d29; --leaf-line:#8fb0e6; --pill:#2d548f;
-  --win:#8fb0e6; --loss:#e58aa6; --full:#3a4152; --on-win:#151a26; --on-loss:#151a26; --shadow:rgba(0,0,0,.6); color-scheme:dark}
 *{box-sizing:border-box}
 body{background:var(--sunk);color:var(--ink);font-family:var(--sys);font-size:15px;padding-inline:16px;padding-block:24px}
 .wrap{display:flex;gap:40px;justify-content:center;align-items:flex-start;flex-wrap:wrap}
@@ -30,13 +28,13 @@ body{background:var(--sunk);color:var(--ink);font-family:var(--sys);font-size:15
 button{font-family:var(--sys)}
 button:focus-visible,input:focus-visible{outline:2px solid var(--leaf-line);outline-offset:2px}
 header.top{padding:22px 20px 8px;flex-shrink:0}
-.top h2{font-size:34px;font-weight:800;letter-spacing:-.025em;margin:0;line-height:1.05}
+.top h2{font-family:var(--display);font-size:32px;font-weight:400;letter-spacing:0;margin:0;line-height:1.1}
 .top .sub{color:var(--muted);font-size:16px;margin-top:6px}
 .top .sub b{color:var(--ink);font-weight:700}
 .back{background:none;border:0;color:var(--muted);font-size:15px;font-weight:600;padding:4px 0;margin-bottom:6px;cursor:pointer}
 main{flex:1;overflow-y:auto;min-height:0}
 .screen{padding:12px 16px 24px;display:flex;flex-direction:column;gap:14px}
-.card{background:var(--surface);border:1px solid var(--line);border-radius:22px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:20px}
 /* tee times */
 .dates{display:flex;gap:8px;overflow-x:auto;padding:6px 16px 4px;scrollbar-width:none;flex-shrink:0}
 .dates::-webkit-scrollbar{display:none}
@@ -61,7 +59,7 @@ main{flex:1;overflow-y:auto;min-height:0}
 .balls{display:flex;gap:4px}
 .ball{width:12px;height:12px;border-radius:50%;background:var(--leaf);border:1.5px solid var(--leaf-line)}
 .ball.taken{background:var(--full);border-color:var(--full)}
-.pill{display:inline-block;background:var(--pill);color:var(--on-green);font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap}
+.pill{display:inline-block;background:var(--pill);color:var(--on-pill);font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap}
 .tag{margin-left:6px;vertical-align:2px;font-size:10px}
 /* booking */
 .summary{display:grid;grid-template-columns:repeat(3,1fr);padding:14px 4px}
@@ -69,7 +67,7 @@ main{flex:1;overflow-y:auto;min-height:0}
 .summary div:first-child{border-left:0}
 .summary span{display:block;font-size:12px;color:var(--muted);font-weight:600}
 .summary b{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums}
-h3{font-size:20px;font-weight:800;letter-spacing:-.01em;margin:8px 0 -4px}
+h3{font-family:var(--display);font-size:21px;font-weight:600;letter-spacing:0;margin:8px 0 -4px}
 .players,.pick{display:flex;flex-direction:column;gap:8px}
 .pslot{display:grid;grid-template-columns:44px 1fr auto;gap:12px;align-items:center;padding:12px 14px;border-radius:18px;border:1.5px dashed var(--line);min-height:64px}
 .pslot.filled{border:2px solid var(--leaf-line);background:var(--leaf)}
@@ -496,11 +494,11 @@ button.wlpill{cursor:pointer}
 
 /* Home: a quiet date line instead of a big title; the membership badge in the club colours (tap for Account), Today rows, Book a tee time */
 .mbadge{display:flex;flex-direction:column;align-items:center;width:100%;border:0;cursor:pointer;text-align:center;font-family:var(--sys);
-  background:#f4f1ea;color:var(--flag-back);border-radius:22px;padding:18px 18px 15px;
-  box-shadow:inset 0 0 0 4px var(--flag-front),inset 0 0 0 6px #f4f1ea,inset 0 0 0 7px rgba(0,0,0,.12),0 6px 18px -10px var(--shadow)}
-.mb-club{font-family:var(--serif);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--flag-front);text-wrap:balance}
+  background:var(--cream);color:#16233b;border-radius:22px;padding:18px 18px 15px;
+  box-shadow:inset 0 0 0 4px var(--ring),inset 0 0 0 6px var(--cream),inset 0 0 0 7px rgba(0,0,0,.12),0 6px 18px -10px var(--shadow)}
+.mb-club{font-family:var(--sys);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#5b3341;text-wrap:balance}
 .mb-nm{font-family:Georgia,"Times New Roman",serif;font-size:clamp(22px,7.2vw,27px);font-weight:600;line-height:1.15;margin-top:6px;text-wrap:balance;overflow-wrap:anywhere}
-.mb-rule{width:46px;height:2px;background:var(--flag-front);margin:9px auto}
+.mb-rule{width:46px;height:2px;background:var(--ring);margin:9px auto}
 .mb-fx{font-family:Georgia,"Times New Roman",serif;font-size:15px;color:#2b3550;font-variant-numeric:tabular-nums}
 .mb-fx>span{white-space:nowrap} /* break between the two facts, never inside one */
 .mb-more{margin-top:10px;font-size:12.5px;font-weight:600;color:#6b6f7c}
