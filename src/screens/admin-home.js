@@ -1,4 +1,4 @@
-// Account (opened from the membership card on Home): player tiles first, then a Club admin section
+// Account (opened from the membership card on Home; booking is on Home itself): player tiles first, then a Club admin section
 // (admins only), then account buttons.
 import * as api from '../api.js'
 import { S } from '../state.js'
@@ -9,26 +9,24 @@ import { buildLibrary } from '../games.js'
 
 export async function load() {
   const me = await api.getMe()
-  const [sheet, bookings, buddies, games, events, points, requests, matches] = await Promise.all([
-    api.getTeeSheet(isoDate(today())), api.getMyBookings(), api.getBuddies(), api.getGameSettings(), api.getEvents(), api.getGuestPoints(),
+  const [bookings, buddies, games, events, points, requests, matches] = await Promise.all([
+    api.getMyBookings(), api.getBuddies(), api.getGameSettings(), api.getEvents(), api.getGuestPoints(),
     me.admin ? api.getAccessRequests() : [],
     api.getMyPlayerEvents(),
   ])
   const live = events.filter(e => eventLastDay(e) >= isoDate(today()))
   // events set up in advance, plus matches set up on the day from the Scores tab
   const upcoming = live.filter(e => !e.club && e.style !== 'league').length + matches.filter(e => e.status === 'pending' || e.status === 'accepted').length, clubEvents = live.filter(e => e.club || e.style === 'league').length
-  return { me, sheet, bookings, buddies, L: buildLibrary(games), upcoming, clubEvents, points, requests }
+  return { me, bookings, buddies, L: buildLibrary(games), upcoming, clubEvents, points, requests }
 }
 
-export function draw({ me, sheet, bookings, buddies, L, upcoming, clubEvents, points, requests }) {
+export function draw({ me, bookings, buddies, L, upcoming, clubEvents, points, requests }) {
   header('Account', `Signed in as <b>${esc(me.name)}</b>`, async () => { S.aview = 'home'; await render(); top0() }, 'Home')
-  const avail = sheet.filter(s => s.players.length < s.capacity).length
   const used = points.mine.reduce((t, x) => t + x.points, 0), left = points.allowance - used
   const guests = Math.floor(left / points.cost)
   // Player items first (what every member sees), then admin-only items in one section at the end.
   $('main').innerHTML = `<div class="screen">
   <div class="agrid">
-    <button class="atile hero" data-a="tee"><span class="e">🗓️</span><b>Book tee times</b><span>${avail} times free today · add buddies and guests</span></button>
     <button class="atile" data-a="mine"><span class="e">📋</span><b>Bookings</b><span>${bookings.length ? `${bookings.length} upcoming` : 'Nothing booked yet'}</span></button>
     <button class="atile" data-a="buddies"><span class="e">👥</span><b>Buddies</b><span>${buddies.length} playing partner${buddies.length === 1 ? '' : 's'}</span></button>
     <button class="atile row" data-a="events"><span class="e">🏆</span><span class="rt"><b>Events</b><span>${upcoming ? `${upcoming} coming up · set one up for your group` : 'Set up a match or competition in advance'}</span></span></button>
