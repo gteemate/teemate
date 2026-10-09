@@ -327,22 +327,34 @@ export async function deleteRound(id) {
  * never touched can't overwrite someone's real score. My copy ends up as what was saved.
  * Where someone else typed a different score for the same player, it's added to round.checks
  * ({ i, k, mine, theirs, by, kept } in my view) so the app can ask for a second look.
+ * The write only goes through if nobody has saved since I read the card (the database stamps
+ * updated_at on every save); if someone has, read and merge again, so phones saving at the same
+ * moment on the green can't wipe each other's scores. 6 tries: a four-ball all saving at once needs 4.
  */
 export async function saveRound(round) {
-  let card = toStored(round)
+  const mine = toStored(round)
+  let card = mine
   const changed = new Set([...(round.changed ?? [])].map(c => { const [i, v] = c.split(':'); return `${i}:${round.perm ? round.perm[v] : v}` }))
+  const toRow = c => ({ lineup: c.lineup, slot_id: c.slotId ?? null, game: c.game, pairing: c.pairing, scores: c.scores, entered: c.entered ?? null, done: c.done, submitted: c.submitted })
   if (round.id) {
-    const cur = must(await sb.from('rounds').select('lineup, scores, entered, done, submitted').eq('id', round.id).maybeSingle())
-    if (cur && JSON.stringify(cur.lineup) === JSON.stringify(card.lineup)) {
-      const inv = round.perm ? round.perm.reduce((a, s, v) => ((a[s] = v), a), []) : null
-      round.checks = [...(round.checks ?? []), ...disagreements(card, cur, changed).map(d => ({ ...d, k: inv ? inv[d.k] : d.k }))]
-      card = mergeSaved(card, cur, changed)
+    for (let tries = 1; ; tries++) {
+      const cur = must(await sb.from('rounds').select('lineup, scores, entered, done, submitted, updated_at').eq('id', round.id).maybeSingle())
+      if (!cur) throw new Error('This card has been deleted by someone in your group.')
+      let checks = []
+      card = mine
+      if (JSON.stringify(cur.lineup) === JSON.stringify(mine.lineup)) {
+        const inv = round.perm ? round.perm.reduce((a, s, v) => ((a[s] = v), a), []) : null
+        checks = disagreements(mine, cur, changed).map(d => ({ ...d, k: inv ? inv[d.k] : d.k }))
+        card = mergeSaved(mine, cur, changed)
+      }
+      const saved = must(await sb.from('rounds').update(toRow(card)).eq('id', round.id)
+        .eq('updated_at', cur.updated_at) // only if nobody has saved since I read it
+        .select('updated_at').maybeSingle())
+      if (saved) { round.updatedAt = saved.updated_at; round.checks = [...(round.checks ?? []), ...checks]; break }
+      if (tries === 6) throw new Error('Your group is saving at the same time. Tap save again.')
     }
-  }
-  const row = { lineup: card.lineup, slot_id: card.slotId ?? null, game: card.game, pairing: card.pairing, scores: card.scores, entered: card.entered ?? null, done: card.done, submitted: card.submitted, updated_at: new Date().toISOString() }
-  if (round.id) round.updatedAt = must(await sb.from('rounds').update(row).eq('id', round.id).select('updated_at').single()).updated_at
-  else {
-    const r = must(await sb.from('rounds').insert({ ...row, date: todayIso() }).select('id, created_by, updated_at').single())
+  } else {
+    const r = must(await sb.from('rounds').insert({ ...toRow(card), date: todayIso() }).select('id, created_by, updated_at').single())
     Object.assign(round, { id: r.id, createdBy: r.created_by, updatedAt: r.updated_at })
   }
   const v = round.perm ? toView(card, round.lineup[0].m) : card
