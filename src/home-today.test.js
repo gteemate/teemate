@@ -85,3 +85,20 @@ describe('todayItems: what goes on Today', () => {
     expect(kinds(items)).toEqual(['invite', 'card', 'match', 'event'])
   })
 })
+
+import { nextUp } from './home-today.js'
+describe('nextUp: what Home leads with', () => {
+  const item = kind => ({ kind, title: kind, pill: null, detail: '', go: {} })
+  it('nothing on: nothing', () => expect(nextUp([])).toEqual({ next: null, needs: [], more: [] }))
+  it('invitations need you; the first other thing is next up; the rest follow', () => {
+    const r = nextUp([item('invite'), item('card'), item('match'), item('event')])
+    expect(r.needs.map(x => x.kind)).toEqual(['invite'])
+    expect(r.next.kind).toBe('card')
+    expect(r.more.map(x => x.kind)).toEqual(['match', 'event'])
+  })
+  it('only an invitation: it needs you, nothing is next up', () => {
+    const r = nextUp([item('invite')])
+    expect(r.next).toBeNull()
+    expect(r.needs).toHaveLength(1)
+  })
+})

@@ -42,3 +42,9 @@ export function todayItems({ me, card, teeTimes, playerEvents, events, date }) {
   }
   return items
 }
+
+/** What Home leads with: { next, needs, more } — invitations need you; the first other item is next up. */
+export function nextUp(items) {
+  const needs = items.filter(x => x.kind === 'invite'), rest = items.filter(x => x.kind !== 'invite')
+  return { next: rest[0] ?? null, needs, more: rest.slice(1) }
+}

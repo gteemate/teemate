@@ -32,6 +32,7 @@ export function draw({ me, rules, bookings, buddies, L, upcoming, clubEvents, po
     <button class="atile" data-a="mine"><span class="e">📋</span><b>Bookings</b><span>${bookings.length ? `${bookings.length} upcoming` : 'Nothing booked yet'}</span></button>
     <button class="atile" data-a="buddies"><span class="e">👥</span><b>Buddies</b><span>${buddies.length} playing partner${buddies.length === 1 ? '' : 's'}</span></button>
     <button class="atile row" data-a="events"><span class="e">🏆</span><span class="rt"><b>Events</b><span>${upcoming ? `${upcoming} coming up · set one up for your group` : 'Set up a match or competition in advance'}</span></span></button>
+    <button class="atile row" data-a="course"><span class="e">⛳</span><span class="rt"><b>Course guide</b><span>Every hole, tees and today's pins</span></span></button>
     <button class="atile row" data-a="mygames"><span class="e">🎯</span><span class="rt"><b>Games</b></span></button>
     <button class="atile row slim" data-a="points"><span class="e">🎟️</span><span class="rt"><b>Guest points</b><span>${left} of ${points.allowance} left · ${guests ? `enough for ${guests} guest${guests > 1 ? 's' : ''}` : 'none left this year'}</span></span></button>
   </div>
@@ -49,6 +50,7 @@ export function draw({ me, rules, bookings, buddies, L, upcoming, clubEvents, po
   $('signout').onclick = () => api.signOut()
   $('chpw').onclick = () => passwordSheet(ok => ok && toast('Password changed'))
   document.querySelectorAll('[data-a]').forEach(b => (b.onclick = async () => {
+    if (b.dataset.a === 'course') { S.tab = 'course'; await render(); top0(); return } // the guide outside a round
     S.aview = b.dataset.a
     if (S.aview === 'events') S.evScope = 'player'
     if (S.aview === 'clubevents') { S.evScope = 'club'; S.aview = 'events' }
