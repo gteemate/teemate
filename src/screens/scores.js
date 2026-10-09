@@ -273,10 +273,10 @@ export function getRound() {
 
 // No card yet today: start one from your tee time (all four, guests included), or pick buddies.
 function startScreen({ course, L, me, teeTimes, events }) {
-  header('Scores', 'Start today’s card')
-  const names = s => s.players.map(p => esc(p.memberId === me.id ? 'You' : p.name) + (p.guest ? ' <span class="pill tag">Guest</span>' : '')).join(', ')
+  header('New round', '')
+  const names = s => s.players.map(p => esc(p.memberId === me.id ? 'You' : p.name) + (p.guest ? ' (guest)' : '')).join(', ')
   $('main').innerHTML = `<div class="screen">${eventsTop(events, me)}
-    ${teeTimes.length ? teeTimes.map(s => `<button class="card evrow" data-slot="${s.id}"><span class="who"><strong>Start card for your ${hhmm(s.time)}</strong><small>${names(s)}</small></span><span class="pill">${s.players.length} players</span></button>`).join('')
+    ${teeTimes.length ? teeTimes.map(s => `<button class="card hnext" data-slot="${s.id}"><span class="kick">Your tee time today</span><span class="hnt num">${hhmm(s.time)}</span><span class="sub">${names(s)}</span></button>`).join('')
       : '<div class="empty-state">You’re not on a tee time today. Pick who you’re playing with instead.</div>'}
     <button class="ghost" id="pick">${teeTimes.length ? 'Pick players instead' : 'Pick players'}</button>
     <div class="hint">Cards are for 2 to 4 players. Better-ball games need four.</div>
@@ -287,9 +287,9 @@ function startScreen({ course, L, me, teeTimes, events }) {
     const lineup = lineupFromTeeTime(s, me.id)
     setRound(newRound(course, lineup, preferredGame(L, lineup.length), s.id))
     if (lineup.length === 4 && L.lib[round.game]?.play?.pairs) S.gmenu = true
+    S.sview = 'counts' // Scoring round? (leagues and events this card could count for)
     await render()
     top0()
-    toast(`Card started for your ${hhmm(s.time)}`)
   }))
   $('pick').onclick = async () => { S.pickTmp = []; S.sview = 'players'; await render(); top0() }
 }

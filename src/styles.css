@@ -558,3 +558,9 @@ button.wlpill{cursor:pointer}
 .seg.seg4 button{flex:1;min-width:0;padding-inline:4px}
 .primary.sm{flex:0 0 auto;padding:8px 16px;font-size:14px;border-radius:12px}
 .ghost.dashed{background:none;border:1.5px dashed var(--gold);color:var(--gold)}
+
+/* Scoring round?: tick the competitions this round counts for */
+.tick{display:grid;grid-template-columns:28px minmax(0,1fr);gap:14px;align-items:center;text-align:left;color:var(--ink);font:inherit;cursor:pointer;padding:14px 16px}
+.tick .box{width:28px;height:28px;border-radius:8px;border:2px solid var(--muted);display:grid;place-items:center;color:var(--on-gold);font-weight:800}
+.tick[aria-pressed="true"] .box{background:var(--gold);border-color:var(--gold)}
+.tick .tt{display:block;font-size:17px;font-weight:600}

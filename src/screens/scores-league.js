@@ -36,7 +36,9 @@ function answered() {
   if (S.lgLater === round) return true
   try { return round.id != null && localStorage.getItem(askedKey()) === '1' } catch { return false }
 }
-function markAnswered() { try { localStorage.setItem(askedKey(), '1') } catch { /* fine: it asks again */ } }
+function markAnswered() { markLeagueAsked(round.id) }
+/** The card's league question has been answered (on Scoring round?), so the sheet doesn't pop up again. */
+export function markLeagueAsked(roundId) { try { localStorage.setItem(`teemate.lgAsked.${roundId}`, '1') } catch { /* fine: it asks again */ } }
 
 function leagueSheet(leagues, entries, members) {
   const list = leagues.filter(e => leaguePlayers(e).length)

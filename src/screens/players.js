@@ -38,7 +38,7 @@ export function draw({ members, buddies, course, L, me, teeTimes }) {
       toast(msg)
     }
     S.pickTmp = null
-    S.sview = 'card'
+    S.sview = same ? 'card' : 'counts' // a new card asks what it counts for
     await render()
     top0()
   }
