@@ -31,6 +31,7 @@ import * as eventEditor from './screens/event-editor.js'
 import * as eventBoardScreen from './screens/event-board.js'
 import * as access from './screens/access.js'
 import * as myGames from './screens/my-games.js'
+import { checkAlerts } from './alert-bar.js'
 
 // Each screen exports an optional async load() and a sync draw(data).
 const ADMIN = { home, account: adminHome, tee: teeTimes, book: booking, booked, mine: bookings, buddies, pins, points, events, event: eventEditor, evboard: eventBoardScreen, access, colours, rules: bookingRules, comp: competitions, treq: teeRequests, mygames: myGames }
@@ -128,7 +129,11 @@ async function render() {
   $('app').classList.toggle('onhome', screen === home) // Home fills the screen, no scroll (a remote)
   screen.draw(data)
   drawRoundBar()
+  if (screen === login || $('app').classList.contains('signed-out')) $('alerts').innerHTML = ''
+  else checkAlerts()
 }
+// Back to the app from another app or the lock screen: anything new?
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && !$('app').classList.contains('signed-out')) checkAlerts() })
 setRender(render)
 
 // Club colours: last-seen ones straight away (no flash), then the current ones from the club.
