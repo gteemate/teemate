@@ -1,4 +1,5 @@
-// Admin tab home: player tiles first, then a Club admin section (admins only), then account buttons.
+// Account (opened from the membership card on Home): player tiles first, then a Club admin section
+// (admins only), then account buttons.
 import * as api from '../api.js'
 import { S } from '../state.js'
 import { $, esc, header, top0, render, toast } from '../ui.js'
@@ -20,7 +21,7 @@ export async function load() {
 }
 
 export function draw({ me, sheet, bookings, buddies, L, upcoming, clubEvents, points, requests }) {
-  header('Admin', `Signed in as <b>${esc(me.name)}</b>`)
+  header('Account', `Signed in as <b>${esc(me.name)}</b>`, async () => { S.aview = 'home'; await render(); top0() }, 'Home')
   const avail = sheet.filter(s => s.players.length < s.capacity).length
   const used = points.mine.reduce((t, x) => t + x.points, 0), left = points.allowance - used
   const guests = Math.floor(left / points.cost)
@@ -38,7 +39,7 @@ export function draw({ me, sheet, bookings, buddies, L, upcoming, clubEvents, po
   <div class="agrid">
     <button class="atile row" data-a="clubevents"><span class="e">🏆</span><span class="rt"><b>Club events</b><span>${clubEvents ? `${clubEvents} running or coming up · ` : ''}club-wide events and leagues</span></span></button>
     <button class="atile row" data-a="access"><span class="e">🔑</span><span class="rt"><b>Members &amp; access</b><span>${requests.length ? `<b class="reqcount">${requests.length} access request${requests.length > 1 ? 's' : ''}</b>` : 'Choose who can sign in'}</span></span></button>
-    <button class="atile row" data-a="colours"><span class="e">🎨</span><span class="rt"><b>Club colours</b><span>Two colours that theme the whole app</span></span></button>
+    <button class="atile row" data-a="colours"><span class="e">🎨</span><span class="rt"><b>Club name &amp; colours</b><span>The name on the membership card, and two colours that theme the app</span></span></button>
     <button class="atile row" data-a="pins"><span class="e">⛳</span><span class="rt"><b>Pins</b><span>Set today's flags</span></span></button>
   </div>` : ''}
   <h3>Your account</h3>

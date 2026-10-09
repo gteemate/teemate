@@ -51,6 +51,6 @@ export function draw({ members, buddies, course, L, me, teeTimes }) {
     S.pickTmp = t.includes(id) ? t.filter(x => x !== id) : [...t, id]
     keepScroll(render)
   }))
-  $('more').onclick = async () => { S.tab = 'admin'; S.aview = 'buddies'; S.bseg = 'find'; S.bfrom = 'players'; await render(); top0() }
+  $('more').onclick = async () => { S.tab = 'home'; S.aview = 'buddies'; S.bseg = 'find'; S.bfrom = 'players'; await render(); top0() }
   $('ok').onclick = () => start([{ m: me.id }, ...S.pickTmp.map(m => ({ m }))], null, 'New scorecard started')
 }

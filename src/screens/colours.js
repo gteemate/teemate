@@ -25,7 +25,7 @@ export function draw({ saved }) {
       <div class="darkcard"><div><small>Autumn Cup</small><b>Blues 2½ – 1½</b></div><span class="live">Live</span></div>
       <div class="row"><button class="primary" style="flex:0 0 auto;padding:12px 18px">Confirm booking</button><span class="pill">2 shots</span><span class="result-pill W">Your pair wins</span><span class="result-pill L">They win</span></div>
       <div class="pslot filled"><span class="av">GC</span><span class="who"><strong>Selected player</strong><small>Highlighted card</small></span><span></span></div>
-      <div class="tabs-demo"><span>Scores</span><span>Leaderboard</span><span>Course</span><b>Admin</b></div>
+      <div class="tabs-demo"><b>Home</b><span>Scores</span><span>Leaderboard</span><span>Course</span></div>
     </div>
     <div class="hint">Text on your colours switches between dark and light automatically so it stays readable. Dark mode uses lighter versions of both.</div>
   </div>`

@@ -1,7 +1,6 @@
 import './styles.css'
 import { S } from './state.js'
 import * as api from './api.js'
-import { today } from './dates.js'
 import { $, esc, header, setRender, toast, top0 } from './ui.js'
 import * as login from './screens/login.js'
 import * as colours from './screens/colours.js'
@@ -13,6 +12,8 @@ import * as eventLive from './screens/event-live.js'
 import * as leaderboard from './screens/leaderboard.js'
 import * as course from './screens/course.js'
 import * as adminHome from './screens/admin-home.js'
+import * as home from './screens/home.js'
+import { startTab } from './home-today.js'
 import * as teeTimes from './screens/tee-times.js'
 import * as booking from './screens/booking.js'
 import * as booked from './screens/booked.js'
@@ -27,21 +28,18 @@ import * as access from './screens/access.js'
 import * as myGames from './screens/my-games.js'
 
 // Each screen exports an optional async load() and a sync draw(data).
-const ADMIN = { home: adminHome, tee: teeTimes, book: booking, booked, mine: bookings, buddies, pins, points, events, event: eventEditor, evboard: eventBoardScreen, access, colours, mygames: myGames }
+const ADMIN = { home, account: adminHome, tee: teeTimes, book: booking, booked, mine: bookings, buddies, pins, points, events, event: eventEditor, evboard: eventBoardScreen, access, colours, mygames: myGames }
 function screenFor() {
   if (S.tab === 'scores') return S.sview === 'players' ? players : S.sview === 'challenge' ? challenge : S.sview === 'pevent' ? eventLive : scores
   if (S.tab === 'lb') return leaderboard
   if (S.tab === 'course') return course
-  return ADMIN[S.aview] || adminHome
+  return ADMIN[S.aview] || home
 }
 
-// When the app opens: Scores if you're playing today (a booking, or a card already on the go),
-// otherwise Admin. Chosen once per visit; after that the tabs stay where you put them.
+// When the app opens: Scores while you're mid-round (a hole saved on today's card, not finished),
+// otherwise Home. Chosen once per visit; after that the tabs stay where you put them.
 let startTabChosen = false
-async function chooseStartTab() {
-  const [teeTimes, card] = await Promise.all([api.getMyTeeTimes(today()), api.getCurrentRound()])
-  return teeTimes.length || card?.done.some(Boolean) ? 'scores' : 'admin'
-}
+const chooseStartTab = async () => startTab(await api.getCurrentRound())
 
 let seq = 0
 async function render() {
@@ -57,7 +55,7 @@ async function render() {
     if (!session) screen = login
     else if (!me) screen = { draw: () => login.drawNotMember({ email: session.user.email }) }
     else {
-      if (!startTabChosen) { startTabChosen = true; S.tab = await chooseStartTab(); if (S.tab === 'admin') S.aview = 'home' }
+      if (!startTabChosen) { startTabChosen = true; S.tab = await chooseStartTab(); if (S.tab === 'home') S.aview = 'home' }
       screen = screenFor()
     }
     document.querySelectorAll('nav.tabs button').forEach(b => b.setAttribute('aria-current', b.dataset.tab === S.tab ? 'page' : 'false'))
@@ -96,7 +94,7 @@ addEventListener('unhandledrejection', e => { console.error(e.reason); toast(e.r
 document.querySelectorAll('nav.tabs button').forEach(b => (b.onclick = async () => {
   const t = b.dataset.tab
   if (t === 'scores' && S.tab === 'scores') S.sview = 'card' // tapping Scores again leaves the player picker
-  if (t === 'admin') S.aview = 'home'
+  if (t === 'home') S.aview = 'home'
   S.tab = t
   S.gmodal = false
   await render()

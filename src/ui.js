@@ -42,8 +42,8 @@ export function toast(t) {
   toast.t = setTimeout(() => (el.hidden = true), 1900)
 }
 
-export function header(title, sub, back) {
-  $('hdr').innerHTML = `${back ? '<button class="back" id="back">‹ Back</button>' : ''}<h2>${title}</h2>${sub ? `<div class="sub">${sub}</div>` : ''}`
+export function header(title, sub, back, backLabel = 'Back') {
+  $('hdr').innerHTML = `${back ? `<button class="back" id="back">‹ ${backLabel}</button>` : ''}<h2>${title}</h2>${sub ? `<div class="sub">${sub}</div>` : ''}`
   if (back) $('back').onclick = back
 }
 
