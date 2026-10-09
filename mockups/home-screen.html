@@ -1,0 +1,332 @@
+<title>TeeMate Home Mock-up</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&display=swap">
+<style>
+/* Layout: one phone-width column like the app — a navy membership hero (disc + half-ring of four actions),
+   a "Today" list of what's live, club admin last, and the app's tab bar with Home in place of Admin. */
+:root{
+  --bg:#f4f4f7; --surface:#ffffff; --sunk:#e9eaf0; --ink:#151a26; --muted:#676c7a; --line:#dfe2ea;
+  --main:#19335A; --accent:#762A43; --on-main:#f4f6fb;
+  --hero:#132845; --wedge:#24406b; --wedge-ink:#e8edf6; --disc:#f7f5f0; --disc-ink:#19335A; --glow:#e7b84a;
+  --sys:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --serif:"Cinzel",Georgia,"Times New Roman",serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f121a; --surface:#181d29; --sunk:#0b0e14; --ink:#eef0f6; --muted:#9ba1b2; --line:#2a3142;
+  --main:#2d548f; --accent:#e58aa6; --on-main:#f4f6fb;
+  --hero:#101d33; --wedge:#22385c; --wedge-ink:#e8edf6; --disc:#f1eee6; --disc-ink:#19335A; --glow:#e7b84a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f121a; --surface:#181d29; --sunk:#0b0e14; --ink:#eef0f6; --muted:#9ba1b2; --line:#2a3142;
+  --main:#2d548f; --accent:#e58aa6; --on-main:#f4f6fb;
+  --hero:#101d33; --wedge:#22385c; --wedge-ink:#e8edf6; --disc:#f1eee6; --disc-ink:#19335A; --glow:#e7b84a; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--sunk);color:var(--ink);font-family:var(--sys);font-size:15px;padding-inline:16px;padding-block:20px}
+.note{max-width:420px;margin:0 auto 14px;color:var(--muted);font-size:13px;line-height:1.45}
+.note b{color:var(--ink)}
+.phone{max-width:420px;margin:0 auto;background:var(--bg);border-radius:34px;overflow:hidden;border:1px solid var(--line);box-shadow:0 20px 50px rgba(10,20,40,.18)}
+.scroll{padding:18px 16px 8px;display:flex;flex-direction:column;gap:14px}
+
+/* switch between the two hero layouts */
+.seg{display:flex;background:var(--sunk);border-radius:12px;padding:3px;gap:3px;max-width:420px;margin:0 auto 14px}
+.seg button{flex:1;border:0;background:transparent;color:var(--muted);font:600 14px var(--sys);padding:9px;border-radius:9px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.seg button:focus-visible,.today button:focus-visible,.tabs button:focus-visible{outline:2px solid var(--main);outline-offset:2px}
+
+/* hero */
+.hero{background:radial-gradient(120% 90% at 50% 100%,#1d3a63 0%,var(--hero) 70%);border-radius:26px;padding:16px 10px 18px;color:var(--on-main)}
+.hero .hi{display:flex;justify-content:space-between;align-items:baseline;padding:0 8px 4px;font-size:13px;opacity:.8}
+.arcwrap{position:relative;width:100%;max-width:360px;margin:0 auto}
+.arcwrap svg{display:block;width:100%;height:auto}
+.wedge{cursor:pointer}
+.wedge path{fill:var(--wedge);stroke:rgba(255,255,255,.08);stroke-width:1;transition:fill .15s}
+.wedge:hover path,.wedge:focus-visible path{fill:#2d4f82}
+.wedge:focus{outline:none}
+.wedge text{fill:var(--wedge-ink);font:600 13px var(--sys);text-anchor:middle}
+.wedge .ic{stroke:var(--wedge-ink);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.wedge.live path{fill:#2a2f3c;stroke:var(--glow);stroke-width:2;filter:drop-shadow(0 0 6px rgba(231,184,74,.55))}
+.wedge.live .ic{stroke:var(--glow)}
+.badge{fill:var(--glow)}
+.badge-t{fill:#1b1b1b;font:800 10px var(--sys);text-anchor:middle}
+.disc{position:absolute;left:50%;top:69.05%;transform:translate(-50%,-50%);width:54%;aspect-ratio:1;max-width:100%;border-radius:50%;
+  background:var(--disc);border:7px solid var(--accent);box-shadow:0 0 0 2px rgba(255,255,255,.25),0 10px 24px rgba(0,0,0,.35);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:var(--disc-ink);padding:10px}
+:root .disc{border-color:#762A43}
+.disc .nm{font-family:var(--serif);font-weight:700;font-size:clamp(15px,5vw,20px);line-height:1.1;text-wrap:balance}
+.disc .rule{width:34px;height:2px;background:#762A43;margin:7px 0}
+.disc .club{font-size:12px;font-weight:600}
+.disc .stats{font-size:12px;margin-top:5px;font-variant-numeric:tabular-nums;line-height:1.4}
+.disc .stats span{opacity:.7}
+
+/* grid alternative */
+.gridhero{display:none;flex-direction:column;align-items:center;gap:14px}
+.gridhero .disc{position:static;transform:none;width:62%;max-width:220px}
+.g4{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%}
+.g4 button{background:var(--wedge);color:var(--wedge-ink);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:12px;font:600 14px var(--sys);display:flex;align-items:center;gap:9px;cursor:pointer;text-align:left}
+.g4 button svg{flex:none}
+.g4 button.live{background:#2a2f3c;border-color:var(--glow);box-shadow:0 0 10px rgba(231,184,74,.35)}
+.g4 small{display:block;font-weight:500;opacity:.75;font-size:12px}
+.hero[data-mode="grid"] .arcwrap{display:none}
+.hero[data-mode="grid"] .gridhero{display:flex}
+
+/* today */
+h3{margin:6px 2px 0;font-size:19px;font-weight:800;letter-spacing:-.01em}
+.today{display:flex;flex-direction:column;gap:8px}
+.today button{display:grid;grid-template-columns:30px 1fr auto;align-items:center;gap:12px;width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:13px 14px;color:var(--ink);cursor:pointer;font-family:var(--sys)}
+.today .e{font-size:22px;text-align:center}
+.today strong{display:block;font-size:15px}
+.today small{display:block;color:var(--muted);font-size:13px;margin-top:2px;line-height:1.3}
+.today .go{color:var(--main);font-weight:700;font-size:14px}
+:root .today .go{color:var(--main)}
+.today .live{border-color:var(--accent)}
+.today .pill{display:inline-block;background:var(--accent);color:#fff;border-radius:999px;padding:1px 8px;font-size:11px;font-weight:700;margin-left:6px;vertical-align:1px}
+.today .slim{padding:9px 14px;border-radius:14px}
+.today .slim strong{font-size:14px;font-weight:600}
+.today .slim .e{font-size:16px}
+
+.admin{display:flex;flex-direction:column;gap:6px}
+.admin .hint{color:var(--muted);font-size:12px;font-weight:500}
+.admin .row{display:flex;flex-wrap:wrap;gap:6px}
+.admin .row span{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:8px 11px;font-size:13px;font-weight:600}
+
+.tabs{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line);background:var(--surface);padding:12px 6px calc(14px + env(safe-area-inset-bottom,0px))}
+.tabs button{background:none;border:0;font:600 15px var(--sys);color:var(--muted);cursor:pointer;padding:4px 0}
+.tabs button[aria-current="page"]{color:var(--accent)}
+
+.callouts{max-width:420px;margin:16px auto 0;display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted);line-height:1.45}
+.callouts b{color:var(--ink)}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;max-width:calc(100% - 32px)}
+.toast.on{opacity:1}
+
+/* simpler version */
+.card-m{position:relative;overflow:hidden;border-radius:20px;padding:16px 18px 15px;color:var(--on-main);
+  background:linear-gradient(135deg,#1d3a63 0%,var(--hero) 75%);border:1px solid rgba(255,255,255,.06)}
+.card-m::after{content:"";position:absolute;left:0;right:0;bottom:0;height:5px;background:#762A43}
+.card-m .top{display:flex;justify-content:space-between;align-items:center;font-size:11px;letter-spacing:.12em;text-transform:uppercase;opacity:.75}
+.card-m .nm{font-family:var(--serif);font-weight:700;font-size:22px;margin-top:10px;letter-spacing:.01em}
+.card-m .facts{display:flex;gap:22px;margin-top:8px;font-variant-numeric:tabular-nums}
+.card-m .facts div{display:flex;flex-direction:column;gap:1px}
+.card-m .facts small{font-size:10px;letter-spacing:.1em;text-transform:uppercase;opacity:.65}
+.card-m .facts b{font-size:17px}
+.card-m .facts .muted{font-size:13px;font-weight:600;opacity:.7}
+.shorts{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.shorts button{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:11px 4px 9px;display:flex;flex-direction:column;align-items:center;gap:5px;color:var(--ink);font:600 12.5px var(--sys);cursor:pointer;position:relative}
+.shorts svg{stroke:var(--main);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.shorts .dot{position:absolute;top:7px;right:12px;min-width:17px;height:17px;border-radius:9px;background:var(--accent);color:#fff;font-size:10.5px;font-weight:800;display:flex;align-items:center;justify-content:center;padding:0 4px}
+.shorts button:focus-visible,.vsw button:focus-visible{outline:2px solid var(--main);outline-offset:2px}
+.today .wait{border-color:var(--glow)}
+.today .pill.gold{background:var(--glow);color:#1b1b1b}
+.vsw{display:flex;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:4px;gap:4px;max-width:420px;margin:0 auto 12px}
+.vsw button{flex:1;border:0;background:transparent;color:var(--muted);font:700 14px var(--sys);padding:10px;border-radius:10px;cursor:pointer}
+.vsw button[aria-pressed="true"]{background:var(--main);color:var(--on-main)}
+
+button.card-m{display:block;width:100%;text-align:left;cursor:pointer;font-family:var(--sys)}
+button.card-m:focus-visible{outline:2px solid var(--glow);outline-offset:3px}
+.card-m .more{margin-top:12px;font-size:13px;font-weight:600;opacity:.85;display:flex;justify-content:space-between}
+.bookbtn{width:100%;border:0;border-radius:18px;background:var(--main);color:var(--on-main);font:700 17px var(--sys);padding:16px;cursor:pointer}
+.back{align-self:flex-start;background:none;border:0;color:var(--muted);font:600 15px var(--sys);padding:0;cursor:pointer}
+.ttl{margin:0;font-size:30px;font-weight:800;letter-spacing:-.02em}
+.sub{color:var(--muted);margin-top:-8px}
+.agrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.atile{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:16px;text-align:left;color:var(--ink);cursor:pointer;display:flex;flex-direction:column;gap:3px;min-width:0;font-family:var(--sys)}
+.atile .e{font-size:24px;margin-bottom:8px}
+.atile b{font-size:18px;font-weight:800}
+.atile span{color:var(--muted);font-size:13.5px;line-height:1.3}
+.atile.hero2{grid-column:1/-1;background:var(--main);border-color:var(--main);color:var(--on-main)}
+.atile.hero2 span{color:var(--on-main);opacity:.85}
+.atile.row{grid-column:1/-1;flex-direction:row;align-items:center;gap:12px;padding:13px 16px}
+.atile.row .e{margin:0}
+.atile .rt{display:flex;flex-direction:column;gap:2px;color:var(--ink)}
+.atile.slim{padding:9px 16px;border-radius:14px}
+.atile.slim .e{font-size:17px}
+.atile.slim b{font-size:14px;font-weight:600}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+
+<p class="note"><b>Mock-up only.</b> Nothing here is live yet. It uses your real details from the app. Tap things to see where they'd go.</p>
+
+<div class="vsw" role="group" aria-label="Which version">
+  <button id="v1" aria-pressed="true">Simpler</button>
+  <button id="v2" aria-pressed="false">Half-ring (first idea)</button>
+</div>
+
+<div id="v-simple">
+<div class="phone">
+  <div class="scroll" id="s-home">
+    <button class="card-m" id="to-admin" aria-label="Membership card. Opens bookings, buddies, events, games and your account">
+      <div class="top"><span>Your golf club</span><span>Member</span></div>
+      <div class="nm">Gareth Cochrane</div>
+      <div class="facts">
+        <div><small>Handicap index</small><b>54.0</b></div>
+        <div><small>GUI number</small><span class="muted">Not added</span></div>
+      </div>
+      <div class="more">Bookings, buddies, events &amp; account <span aria-hidden="true">›</span></div>
+    </button>
+
+    <h3>Today</h3>
+    <div class="today">
+      <button class="wait" data-say="Opens the invitation so you can accept, decline or suggest changes"><span class="e">🏆</span><span><strong>Invitation from Peter<span class="pill gold">Answer</span></strong><small>08:10 v your 07:50 · four-ball v four-ball · best 2 Stableford</small></span><span class="go">Open</span></button>
+      <button class="live" data-say="Opens your 9 points card on Scores"><span class="e">📝</span><span><strong>9 points (Stableford)<span class="pill">On the go</span></strong><small>You, Peter Reid, Jacqueline Cochrane · not started</small></span><span class="go">Open</span></button>
+      <button data-say="Opens the Winter League board"><span class="e">🏅</span><span><strong>Winter League · week 1</strong><small>Your round today can count · 10 teams</small></span><span class="go">Board</span></button>
+    </div>
+
+    <button class="bookbtn" data-say="Opens Book tee times">Book a tee time</button>
+  </div>
+  <div class="scroll" id="s-admin" hidden>
+    <button class="back" id="to-home">‹ Home</button>
+    <h2 class="ttl">Gareth Cochrane</h2>
+    <div class="sub">Handicap index 54.0 · Your golf club</div>
+    <div class="agrid">
+      <button class="atile hero2" data-say="Opens Book tee times"><span class="e">🗓️</span><b>Book tee times</b><span>35 times free today · add buddies and guests</span></button>
+      <button class="atile" data-say="Opens Bookings"><span class="e">📋</span><b>Bookings</b><span>Nothing booked yet</span></button>
+      <button class="atile" data-say="Opens Buddies"><span class="e">👥</span><b>Buddies</b><span>1 playing partner</span></button>
+      <button class="atile row" data-say="Opens Events"><span class="e">🏆</span><span class="rt"><b>Events</b><span>Your card, matches and events</span></span></button>
+      <button class="atile row" data-say="Opens My games"><span class="e">🎯</span><span class="rt"><b>Games</b></span></button>
+      <button class="atile row slim" data-say="Opens guest points"><span class="e">🎟️</span><span class="rt"><b>Guest points</b><span>36 of 36 left · enough for 12 guests</span></span></button>
+    </div>
+    <div class="admin">
+      <h3>Club admin <span class="hint">only admins see this</span></h3>
+      <div class="row"><span>🏆 Club events</span><span>🔑 Members &amp; access</span><span>🎨 Club colours</span><span>⛳ Pins</span></div>
+    </div>
+    <div class="admin">
+      <h3>Your account</h3>
+      <div class="row"><span>Change password</span><span>Sign out</span></div>
+    </div>
+  </div>
+  <nav class="tabs" aria-label="Tabs">
+    <button aria-current="page">Home</button><button data-say="Scores tab">Scores</button><button data-say="Leaderboard tab">Leaderboard</button><button data-say="Course tab">Course</button>
+  </nav>
+</div>
+<div class="callouts">
+  <div><b>Membership card:</b> slim, in the club colours. Tap it to open the old Admin section.</div>
+  <div><b>Today comes first.</b> Only what's live for you, and it changes through the day. The example invitation is made up to show how one would look.</div>
+  <div><b>Tap the card</b> for everything else: booking, bookings, buddies, events, games, guest points, club admin and your account. It replaces the Admin tab.</div>
+  <div><b>Book a tee time</b> stays on Home as one big button, since it's the thing people do most.</div>
+  <div><b>Club name:</b> "Your golf club" is a placeholder until you tell me the name.</div>
+</div>
+</div>
+
+<div id="v-ring" hidden>
+<div class="seg" role="group" aria-label="Hero layout">
+  <button id="m-arc" aria-pressed="true">Half-ring</button>
+  <button id="m-grid" aria-pressed="false">Grid (small phones)</button>
+</div>
+
+<div class="phone">
+  <div class="scroll">
+    <section class="hero" id="hero" data-mode="arc" aria-label="Your membership">
+      <div class="hi"><span>Friday 9 October</span><span>TeeMate</span></div>
+
+      <div class="arcwrap">
+        <svg viewBox="0 0 360 336" role="group" aria-label="Main actions">
+          <g id="wedges"></g>
+        </svg>
+        <div class="disc" aria-label="Membership card">
+          <div class="nm">Gareth Cochrane</div>
+          <div class="rule"></div>
+          <div class="club">Your golf club</div>
+          <div class="stats">Handicap index 54.0<br><span>GUI number not added</span></div>
+        </div>
+      </div>
+
+      <div class="gridhero">
+        <div class="disc" aria-label="Membership card">
+          <div class="nm">Gareth Cochrane</div>
+          <div class="rule"></div>
+          <div class="club">Your golf club</div>
+          <div class="stats">Handicap index 54.0<br><span>GUI number not added</span></div>
+        </div>
+        <div class="g4" id="g4"></div>
+      </div>
+    </section>
+
+    <h3>Today</h3>
+    <div class="today">
+      <button class="live" data-say="Opens your 9 points card on Scores"><span class="e">📝</span><span><strong>9 points (Stableford)<span class="pill">On the go</span></strong><small>You, Peter Reid, Jacqueline Cochrane · not started</small></span><span class="go">Open</span></button>
+      <button data-say="Opens Book tee times"><span class="e">🗓️</span><span><strong>No tee time today</strong><small>35 times free · next free 07:30</small></span><span class="go">Book</span></button>
+      <button data-say="Opens the Winter League board"><span class="e">🏆</span><span><strong>Winter League · week 1</strong><small>Your round today can count · 10 teams</small></span><span class="go">Board</span></button>
+      <button class="slim" data-say="Opens your guest points and guests"><span class="e">🎟️</span><span><strong>Guest points</strong><small>36 of 36 left · enough for 12 guests</small></span><span class="go">View</span></button>
+    </div>
+
+    <div class="admin">
+      <h3>Club admin <span class="hint">only admins see this</span></h3>
+      <div class="row"><span>🏆 Club events</span><span>🔑 Members &amp; access</span><span>🎨 Club colours</span><span>⛳ Pins</span></div>
+    </div>
+    <div class="admin">
+      <h3>Your account</h3>
+      <div class="row"><span>Change password</span><span>Sign out</span></div>
+    </div>
+  </div>
+  <nav class="tabs" aria-label="Tabs">
+    <button aria-current="page">Home</button><button data-say="Scores tab">Scores</button><button data-say="Leaderboard tab">Leaderboard</button><button data-say="Course tab">Course</button>
+  </nav>
+</div>
+
+<div class="callouts">
+  <div><b>Half-ring:</b> Book, Buddies, Matches and Scores. A wedge glows gold when something needs you. Here, Matches shows 1 invitation waiting.</div>
+  <div><b>Today:</b> only what's live for you: the card you're on, your next tee time, leagues, guest points. Each is one tap.</div>
+  <div><b>Home replaces the Admin tab.</b> Club admin and your account sit further down.</div>
+  <div><b>Club name:</b> "Your golf club" is a placeholder until you tell me the name.</div>
+</div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+const ACTIONS = [
+  { k: 'book', label: 'Book', sub: '35 free today', icon: '<rect x="-9" y="-8" width="18" height="16" rx="3"/><path d="M-9 -3h18M-4 -11v5M4 -11v5"/>', say: 'Opens Book tee times' },
+  { k: 'buddies', label: 'Buddies', sub: '1 partner', icon: '<circle cx="-4" cy="-4" r="3.5"/><circle cx="5" cy="-3" r="3"/><path d="M-11 8c0-5 3-7 7-7s7 2 7 7M3 2c4 0 7 2 7 6"/>', say: 'Opens Buddies' },
+  { k: 'matches', label: 'Matches', sub: '1 waiting', live: true, icon: '<path d="M-6 -9h12v5a6 6 0 0 1-12 0z"/><path d="M-6 -6h-4a4 4 0 0 0 5 5M6 -6h4a4 4 0 0 1-5 5M0 2v5M-5 9h10"/>', say: 'Opens Events and matches: an invitation is waiting for your answer' },
+  { k: 'scores', label: 'Scores', sub: 'card on the go', icon: '<rect x="-8" y="-10" width="16" height="20" rx="2"/><path d="M-4 -4h8M-4 0h8M-4 4h5"/>', say: 'Opens your scorecard' },
+]
+
+// Half-ring: four wedges from 180° to 360° around a centre at the bottom of the drawing.
+const CX = 180, CY = 232, R1 = 104, R2 = 176, GAP = 2.2 // degrees between wedges
+const pt = (r, a) => [CX + r * Math.cos(a * Math.PI / 180), CY + r * Math.sin(a * Math.PI / 180)]
+function wedgePath(a0, a1) {
+  const [x0, y0] = pt(R2, a0), [x1, y1] = pt(R2, a1), [x2, y2] = pt(R1, a1), [x3, y3] = pt(R1, a0)
+  return `M${x0} ${y0} A${R2} ${R2} 0 0 1 ${x1} ${y1} L${x2} ${y2} A${R1} ${R1} 0 0 0 ${x3} ${y3} Z`
+}
+const g = document.getElementById('wedges')
+const step = 180 / ACTIONS.length
+g.innerHTML = ACTIONS.map((a, i) => {
+  const a0 = 180 + i * step + GAP / 2, a1 = 180 + (i + 1) * step - GAP / 2, mid = (a0 + a1) / 2
+  const [ix, iy] = pt((R1 + R2) / 2 + 8, mid), [tx, ty] = pt((R1 + R2) / 2 - 14, mid)
+  const [bx, by] = pt(R2 - 14, mid)
+  return `<g class="wedge${a.live ? ' live' : ''}" tabindex="0" role="button" aria-label="${a.label}, ${a.sub}" data-say="${a.say}">
+    <path d="${wedgePath(a0, a1)}"/>
+    <g class="ic" transform="translate(${ix.toFixed(1)} ${(iy - 4).toFixed(1)})">${a.icon}</g>
+    <text x="${tx.toFixed(1)}" y="${(ty + 10).toFixed(1)}">${a.label}</text>
+    ${a.live ? `<circle class="badge" cx="${bx.toFixed(1)}" cy="${by.toFixed(1)}" r="9"/><text class="badge-t" x="${bx.toFixed(1)}" y="${(by + 3.5).toFixed(1)}">1</text>` : ''}
+  </g>`
+}).join('')
+
+document.getElementById('g4').innerHTML = ACTIONS.map(a => `<button class="${a.live ? 'live' : ''}" data-say="${a.say}">
+  <svg width="26" height="26" viewBox="-13 -13 26 26" class="ic" style="stroke:${a.live ? 'var(--glow)' : 'var(--wedge-ink)'};fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round">${a.icon}</svg>
+  <span>${a.label}<small>${a.sub}</small></span></button>`).join('')
+
+const toast = document.getElementById('toast'); let tt
+function say(t) { toast.textContent = t; toast.classList.add('on'); clearTimeout(tt); tt = setTimeout(() => toast.classList.remove('on'), 1800) }
+document.addEventListener('click', e => { const el = e.target.closest('[data-say]'); if (el) say(el.dataset.say) })
+document.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('.wedge')) { e.preventDefault(); say(e.target.dataset.say) } })
+
+const hero = document.getElementById('hero')
+function mode(m) {
+  hero.dataset.mode = m
+  document.getElementById('m-arc').setAttribute('aria-pressed', m === 'arc')
+  document.getElementById('m-grid').setAttribute('aria-pressed', m === 'grid')
+}
+document.getElementById('m-arc').onclick = () => mode('arc')
+document.getElementById('m-grid').onclick = () => mode('grid')
+
+function version(v) {
+  document.getElementById('v-simple').hidden = v !== 1
+  document.getElementById('v-ring').hidden = v !== 2
+  document.getElementById('v1').setAttribute('aria-pressed', v === 1)
+  document.getElementById('v2').setAttribute('aria-pressed', v === 2)
+}
+document.getElementById('v1').onclick = () => version(1)
+const screen = a => { document.getElementById('s-home').hidden = a; document.getElementById('s-admin').hidden = !a; document.querySelector('#v-simple .phone').scrollIntoView({ block: 'start' }) }
+document.getElementById('to-admin').onclick = () => screen(true)
+document.getElementById('to-home').onclick = () => screen(false)
+document.getElementById('v2').onclick = () => version(2)
+</script>
