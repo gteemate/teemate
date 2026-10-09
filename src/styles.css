@@ -594,3 +594,6 @@ h4,.sheet h4{font-family:var(--display);font-weight:600;letter-spacing:0}
 .bk.req.wait .rqst{color:var(--gold)}
 .bk.req.ok .rqst{color:var(--live)}
 .bk.req.no .rqst{color:var(--loss)}
+.comp .why{font-style:italic;color:var(--ink)}
+.rqst.ok{color:var(--live)} .rqst.no{color:var(--loss)}
+.comp.short{border-color:var(--loss)}

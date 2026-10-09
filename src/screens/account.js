@@ -11,19 +11,20 @@ import { shareText, qrSvg, shareCard } from '../share-card.js'
 
 export async function load() {
   const me = await api.getMe()
-  const [theme, bookings, buddies, games, events, points, requests, rules, matches] = await Promise.all([
+  const [theme, bookings, buddies, games, events, points, requests, rules, teeReqs, matches] = await Promise.all([
     api.getTheme(), api.getMyBookings(), api.getBuddies(), api.getGameSettings(), api.getEvents(), api.getGuestPoints(),
     me.admin ? api.getAccessRequests() : [],
     me.admin ? api.getBookingRules() : null,
+    me.admin ? api.getTeeTimeRequests() : [],
     api.getMyPlayerEvents(),
   ])
   const live = events.filter(e => eventLastDay(e) >= isoDate(today()))
   // events set up in advance, plus matches set up on the day from the Scores tab
   const upcoming = live.filter(e => !e.club && e.style !== 'league').length + matches.filter(e => e.status === 'pending' || e.status === 'accepted').length, clubEvents = live.filter(e => e.club || e.style === 'league').length
-  return { me, clubName: theme?.name ?? '', rules, bookings, buddies, L: buildLibrary(games), upcoming, clubEvents, points, requests }
+  return { me, clubName: theme?.name ?? '', rules, waitingReqs: teeReqs.filter(r => r.status === 'pending').length, bookings, buddies, L: buildLibrary(games), upcoming, clubEvents, points, requests }
 }
 
-export function draw({ me, clubName, rules, bookings, buddies, L, upcoming, clubEvents, points, requests }) {
+export function draw({ me, clubName, rules, waitingReqs, bookings, buddies, L, upcoming, clubEvents, points, requests }) {
   header('Account', `Signed in as <b>${esc(me.name)}</b>`, async () => { S.aview = 'home'; await render(); top0() }, 'Home')
   const card = shareText(me, clubName)
   const used = points.mine.reduce((t, x) => t + x.points, 0), left = points.allowance - used
@@ -49,6 +50,7 @@ export function draw({ me, clubName, rules, bookings, buddies, L, upcoming, club
   ${me.admin ? `<h3 class="adminhead">Club admin <span class="hint">only admins see this</span></h3>
   <div class="agrid">
     <button class="atile row" data-a="clubevents"><span class="e">🏆</span><span class="rt"><b>Club events</b><span>${clubEvents ? `${clubEvents} running or coming up · ` : ''}club-wide events and leagues</span></span></button>
+    <button class="atile row" data-a="treq"><span class="e">📨</span><span class="rt"><b>Tee time requests</b><span>${waitingReqs ? `<b class="reqcount">${waitingReqs} waiting</b>` : 'Members asking for days not open yet'}</span></span></button>
     <button class="atile row" data-a="access"><span class="e">🔑</span><span class="rt"><b>Members &amp; access</b><span>${requests.length ? `<b class="reqcount">${requests.length} access request${requests.length > 1 ? 's' : ''}</b>` : 'Choose who can sign in'}</span></span></button>
     <button class="atile row" data-a="rules"><span class="e">⏰</span><span class="rt"><b>Booking rules</b><span>${rules ? `Tee times open ${timeLabel(rules.time)}, ${rules.days} day${rules.days === 1 ? '' : 's'} before · ${rules.weekendsOnly ? 'weekends only' : 'every day'}` : 'When tee times open for booking'}</span></span></button>
     <button class="atile row" data-a="colours"><span class="e">🎨</span><span class="rt"><b>Club name &amp; colours</b><span>The name on the membership card, and two colours that theme the app</span></span></button>

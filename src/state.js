@@ -22,6 +22,7 @@ export const S = {
   // members & access (admin)
   accEdit: null, accQ: '', accConfirm: false, accPrefill: null, // accEdit: null | 'new' | member id
   // events admin
+  trqDecline: null, // Club admin → Tee time requests: the one being declined
   reqMode: false, reqDate: null, reqReason: '', // Request a tee time: on, the day, the reason being typed
   compTab: 'entered', // Competitions: entered | open | events | history
   evScope: 'player', // events area: 'player' (Admin → Events) or 'club' (Club admin → Club events)
