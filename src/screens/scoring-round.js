@@ -29,6 +29,8 @@ export async function load() {
 
 const key = o => `${o.kind}:${o.e.id}`
 
+// What the server is sent for a marker: just who it is on the card ({ m } or { g }), not the name shown here.
+const who = c => (c.m != null ? { m: c.m } : { g: c.g })
 const same = (a, b) => !!a && !!b && (a.m != null ? a.m === b.m : a.g === b.g)
 
 async function start(round, options, me) {
@@ -39,7 +41,7 @@ async function start(round, options, me) {
       : o.kind === 'join' ? api.enterEventToday(round.id, o.e.id, mk) : api.enterEventRound(round.id, o.e.id, ids, mk))
     try {
       if (!o.needsMarker) await enter(o.players)
-      else for (const id of o.players) await enter([id], same(marker, { m: id }) ? { m: me.id } : marker)
+      else for (const id of o.players) await enter([id], same(marker, { m: id }) ? { m: me.id } : who(marker))
     } catch (err) { toast(err.message) }
   }
   markLeagueAsked(round.id)
