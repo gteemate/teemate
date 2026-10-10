@@ -33,6 +33,7 @@ export function draw({ me, clubName, rules, waitingReqs, bookings, friendCount, 
   const guests = Math.floor(left / points.cost)
   // Player items first (what every member sees), then admin-only items in one section at the end.
   $('main').innerHTML = `<div class="screen">
+  ${me.hutStaff || (me.admin && hutOn) ? `<button class="atile row hutstafftile" data-a="hutstaff"><span class="e">🥪</span><span class="rt"><b>Halfway hut orders</b><span>${hutOn ? 'Today’s orders: mark them ready' : 'Ordering is off'}</span></span></button>` : ''}
   <div class="sharecard">
     <div class="qr" role="img" aria-label="QR code: your friend link with your handicap details">${qrSvg(link)}</div>
     <div class="sc-nm">${esc(me.name)}</div>${clubName ? `<div class="sc-cl">${esc(clubName)}</div>` : ''}
