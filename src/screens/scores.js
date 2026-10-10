@@ -71,9 +71,15 @@ async function latest(mine) {
 
 // Player event banners go at the top of the Scores tab; the "play an event" link at the bottom.
 const eventsTop = (events, me) => banners(events, me)
-function eventsBottom(events) {
+function eventsBottom(events, card = false) {
   const busy = events.some(e => e.status === 'pending' || e.status === 'accepted')
-  return busy ? '' : '<button class="linkbtn" id="pe-new" style="align-self:flex-start">+ Play an event with other groups</button>'
+  if (busy) return ''
+  // On New round it's an invitation worth noticing; on the scorecard, a quiet link (scoring comes first there).
+  return card ? `<button class="card pecard" id="pe-new">
+      <span class="pe-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4a3 3 0 0 0 4 4M17 6h3a3 3 0 0 1-4 4M12 14v4M8 21h8"/></svg></span>
+      <span class="pe-tx"><b>Play a match against other groups</b><small>Challenge another four-ball on today’s tee sheet: Ryder Cup, better-ball or team Stableford</small></span>
+      <span class="chev" aria-hidden="true">›</span></button>`
+    : '<button class="linkbtn" id="pe-new" style="align-self:flex-start">+ Play an event with other groups</button>'
 }
 function bindEvents(events, me) {
   bindBanners(events, me)
@@ -291,7 +297,7 @@ function startScreen({ course, L, me, teeTimes, events }) {
       : '<div class="empty-state">You’re not on a tee time today. Pick who you’re playing with instead.</div>'}
     <button class="ghost" id="pick">${teeTimes.length ? 'Pick players instead' : 'Pick players'}</button>
     <div class="hint">Cards are for 2 to 4 players. Better-ball games need four.</div>
-    ${eventsBottom(events)}</div>`
+    ${eventsBottom(events, true)}</div>`
   document.querySelectorAll('[data-slot]').forEach(b => (b.onclick = async () => {
     const s = teeTimes.find(x => x.id === +b.dataset.slot)
     if (s.players.length < 2) { toast('You’re the only one on that tee time so far'); return }

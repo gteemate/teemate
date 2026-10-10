@@ -708,3 +708,14 @@ h4,.sheet h4{font-family:var(--display);font-weight:600;letter-spacing:0}
 .msc .mpar td,.msc .mpar th{color:var(--muted);font-weight:400}
 .msc td i{display:block;font-style:normal;font-size:9px;line-height:1;color:var(--gold);min-height:9px}
 .msc .mtot{font-weight:700}
+
+/* New round: play a match against other groups */
+.pecard{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:14px;padding:16px;text-align:left;color:var(--ink);font:inherit;cursor:pointer;
+  border:1px dashed var(--gold);background:rgba(227,195,117,.07)}
+.pe-ic{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:rgba(227,195,117,.16);color:var(--gold)}
+.pe-ic svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.pe-tx{display:grid;gap:3px}
+.pe-tx b{font-size:17px}
+.pe-tx small{color:var(--muted);font-size:13px;line-height:1.35}
+.pecard .chev{color:var(--gold);font-size:22px}
+.pecard:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
