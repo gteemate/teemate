@@ -32,10 +32,12 @@ import * as eventBoardScreen from './screens/event-board.js'
 import * as access from './screens/access.js'
 import * as myGames from './screens/my-games.js'
 import * as weather from './screens/weather.js'
+import * as friend from './screens/friend.js'
+import { pendingFriend, setPendingFriend } from './screens/friend.js'
 import { checkAlerts } from './alert-bar.js'
 
 // Each screen exports an optional async load() and a sync draw(data).
-const ADMIN = { home, account: adminHome, tee: teeTimes, book: booking, booked, mine: bookings, buddies, pins, points, events, event: eventEditor, evboard: eventBoardScreen, access, colours, weather, rules: bookingRules, comp: competitions, treq: teeRequests, mygames: myGames }
+const ADMIN = { home, account: adminHome, tee: teeTimes, book: booking, booked, mine: bookings, buddies, pins, points, events, event: eventEditor, evboard: eventBoardScreen, access, colours, weather, friend, rules: bookingRules, comp: competitions, treq: teeRequests, mygames: myGames }
 function screenFor() {
   if (S.tab === 'scores') return S.sview === 'players' ? players : S.sview === 'challenge' ? challenge : S.sview === 'pevent' ? eventLive : S.sview === 'counts' ? scoringRound : scores
   if (S.tab === 'lb') return leaderboard
@@ -109,10 +111,11 @@ async function render() {
     const me = session && (await api.getMe())
     if (mine !== seq) return
     $('app').classList.toggle('signed-out', !me)
-    if (!session) screen = login
+    if (!session) screen = pendingFriend() && S.loginMode === 'welcome' ? friend : login // a friend link: show the card first
     else if (!me) screen = { draw: () => login.drawNotMember({ email: session.user.email }) }
     else {
       if (!startTabChosen) { startTabChosen = true; S.tab = await chooseStartTab(); if (S.tab === 'home') S.aview = 'home'; else S.sview = 'card'; nav.reset(place()) }
+      if (pendingFriend()) { S.tab = 'home'; S.aview = 'friend' } // opened from a friend link (maybe before signing in)
       nav.visit(place())
       screen = screenFor()
     }
@@ -136,6 +139,17 @@ async function render() {
 // Back to the app from another app or the lock screen: anything new?
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && !$('app').classList.contains('signed-out')) checkAlerts(JSON.stringify(place()), true) })
 setRender(render)
+
+// Opened from a friend link (a QR scanned with the camera, or a link in a message): keep it until it's been
+// seen signed in, and take it out of the address bar.
+const takeFriendLink = () => {
+  if (!location.hash.startsWith('#friend?')) return false
+  setPendingFriend(location.hash)
+  history.replaceState(null, '', location.pathname + location.search)
+  return true
+}
+takeFriendLink()
+addEventListener('hashchange', () => { if (takeFriendLink()) render() }) // a link opened while the app is already open
 
 // Club colours: last-seen ones straight away (no flash), then the current ones from the club.
 const seen = cachedTheme()

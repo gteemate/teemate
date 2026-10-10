@@ -1,5 +1,6 @@
 // UI state only: which tab and screen, selections, and drafts not yet saved. Data lives behind api.js.
 export const S = {
+  friendHash: null, // a friend link being looked at (screens/friend.js)
   loginMode: 'welcome', loginEmail: '', requestName: '', loginNotice: '', // signed out: 'welcome' | 'signin' | 'signup'
   tab: 'home',
   sview: 'card',     // scores: 'card' | 'players' | 'challenge' | 'pevent'

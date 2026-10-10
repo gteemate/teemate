@@ -657,3 +657,6 @@ h4,.sheet h4{font-family:var(--display);font-weight:600;letter-spacing:0}
 .wxw svg{color:var(--muted)}
 .wxrow.wet{background:rgba(111,143,216,.16)}
 .wxrow.wet .wxr b{color:#9fb7ee}
+
+/* Add friend: the sender's card */
+.sharecard .av.big{width:72px;height:72px;font-size:24px;margin-bottom:6px}
