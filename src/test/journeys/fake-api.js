@@ -19,7 +19,8 @@ export const API_NAMES = ['getMe', 'forgetMe', 'getSession', 'signIn', 'needsAcc
   'decideTeeTimeRequest', 'markTeeTimeRequestsSeen', 'dismissTeeTimeRequest', 'getGameSettings', 'setMyGamePref', 'getCurrentRound', 'getRound', 'deleteRound', 'saveRound',
   'getTodayRounds', 'getCardsForTeeTimes', 'getMyPlayerEvents', 'proposePlayerEvent', 'counterPlayerEvent', 'answerPlayerEvent', 'cancelPlayerEvent',
   'getEvents', 'saveEvent', 'deleteEvent', 'getCardsOn', 'getLeagueEntries', 'getCardsById', 'enterLeague', 'leaveLeague', 'enterEventToday',
-  'getEventEntries', 'enterEventRound', 'leaveEventRound']
+  'getEventEntries', 'enterEventRound', 'leaveEventRound',
+  'getSignups', 'enterSignup', 'withdrawSignup', 'setMyPlaysIn', 'adminSetPlaysIn', 'saveSignup', 'deleteSignup']
 
 /** For vi.mock('…/api.js'): every export, each calling the current world's version (globalThis.__world). */
 export function mockModule() {
@@ -42,7 +43,13 @@ export function makeWorld(today, setup = () => {}) {
   const id = () => nextId++
   const db = {
     me: ME, today, calls: [],
-    members: MEMBERS.map(m => ({ ...m, hutStaff: false })),
+    members: MEMBERS.map(m => ({ ...m, hutStaff: false, playsIn: [2, 4, 8, 12].includes(m.id) ? 'ladies' : 'men' })),
+    signups: [
+      { id: 1, name: 'Men’s Match Play', category: 'men', kind: 'singles', closesOn: '2026-10-31', notes: null, open: true },
+      { id: 2, name: 'Men’s Fourball', category: 'men', kind: 'pairs', closesOn: '2026-10-31', notes: '£5 a pair', open: true },
+      { id: 3, name: 'Ladies Singles', category: 'ladies', kind: 'singles', closesOn: '2026-10-31', notes: null, open: true },
+      { id: 4, name: 'Mixed Foursome', category: 'mixed', kind: 'pairs', closesOn: '2026-10-31', notes: null, open: true }],
+    signupEntries: [],
     buddies: [{ id: 1, favourite: false }, { id: 3, favourite: true }, { id: 5, favourite: false }, { id: 7, favourite: false }, { id: 11, favourite: false }],
     contacts: [{ id: 1, name: 'Sam Visitor', club: 'Royal Portrush GC', hcp: '12.0', gui: '1234567', sharedOn: today, favourite: false, updatedAt: `${today}T08:00:00Z` }],
     slots: {}, bookings: [], guestVisits: [], rounds: [], requests: [], playerEvents: [],
@@ -88,7 +95,7 @@ export function makeWorld(today, setup = () => {}) {
 
   const api = {
     // Signed in as Gary Cochrane (member 0, an admin).
-    getMe: async () => ({ ...member(ME), hutStaff: db.members[0].hutStaff }), forgetMe: () => {},
+    getMe: async () => ({ ...member(ME), hutStaff: db.members[0].hutStaff, playsIn: db.members[0].playsIn }), forgetMe: () => {},
     getSession: async () => ({ user: { id: 'u0', email: 'gary@example.invalid' } }), onAuthChange: () => {},
     myRequestPending: async () => false,
     getTheme: async () => ({ ...db.theme }),
@@ -195,6 +202,10 @@ export function makeWorld(today, setup = () => {}) {
     getEventEntries: async eids => copy(db.entries.filter(x => eids.includes(x.eventId))),
     enterLeague: async (rid, eid, ids, marker = null) => { ids.forEach(m => db.leagueEntries.push({ eventId: eid, week: 1, memberId: m, roundId: rid, marker })); return 1 },
     enterEventRound: async (rid, eid, ids, marker = null) => { ids.forEach(m => db.entries.push({ eventId: eid, day: 1, memberId: m, roundId: rid, marker })); return 1 },
+    getSignups: async () => copy({ comps: db.signups, entries: db.signupEntries }),
+    enterSignup: async (cid, partnerId = null) => { db.signupEntries.push({ compId: cid, memberId: ME, partnerId }) },
+    withdrawSignup: async cid => { db.signupEntries = db.signupEntries.filter(e => !(e.compId === cid && (e.memberId === ME || e.partnerId === ME))) },
+    setMyPlaysIn: async p => { db.members[0].playsIn = p },
     enterEventToday: async (rid, eid, marker) => {
       const e = db.events.find(x => x.id === eid)
       if (!e.players.includes(ME)) e.players.push(ME)

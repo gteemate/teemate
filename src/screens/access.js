@@ -7,8 +7,9 @@ import { toAdmin } from './nav.js'
 import { bindSwipes, swipeSwallowsClick } from '../swipe.js'
 
 export async function load() {
-  const [list, me, requests, favs] = await Promise.all([api.getAccessList(), api.getMe(), api.getAccessRequests(), api.getFavourites()])
-  return { list, me, requests, favs }
+  const [access, me, requests, favs, members] = await Promise.all([api.getAccessList(), api.getMe(), api.getAccessRequests(), api.getFavourites(), api.getMembers()])
+  const plays = new Map(members.map(m => [m.id, m.playsIn])) // the section each plays in (Men's / Ladies')
+  return { list: access.map(m => ({ ...m, playsIn: plays.get(m.id) ?? null })), me, requests, favs }
 }
 
 // signedIn = they've created their account (a login exists)
@@ -98,6 +99,7 @@ function editSheet(m, me) {
     <label for="m-email">Email <span class="opt">approves them to sign in</span></label><input id="m-email" type="email" inputmode="email" autocomplete="off" value="${esc(m.email || '')}" placeholder="Leave blank for no access" ${self ? 'readonly' : ''}>
     <div class="tnames"><div><label for="m-gui">GUI number <span class="opt">optional</span></label><input id="m-gui" inputmode="numeric" autocomplete="off" value="${esc(m.gui || '')}"></div>
       <div><label for="m-hcp">Handicap index</label><input id="m-hcp" inputmode="decimal" autocomplete="off" value="${m.hcp}"></div></div>
+    ${isNew ? '' : `<label for="m-plays">Plays in</label><select id="m-plays" class="plainsel"><option value="" ${!m.playsIn ? 'selected' : ''}>Not set</option><option value="men" ${m.playsIn === 'men' ? 'selected' : ''}>Men’s</option><option value="ladies" ${m.playsIn === 'ladies' ? 'selected' : ''}>Ladies’</option></select>`}
     ${sw('m-adm', m.admin, 'Admin', self ? 'You can’t remove your own admin rights' : 'Can approve access, run club events, set pins and games', self)}
     <p class="gerr" id="merr" role="alert"></p>
     ${!isNew && m.signedIn && !self ? '<button type="button" class="ghost" id="mreset">Reset login</button><span class="hint">For a forgotten password: deletes their login (scores and bookings stay) so they can create a new password.</span>' : ''}
@@ -123,6 +125,8 @@ function editSheet(m, me) {
     $('msave').disabled = true
     try {
       await api.saveMember(next)
+      const plays = $('m-plays')?.value || null
+      if ($('m-plays') && plays !== (m.playsIn ?? null)) await api.adminSetPlaysIn(m.id, plays) // which competitions they can enter
     } catch (err) {
       $('merr').textContent = err.message
       $('msave').disabled = false

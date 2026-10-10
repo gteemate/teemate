@@ -41,6 +41,9 @@ export function draw({ me, clubName, rules, waitingReqs, bookings, friendCount, 
     <div class="sc-up">Scan it or share it: it opens TeeMate to add you as a friend</div>
   </div>
   <div class="bk-btns"><button class="primary" id="share">Share</button><button class="ghost" id="copycard">Copy details</button></div>
+  <div class="card evsec"><b>I play in</b>
+    <div class="seg" role="group" aria-label="I play in"><button data-plays="men" aria-pressed="${me.playsIn === 'men'}">Men’s</button><button data-plays="ladies" aria-pressed="${me.playsIn === 'ladies'}">Ladies’</button></div>
+    <span class="hint">${me.playsIn ? 'Competitions → Events shows the club competitions you can enter.' : 'Set this to see the Men’s, Ladies’ and Mixed competitions you can enter.'}</span></div>
   <h3>Your account</h3>
   <div class="agrid">
     <button class="atile" data-a="mine"><span class="e">📋</span><b>Bookings</b><span>${bookings.length ? `${bookings.length} upcoming` : 'Nothing booked yet'}</span></button>
@@ -58,6 +61,7 @@ export function draw({ me, clubName, rules, waitingReqs, bookings, friendCount, 
     <button class="atile row" data-a="access"><span class="e">🔑</span><span class="rt"><b>Members &amp; access</b><span>${requests.length ? `<b class="reqcount">${requests.length} access request${requests.length > 1 ? 's' : ''}</b>` : 'Choose who can sign in'}</span></span></button>
     <button class="atile row" data-a="rules"><span class="e">⏰</span><span class="rt"><b>Booking rules</b><span>${rules ? `Tee times open ${timeLabel(rules.time)}, ${rules.days} day${rules.days === 1 ? '' : 's'} before · ${rules.weekendsOnly ? 'weekends only' : 'every day'}` : 'When tee times open for booking'}</span></span></button>
     <button class="atile row" data-a="colours"><span class="e">🎨</span><span class="rt"><b>Club name &amp; colours</b><span>The name on the membership card, and two colours that theme the app</span></span></button>
+    <button class="atile row" data-a="signups"><span class="e">📝</span><span class="rt"><b>Sign-up competitions</b><span>Season competitions members enter in advance: open them, see who’s in</span></span></button>
     <button class="atile row" data-a="hutadmin"><span class="e">🥪</span><span class="rt"><b>Halfway hut</b><span>Ordering after hole 8: switch it on, the menu, hut staff</span></span></button>
     <button class="atile row" data-a="pins"><span class="e">⛳</span><span class="rt"><b>Pins</b><span>Set today's flags</span></span></button>
   </div>` : ''}
@@ -65,6 +69,10 @@ export function draw({ me, clubName, rules, waitingReqs, bookings, friendCount, 
   <div class="bk-btns acct"><button class="ghost" id="chpw">Change password</button><button class="ghost" id="signout">Sign out</button></div>
   </div>`
   $('share').onclick = async () => { const r = await shareCard(card, me.name, link); if (r === 'copied') toast('Details copied: paste them into a message') }
+  document.querySelectorAll('[data-plays]').forEach(b => (b.onclick = async () => {
+    try { await api.setMyPlaysIn(b.dataset.plays) } catch (err) { toast(err.message); return }
+    await render(); toast(`Saved: you play in ${b.dataset.plays === 'men' ? 'Men’s' : 'Ladies’'} competitions`)
+  }))
   $('copycard').onclick = async () => {
     try { await navigator.clipboard.writeText(card); toast('Details copied') } catch { toast('Couldn’t copy on this phone: use Share instead') }
   }

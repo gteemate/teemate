@@ -158,6 +158,24 @@ describe('journeys', () => {
     await app.homeFromHere()
   })
 
+  it('11. Sign up for Men’s Fourball with a partner, see it in Entered, then withdraw', async () => {
+    app = await boot()
+    await app.tap('Competition')
+    await app.tap('Events')
+    expect(app.text()).toContain('Men’s Match Play')
+    expect(app.text()).not.toContain('Ladies Singles') // a man doesn't see the ladies' competitions
+    await app.tap('Men’s Fourball')
+    await app.tap('Declan Murphy')
+    await app.tap('Enter as a pair')
+    expect(app.db.signupEntries).toEqual([{ compId: 2, memberId: 0, partnerId: 1 }])
+    expect(app.text()).toContain('With Declan Murphy')
+    expect(app.taps).toBeLessThanOrEqual(5)
+    await app.tap('Withdraw (both of you)')
+    await app.tap('Tap again to withdraw')
+    expect(app.db.signupEntries).toEqual([])
+    await app.homeFromHere()
+  })
+
   it('8. Add a friend from a shared link', async () => {
     app = await boot(undefined, { hash: '#friend?n=Eoin+Fitzgerald&c=Royal+Teemate&h=2.1&m=9&d=2026-10-10' })
     expect(app.screen()).toBe('Add friend')

@@ -9,7 +9,7 @@ const pe = over => ({ id: 5, date: D, status: 'accepted', proposerSlot: 20, play
 const ids = xs => xs.map(x => x.e.id)
 
 describe('competitionLists: Entered, Open, Events, History', () => {
-  it('nothing: three empty lists', () => expect(competitionLists({ me, events: [], playerEvents: [], date: D })).toEqual({ entered: [], events: [], history: [] }))
+  it('nothing: two empty lists', () => expect(competitionLists({ me, events: [], playerEvents: [], date: D })).toEqual({ entered: [], history: [] }))
 
   it('Entered: running and coming up that I\'m in, running first', () => {
     const r = competitionLists({ me, date: D, playerEvents: [], events: [ev({ id: 3, startDate: '2026-10-20' }), league(), ev({ id: 4, players: [2] })] })
@@ -31,11 +31,11 @@ describe('competitionLists: Entered, Open, Events, History', () => {
     expect(r).not.toHaveProperty('open')
   })
 
-  it('Events: invitations to answer first, then events set up by players that I\'m in or made', () => {
+  it('Entered: invitations to answer first, then events set up by players that I\'m in or made', () => {
     const invite = pe({ id: 11, status: 'pending', groups: [{ slot: 20, time: 470, host: true, answer: null }, { slot: 10, time: 490, answer: null }] })
     const r = competitionLists({ me, date: D, playerEvents: [invite], events: [ev({ id: 12, startDate: '2026-10-16' }), ev({ id: 13, club: true, startDate: '2026-10-16' })] })
-    expect(r.events.map(x => x.kind)).toEqual(['invite', 'event'])
-    expect(r.events[1].e.id).toBe(12) // club competitions aren't "Events"
+    expect(r.entered.map(x => x.kind)).toEqual(['invite', 'event', 'event'])
+    expect(r.entered[0].kind).toBe('invite') // invitations to answer come first
   })
 
   it('History: finished competitions I was in, newest first', () => {
