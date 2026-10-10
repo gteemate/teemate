@@ -55,6 +55,7 @@ export function draw({ me, clubName, rules, waitingReqs, bookings, friendCount, 
     <button class="atile row" data-a="access"><span class="e">🔑</span><span class="rt"><b>Members &amp; access</b><span>${requests.length ? `<b class="reqcount">${requests.length} access request${requests.length > 1 ? 's' : ''}</b>` : 'Choose who can sign in'}</span></span></button>
     <button class="atile row" data-a="rules"><span class="e">⏰</span><span class="rt"><b>Booking rules</b><span>${rules ? `Tee times open ${timeLabel(rules.time)}, ${rules.days} day${rules.days === 1 ? '' : 's'} before · ${rules.weekendsOnly ? 'weekends only' : 'every day'}` : 'When tee times open for booking'}</span></span></button>
     <button class="atile row" data-a="colours"><span class="e">🎨</span><span class="rt"><b>Club name &amp; colours</b><span>The name on the membership card, and two colours that theme the app</span></span></button>
+    <button class="atile row" data-a="hutadmin"><span class="e">🥪</span><span class="rt"><b>Halfway hut</b><span>Ordering after hole 8: switch it on, the menu, hut staff</span></span></button>
     <button class="atile row" data-a="pins"><span class="e">⛳</span><span class="rt"><b>Pins</b><span>Set today's flags</span></span></button>
   </div>` : ''}
   <h3>Your account</h3>
