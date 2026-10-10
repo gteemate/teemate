@@ -117,6 +117,7 @@ export function makeWorld(today, setup = () => {}) {
     removeContact: async cid => { db.contacts = db.contacts.filter(c => c.id !== cid) },
     setFriendFavourite: async ({ memberId, contactId }, on) => { (memberId != null ? db.buddies.find(b => b.id === memberId) : db.contacts.find(c => c.id === contactId)).favourite = on },
     getAccessRequests: async () => [], getFavourites: async () => [],
+    getAccessList: async () => db.members.map(m => ({ id: m.id, name: m.name, gui: m.gui, hcp: m.hcp, email: m.id === 0 ? 'gary@example.invalid' : null, admin: !!m.admin, signedIn: m.id === 0 })),
     getCourse: async () => ({ ...copy(COURSE), guestPoints: 3 }),
     getPins: async () => copy(PIN_SHEET),
     getGameSettings: async () => ({ ...copy(GAME_SETTINGS), mine: {} }),
