@@ -17,7 +17,9 @@ export const leagueTeams = (n, existing = []) => Array.from({ length: n }, (_, i
 export const eventFormat = e => EVENT_TYPES[e.style].formats.find(f => f[0] === e.fmt)?.[1] ?? ''
 
 const STEPS = { 1: 'Details', 2: 'Players', 3: 'Teams', 4: 'Draw', 5: 'Review', 6: 'Teams & players' }
-const stepsFor = style => (style === 'ryder' ? [1, 2, 3, 4, 5] : style === 'teams' ? [1, 2, 3, 5] : style === 'league' ? [1, 6, 5] : [1, 2, 5])
+// A club Individual competition open to anyone playing that day: no players to pick (they join as they start).
+export const openToAll = ev => !!ev.club && ev.style === 'individual' && !!ev.selfEntry
+const stepsFor = ev => (ev.style === 'ryder' ? [1, 2, 3, 4, 5] : ev.style === 'teams' ? [1, 2, 3, 5] : ev.style === 'league' ? [1, 6, 5] : openToAll(ev) ? [1, 5] : [1, 2, 5])
 
 // Members and events are loaded once when the wizard opens, so each tap redraws instantly
 // (and nothing being typed is overwritten by a slow reload).
@@ -77,7 +79,7 @@ function draw1(ev, d) {
 }
 
 export function draw({ members, me }) {
-  const ev = S.ev, steps = stepsFor(ev.style)
+  const ev = S.ev, steps = stepsFor(ev)
   if (!steps.includes(S.evStep)) S.evStep = steps[0]
   const step = S.evStep, idx = steps.indexOf(step)
   const byId = id => members.find(m => m.id === id)
@@ -100,8 +102,11 @@ export function draw({ members, me }) {
       ${ev.club && me.admin ? `<div class="card evsec"><b>Who can see it</b>
         <div class="seg" role="group" aria-label="Who can see it"><button data-vis="all" aria-pressed="${!!ev.everyone}">All members</button><button data-vis="entrants" aria-pressed="${!ev.everyone}">Entrants only</button></div>
         <span class="hint">${ev.everyone ? 'Every member sees it on their Leaderboard tab.' : `Only the ${ev.style === 'league' ? 'league’s players' : 'players in it'} (and admins) see it.`}</span></div>
-      <div class="card evsec"><div class="actrow"><span class="who"><strong>Members can enter themselves</strong><small>${ev.selfEntry ? 'On the day, members starting a round are asked if they want to play in it (not for events with a draw).' : 'Only admins add entrants.'}</small></span>
-        <button type="button" class="switch" role="switch" id="ev-self" aria-checked="${!!ev.selfEntry}" aria-label="Members can enter themselves"><span></span></button></div></div>`
+      ${ev.style === 'individual' ? `<div class="card evsec"><b>Who plays</b>
+        <div class="seg" role="group" aria-label="Who plays"><button data-who="all" aria-pressed="${!!ev.selfEntry}">Anyone playing that day</button><button data-who="pick" aria-pressed="${!ev.selfEntry}">Players I pick</button></div>
+        <span class="hint">${ev.selfEntry ? 'Everyone starting a round that day is asked if they want to play in it. No list of players needed.' : 'Only the players you pick next can play in it.'}</span></div>`
+      : `<div class="card evsec"><div class="actrow"><span class="who"><strong>Members can enter themselves</strong><small>${ev.selfEntry ? 'On the day, members starting a round are asked if they want to play in it (not for events with a draw).' : 'Only admins add entrants.'}</small></span>
+        <button type="button" class="switch" role="switch" id="ev-self" aria-checked="${!!ev.selfEntry}" aria-label="Members can enter themselves"><span></span></button></div></div>`}`
       : '<div class="hint">Only the players you pick will see this event.</div>'}`
   } else if (step === 2) {
     const q = (S.evQ || '').trim().toLowerCase()
@@ -191,7 +196,7 @@ export function draw({ members, me }) {
     body = `<div class="card evsec"><h4>${esc(ev.name)}</h4><div class="sumgrid">
         <span>When</span><b>${eventDates(ev.startDate, ev.days)}${ev.days > 1 ? ` (${ev.days} days)` : ''}</b>
         <span>Format</span><b>${EVENT_TYPES[ev.style].name}${ev.style !== 'teams' ? ` · ${eventFormat(ev)}` : ''}</b>
-        <span>Players</span><b>${ev.players.length} members</b>
+        <span>Players</span><b>${openToAll(ev) ? 'Anyone playing that day' : `${ev.players.length} members`}</b>
         ${ev.style !== 'individual' ? `<span>Teams</span><b>${esc(ev.A.name)} ${A.length} · ${esc(ev.B.name)} ${B.length}</b>` : ''}
         ${ev.style === 'ryder' ? `<span>Matches</span><b>${Object.values(ev.matches).flat().length} · 1 point each</b>` : ''}
         <span>Who sees it</span><b>${ev.everyone ? 'All members' : 'Only the players in it'}</b>
@@ -221,6 +226,7 @@ export function draw({ members, me }) {
     ev.fmt = EVENT_TYPES[ev.style].formats[0][0]
     if (ev.style === 'league' && was !== 'league') { ev.weeks ??= 6; ev.bestOf ??= 7; ev.teams = leagueTeams(10, ev.teams ?? []); ev.team = {}; ev.players = []; ev.club = true; ev.everyone = false; ev.days = 1 }
     if (ev.style !== 'league' && was === 'league') { ev.team = {}; ev.players = [me.id] }
+    if (ev.style === 'individual' && was !== 'individual' && ev.club && !ev.id) { ev.selfEntry = true; ev.everyone = true } // a club competition: open to the day's players
     redraw()
   }))
   document.querySelectorAll('[data-lg]').forEach(b => (b.onclick = () => {
@@ -287,6 +293,7 @@ export function draw({ members, me }) {
   }))
   if ($('ev-date')) $('ev-date').onchange = () => { read(); redraw() }
   if ($('ev-self')) $('ev-self').onclick = () => { read(); ev.selfEntry = !ev.selfEntry; redraw() }
+  document.querySelectorAll('[data-who]').forEach(b => (b.onclick = () => { read(); ev.selfEntry = b.dataset.who === 'all'; if (ev.selfEntry) ev.everyone = true; redraw() }))
   document.querySelectorAll('[data-vis]').forEach(b => (b.onclick = () => { read(); ev.everyone = b.dataset.vis === 'all'; redraw() }))
   const qi = $('ev-q')
   if (qi) qi.oninput = () => { S.evQ = qi.value; const p = qi.selectionStart; render().then(() => { const n = $('ev-q'); n.focus(); n.setSelectionRange(p, p) }) }
