@@ -230,6 +230,27 @@ describe('journeys', () => {
     await app.homeFromHere()
   })
 
+  it('15. A member sets up their own knockout: picks the players, it’s drawn, they organise it', async () => {
+    app = await boot()
+    await app.tap('Competition')
+    await app.tap('Events')
+    await app.tap('+ Create your own event')
+    await app.tap('A knockout')
+    expect(app.screen()).toBe('New knockout')
+    await app.type('#kn-name', 'Friday Knockout')
+    await app.type('#kn-fin', '2026-12-31')
+    for (const n of ['Gary Cochrane (you)', 'Declan Murphy', 'Ciarán O\'Neill', 'Mark Doherty']) await app.tap(n)
+    await app.tap('Make the draw')
+    expect(app.screen()).toBe('Friday Knockout')
+    const ko = app.db.signups.find(c => c.name === 'Friday Knockout')
+    expect(app.db.signupEntries.filter(e => e.compId === ko.id).map(e => e.memberId).sort()).toEqual([0, 1, 3, 5])
+    expect(ko.roundDeadlines).toHaveLength(2) // semi-finals, final
+    expect(app.text()).toContain('Your next match')
+    expect(app.labels()).toContain('Set result') // the organiser can set results
+    expect(app.taps).toBeLessThanOrEqual(10)
+    await app.homeFromHere()
+  })
+
   it('8. Add a friend from a shared link', async () => {
     app = await boot(undefined, { hash: '#friend?n=Eoin+Fitzgerald&c=Royal+Teemate&h=2.1&m=9&d=2026-10-10' })
     expect(app.screen()).toBe('Add friend')

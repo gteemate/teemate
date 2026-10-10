@@ -60,13 +60,14 @@ export function draw({ me, date, members, friends, signups, counts = {}, lists, 
     ${tab === 'events' && needsSection(signups.comps, me, date) ? '<button class="card comp gold" id="setsec"><span class="ct">Men’s or Ladies’?</span><span class="sub">Set which you play in on your Account to see the competitions you can enter.</span><span class="row"><span></span><span class="link">Account ›</span></span></button>' : ''}
     ${tab === 'events' ? open.map(signRow).join('') : ''}
     ${tab === 'entered' ? entered.map(mineRow).join('') : ''}
+    ${tab === 'entered' ? signups.comps.filter(c => c.createdBy === me.id && !entered.some(x => x.comp.id === c.id)).map(c => `<div class="card comp gold" data-ko="${c.id}" role="button" tabindex="0"><span class="row"><span class="ct">${esc(c.name)}</span><span class="pill gold">Draw ›</span></span><span class="sub">Your knockout · you’re organising it</span></div>`).join('') : ''}
     ${list.length ? list.map(row).join('') : (tab === 'events' && open.length) || (tab === 'entered' && entered.length) || !empty[tab] ? '' : `<div class="empty-state">${empty[tab]}</div>`}
     ${tab === 'events' ? '<button class="ghost dashed" id="create">+ Create your own event</button>' : ''}
   </div>`
   const go = async f => { f(); await render(); top0() }
   document.querySelectorAll('[data-tab]').forEach(b => (b.onclick = () => go(() => { S.compTab = b.dataset.tab })))
   if ($('field')) $('field').onclick = () => go(() => { S.tab = 'lb'; S.lbv = 'today' })
-  if ($('create')) $('create').onclick = () => go(() => { S.ev = null; S.evId = null; S.evStep = 1; S.evNew = null; S.evScope = 'player'; S.aview = 'event' })
+  if ($('create')) $('create').onclick = () => createSheet(go)
   document.querySelectorAll('[data-edit]').forEach(b => (b.onclick = e => { e.stopPropagation(); go(() => { S.ev = null; S.evId = +b.dataset.edit; S.evStep = 1; S.evScope = 'player'; S.aview = 'event' }) }))
   if ($('setsec')) $('setsec').onclick = () => go(() => { S.aview = 'account' })
   document.querySelectorAll('[data-sign]').forEach(b => (b.onclick = () => signSheet(open.find(c => c.id === +b.dataset.sign), me, members, friends, signups.entries)))
@@ -119,4 +120,18 @@ function signSheet(c, me, members, friends, entries) {
   }
   const wire = () => document.querySelectorAll('[data-pt]').forEach(b => (b.onclick = () => { partner = +b.dataset.pt; draw(); if ($('sg-q')) { const i = $('sg-q'); i.focus(); i.setSelectionRange(q.length, q.length) } }))
   draw()
+}
+
+// + Create your own event: an event on a day with today's groups (as before), or a knockout over weeks.
+function createSheet(go) {
+  $('modal').innerHTML = `<div class="overlay" id="ovl"><div class="sheet" role="dialog" aria-labelledby="crt">
+    <h4 id="crt">Create your own</h4>
+    <button class="card pecard" id="cr-ev"><span class="pe-tx"><b>An event</b><small>Ryder Cup, team or individual Stableford over 1–3 days</small></span><span class="chev">›</span></button>
+    <button class="card pecard" id="cr-ko"><span class="pe-tx"><b>A knockout</b><small>Pick the players or pairs; a random draw; rounds with play-by dates</small></span><span class="chev">›</span></button>
+    <div class="gm-btns"><button type="button" class="ghost" id="cr-no">Cancel</button></div>
+  </div></div>`
+  $('cr-no').onclick = () => { $('modal').innerHTML = '' }
+  $('ovl').onclick = e => { if (e.target.id === 'ovl') $('modal').innerHTML = '' }
+  $('cr-ev').onclick = () => go(() => { S.ev = null; S.evId = null; S.evStep = 1; S.evNew = null; S.evScope = 'player'; S.aview = 'event' })
+  $('cr-ko').onclick = () => go(() => { S.koNew = null; S.aview = 'konew' })
 }

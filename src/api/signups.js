@@ -3,13 +3,13 @@ import { must, sb, forgetMe } from './client.js'
 /* ---------- Sign-up competitions (season competitions members put their names down for) ---------- */
 
 const toComp = c => ({ id: c.id, name: c.name, category: c.category, kind: c.kind, closesOn: c.closes_on, notes: c.notes, open: c.open,
-  drawPublished: !!c.draw_published, roundDeadlines: c.round_deadlines ?? [], maxEntries: c.max_entries ?? null })
+  drawPublished: !!c.draw_published, roundDeadlines: c.round_deadlines ?? [], maxEntries: c.max_entries ?? null, createdBy: c.created_by ?? null })
 
 /** { comps: [{ id, name, category, kind, closesOn, notes, open }], entries: [{ compId, memberId, partnerId }] }
  *  Members see open competitions and their own entries; admins see everything. A published draw's entries come with
  *  getKnockout. */
 export async function getSignups() {
-  const [c, e] = await Promise.all([sb.from('signup_comps').select('id, name, category, kind, closes_on, notes, open, draw_published, round_deadlines, max_entries').order('id'),
+  const [c, e] = await Promise.all([sb.from('signup_comps').select('id, name, category, kind, closes_on, notes, open, draw_published, round_deadlines, max_entries, created_by').order('id'),
     sb.from('signup_entries').select('id, comp_id, member_id, partner_id, created_at').order('created_at')])
   return { comps: must(c).map(toComp), entries: must(e).map(x => ({ id: x.id, compId: x.comp_id, memberId: x.member_id, partnerId: x.partner_id })) }
 }
@@ -46,6 +46,11 @@ export async function getKnockout(compId) {
     sb.rpc('ko_entries', { p_comp: compId })])
   return { matches: must(m).map(toMatch), entries: must(e) }
 }
+/** A knockout a member sets up: entries [[memberId]] (singles) or [[a, b]] (pairs); drawn and published at once. → its id */
+export async function createMemberKnockout(name, kind, entries, deadlines) {
+  return must(await sb.rpc('create_member_knockout', { p_name: name, p_kind: kind, p_entries: entries, p_deadlines: deadlines }))
+}
+export async function deleteMemberKnockout(compId) { must(await sb.rpc('delete_member_knockout', { p_comp: compId })) }
 export async function makeDraw(compId) { must(await sb.rpc('admin_make_draw', { p_comp: compId })) }
 export async function swapDraw(compId, x, y) { must(await sb.rpc('admin_swap_draw', { p_comp: compId, p_x: x, p_y: y })) }
 export async function setRoundDeadlines(compId, dates) { must(await sb.rpc('admin_set_round_deadlines', { p_comp: compId, p_dates: dates })) }

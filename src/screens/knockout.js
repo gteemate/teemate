@@ -36,8 +36,9 @@ export function draw({ comp, me, members, matches = [], entries = [], mine }) {
   const state = m => m.status === 'bye' ? 'Bye' : m.status === 'confirmed' ? `${esc(name(m.winnerEntry))} won${m.result ? ` ${esc(m.result)}` : ''}`
     : m.status === 'reported' ? 'Result entered: waiting for the other side to confirm' : m.status === 'disputed' ? 'Result questioned: with the competition secretary'
     : by(m.round) ? `To play by ${eventDates(by(m.round), 1)}` : 'To play'
+  const organiser = me.admin || comp.createdBy === me.id
   const card = m => `<div class="card kom${next && m.id === next.id ? ' mine' : ''}" data-km="${m.id}">${side(m, m.aEntry)}${side(m, m.bEntry, m.status === 'bye')}
-    <span class="hint">${state(m)}</span>${me.admin && comp.drawPublished && m.aEntry != null && m.bEntry != null ? `<button class="linkbtn" data-kset="${m.id}">${m.status === 'confirmed' ? 'Correct result' : 'Set result'}</button>` : ''}</div>`
+    <span class="hint">${state(m)}</span>${organiser && comp.drawPublished && m.aEntry != null && m.bEntry != null ? `<button class="linkbtn" data-kset="${m.id}">${m.status === 'confirmed' ? 'Correct result' : 'Set result'}</button>` : ''}</div>`
 
   // My next match: opponent, play-by date and what to do now.
   let top = ''
@@ -67,12 +68,19 @@ export function draw({ comp, me, members, matches = [], entries = [], mine }) {
   $('main').innerHTML = `<div class="screen">${top}${admin}
     ${rounds ? `<div class="seg" role="group" aria-label="Show"><button data-kv="round" aria-pressed="${view === 'round'}">By round</button><button data-kv="all" aria-pressed="${view === 'all'}">Whole draw</button></div>` : ''}
     ${champ ? `<div class="card kochamp"><span class="kicker">${new Date().getFullYear()} champion</span><b>${esc(name(champ))}</b></div>` : ''}
-    ${body}</div>`
+    ${body}
+    ${comp.createdBy === me.id ? '<button class="ghost accremove" id="ko-del">Delete this knockout</button>' : ''}</div>`
 
   const again = () => keepScroll(render)
   const act = async (f, ok) => { try { await f() } catch (err) { toast(err.message); return } ; await again(); if (ok) toast(ok) }
   document.querySelectorAll('[data-kr]').forEach(b => (b.onclick = () => { S.koRound = +b.dataset.kr; again() }))
   document.querySelectorAll('[data-kv]').forEach(b => (b.onclick = () => { S.koView = b.dataset.kv; again() }))
+  if ($('ko-del')) $('ko-del').onclick = async () => {
+    const b = $('ko-del')
+    if (b.dataset.armed !== '1') { b.dataset.armed = '1'; b.textContent = 'Tap again: delete it for everyone in it'; return }
+    try { await api.deleteMemberKnockout(comp.id) } catch (err) { toast(err.message); return }
+    S.aview = 'comp'; await render(); top0(); toast(`${comp.name} deleted`)
+  }
   if ($('ko-make')) $('ko-make').onclick = () => act(() => api.makeDraw(comp.id), 'Draw made')
   if ($('ko-pub')) $('ko-pub').onclick = async () => {
     const b = $('ko-pub')

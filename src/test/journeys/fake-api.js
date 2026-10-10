@@ -21,7 +21,7 @@ export const API_NAMES = ['getMe', 'forgetMe', 'getSession', 'signIn', 'needsAcc
   'getEvents', 'saveEvent', 'deleteEvent', 'getCardsOn', 'getLeagueEntries', 'getCardsById', 'enterLeague', 'leaveLeague', 'enterEventToday',
   'getEventEntries', 'enterEventRound', 'leaveEventRound',
   'getSignups', 'getSignupCounts', 'enterSignup', 'withdrawSignup', 'setMyPlaysIn', 'adminSetPlaysIn', 'saveSignup', 'deleteSignup',
-  'getKnockout', 'makeDraw', 'swapDraw', 'setRoundDeadlines', 'publishDraw', 'reportKoResult', 'confirmKoResult', 'disputeKoResult', 'adminSetKoResult']
+  'getKnockout', 'createMemberKnockout', 'deleteMemberKnockout', 'makeDraw', 'swapDraw', 'setRoundDeadlines', 'publishDraw', 'reportKoResult', 'confirmKoResult', 'disputeKoResult', 'adminSetKoResult']
 
 /** For vi.mock('…/api.js'): every export, each calling the current world's version (globalThis.__world). */
 export function mockModule() {
@@ -210,6 +210,16 @@ export function makeWorld(today, setup = () => {}) {
     enterSignup: async (cid, partnerId = null) => { db.signupEntries.push({ compId: cid, memberId: ME, partnerId }) },
     withdrawSignup: async cid => { db.signupEntries = db.signupEntries.filter(e => !(e.compId === cid && (e.memberId === ME || e.partnerId === ME))) },
     setMyPlaysIn: async p => { db.members[0].playsIn = p },
+    createMemberKnockout: async (name, kind, entries, deadlines) => {
+      const cid = id(); db.signups.push({ id: cid, name, category: 'open', kind, closesOn: db.today, notes: null, open: false, drawPublished: true, roundDeadlines: deadlines, maxEntries: null, createdBy: ME })
+      const es = entries.map(e => ({ id: id(), compId: cid, memberId: e[0], partnerId: e[1] ?? null })); db.signupEntries.push(...es)
+      const size = 2 ** Math.ceil(Math.log2(es.length)), half = size / 2
+      for (let k = 0; k < half; k++) db.koMatches.push({ id: id(), compId: cid, round: 1, slot: k, aEntry: es[k].id, bEntry: es[half + k]?.id ?? null, winnerEntry: es[half + k] ? null : es[k].id, result: null, status: es[half + k] ? 'open' : 'bye', reportedEntry: null })
+      for (let r = 2; 2 ** r <= size; r++) for (let k = 0; k < size / 2 ** r; k++) db.koMatches.push({ id: id(), compId: cid, round: r, slot: k, aEntry: null, bEntry: null, winnerEntry: null, result: null, status: 'open', reportedEntry: null })
+      db.koMatches.filter(m => m.compId === cid && m.status === 'bye').forEach(db.koAdvance)
+      return cid
+    },
+    deleteMemberKnockout: async cid => { db.signups = db.signups.filter(c => c.id !== cid); db.koMatches = db.koMatches.filter(m => m.compId !== cid) },
     getKnockout: async cid => copy({ matches: db.koMatches.filter(m => m.compId === cid), entries: db.signupEntries.filter(e => e.compId === cid) }),
     reportKoResult: async (mid, w, r) => Object.assign(db.koMatches.find(m => m.id === mid), { status: 'reported', winnerEntry: w, result: r, reportedEntry: db.signupEntries.find(e => e.memberId === ME || e.partnerId === ME)?.id }),
     confirmKoResult: async mid => { const m = db.koMatches.find(x => x.id === mid); m.status = 'confirmed'; db.koAdvance(m) },
