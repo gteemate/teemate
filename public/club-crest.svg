@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Royal Teemate Golf Club: a crowned shield in the club's navy, gold and claret, with a flag on the green. -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1b2a4b"/>
+      <stop offset="1" stop-color="#0f1830"/>
+    </linearGradient>
+    <clipPath id="shieldClip">
+      <path d="M256 120 L392 158 L392 278 C392 360 332 412 256 444 C180 412 120 360 120 278 L120 158 Z"/>
+    </clipPath>
+  </defs>
+
+  <!-- background (full bleed: phones round the corners) -->
+  <rect width="512" height="512" fill="url(#bg)"/>
+
+  <!-- crown -->
+  <g fill="#e3c375">
+    <path d="M186 104 L200 58 L230 86 L256 46 L282 86 L312 58 L326 104 Z"/>
+    <rect x="182" y="102" width="148" height="16" rx="4"/>
+    <circle cx="200" cy="56" r="8"/>
+    <circle cx="256" cy="42" r="9"/>
+    <circle cx="312" cy="56" r="8"/>
+  </g>
+  <g fill="#762A43">
+    <circle cx="226" cy="110" r="4"/>
+    <circle cx="256" cy="110" r="4"/>
+    <circle cx="286" cy="110" r="4"/>
+  </g>
+
+  <!-- shield -->
+  <path d="M256 120 L392 158 L392 278 C392 360 332 412 256 444 C180 412 120 360 120 278 L120 158 Z" fill="#141f3b"/>
+  <g clip-path="url(#shieldClip)">
+    <!-- claret band across the top -->
+    <rect x="100" y="120" width="320" height="74" fill="#762A43"/>
+    <!-- three gold balls on the band -->
+    <g fill="#f3efe7">
+      <circle cx="206" cy="160" r="12"/>
+      <circle cx="256" cy="160" r="12"/>
+      <circle cx="306" cy="160" r="12"/>
+    </g>
+    <g fill="#d9d2c3">
+      <circle cx="209" cy="157" r="2"/><circle cx="203" cy="163" r="2"/>
+      <circle cx="259" cy="157" r="2"/><circle cx="253" cy="163" r="2"/>
+      <circle cx="309" cy="157" r="2"/><circle cx="303" cy="163" r="2"/>
+    </g>
+    <!-- the green -->
+    <ellipse cx="256" cy="402" rx="150" ry="44" fill="#4f7a3a"/>
+    <ellipse cx="256" cy="396" rx="118" ry="30" fill="#6f9c55"/>
+    <ellipse cx="256" cy="392" rx="20" ry="6" fill="#0f1830"/>
+  </g>
+  <!-- flag -->
+  <rect x="252" y="230" width="8" height="164" rx="3" fill="#f3efe7"/>
+  <path d="M260 232 L338 258 L260 286 Z" fill="#e3c375"/>
+  <!-- shield border -->
+  <path d="M256 120 L392 158 L392 278 C392 360 332 412 256 444 C180 412 120 360 120 278 L120 158 Z" fill="none" stroke="#e3c375" stroke-width="12" stroke-linejoin="round"/>
+</svg>
