@@ -26,7 +26,7 @@ export function draw(data) {
   if (data.board?.e) {
     header(esc(data.board.e.name), `${data.board.e.players.length} players`)
     $('main').innerHTML = boardHtml(data.board, lbSeg(data.events))
-    bindBoard()
+    bindBoard(data.board)
     bindLbSeg()
   } else todayBoard(data)
 }

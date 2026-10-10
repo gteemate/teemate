@@ -69,7 +69,7 @@ export function draw({ days, sheet, points, me, rules, req, skew }) {
     const near = tooClose(s)
     if (near) { toast(`You’re booked at ${hhmm(near.time)}. Tee times have to be at least 2 hours apart`); return }
     if (!free(s)) { toast('That time is full'); return }
-    Object.assign(S, { slotId: s.id, picked: [], guests: [], aview: 'book' })
+    Object.assign(S, { slotId: s.id, picked: S.matchPick ?? [], guests: [], aview: 'book', matchPick: null }) // Book this match: the other three already added
     await render()
     top0()
   }))

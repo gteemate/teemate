@@ -8,8 +8,10 @@ import { scoreAdvanceEvent, scoreLeague } from '../event-scoring.js'
 import { buildLibrary, teeRating, EVENT_ALLOWANCE_GAME } from '../games.js'
 import { addDaysIso, eventDates, isoDate, today, fromIso, longDay, leagueWeek } from '../dates.js'
 import { EVENT_TYPES, eventFormat } from './event-editor.js'
+import { myMatch, matchBooking } from '../match.js'
+import { matchActionHtml, bindMatchAction } from './match.js'
 
-export async function loadBoard(id) {
+export async function loadBoard(id, dayWanted = null) {
   const [events, members, course, games] = await Promise.all([api.getEvents(), api.getMembers(), api.getCourse(), api.getGameSettings()])
   const e = events.find(x => x.id === id)
   if (!e) return { e: null }
@@ -21,20 +23,36 @@ export async function loadBoard(id) {
   const dates = Array.from({ length: e.days }, (_, i) => addDaysIso(e.startDate, i))
   const [cards, entries] = await Promise.all([api.getCardsOn(dates), e.entryRequired ? api.getEventEntries([e.id]) : []])
   const dayCards = Object.fromEntries(dates.map((d, i) => [i + 1, cards.filter(c => c.date === d)]))
-  return { e, members, course, L: buildLibrary(games), dayCards, entries, me: await api.getMe() }
+  const me = await api.getMe()
+  // My match on the day shown, and where its four are booked that day (for Book this match / Start scoring).
+  const day = Math.min(dayWanted ?? (S.evDay || dayOf(e)), e.days), mine = myMatch(e, day, me.id)
+  let action = null
+  if (mine) {
+    const ids = [...mine.a, ...mine.b], date = dates[day - 1]
+    const sheet = await api.getTeeSheet(date).catch(() => [])
+    const name = mid => members.find(x => x.id === mid)?.name ?? 'A player'
+    action = { ...matchBooking(ids, sheet, me.id), date, ids, meId: me.id, names: name, eventName: e.name,
+      started: (dayCards[day] ?? []).some(c => ids.every(mid => c.lineup.some(x => x.m === mid))) }
+  }
+  return { e, members, course, L: buildLibrary(games), dayCards, entries, me, mine, action, day }
 }
 
 /** Which day of the event today is (1-based), clamped to the event's days. */
 export const dayOf = e => Math.min(e.days, Math.max(1, Math.round((fromIso(isoDate(today())) - fromIso(e.startDate)) / 864e5) + 1))
 
-export function boardHtml(data, top = '') {
-  if (data.e.style === 'league') return leagueHtml(data, top)
-  const { e, members, course, L, dayCards, entries, me } = data
+/** The event scored from the players' cards (scoreAdvanceEvent), for the board and each match's page. */
+export function boardResult({ e, members, course, L, dayCards, entries }) {
   const tee = teeRating(course)
   const m = id => members.find(x => x.id === id)
   const player = id => ({ name: m(id)?.name ?? 'Former member', courseHcp: courseHandicap(m(id)?.hcp ?? 0, tee) })
   const g = L.lib[EVENT_ALLOWANCE_GAME[e.fmt]]
-  const r = scoreAdvanceEvent(e, course.holes, dayCards, player, g?.pct == null ? 0 : g.pct / 100, entries)
+  return scoreAdvanceEvent(e, course.holes, dayCards, player, g?.pct == null ? 0 : g.pct / 100, entries)
+}
+
+export function boardHtml(data, top = '') {
+  if (data.e.style === 'league') return leagueHtml(data, top)
+  const { e, me } = data
+  const r = boardResult(data)
   const day = Math.min(S.evDay || dayOf(e), e.days)
   const thruText = n => (n === 18 ? 'Finished' : n ? `thru ${n}` : 'not started')
   const notYet = e.startDate > isoDate(today())
@@ -58,7 +76,8 @@ export function boardHtml(data, top = '') {
           : res.st === 'done' ? `<b class="ms-big" style="color:${col}">${who ? `${esc(who.name)} ${esc(res.txt)}` : 'Halved'}</b><small>${who ? 'Final' : '½ point each'}</small>`
           : `<b class="ms-big" style="color:${col}">${res.d ? `${Math.abs(res.d)} up` : 'AS'}</b><small>thru ${res.thru} <span class="livedot">● live</span></small>`
         const pair = (names, c) => `<span class="pairav">${names.map(n => `<span class="av" style="border-color:${c}">${ini(n)}</span>`).join('')}</span><span>${names.map(n => esc(sur(n))).join('<br>')}</span>`
-        return `<div class="card mcard"><div class="mtitle">Match ${k + 1}</div><div class="mgrid"><div class="mside">${pair(mt.a, A.col)}</div><div class="mstat">${stat}</div><div class="mside r">${pair(mt.b, B.col)}</div></div></div>`
+        const mineHere = data.mine?.no === k + 1
+        return `<div class="card mcard tap${mineHere ? ' minem' : ''}" data-match="${k + 1}" role="button" tabindex="0" aria-label="Match ${k + 1}: open its scorecard"><div class="mtitle">${mineHere ? 'Your match · ' : ''}Match ${k + 1}</div><div class="mgrid"><div class="mside">${pair(mt.a, A.col)}</div><div class="mstat">${stat}</div><div class="mside r">${pair(mt.b, B.col)}</div></div>${mineHere ? `<div class="mact">${matchActionHtml(data.action)}</div>` : ''}</div>`
       }).join('') || '<div class="empty-state">No matches drawn for this day.</div>'}`
   } else if (r.kind === 'teams') {
     const lead = r.totals.A === r.totals.B ? null : r.totals.A > r.totals.B ? A : B
@@ -75,7 +94,13 @@ export function boardHtml(data, top = '') {
     <div class="hint" style="text-align:center">Scores come from each player’s own card and update as holes are saved.</div></div>`
 }
 
-export function bindBoard() {
+export function bindBoard(data = {}) {
+  // A match opens its page (scorecard); your match also carries its action (book / add / score).
+  document.querySelectorAll('[data-match]').forEach(c => {
+    c.onclick = async () => { Object.assign(S, { evId: data.e.id, matchNo: +c.dataset.match, matchDay: data.day, matchFrom: S.tab === 'home' ? S.aview : null, tab: 'home', aview: 'match' }); await render(); top0() }
+    c.onkeydown = ev => { if ((ev.key === 'Enter' || ev.key === ' ') && ev.target === c) { ev.preventDefault(); c.click() } }
+  })
+  if (data.action) bindMatchAction(data.action)
   document.querySelectorAll('[data-evday]').forEach(b => (b.onclick = () => { S.evDay = +b.dataset.evday; keepScroll(render) }))
   document.querySelectorAll('[data-lgview]').forEach(b => (b.onclick = () => { S.lgView = b.dataset.lgview; keepScroll(render) }))
   document.querySelectorAll('[data-lgweek]').forEach(b => (b.onclick = () => { S.lgWeek = b.dataset.lgweek === 'season' ? 'season' : +b.dataset.lgweek; keepScroll(render) }))
@@ -156,5 +181,5 @@ export function draw(data) {
   if (!data.e) { header('Event', '', back); $('main').innerHTML = '<div class="screen"><div class="empty-state">This event is no longer available.</div></div>'; return }
   header(esc(data.e.name), `${data.e.players.length} players`, back)
   $('main').innerHTML = boardHtml(data)
-  bindBoard()
+  bindBoard(data)
 }
