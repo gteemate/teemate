@@ -176,6 +176,31 @@ describe('journeys', () => {
     await app.homeFromHere()
   })
 
+  it('12. Knockout: report my result, my opponent confirms, I go through to the next round', async () => {
+    app = await boot(db => {
+      Object.assign(db.signups[0], { closesOn: '2026-10-01', drawPublished: true, roundDeadlines: ['2026-11-15', '2026-12-06'] })
+      db.signupEntries.push(...[0, 1, 3, 5].map((m, i) => ({ id: 100 + i, compId: 1, memberId: m, partnerId: null })))
+      db.koMatches.push({ id: 1, compId: 1, round: 1, slot: 0, aEntry: 100, bEntry: 101, winnerEntry: null, result: null, status: 'open', reportedEntry: null },
+        { id: 2, compId: 1, round: 1, slot: 1, aEntry: 102, bEntry: 103, winnerEntry: null, result: null, status: 'open', reportedEntry: null },
+        { id: 3, compId: 1, round: 2, slot: 0, aEntry: null, bEntry: null, winnerEntry: null, result: null, status: 'open', reportedEntry: null })
+    })
+    await app.tap('Competition')
+    await app.tap('Men’s Match Play')
+    expect(app.text()).toContain('v Declan Murphy')
+    expect(app.text()).toContain('Play by Sun 15 Nov')
+    await app.tap('Enter result')
+    await app.tap('[data-kw="100"]')
+    await app.tap('3&2')
+    await app.tap('Save result')
+    expect(app.text()).toContain('waiting for them to confirm')
+    // Declan confirms on his phone (here: straight to the server).
+    await app.db.koMatches[0] && (app.db.koMatches[0].status = 'confirmed', app.db.koAdvance(app.db.koMatches[0]))
+    await app.tap('Whole draw')
+    expect(app.db.koMatches[2].aEntry).toBe(100) // through to the final
+    expect(app.taps).toBeLessThanOrEqual(7)
+    await app.homeFromHere()
+  })
+
   it('8. Add a friend from a shared link', async () => {
     app = await boot(undefined, { hash: '#friend?n=Eoin+Fitzgerald&c=Royal+Teemate&h=2.1&m=9&d=2026-10-10' })
     expect(app.screen()).toBe('Add friend')

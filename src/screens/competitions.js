@@ -46,9 +46,9 @@ export function draw({ me, date, members, friends, signups, lists, open, entered
   // Season competitions: to sign up for (Events), or signed up for (Entered: with whom, Withdraw until they close).
   const signRow = c => `<button class="card comp" data-sign="${c.id}"><span class="row"><span class="ct">${esc(c.name)}</span><span class="pill gold">Enter ›</span></span>
       <span class="sub">${kindText(c)} · ${closes(c)}${c.notes ? ` · ${esc(c.notes)}` : ''}</span></button>`
-  const mineRow = x => `<div class="card comp"><span class="row"><span class="ct">${esc(x.comp.name)}</span><span class="pill">Entered</span></span>
-      <span class="sub">${x.partnerId ? `With ${esc(nameOf(x.partnerId))}` : 'Singles'} · ${x.comp.closesOn && date > x.comp.closesOn ? 'Entries closed: the draw is coming' : closes(x.comp)}</span>
-      ${x.comp.closesOn && date > x.comp.closesOn ? '' : `<span class="row"><span></span><button class="linkbtn" data-wd="${x.comp.id}">Withdraw${x.partnerId ? ' (both of you)' : ''}</button></span>`}</div>`
+  const mineRow = x => `<div class="card comp${x.comp.drawPublished ? ' gold' : ''}"${x.comp.drawPublished ? ` data-ko="${x.comp.id}" role="button" tabindex="0"` : ''}><span class="row"><span class="ct">${esc(x.comp.name)}</span><span class="pill${x.comp.drawPublished ? ' gold' : ''}">${x.comp.drawPublished ? 'Draw ›' : 'Entered'}</span></span>
+      <span class="sub">${x.partnerId ? `With ${esc(nameOf(x.partnerId))}` : 'Singles'} · ${x.comp.drawPublished ? 'The draw is out: see your match' : x.comp.closesOn && date > x.comp.closesOn ? 'Entries closed: the draw is coming' : closes(x.comp)}</span>
+      ${x.comp.drawPublished || (x.comp.closesOn && date > x.comp.closesOn) ? '' : `<span class="row"><span></span><button class="linkbtn" data-wd="${x.comp.id}">Withdraw${x.partnerId ? ' (both of you)' : ''}</button></span>`}</div>`
   const empty = { entered: 'You’re not in any competitions right now. When a club competition is on, you can join it as you start your round.',
     events: needsSection(signups.comps, me, date) ? '' : 'No season competitions are open for entries right now.', history: 'Finished competitions you played in will show here.' }[tab]
   $('main').innerHTML = `<div class="screen">
@@ -67,6 +67,7 @@ export function draw({ me, date, members, friends, signups, lists, open, entered
   document.querySelectorAll('[data-edit]').forEach(b => (b.onclick = e => { e.stopPropagation(); go(() => { S.ev = null; S.evId = +b.dataset.edit; S.evStep = 1; S.evScope = 'player'; S.aview = 'event' }) }))
   if ($('setsec')) $('setsec').onclick = () => go(() => { S.aview = 'account' })
   document.querySelectorAll('[data-sign]').forEach(b => (b.onclick = () => signSheet(open.find(c => c.id === +b.dataset.sign), me, members, friends, signups.entries)))
+  document.querySelectorAll('[data-ko]').forEach(c => (c.onclick = () => go(() => { S.koComp = +c.dataset.ko; S.koRound = null; S.koFrom = 'comp'; S.aview = 'ko' })))
   document.querySelectorAll('[data-wd]').forEach(b => (b.onclick = async () => {
     if (b.dataset.armed !== '1') { b.dataset.armed = '1'; b.textContent = 'Tap again to withdraw'; return }
     b.disabled = true

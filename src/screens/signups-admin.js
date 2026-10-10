@@ -2,6 +2,7 @@
 // (name, Men's / Ladies' / Mixed / Open, Singles / Pairs, entries close, notes, open), see and share who has
 // entered, and delete. Hidden ones (not open) members don't see.
 import * as api from '../api.js'
+import { S } from '../state.js'
 import { $, esc, header, keepScroll, render, toast } from '../ui.js'
 import { toAdmin } from './nav.js'
 import { eventDates } from '../dates.js'
@@ -46,6 +47,7 @@ function sheet(c, entries, members) {
     <div class="gm-btns"><button type="button" class="ghost" id="sc-cancel">Cancel</button><button type="submit" class="primary">${c ? 'Save' : 'Add'}</button></div>
     ${c ? `<span class="kicker">Entered (${list.length})</span><div class="card list">${list.map(n => `<div class="lrow hutrow"><span class="who"><strong>${esc(n)}</strong></span><span></span></div>`).join('') || '<div class="empty-state">Nobody yet.</div>'}</div>
       ${list.length ? '<button type="button" class="ghost" id="sc-share">Share the entry list</button>' : ''}
+      <button type="button" class="primary" id="sc-draw">${c.drawPublished ? 'The draw' : 'Make or see the draw'}</button>
       <button type="button" class="ghost accremove" id="sc-del">Delete competition</button>` : ''}
   </form></div>`
   let open = !!v.open
@@ -65,6 +67,7 @@ function sheet(c, entries, members) {
     const text = `${c.name}: ${list.length} ${c.kind === 'pairs' ? 'pairs' : 'entries'}\n${list.map((n, i) => `${i + 1}. ${n}`).join('\n')}`
     try { if (navigator.share) await navigator.share({ title: c.name, text }); else { await navigator.clipboard.writeText(text); toast('Entry list copied') } } catch { /* closed the share sheet */ }
   }
+  if ($('sc-draw')) $('sc-draw').onclick = async () => { close(); Object.assign(S, { koComp: c.id, koRound: null, koFrom: 'signups', aview: 'ko' }); await render() }
   if ($('sc-del')) $('sc-del').onclick = async () => {
     const b = $('sc-del')
     if (b.dataset.armed !== '1') { b.dataset.armed = '1'; b.textContent = list.length ? `Tap again: delete it and its ${list.length} entr${list.length === 1 ? 'y' : 'ies'}` : 'Tap again to delete'; return }

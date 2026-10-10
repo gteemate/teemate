@@ -20,7 +20,8 @@ export const API_NAMES = ['getMe', 'forgetMe', 'getSession', 'signIn', 'needsAcc
   'getTodayRounds', 'getCardsForTeeTimes', 'getMyPlayerEvents', 'proposePlayerEvent', 'counterPlayerEvent', 'answerPlayerEvent', 'cancelPlayerEvent',
   'getEvents', 'saveEvent', 'deleteEvent', 'getCardsOn', 'getLeagueEntries', 'getCardsById', 'enterLeague', 'leaveLeague', 'enterEventToday',
   'getEventEntries', 'enterEventRound', 'leaveEventRound',
-  'getSignups', 'enterSignup', 'withdrawSignup', 'setMyPlaysIn', 'adminSetPlaysIn', 'saveSignup', 'deleteSignup']
+  'getSignups', 'enterSignup', 'withdrawSignup', 'setMyPlaysIn', 'adminSetPlaysIn', 'saveSignup', 'deleteSignup',
+  'getKnockout', 'makeDraw', 'swapDraw', 'setRoundDeadlines', 'publishDraw', 'reportKoResult', 'confirmKoResult', 'disputeKoResult', 'adminSetKoResult']
 
 /** For vi.mock('…/api.js'): every export, each calling the current world's version (globalThis.__world). */
 export function mockModule() {
@@ -49,7 +50,7 @@ export function makeWorld(today, setup = () => {}) {
       { id: 2, name: 'Men’s Fourball', category: 'men', kind: 'pairs', closesOn: '2026-10-31', notes: '£5 a pair', open: true },
       { id: 3, name: 'Ladies Singles', category: 'ladies', kind: 'singles', closesOn: '2026-10-31', notes: null, open: true },
       { id: 4, name: 'Mixed Foursome', category: 'mixed', kind: 'pairs', closesOn: '2026-10-31', notes: null, open: true }],
-    signupEntries: [],
+    signupEntries: [], koMatches: [],
     buddies: [{ id: 1, favourite: false }, { id: 3, favourite: true }, { id: 5, favourite: false }, { id: 7, favourite: false }, { id: 11, favourite: false }],
     contacts: [{ id: 1, name: 'Sam Visitor', club: 'Royal Portrush GC', hcp: '12.0', gui: '1234567', sharedOn: today, favourite: false, updatedAt: `${today}T08:00:00Z` }],
     slots: {}, bookings: [], guestVisits: [], rounds: [], requests: [], playerEvents: [],
@@ -206,6 +207,11 @@ export function makeWorld(today, setup = () => {}) {
     enterSignup: async (cid, partnerId = null) => { db.signupEntries.push({ compId: cid, memberId: ME, partnerId }) },
     withdrawSignup: async cid => { db.signupEntries = db.signupEntries.filter(e => !(e.compId === cid && (e.memberId === ME || e.partnerId === ME))) },
     setMyPlaysIn: async p => { db.members[0].playsIn = p },
+    getKnockout: async cid => copy({ matches: db.koMatches.filter(m => m.compId === cid), entries: db.signupEntries.filter(e => e.compId === cid) }),
+    reportKoResult: async (mid, w, r) => Object.assign(db.koMatches.find(m => m.id === mid), { status: 'reported', winnerEntry: w, result: r, reportedEntry: db.signupEntries.find(e => e.memberId === ME || e.partnerId === ME)?.id }),
+    confirmKoResult: async mid => { const m = db.koMatches.find(x => x.id === mid); m.status = 'confirmed'; db.koAdvance(m) },
+    disputeKoResult: async mid => { db.koMatches.find(m => m.id === mid).status = 'disputed' },
+    adminSetKoResult: async (mid, w, r) => { const m = db.koMatches.find(x => x.id === mid); Object.assign(m, { status: 'confirmed', winnerEntry: w, result: r }); db.koAdvance(m) },
     enterEventToday: async (rid, eid, marker) => {
       const e = db.events.find(x => x.id === eid)
       if (!e.players.includes(ME)) e.players.push(ME)
@@ -215,6 +221,7 @@ export function makeWorld(today, setup = () => {}) {
   // Record every call (journeys check what reached the server).
   for (const [k, f] of Object.entries(api)) api[k] = (...a) => { db.calls.push(k); return f(...a) }
   db.slotsOn = sheet
+  db.koAdvance = m => { const n = db.koMatches.find(x => x.compId === m.compId && x.round === m.round + 1 && x.slot === Math.floor(m.slot / 2)); if (n) n[m.slot % 2 ? 'bEntry' : 'aEntry'] = m.winnerEntry }
   setup(db, { sheet, slotById, id })
   return { api, db }
 }

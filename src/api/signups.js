@@ -2,14 +2,16 @@ import { must, sb, forgetMe } from './client.js'
 
 /* ---------- Sign-up competitions (season competitions members put their names down for) ---------- */
 
-const toComp = c => ({ id: c.id, name: c.name, category: c.category, kind: c.kind, closesOn: c.closes_on, notes: c.notes, open: c.open })
+const toComp = c => ({ id: c.id, name: c.name, category: c.category, kind: c.kind, closesOn: c.closes_on, notes: c.notes, open: c.open,
+  drawPublished: !!c.draw_published, roundDeadlines: c.round_deadlines ?? [] })
 
 /** { comps: [{ id, name, category, kind, closesOn, notes, open }], entries: [{ compId, memberId, partnerId }] }
- *  Members see open competitions and their own entries; admins see everything. */
+ *  Members see open competitions and their own entries; admins see everything. A published draw's entries come with
+ *  getKnockout. */
 export async function getSignups() {
-  const [c, e] = await Promise.all([sb.from('signup_comps').select('id, name, category, kind, closes_on, notes, open').order('id'),
-    sb.from('signup_entries').select('comp_id, member_id, partner_id, created_at').order('created_at')])
-  return { comps: must(c).map(toComp), entries: must(e).map(x => ({ compId: x.comp_id, memberId: x.member_id, partnerId: x.partner_id })) }
+  const [c, e] = await Promise.all([sb.from('signup_comps').select('id, name, category, kind, closes_on, notes, open, draw_published, round_deadlines').order('id'),
+    sb.from('signup_entries').select('id, comp_id, member_id, partner_id, created_at').order('created_at')])
+  return { comps: must(c).map(toComp), entries: must(e).map(x => ({ id: x.id, compId: x.comp_id, memberId: x.member_id, partnerId: x.partner_id })) }
 }
 /** Enter (partnerId for pairs, else null). The server checks eligibility, the closing date and double entries. */
 export async function enterSignup(compId, partnerId = null) { must(await sb.rpc('enter_signup', { p_comp: compId, p_partner: partnerId })) }
@@ -28,3 +30,23 @@ export async function saveSignup(c) {
   else must(await sb.from('signup_comps').insert(row))
 }
 export async function deleteSignup(id) { must(await sb.from('signup_comps').delete().eq('id', id)) }
+
+/* ---------- Knockout draw ---------- */
+
+const toMatch = m => ({ id: m.id, round: m.round, slot: m.slot, aEntry: m.a_entry, bEntry: m.b_entry, winnerEntry: m.winner_entry, result: m.result,
+  status: m.status, reportedEntry: m.reported_entry })
+
+/** A competition's draw: { matches: [...], entries: [{ id, memberId, partnerId }] } (players see it once published). */
+export async function getKnockout(compId) {
+  const [m, e] = await Promise.all([sb.from('ko_matches').select('id, round, slot, a_entry, b_entry, winner_entry, result, status, reported_entry').eq('comp_id', compId).order('round').order('slot'),
+    sb.rpc('ko_entries', { p_comp: compId })])
+  return { matches: must(m).map(toMatch), entries: must(e) }
+}
+export async function makeDraw(compId) { must(await sb.rpc('admin_make_draw', { p_comp: compId })) }
+export async function swapDraw(compId, x, y) { must(await sb.rpc('admin_swap_draw', { p_comp: compId, p_x: x, p_y: y })) }
+export async function setRoundDeadlines(compId, dates) { must(await sb.rpc('admin_set_round_deadlines', { p_comp: compId, p_dates: dates })) }
+export async function publishDraw(compId) { must(await sb.rpc('admin_publish_draw', { p_comp: compId })) }
+export async function reportKoResult(matchId, winnerEntry, result) { must(await sb.rpc('report_ko_result', { p_match: matchId, p_winner: winnerEntry, p_result: result })) }
+export async function confirmKoResult(matchId) { must(await sb.rpc('confirm_ko_result', { p_match: matchId })) }
+export async function disputeKoResult(matchId) { must(await sb.rpc('dispute_ko_result', { p_match: matchId })) }
+export async function adminSetKoResult(matchId, winnerEntry, result) { must(await sb.rpc('admin_set_ko_result', { p_match: matchId, p_winner: winnerEntry, p_result: result })) }

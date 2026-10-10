@@ -37,12 +37,13 @@ import * as hutOrder from './screens/hut-order.js'
 import * as hutStaff from './screens/hut-staff.js'
 import * as matchScreen from './screens/match.js'
 import * as signupsAdmin from './screens/signups-admin.js'
+import * as knockout from './screens/knockout.js'
 import * as friend from './screens/friend.js'
 import { pendingFriend, setPendingFriend } from './screens/friend.js'
 import { checkAlerts } from './alert-bar.js'
 
 // Each screen exports an optional async load() and a sync draw(data).
-const ADMIN = { home, account: adminHome, tee: teeTimes, book: booking, booked, mine: bookings, buddies, pins, points, events, event: eventEditor, evboard: eventBoardScreen, access, colours, weather, friend, hutadmin: hutAdmin, hutorder: hutOrder, hutstaff: hutStaff, match: matchScreen, signups: signupsAdmin, rules: bookingRules, comp: competitions, treq: teeRequests, mygames: myGames }
+const ADMIN = { home, account: adminHome, tee: teeTimes, book: booking, booked, mine: bookings, buddies, pins, points, events, event: eventEditor, evboard: eventBoardScreen, access, colours, weather, friend, hutadmin: hutAdmin, hutorder: hutOrder, hutstaff: hutStaff, match: matchScreen, signups: signupsAdmin, ko: knockout, rules: bookingRules, comp: competitions, treq: teeRequests, mygames: myGames }
 function screenFor() {
   if (S.tab === 'scores') return S.sview === 'players' ? players : S.sview === 'challenge' ? challenge : S.sview === 'pevent' ? eventLive : S.sview === 'counts' ? scoringRound : scores
   if (S.tab === 'lb') return leaderboard
