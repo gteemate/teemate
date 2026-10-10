@@ -37,7 +37,7 @@ export function draw({ card, me, members = [], buddies = [], contacts = [] }) {
   const a = addFriendAction(card, { me, members, buddies, contacts })
   if (me) clearPending() // shown signed in: done with the link
   const BTN = {
-    signin: '<button class="primary" id="fr-go">Sign in to save</button><span class="hint">You’ll come straight back here after signing in.</span>',
+    signin: '<button class="primary" id="fr-go">Sign in to save</button><button class="ghost" id="fr-no">Not now</button><span class="hint">You’ll come straight back here after signing in.</span>',
     self: '<div class="empty-state">This is your card.</div>',
     add: '<button class="primary" id="fr-go">Add to friends</button><span class="hint">A member of your club: you can book them in.</span>',
     already: '<div class="empty-state">Already in your friends.</div>',
@@ -56,6 +56,7 @@ export function draw({ card, me, members = [], buddies = [], contacts = [] }) {
     ${['self', 'already', 'same'].includes(a.kind) ? '<button class="ghost" id="fr-list">See your friends</button>' : ''}
   </div>`
   if ($('fr-list')) $('fr-list').onclick = toFriends
+  if ($('fr-no')) $('fr-no').onclick = () => { clearPending(); S.friendHash = null; render() } // signed out, not keeping it
   const go = $('fr-go')
   if (!go) return
   go.onclick = async () => {
