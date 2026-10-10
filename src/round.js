@@ -1,13 +1,18 @@
 // A round: what "Scoring round?" offers when a card starts, and (Task 10) whether the round has a leaderboard.
 import { eventLastDay, leagueWeek, addDaysIso } from './dates.js'
+import { myMatch } from './match.js'
 
 /**
- * Competitions this card could count for today: [{ kind: 'league', e, players, week } | { kind: 'event', e, players, day }].
+ * Competitions this card could count for today:
+ *   [{ kind: 'league', e, players, week, needsMarker } | { kind: 'event', e, players, day, needsMarker } | { kind: 'event', e, players, day, match, auto }]
  * Leagues running this week, for the card's players in them who haven't counted a round this week; events on today
- * that count only ticked cards (entryRequired), for the card's players in them.
+ * that count only ticked cards (entryRequired), for the card's players in them. Both need someone else on the card
+ * to mark it (anyone, guests too). An event with drawn matches is offered only when all four of my match are on the
+ * card, ticked already (the other side marks you, so no marker).
  */
-export function countsForOptions({ lineup, events, leagueEntries, date }) {
+export function countsForOptions({ lineup, events, leagueEntries, date, meId }) {
   const onCard = lineup.filter(x => x.m != null).map(x => x.m)
+  const marked = lineup.length >= 2
   const out = []
   for (const e of events) {
     const inIt = onCard.filter(m => e.players.includes(m))
@@ -15,14 +20,20 @@ export function countsForOptions({ lineup, events, leagueEntries, date }) {
     if (e.style === 'league') {
       const week = leagueWeek(e, date)
       const players = inIt.filter(m => !leagueEntries.some(x => x.eventId === e.id && x.week === week && x.memberId === m))
-      if (players.length) out.push({ kind: 'league', e, players, week })
+      if (players.length && marked) out.push({ kind: 'league', e, players, week, needsMarker: true })
     } else if (e.entryRequired) {
       const day = Array.from({ length: e.days }, (_, i) => addDaysIso(e.startDate, i)).indexOf(date) + 1
-      out.push({ kind: 'event', e, players: inIt, day })
+      if (Object.keys(e.matches ?? {}).length) {
+        const mine = myMatch(e, day, meId), four = mine ? [...mine.a, ...mine.b] : []
+        if (mine && four.every(m => onCard.includes(m))) out.push({ kind: 'event', e, players: four, day, match: mine.no, auto: true })
+      } else if (marked) out.push({ kind: 'event', e, players: inIt, day, needsMarker: true })
     }
   }
   return out
 }
+
+/** Who can mark my card: everyone else on it, guests too ({ m } / { g } lineup entries). */
+export const markerChoices = (lineup, meId) => lineup.filter(x => x.m !== meId)
 
 /**
  * The Leaderboard tab in a round: { view: 'evboard' | 'pevent', id } for the competition this card counts for, or

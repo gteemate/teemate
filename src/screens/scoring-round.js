@@ -6,10 +6,12 @@ import { S } from '../state.js'
 import { $, esc, header, render, top0, toast } from '../ui.js'
 import { isoDate, today } from '../dates.js'
 import { getRound, resetRound } from './scores.js'
-import { countsForOptions } from '../round.js'
+import { countsForOptions, markerChoices } from '../round.js'
 import { markLeagueAsked } from './scores-league.js'
 
 let ticked = new Set() // option keys ticked on this visit
+let marker = null // who marks the card ({ m } / { g }), for leagues and standard competitions
+let seen = null // the card these ticks belong to (auto ticks are set once per card)
 
 export async function load() {
   const round = getRound()
@@ -17,41 +19,54 @@ export async function load() {
   const events = await api.getEvents()
   const date = isoDate(today())
   const leagues = events.filter(e => e.style === 'league')
-  const leagueEntries = await api.getLeagueEntries(leagues.map(e => e.id))
-  return { round, options: countsForOptions({ lineup: round.lineup, events, leagueEntries, date }) }
+  const [leagueEntries, me, members, guests] = await Promise.all([api.getLeagueEntries(leagues.map(e => e.id)), api.getMe(), api.getMembers(),
+    api.getGuests(round.lineup.filter(e => e.g != null).map(e => e.g))])
+  const name = x => (x.m != null ? members.find(m => m.id === x.m)?.name : guests.find(g => g.id === x.g)?.name) ?? 'Guest'
+  const choices = markerChoices(round.lineup, me.id).map(x => ({ ...x, name: name(x) }))
+  return { round, me, choices, options: countsForOptions({ lineup: round.lineup, events, leagueEntries, date, meId: me.id }) }
 }
 
 const key = o => `${o.kind}:${o.e.id}`
 
-async function start(round, options) {
+const same = (a, b) => !!a && !!b && (a.m != null ? a.m === b.m : a.g === b.g)
+
+async function start(round, options, me) {
   if (!round.id) await api.saveRound(round) // creates the group's card (or joins it)
   for (const o of options.filter(x => ticked.has(key(x)))) {
+    // Each player's marker: the one chosen, or me when that player is the marker. Matches need none.
+    const enter = (ids, mk) => (o.kind === 'league' ? api.enterLeague(round.id, o.e.id, ids, mk) : api.enterEventRound(round.id, o.e.id, ids, mk))
     try {
-      if (o.kind === 'league') await api.enterLeague(round.id, o.e.id, o.players)
-      else await api.enterEventRound(round.id, o.e.id, o.players)
+      if (!o.needsMarker) await enter(o.players)
+      else for (const id of o.players) await enter([id], same(marker, { m: id }) ? { m: me.id } : marker)
     } catch (err) { toast(err.message) }
   }
   markLeagueAsked(round.id)
-  ticked = new Set()
+  ticked = new Set(); marker = null; seen = null
   S.sview = 'card'
   await render()
   top0()
 }
 
-export function draw({ round, options }) {
+export function draw({ round, me, choices, options }) {
   if (!round) { render(); return }
-  if (!options.length) { start(round, options); return } // nothing to ask: straight to the card
-  header('Scoring round?', '', async () => { ticked = new Set(); resetRound(); S.sview = 'card'; await render(); top0() }) // back to New round (an unsaved card is dropped)
+  if (!options.length) { start(round, options, me); return } // nothing to ask: straight to the card
+  if (seen !== round) { seen = round; ticked = new Set(options.filter(o => o.auto).map(key)); marker = choices.length === 1 ? choices[0] : null } // your match counts already
+  const needMarker = options.some(o => o.needsMarker && ticked.has(key(o)))
+  header('Scoring round?', '', async () => { ticked = new Set(); marker = null; seen = null; resetRound(); S.sview = 'card'; await render(); top0() }) // back to New round (an unsaved card is dropped)
   const label = () => { const on = options.filter(o => ticked.has(key(o))).map(o => o.e.name); return `Start round · ${on.length ? on.join(' + ') : 'General play'}` }
-  const sub = o => (o.kind === 'league' ? `Week ${o.week} of ${o.e.weeks} · Stableford` : `${o.e.days > 1 ? `Day ${o.day} of ${o.e.days} · ` : ''}${o.e.club ? 'Club event' : `Event by ${esc(o.e.createdBy?.name ?? 'a member')}`}`)
+  const sub = o => (o.match ? `Match ${o.match}${o.e.days > 1 ? ` · day ${o.day}` : ''} · all four of you are on this card` : o.kind === 'league' ? `Week ${o.week} of ${o.e.weeks} · Stableford` : `${o.e.days > 1 ? `Day ${o.day} of ${o.e.days} · ` : ''}${o.e.club ? 'Club event' : `Event by ${esc(o.e.createdBy?.name ?? 'a member')}`}`)
   $('main').innerHTML = `<div class="screen">
     <p class="sub" style="margin:0">You’re currently entered in these competitions.</p>
     <h3 style="margin:0">Do you want to make this a scoring round?</h3>
     <p class="sub" style="margin:0">Tick the ones this round should count for, or leave them all for a general round.</p>
     ${options.map(o => `<button class="card tick" data-k="${key(o)}" aria-pressed="${ticked.has(key(o))}"><span class="box" aria-hidden="true">${ticked.has(key(o)) ? '✓' : ''}</span>
       <span><span class="tt">${esc(o.e.name)}</span><span class="sub">${sub(o)}</span></span></button>`).join('')}
-    <button class="primary" id="start">${esc(label())}</button>
+    ${needMarker ? (choices.length === 1 ? `<p class="hint">Marker: <b>${esc(choices[0].name)}</b></p>`
+      : `<span class="kicker">Who’s marking your card?</span><div class="chips" role="radiogroup" aria-label="Your marker">${choices.map((c, n) => `<button class="chip" role="radio" data-mk="${n}" aria-checked="${same(marker, c)}" aria-pressed="${same(marker, c)}">${esc(c.name)}</button>`).join('')}</div>`) : ''}
+    <button class="primary" id="start" ${needMarker && !marker ? 'disabled' : ''}>${esc(needMarker && !marker ? 'Pick your marker' : label())}</button>
   </div>`
-  document.querySelectorAll('[data-k]').forEach(b => (b.onclick = () => { const k = b.dataset.k; ticked.has(k) ? ticked.delete(k) : ticked.add(k); draw({ round, options }) }))
-  $('start').onclick = async () => { $('start').disabled = true; await start(round, options) }
+  const again = () => draw({ round, me, choices, options })
+  document.querySelectorAll('[data-k]').forEach(b => (b.onclick = () => { const k = b.dataset.k; ticked.has(k) ? ticked.delete(k) : ticked.add(k); again() }))
+  document.querySelectorAll('[data-mk]').forEach(b => (b.onclick = () => { marker = choices[+b.dataset.mk]; again() }))
+  $('start').onclick = async () => { $('start').disabled = true; await start(round, options, me) }
 }

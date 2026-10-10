@@ -686,3 +686,4 @@ h4,.sheet h4{font-family:var(--display);font-weight:600;letter-spacing:0}
 .hutdone .hutord{margin-top:10px}
 .hutstafftile{border-color:var(--gold)}
 .ghost.sm{flex:0 0 auto;padding:8px 16px;font-size:14px;border-radius:12px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}

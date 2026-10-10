@@ -57,9 +57,10 @@ export async function getCardsById(ids) {
   return Object.fromEntries(must(await sb.from('rounds').select('id, lineup, scores, done').in('id', ids)).map(r => [r.id, r]))
 }
 
-/** Enter players on my card into a league this week (before the first hole is saved). Returns the week. */
-export async function enterLeague(roundId, eventId, memberIds) {
-  return must(await sb.rpc('enter_league', { p_round: roundId, p_event: eventId, p_members: memberIds }))
+/** Enter players on my card into a league this week (before the first hole is saved), with who marks them
+ *  ({ m } / { g } on the card). Returns the week. */
+export async function enterLeague(roundId, eventId, memberIds, marker = null) {
+  return must(await sb.rpc('enter_league', { p_round: roundId, p_event: eventId, p_members: memberIds, p_marker: marker }))
 }
 
 export async function leaveLeague(roundId, eventId, memberIds) {
@@ -83,9 +84,10 @@ export async function getEventEntries(eventIds) {
     .map(r => ({ eventId: r.event_id, day: r.day, memberId: r.member_id, roundId: r.round_id }))
 }
 
-/** Count my card for an event today, for these players (before hole 1 is saved). Returns the event day. */
-export async function enterEventRound(roundId, eventId, memberIds) {
-  return must(await sb.rpc('enter_event_round', { p_round: roundId, p_event: eventId, p_members: memberIds }))
+/** Count my card for an event today, for these players (before hole 1 is saved), with their marker if the event
+ *  needs one. Returns the event day. */
+export async function enterEventRound(roundId, eventId, memberIds, marker = null) {
+  return must(await sb.rpc('enter_event_round', { p_round: roundId, p_event: eventId, p_members: memberIds, p_marker: marker }))
 }
 
 export async function leaveEventRound(roundId, eventId, memberIds) {

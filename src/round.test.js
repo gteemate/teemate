@@ -9,7 +9,7 @@ const event = over => ({ id: 7, name: 'Friday Roll-up', style: 'individual', sta
 describe('countsForOptions: what "Scoring round?" offers', () => {
   it('nothing on: nothing to ask', () => expect(countsForOptions({ lineup, events: [], leagueEntries: [], date: D })).toEqual([]))
   it('a league this week, for the players on the card who are in it', () => {
-    expect(countsForOptions({ lineup, events: [league()], leagueEntries: [], date: D })).toEqual([{ kind: 'league', e: league(), players: [1, 2], week: 1 }])
+    expect(countsForOptions({ lineup, events: [league()], leagueEntries: [], date: D })).toEqual([{ kind: 'league', e: league(), players: [1, 2], week: 1, needsMarker: true }])
   })
   it('a league: players who already counted a round this week are left out', () => {
     const r = countsForOptions({ lineup, events: [league()], leagueEntries: [{ eventId: 2, week: 1, memberId: 2, roundId: 99 }], date: D })
@@ -20,7 +20,7 @@ describe('countsForOptions: what "Scoring round?" offers', () => {
     expect(countsForOptions({ lineup, events: [league()], leagueEntries: done, date: D })).toEqual([])
   })
   it('an event on today that needs ticking, for the card\'s players in it', () => {
-    expect(countsForOptions({ lineup, events: [event()], leagueEntries: [], date: D })).toEqual([{ kind: 'event', e: event(), players: [1], day: 1 }])
+    expect(countsForOptions({ lineup, events: [event()], leagueEntries: [], date: D })).toEqual([{ kind: 'event', e: event(), players: [1], day: 1, needsMarker: true }])
   })
   it('not offered: events that count every card anyway, ones not on today, leagues not running, nobody on the card in it', () => {
     const r = countsForOptions({ lineup, date: D, leagueEntries: [], events: [
@@ -28,6 +28,27 @@ describe('countsForOptions: what "Scoring round?" offers', () => {
     ] })
     expect(r).toEqual([])
   })
+})
+
+describe('countsForOptions: a marker, and matches only when all four are on the card', () => {
+  it('on my own: no league or competition (nobody to mark the card)', () =>
+    expect(countsForOptions({ lineup: [{ m: 1 }], events: [league(), event()], leagueEntries: [], date: D, meId: 1 })).toEqual([]))
+  it('with a guest: offered (anyone on the card can mark)', () =>
+    expect(countsForOptions({ lineup: [{ m: 1 }, { g: 50 }], events: [league()], leagueEntries: [], date: D, meId: 1 })).toHaveLength(1))
+  const cup = over => ({ id: 11, name: 'Christmas Cup', style: 'ryder', startDate: D, days: 1, players: [1, 2, 3, 4, 5, 6, 7, 8], entryRequired: true,
+    matches: { 1: [{ a: [5, 6], b: [7, 8] }, { a: [1, 2], b: [3, 4] }] }, ...over })
+  it('my match with all four on the card: offered, ticked already, for the four', () =>
+    expect(countsForOptions({ lineup: [{ m: 1 }, { m: 2 }, { m: 3 }, { m: 4 }], events: [cup()], leagueEntries: [], date: D, meId: 1 }))
+      .toEqual([{ kind: 'event', e: cup(), players: [1, 2, 3, 4], day: 1, match: 2, auto: true }]))
+  it('three of my four: not offered', () =>
+    expect(countsForOptions({ lineup: [{ m: 1 }, { m: 2 }, { m: 3 }, { g: 50 }], events: [cup()], leagueEntries: [], date: D, meId: 1 })).toEqual([]))
+  it("I'm not drawn today: not offered", () =>
+    expect(countsForOptions({ lineup: [{ m: 9 }, { m: 2 }, { m: 3 }, { m: 4 }], events: [cup({ players: [2, 3, 4, 9] })], leagueEntries: [], date: D, meId: 9 })).toEqual([]))
+})
+
+import { markerChoices } from './round.js'
+describe('markerChoices: who can mark my card', () => {
+  it('everyone on the card but me, guests too', () => expect(markerChoices([{ m: 1 }, { m: 2 }, { g: 50 }], 1)).toEqual([{ m: 2 }, { g: 50 }]))
 })
 
 import { roundBoard } from './round.js'
