@@ -740,3 +740,101 @@ h4,.sheet h4{font-family:var(--display);font-weight:600;letter-spacing:0}
 .kofin{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap}
 .kofin label{display:grid;gap:4px;font-size:13px;color:var(--muted)}
 #newko small{display:block;font-weight:400;font-size:12px;opacity:.8}
+
+/* The club office: an iPad- or computer-wide page, a sidebar of sections beside the page; on a phone the sections
+   become a strip along the top. Pages it borrows from the phone app (pins, the event editor) keep a phone width. */
+#app.office{max-width:1180px;height:min(860px,calc(100vh - 48px));display:grid;grid-template-columns:230px minmax(0,1fr);grid-template-rows:auto auto auto minmax(0,1fr);border-radius:28px}
+#app.office .oside{grid-row:1/-1;grid-column:1}
+#app.office #hdr,#app.office #alerts,#app.office #dateWrap,#app.office main{grid-column:2}
+#app.office header.top{padding:26px 30px 4px}
+#app.office .screen{padding:14px 30px 30px}
+#app.office main .screen:not(.office){max-width:640px}
+.oside{display:flex;flex-direction:column;gap:4px;padding:22px 12px;background:var(--sunk);border-right:1px solid var(--line);overflow-y:auto}
+.oside[hidden]{display:none}
+.oclub{font-family:var(--display);font-size:20px;padding:0 10px 14px;line-height:1.2}
+.oclub small{display:block;font-family:var(--sys);font-size:12px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-top:4px}
+.onav{display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:12px;border:0;background:none;color:var(--muted);font-weight:700;font-size:15px;cursor:pointer;text-align:left}
+.onav:hover{color:var(--ink)}
+.onav svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.onav[aria-current="page"]{background:var(--surface);color:var(--ink)}
+.ocnt{margin-left:auto;background:var(--gold);color:var(--on-gold);font-size:12px;font-weight:800;border-radius:999px;padding:1px 8px;font-variant-numeric:tabular-nums}
+.osp{flex:1}
+.owho{font-size:13px;color:var(--muted);padding:12px 12px 0;border-top:1px solid var(--line);line-height:1.4}
+.owho b{color:var(--ink)}
+.ostats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.ostat{padding:14px 16px;display:flex;flex-direction:column;gap:2px;align-items:flex-start}
+.ostat span{color:var(--muted);font-size:13px}
+.ostat b{font-family:var(--display);font-weight:400;font-size:30px;font-variant-numeric:tabular-nums}
+.ostat b small{font-size:18px;color:var(--muted)}
+.ostat>small{color:var(--muted);font-size:12px}
+.ostat.warn b,.owarn{color:var(--loss)}
+.ostat .linkbtn{padding:0;font-size:13px;color:var(--gold)}
+.olist{overflow:hidden}
+.orow{display:flex;align-items:center;gap:14px;padding:13px 16px;border-top:1px solid var(--line);min-width:0}
+.orow:first-child{border-top:0}
+.obtn{width:100%;background:none;border-left:0;border-right:0;border-bottom:0;color:var(--ink);font:inherit;text-align:left;cursor:pointer}
+.obtn:first-child{border-top:0}
+.obtn:hover{background:var(--leaf)}
+.ot{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.ot b{font-weight:700}
+.ot span{color:var(--muted);font-size:13px;overflow-wrap:anywhere}
+.oacts{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.ghost.sm{padding:8px 14px;font-size:14px;border-radius:12px}
+.oic{width:40px;height:40px;border-radius:12px;background:var(--leaf);display:grid;place-items:center;flex:none;font-size:18px}
+.otags{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.pill.warn{background:#3b2533;color:var(--loss)}
+.obar{display:flex;gap:12px;align-items:center}
+.obar .search{flex:1;margin:0}
+.odays{display:flex;gap:6px;overflow-x:auto}
+.osheetwrap{padding:14px;overflow-x:auto}
+.osheet{display:grid;gap:6px;min-width:560px}
+.otime{display:grid;grid-template-columns:64px repeat(var(--cap),minmax(0,1fr));gap:6px;border:0;background:none;padding:0;cursor:pointer;text-align:left;color:var(--ink);font:inherit}
+.otm{font-weight:800;font-variant-numeric:tabular-nums;color:var(--muted);padding:8px 0}
+.ocell{border-radius:10px;padding:8px 10px;font-size:13px;font-weight:600;border:1px dashed var(--line);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ocell.b{background:var(--leaf);border:1px solid var(--line);color:var(--ink)}
+.ocell.g{color:var(--gold)}
+.ocell.off{visibility:hidden}
+.otime:hover .ocell,.otime:focus-visible .ocell{border-color:var(--gold)}
+.olegend{display:flex;gap:16px;color:var(--muted);font-size:13px;flex-wrap:wrap}
+.olegend i{display:inline-block;width:12px;height:12px;border-radius:4px;vertical-align:-1px;margin-right:6px;border:1px dashed var(--line)}
+.olegend i.b{background:var(--leaf);border-style:solid}
+.olegend i.g{background:var(--gold)}
+.osplit{display:grid;grid-template-columns:minmax(240px,.75fr) minmax(0,1.7fr);gap:16px;align-items:start}
+.ocol{display:flex;flex-direction:column;gap:12px;align-items:stretch}
+.ocol .primary{align-self:flex-start}
+.ocomp[aria-pressed="true"]{background:var(--leaf)}
+.odetail{min-width:0}
+.ohead{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;padding:16px;flex-wrap:wrap}
+.ohead h4{font-family:var(--display);font-weight:400;font-size:22px;margin:0}
+.ohead .hint{margin:4px 0 0}
+.opad{padding:0 16px;margin:0}
+.obracket{display:flex;gap:16px;overflow-x:auto;padding:16px}
+.oround{display:flex;flex-direction:column;justify-content:space-around;gap:10px;min-width:140px;flex:1}
+.oround small{color:var(--muted);font-weight:700;font-size:12px;letter-spacing:.04em;text-transform:uppercase;line-height:1.4}
+.oround small span{display:block;text-transform:none;letter-spacing:0;font-weight:600}
+.omatch{border:1px solid var(--line);border-radius:12px;overflow:hidden;font-size:13px}
+.obk{padding:6px 10px}
+.obk+.obk{border-top:1px solid var(--line)}
+.obk.w{font-weight:800;color:var(--gold)}
+.ost{padding:5px 10px;font-size:12px;color:var(--muted);background:var(--sunk);border-top:1px solid var(--line)}
+.omatch.disp{border-color:var(--loss)}
+.omatch.disp .ost{color:var(--loss)}
+.opanel{position:relative;max-height:92%;overflow-y:auto}
+.opx{position:absolute;top:10px;right:14px;background:none;border:0;color:var(--muted);font-size:30px;line-height:1;cursor:pointer;padding:4px}
+.opanel h4{padding-right:36px}
+.opanel textarea{width:100%;padding:12px 14px;border-radius:14px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:500 16px var(--sys)}
+@media (min-width:761px){
+  #app.office .opanelwrap{justify-content:flex-end;align-items:stretch}
+  #app.office .opanel{width:min(420px,100%);max-height:none;border-radius:0;border-left:1px solid var(--line);padding:26px 24px}
+}
+@media (max-width:760px){
+  #app.office{display:flex;flex-direction:column;height:auto;min-height:calc(100vh - 48px)}
+  .oside{flex-direction:row;overflow-x:auto;padding:8px 10px;border-right:0;border-bottom:1px solid var(--line);flex-shrink:0}
+  .oclub,.owho,.osp{display:none}
+  .onav{padding:8px 12px;white-space:nowrap}
+  #app.office header.top{padding:18px 16px 4px}
+  #app.office .screen{padding:12px 16px 24px}
+  .ostats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .osplit{grid-template-columns:1fr}
+  .orow{flex-wrap:wrap}
+}

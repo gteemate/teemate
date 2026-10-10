@@ -2,8 +2,9 @@ import { MEMBER_COLS, forgetMe, must, myId, sb, toMember } from './client.js'
 
 /* ---------- Members and buddies ---------- */
 
+/** Everyone who plays: the club office login is left out. */
 export async function getMembers() {
-  return must(await sb.from('members').select(MEMBER_COLS).order('id')).map(toMember)
+  return must(await sb.from('members').select(MEMBER_COLS).eq('office', false).order('id')).map(toMember)
 }
 
 export async function getBuddies() {
@@ -49,7 +50,7 @@ export async function setFriendFavourite({ memberId, contactId }, on) {
 
 /* ---------- Access (admins only) ---------- */
 
-/** Everyone, with email and whether they've created an account: [{ id, name, gui, hcp, email, admin, signedIn }] */
+/** Everyone, with email and whether they've created an account: [{ id, name, gui, hcp, email, admin, office, signedIn }] */
 export async function getAccessList() {
   return must(await sb.rpc('admin_list_members')).map(m => ({ ...m, hcp: Number(m.hcp) }))
 }
@@ -65,6 +66,11 @@ export async function saveMember(m) {
   }))
   forgetMe() // in case I edited myself
   return id
+}
+
+/** The club office login's email ('' to remove the login). Admins only. */
+export async function setOfficeLogin(email) {
+  must(await sb.rpc('admin_set_office_login', { p_email: email ?? '' }))
 }
 
 /** My favourite members (ids), for Members & access. */

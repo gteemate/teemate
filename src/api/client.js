@@ -12,8 +12,8 @@ export const must = ({ data, error }) => {
 }
 export const todayIso = () => isoDate(today())
 
-export const MEMBER_COLS = 'id, name, gui, hcp_index, admin, hut_staff, plays_in'
-export const toMember = m => ({ id: m.id, name: m.name, gui: m.gui, hcp: Number(m.hcp_index), admin: m.admin, hutStaff: !!m.hut_staff, playsIn: m.plays_in ?? null })
+export const MEMBER_COLS = 'id, name, gui, hcp_index, admin, hut_staff, plays_in, office'
+export const toMember = m => ({ id: m.id, name: m.name, gui: m.gui, hcp: Number(m.hcp_index), admin: m.admin, hutStaff: !!m.hut_staff, playsIn: m.plays_in ?? null, office: !!m.office })
 
 let me // cached for the session; undefined = not loaded, null = signed in but not a member
 /** The signed-in member, or null if this login isn't on the members list. */

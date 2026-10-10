@@ -42,10 +42,22 @@ import * as koNew from './screens/ko-new.js'
 import * as friend from './screens/friend.js'
 import { pendingFriend, setPendingFriend } from './screens/friend.js'
 import { checkAlerts } from './alert-bar.js'
+import * as officeToday from './office/today.js'
+import * as officeMembers from './office/members.js'
+import * as officeTee from './office/tee.js'
+import * as officeComps from './office/comps.js'
+import * as officeClub from './office/club.js'
+import { drawSide, hideSide, forgetSummary, summary } from './office/shell.js'
 
 // Each screen exports an optional async load() and a sync draw(data).
 const ADMIN = { home, account: adminHome, tee: teeTimes, book: booking, booked, mine: bookings, buddies, pins, points, events, event: eventEditor, evboard: eventBoardScreen, access, colours, weather, friend, hutadmin: hutAdmin, hutorder: hutOrder, hutstaff: hutStaff, match: matchScreen, signups: signupsAdmin, ko: knockout, konew: koNew, rules: bookingRules, comp: competitions, treq: teeRequests, mygames: myGames }
+// The club office: a section page, or one of the admin pages it opens (pins, a competition…). Pages that go back
+// to Account, Home, Club events or Competitions go back to the office section instead.
+const OFFICE = { today: officeToday, members: officeMembers, tee: officeTee, comps: officeComps, club: officeClub }
+const OFFICE_HOME = new Set(['office', 'account', 'home', 'events', 'comp'])
+const officeScreen = () => (OFFICE_HOME.has(S.aview) || !ADMIN[S.aview] ? OFFICE[S.ov] ?? officeToday : ADMIN[S.aview])
 function screenFor() {
+  if (S.office) return officeScreen()
   if (S.tab === 'scores') return S.sview === 'players' ? players : S.sview === 'challenge' ? challenge : S.sview === 'pevent' ? eventLive : S.sview === 'counts' ? scoringRound : scores
   if (S.tab === 'lb') return leaderboard
   if (S.tab === 'course') return course
@@ -54,12 +66,13 @@ function screenFor() {
 
 // Where the member has been, for the back arrows. A place is the screen state, with the parts that
 // don't apply to a tab left out ('-'), so returning to a tab doesn't depend on stale sub-screens.
-const place = () => (S.tab === 'home' ? { tab: 'home', aview: S.aview, sview: '-' } : { tab: S.tab, aview: '-', sview: S.tab === 'scores' ? S.sview : '-' })
+const place = () => (S.office ? { tab: 'home', aview: OFFICE_HOME.has(S.aview) ? `office:${S.ov}` : S.aview, sview: '-' }
+  : S.tab === 'home' ? { tab: 'home', aview: S.aview, sview: '-' } : { tab: S.tab, aview: '-', sview: S.tab === 'scores' ? S.sview : '-' })
 const nav = navStack({ tab: 'home', aview: 'home', sview: '-' }, { passing: p => p.aview === 'booked' }) // Booked: passed through
-setDefaultBack(() => (nav.canGoBack() ? async () => {
+setDefaultBack(() => (nav.canGoBack() && !(S.office && OFFICE_HOME.has(S.aview)) ? async () => { // office sections: the sidebar, no back
   const p = nav.back()
   S.tab = p.tab
-  if (p.aview !== '-') S.aview = p.aview
+  if (p.aview.startsWith('office:')) { S.aview = 'office'; S.ov = p.aview.slice(7) } else if (p.aview !== '-') S.aview = p.aview
   if (p.sview !== '-') S.sview = p.sview
   S.gmodal = false
   await render()
@@ -120,7 +133,16 @@ async function render() {
     $('app').classList.toggle('signed-out', !me)
     if (!session) screen = pendingFriend() && S.loginMode === 'welcome' ? friend : login // a friend link: show the card first
     else if (!me) screen = { draw: () => login.drawNotMember({ email: session.user.email }) }
-    else {
+    else if (me.office || S.office) {
+      // The club office: the office login only ever sees this; an admin member is here until Back to TeeMate.
+      if (!me.admin) S.office = false
+      else {
+        S.office = true; S.tab = 'home'; startTabChosen = true
+        if (S.navReset) { S.navReset = false; nav.reset(place()) } else nav.visit(place())
+        screen = screenFor()
+      }
+    }
+    if (me && !screen) {
       if (!startTabChosen) { startTabChosen = true; S.tab = await chooseStartTab(); if (S.tab === 'home') S.aview = 'home'; else S.sview = 'card'; nav.reset(place()) }
       if (pendingFriend()) { S.tab = 'home'; S.aview = 'friend' } // opened from a friend link (maybe before signing in)
       if (S.matchPick && !(S.tab === 'home' && ['tee', 'book'].includes(S.aview))) S.matchPick = null // left Book this match
@@ -128,7 +150,8 @@ async function render() {
       if (S.navReset) { S.navReset = false; nav.reset(place()) } else nav.visit(place()) // a finished booking starts afresh from Home
       screen = screenFor()
     }
-    data = screen.load ? await screen.load() : undefined
+    if (S.office) forgetSummary() // what's waiting: fresh on every page
+    ;[data] = await Promise.all([screen.load ? screen.load() : undefined, S.office ? summary() : null])
   } catch (err) {
     if (mine !== seq) return
     console.error(err)
@@ -140,7 +163,17 @@ async function render() {
   $('dateWrap').innerHTML = ''
   $('modal').innerHTML = ''
   $('app').classList.toggle('onhome', screen === home) // Home fills the screen, no scroll (a remote)
+  $('app').classList.toggle('office', !!S.office && !$('app').classList.contains('signed-out'))
   screen.draw(data)
+  if (S.office && !$('app').classList.contains('signed-out')) {
+    const me = await api.getMe(), [s, theme] = await Promise.all([summary(), api.getTheme().catch(() => null)])
+    if (mine !== seq) return
+    drawSide(s, me, theme?.name)
+    $('roundbar').hidden = true
+    $('alerts').innerHTML = ''
+    return
+  }
+  hideSide()
   drawRoundBar()
   if (screen === login || $('app').classList.contains('signed-out')) $('alerts').innerHTML = ''
   else checkAlerts(JSON.stringify(place()))

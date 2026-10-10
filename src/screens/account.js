@@ -1,32 +1,30 @@
-// Account (tap the disc on Home): your shareable handicap card (QR + Share), then player tiles, then a Club admin section
-// (admins only), then account buttons.
+// Account (tap the disc on Home): your shareable handicap card (QR + Share), then player tiles, then (admins only) the
+// way into the club office, then account buttons.
 import * as api from '../api.js'
 import { S } from '../state.js'
 import { $, esc, header, top0, render, toast, fmtHcp } from '../ui.js'
 import { passwordSheet } from './login.js'
 import { isoDate, today, eventLastDay } from '../dates.js'
 import { buildLibrary } from '../games.js'
-import { timeLabel } from '../release.js'
 import { shareText, qrSvg, shareCard } from '../share-card.js'
 import { friendLink } from '../friend-link.js'
 
 export async function load() {
   const me = await api.getMe()
-  const [theme, bookings, friends, games, events, points, requests, rules, teeReqs, matches, hut] = await Promise.all([
+  const [theme, bookings, friends, games, events, points, requests, teeReqs, matches, hut] = await Promise.all([
     api.getTheme(), api.getMyBookings(), api.getFriends(), api.getGameSettings(), api.getEvents(), api.getGuestPoints(),
     me.admin ? api.getAccessRequests() : [],
-    me.admin ? api.getBookingRules() : null,
     me.admin ? api.getTeeTimeRequests() : [],
     api.getMyPlayerEvents(),
     api.getHut(),
   ])
   const live = events.filter(e => eventLastDay(e) >= isoDate(today()))
   // events set up in advance, plus matches set up on the day from the Scores tab
-  const upcoming = live.filter(e => !e.club && e.style !== 'league').length + matches.filter(e => e.status === 'pending' || e.status === 'accepted').length, clubEvents = live.filter(e => e.club || e.style === 'league').length
-  return { me, clubName: theme?.name ?? '', rules, waitingReqs: teeReqs.filter(r => r.status === 'pending').length, bookings, friendCount: friends.buddies.length + friends.contacts.length, L: buildLibrary(games), upcoming, clubEvents, points, requests, hutOn: hut.on }
+  const upcoming = live.filter(e => !e.club && e.style !== 'league').length + matches.filter(e => e.status === 'pending' || e.status === 'accepted').length
+  return { me, clubName: theme?.name ?? '', waiting: requests.length + teeReqs.filter(r => r.status === 'pending').length, bookings, friendCount: friends.buddies.length + friends.contacts.length, L: buildLibrary(games), upcoming, points, hutOn: hut.on }
 }
 
-export function draw({ me, clubName, rules, waitingReqs, bookings, friendCount, L, upcoming, clubEvents, points, requests, hutOn }) {
+export function draw({ me, clubName, waiting, bookings, friendCount, L, upcoming, points, hutOn }) {
   header('Account', `Signed in as <b>${esc(me.name)}</b>`, async () => { S.aview = 'home'; await render(); top0() }, 'Home')
   const link = friendLink(me, clubName, location.origin + import.meta.env.BASE_URL), card = shareText(me, clubName, link)
   const used = points.mine.reduce((t, x) => t + x.points, 0), left = points.allowance - used
@@ -56,14 +54,7 @@ export function draw({ me, clubName, rules, waitingReqs, bookings, friendCount, 
   </div>
   ${me.admin ? `<h3 class="adminhead">Club admin <span class="hint">only admins see this</span></h3>
   <div class="agrid">
-    <button class="atile row" data-a="clubevents"><span class="e">🏆</span><span class="rt"><b>Club events</b><span>${clubEvents ? `${clubEvents} running or coming up · ` : ''}club-wide events and leagues</span></span></button>
-    <button class="atile row" data-a="treq"><span class="e">📨</span><span class="rt"><b>Tee time requests</b><span>${waitingReqs ? `<b class="reqcount">${waitingReqs} waiting</b>` : 'Members asking for days not open yet'}</span></span></button>
-    <button class="atile row" data-a="access"><span class="e">🔑</span><span class="rt"><b>Members &amp; access</b><span>${requests.length ? `<b class="reqcount">${requests.length} access request${requests.length > 1 ? 's' : ''}</b>` : 'Choose who can sign in'}</span></span></button>
-    <button class="atile row" data-a="rules"><span class="e">⏰</span><span class="rt"><b>Booking rules</b><span>${rules ? `Tee times open ${timeLabel(rules.time)}, ${rules.days} day${rules.days === 1 ? '' : 's'} before · ${rules.weekendsOnly ? 'weekends only' : 'every day'}` : 'When tee times open for booking'}</span></span></button>
-    <button class="atile row" data-a="colours"><span class="e">🎨</span><span class="rt"><b>Club name &amp; colours</b><span>The name on the membership card, and two colours that theme the app</span></span></button>
-    <button class="atile row" data-a="signups"><span class="e">📝</span><span class="rt"><b>Sign-up competitions</b><span>Season competitions members enter in advance: open them, see who’s in</span></span></button>
-    <button class="atile row" data-a="hutadmin"><span class="e">🥪</span><span class="rt"><b>Halfway hut</b><span>Ordering after hole 8: switch it on, the menu, hut staff</span></span></button>
-    <button class="atile row" data-a="pins"><span class="e">⛳</span><span class="rt"><b>Pins</b><span>Set today's flags</span></span></button>
+    <button class="atile row" data-a="office"><span class="e">🏛️</span><span class="rt"><b>Club office</b><span>${waiting ? `<b class="reqcount">${waiting} waiting</b> · ` : ''}members, tee sheet, competitions and club settings. Best on an iPad or computer</span></span></button>
   </div>` : ''}
   <h3>Your account</h3>
   <div class="bk-btns acct"><button class="ghost" id="chpw">Change password</button><button class="ghost" id="signout">Sign out</button></div>
@@ -80,11 +71,10 @@ export function draw({ me, clubName, rules, waitingReqs, bookings, friendCount, 
   $('chpw').onclick = () => passwordSheet(ok => ok && toast('Password changed'))
   document.querySelectorAll('[data-a]').forEach(b => (b.onclick = async () => {
     if (b.dataset.a === 'course') { S.tab = 'course'; await render(); top0(); return } // the guide outside a round
+    if (b.dataset.a === 'office') { Object.assign(S, { office: true, ov: 'today', aview: 'office', navReset: true }); await render(); top0(); return }
     S.aview = b.dataset.a
     if (S.aview === 'events') S.evScope = 'player'
-    if (S.aview === 'clubevents') { S.evScope = 'club'; S.aview = 'events' }
     if (S.aview === 'buddies') { S.bseg = 'mine'; S.bfrom = null }
-    if (S.aview === 'access') { S.accEdit = null; S.accQ = '' }
     await render()
     top0()
   }))

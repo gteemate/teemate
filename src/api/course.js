@@ -25,7 +25,7 @@ export async function getPins(date = today()) {
   const row = must(await sb.from('pin_sheets').select('date, set_at, pins, setter:set_by(name)')
     .eq('course_id', c.id).lte('date', isoDate(date)).order('date', { ascending: false }).limit(1).maybeSingle())
   if (!row) return { setAt: '–', setBy: 'nobody yet', pins: c.holes.map(h => ({ hole: h.n, yardsOn: Math.round(h.greenDepth / 2), fromLeft: Math.round(h.greenWidth / 2), depthRef: 'front', sideRef: 'left' })) }
-  return { setAt: hhmmLocal(row.set_at), setBy: row.setter?.name ?? 'Head greenkeeper', pins: row.pins }
+  return { date: row.date, setAt: hhmmLocal(row.set_at), setBy: row.setter?.name ?? 'Head greenkeeper', pins: row.pins }
 }
 
 /** Correct a green's width (admins). */

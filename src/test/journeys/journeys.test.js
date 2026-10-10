@@ -204,11 +204,13 @@ describe('journeys', () => {
     await app.homeFromHere()
   })
 
-  it('13. Admin: a knockout competition from Club events, with an entry limit; members see places left, then Full', async () => {
+  it('13. Admin: a knockout competition from the club office, with an entry limit; members see places left, then Full', async () => {
     app = await boot()
     await app.tap('Gary Cochrane')
-    await app.tap('Club events')
-    await app.tap('+ New knockout competition')
+    await app.tap('Club office')
+    await app.tap('Competitions')
+    await app.tap('New competition')
+    await app.tap('A sign-up competition or knockout')
     expect(document.getElementById('sc-name')).not.toBeNull() // the add form opens straight away
     await app.type('#sc-name', 'Winter Knockout')
     await app.type('#sc-close', '2026-10-31')
@@ -327,6 +329,65 @@ describe('journeys', () => {
 import { readFileSync, readdirSync } from 'node:fs'
 import { API_NAMES } from './fake-api.js'
 describe('the pretend server', () => {
+  it('18. The club office login: opens on Today; let someone in, decline a request, see a disputed result, make a member hut staff', async () => {
+    app = await boot(db => {
+      db.asOffice = true
+      db.joins.push({ id: 1, name: 'Sean Byrne', email: 'sean@example.invalid', createdAt: '2026-10-09T10:00:00Z' })
+      const s = db.slotsOn('2026-10-17').find(x => x.time === 540)
+      db.requests.push({ id: 7, memberId: 1, slotId: s.id, date: '2026-10-17', time: 540, memberIds: [], guests: [], reason: 'Visitors from Boston', status: 'pending', bookingId: null, note: null, seen: true, createdAt: '2026-10-09T18:00:00Z' })
+      Object.assign(db.signups[0], { closesOn: '2026-10-01', drawPublished: true, roundDeadlines: ['2026-11-15', '2026-12-06'] })
+      db.signupEntries.push(...[0, 1, 3, 5].map((m, i) => ({ id: 100 + i, compId: 1, memberId: m, partnerId: null })))
+      db.koMatches.push({ id: 1, compId: 1, round: 1, slot: 0, aEntry: 100, bEntry: 101, winnerEntry: null, result: null, status: 'disputed', reportedEntry: 100 },
+        { id: 2, compId: 1, round: 1, slot: 1, aEntry: 102, bEntry: 103, winnerEntry: null, result: null, status: 'open', reportedEntry: null },
+        { id: 3, compId: 1, round: 2, slot: 0, aEntry: null, bEntry: null, winnerEntry: null, result: null, status: 'open', reportedEntry: null })
+    })
+    expect(app.screen()).toBe('Sat 10 Oct')
+    expect(app.text()).toContain('3 things waiting for you')
+    expect(document.getElementById('o-back')).toBeNull() // the office login never goes to the player app
+    expect(app.labels()).not.toContain('Booking')
+    await app.tap('Let in')
+    expect(app.db.emails[app.db.members.at(-1).id]).toBe('sean@example.invalid')
+    expect(app.db.joins).toEqual([])
+    await app.tap('Decline')
+    await app.type('#o-note', 'Members only that morning')
+    await app.tap('#o-dec')
+    expect(app.db.requests[0]).toMatchObject({ status: 'declined', note: 'Members only that morning' })
+    expect(app.text()).toContain('1 thing waiting for you')
+    await app.tap('Competitions')
+    expect(app.text()).toContain('Disputed: set the result')
+    await app.tap('Set results')
+    expect(app.screen()).toBe('Men’s Match Play')
+    await app.back()
+    expect(app.screen()).toBe('Competitions')
+    await app.tap('Members')
+    expect(document.getElementById('main').textContent).not.toContain('Club office') // the office is never a member
+    await app.tap('[data-o-m="1"]')
+    await app.tap('#o-hut')
+    await app.tap('#o-save')
+    expect(app.db.members.find(m => m.id === 1).hutStaff).toBe(true)
+    await app.tap('Tee sheet')
+    expect(app.text()).toContain('08:00')
+    await app.tap('[data-o-day="1"]')
+    expect(app.screen()).toBe('Tee sheet')
+  })
+
+  it('19. An admin member opens the club office from Account, sets up the office login, and goes back to TeeMate', async () => {
+    app = await boot()
+    await app.tap('Gary Cochrane')
+    expect(app.labels()).not.toContain('Club events') // the old admin tiles are gone from the player app
+    await app.tap('Club office')
+    expect(app.screen()).toBe('Sat 10 Oct')
+    await app.tap('Club')
+    await app.tap('Set up')
+    await app.type('#o-oemail', 'office@royalteemate.ie')
+    await app.tap('#o-osave')
+    expect(app.db.office).toBe('office@royalteemate.ie')
+    expect(app.text()).toContain('office@royalteemate.ie')
+    await app.tap('Set today’s flags')
+    expect(app.screen()).toBe('Pins')
+    await app.homeFromHere()
+  })
+
   it('has every function src/api.js exports (so a new one is never silently missing)', () => {
     const dir = `${process.cwd()}/src/api`
     const real = readdirSync(dir).flatMap(f => [...readFileSync(`${dir}/${f}`, 'utf8').matchAll(/^export (?:async )?function (\w+)/gm)].map(m => m[1]))

@@ -81,11 +81,13 @@ export async function boot(setup, { hash = '' } = {}) {
       expect(errors, `errors on "${d.screen()}"`).toEqual([])
       expect(d.screen(), 'a screen that failed to load').not.toBe('Something went wrong')
     },
-    /** Press back until Home: every screen on the way has a back arrow, and none comes round twice. */
+    /** Press back until Home: every screen on the way has a back arrow (or, in the club office, Back to TeeMate in the
+     *  sidebar), and none comes round twice. */
     async homeFromHere() {
       const seen = []
       for (let i = 0; i < 10 && d.screen() !== 'Home'; i++) {
         seen.push(d.screen())
+        if (!document.getElementById('back') && document.getElementById('o-back')) { await d.tap('#o-back', { count: false }); continue }
         if (!document.getElementById('back')) throw new Error(`Stuck: "${d.screen()}" has no back arrow (came via ${seen.join(' → ')})`)
         await d.tap('#back', { count: false })
         if (seen.includes(d.screen()) && d.screen() !== 'Home') throw new Error(`Going round in circles: ${[...seen, d.screen()].join(' → ')}`)

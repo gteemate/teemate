@@ -13,7 +13,7 @@ export const API_NAMES = ['getMe', 'forgetMe', 'getSession', 'signIn', 'needsAcc
   'onAuthChange', 'requestAccess', 'getTheme', 'setTheme', 'setClubName', 'setCourseLocation', 'getHut', 'setHutOn', 'saveHutItem', 'removeHutItem',
   'getHutStaff', 'setHutStaff', 'placeHutOrder', 'cancelMyHutOrder', 'myHutOrders', 'hutOrdersToday', 'setHutOrderStatus', 'getMembers', 'getBuddies',
   'addBuddy', 'removeBuddy', 'getFriends', 'saveContact', 'removeContact', 'setFriendFavourite', 'getAccessList', 'saveMember', 'getFavourites',
-  'setFavourite', 'getAccessRequests', 'declineRequest', 'deleteMember', 'resetLogin', 'getCourse', 'getPins', 'setGreenWidth', 'publishPins',
+  'setFavourite', 'setOfficeLogin', 'getAccessRequests', 'declineRequest', 'deleteMember', 'resetLogin', 'getCourse', 'getPins', 'setGreenWidth', 'publishPins',
   'getTeeSheet', 'bookTeeTime', 'getMyTeeTimes', 'getGuests', 'setGuestHandicap', 'cancelBooking', 'moveMatchBooking', 'getMyBookings',
   'getGuestPoints', 'getBookingRules', 'setBookingRules', 'requestTeeTime', 'cancelTeeTimeRequest', 'getMyTeeTimeRequests', 'getTeeTimeRequests',
   'decideTeeTimeRequest', 'markTeeTimeRequestsSeen', 'dismissTeeTimeRequest', 'getGameSettings', 'setMyGamePref', 'getCurrentRound', 'getRound', 'deleteRound', 'saveRound',
@@ -61,6 +61,7 @@ export function makeWorld(today, setup = () => {}) {
       { id: 2, section: 'Food', name: 'Toastie', pricePence: 500, soldOut: false, sort: 2 },
       { id: 3, section: 'Drinks', name: 'Tea', pricePence: 250, soldOut: false, sort: 1 }] },
     orders: [], entries: [], leagueEntries: [],
+    joins: [], emails: { 0: 'gary@example.invalid' }, office: null, asOffice: false, pinsToday: false, // club office: asking to join, sign-in emails, the office login
     events: [
       { id: 2, name: 'Winter League', style: 'league', fmt: 'beststab', club: true, everyone: false, startDate: addDaysIso(today, -5), days: 1, weeks: 6, bestOf: 4,
         teams: [{ name: 'Blues', col: '#6f8fd8' }, { name: 'Reds', col: '#c27a8f' }], team: { 0: 0, 1: 0, 3: 1, 5: 1 }, players: [0, 1, 3, 5], captainPool: [],
@@ -96,13 +97,15 @@ export function makeWorld(today, setup = () => {}) {
 
   const api = {
     // Signed in as Gary Cochrane (member 0, an admin).
-    getMe: async () => ({ ...member(ME), hutStaff: db.members[0].hutStaff, playsIn: db.members[0].playsIn }), forgetMe: () => {},
+    getMe: async () => (db.asOffice ? { id: 9000, name: 'Club office', admin: true, office: true, hutStaff: false, playsIn: null }
+      : { ...member(ME), hutStaff: db.members[0].hutStaff, playsIn: db.members[0].playsIn, office: false }), forgetMe: () => {},
     getSession: async () => ({ user: { id: 'u0', email: 'gary@example.invalid' } }), onAuthChange: () => {},
     myRequestPending: async () => false,
     getTheme: async () => ({ ...db.theme }),
     getHut: async () => copy(db.hut),
     getHutStaff: async () => db.members.filter(m => m.hutStaff).map(m => m.id),
     setHutOn: async on => { db.hut.on = on },
+    setHutStaff: async (mid, on) => { db.members.find(m => m.id === mid).hutStaff = on },
     placeHutOrder: async (picks, note, roundId = null) => {
       const items = Object.entries(picks).filter(([, q]) => q > 0).map(([i, qty]) => { const m = db.hut.menu.find(x => x.id === +i); return { id: m.id, name: m.name, qty, pricePence: m.pricePence } })
       if (!items.length) throw new Error('Pick something from the menu first.')
@@ -124,10 +127,24 @@ export function makeWorld(today, setup = () => {}) {
     },
     removeContact: async cid => { db.contacts = db.contacts.filter(c => c.id !== cid) },
     setFriendFavourite: async ({ memberId, contactId }, on) => { (memberId != null ? db.buddies.find(b => b.id === memberId) : db.contacts.find(c => c.id === contactId)).favourite = on },
-    getAccessRequests: async () => [], getFavourites: async () => [],
-    getAccessList: async () => db.members.map(m => ({ id: m.id, name: m.name, gui: m.gui, hcp: m.hcp, email: m.id === 0 ? 'gary@example.invalid' : null, admin: !!m.admin, signedIn: m.id === 0 })),
+    getAccessRequests: async () => copy(db.joins), getFavourites: async () => [],
+    declineRequest: async rid => { db.joins = db.joins.filter(r => r.id !== rid) },
+    getAccessList: async () => [...db.members.map(m => ({ id: m.id, name: m.name, gui: m.gui, hcp: m.hcp, email: db.emails[m.id] ?? null, admin: !!m.admin, office: false, signedIn: m.id === 0 })),
+      ...(db.office ? [{ id: 9000, name: 'Club office', gui: null, hcp: 54, email: db.office, admin: true, office: true, signedIn: false }] : [])],
+    saveMember: async m => {
+      let row = db.members.find(x => x.id === m.id)
+      if (!row) { row = { id: id(), name: m.name, gui: null, hcp: m.hcp, admin: false, hutStaff: false, playsIn: null }; db.members.push(row) }
+      Object.assign(row, { name: m.name.trim(), admin: !!m.admin })
+      if (m.email) db.emails[row.id] = m.email.toLowerCase(); else delete db.emails[row.id]
+      db.joins = db.joins.filter(r => r.email !== m.email)
+      return row.id
+    },
+    adminSetPlaysIn: async (mid, p) => { db.members.find(m => m.id === mid).playsIn = p },
+    setOfficeLogin: async email => { db.office = email || null },
+    deleteMember: async mid => { db.members = db.members.filter(m => m.id !== mid) },
+    resetLogin: async () => {},
     getCourse: async () => ({ ...copy(COURSE), guestPoints: 3 }),
-    getPins: async () => copy(PIN_SHEET),
+    getPins: async () => ({ ...copy(PIN_SHEET), date: db.pinsToday ? today : '2026-10-01' }),
     getGameSettings: async () => ({ ...copy(GAME_SETTINGS), mine: {} }),
     setMyGamePref: async () => {},
     getTeeSheet: async date => copy(sheet(date)),
@@ -173,6 +190,11 @@ export function makeWorld(today, setup = () => {}) {
     getMyTeeTimeRequests: async () => copy(db.requests.filter(r => r.memberId === ME && !r.dismissed)),
     dismissTeeTimeRequest: async rid => { db.requests.find(r => r.id === rid).dismissed = true },
     getTeeTimeRequests: async () => copy(db.requests),
+    decideTeeTimeRequest: async (rid, approve, note = null) => {
+      const r = db.requests.find(x => x.id === rid)
+      if (approve) { const b = db.book(r.memberId, r.slotId, r.memberIds, r.guests); Object.assign(r, { status: 'approved', bookingId: b.id }) } else Object.assign(r, { status: 'declined', note })
+      r.seen = false
+    },
     markTeeTimeRequestsSeen: async () => { db.requests.forEach(r => { if (r.status !== 'pending') r.seen = true }) },
     // Cards: stored as the app gives them (my view; I'm always first on cards I start).
     getCurrentRound: async () => copy([...db.rounds].reverse().find(r => r.date === today && r.lineup.some(x => x.m === ME)) ?? null),

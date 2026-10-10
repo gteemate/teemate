@@ -1,0 +1,318 @@
+<title>TeeMate Club Office</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=Source+Sans+3:wght@400;600;700;800&display=swap">
+<style>
+/* Layout: an iPad in landscape: a fixed sidebar of five sections, a working pane, and a slide-in side panel for
+   the one thing being edited. TeeMate's own navy and gold; one dark look like the app. */
+:root{
+  --sunk:#0f1830; --bg:#141f3b; --surface:#1b2a4b; --leaf:#22325a; --line:#2b3c63;
+  --ink:#e8ecf5; --muted:#9aa7c4; --gold:#e3c375; --on-gold:#1a1606; --live:#7fcca2; --warn:#c27a8f;
+  --sys:"Source Sans 3",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+  --display:"Source Serif 4",Georgia,"Times New Roman",serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--sunk);color:var(--ink);font-family:var(--sys);font-size:15px;padding-inline:16px;padding-block:24px;margin:0}
+.note{max-width:1100px;margin:0 auto 14px;color:var(--muted);font-size:14px;line-height:1.5}
+.note b{color:var(--gold);font-weight:600}
+.ipad{max-width:1100px;margin:0 auto;background:#0b1226;border:1px solid var(--line);border-radius:34px;padding:14px}
+.scr{display:grid;grid-template-columns:220px minmax(0,1fr);background:var(--bg);border-radius:22px;overflow:hidden;min-height:700px;position:relative}
+nav{background:var(--sunk);border-right:1px solid var(--line);padding:22px 12px;display:flex;flex-direction:column;gap:4px}
+.club{font-family:var(--display);font-size:20px;padding:0 10px 2px}
+.club small{display:block;font-family:var(--sys);font-size:12px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-top:2px}
+.navb{all:unset;cursor:pointer;display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:12px;color:var(--muted);font-weight:600}
+.navb:hover{color:var(--ink)}
+.navb:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.navb[aria-current="true"]{background:var(--surface);color:var(--ink)}
+.navb svg{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.cnt{margin-left:auto;background:var(--gold);color:var(--on-gold);font-size:12px;font-weight:800;border-radius:999px;padding:1px 8px;font-variant-numeric:tabular-nums}
+.cnt:empty{display:none}
+.navsp{flex:1}
+.who{font-size:13px;color:var(--muted);padding:10px 12px;border-top:1px solid var(--line);margin-top:8px}
+.who b{display:block;color:var(--ink)}
+main{padding:26px 30px 30px;min-width:0}
+h1{font-family:var(--display);font-weight:400;font-size:32px;margin:0;line-height:1.1;text-wrap:balance}
+.sub{color:var(--muted);margin:6px 0 20px}
+h3{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:22px 0 8px;font-weight:700}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:18px}
+.rows>.row+.row{border-top:1px solid var(--line)}
+.row{display:flex;align-items:center;gap:14px;padding:13px 16px;min-width:0}
+.row .t{min-width:0;flex:1}
+.row .t b{display:block;font-weight:700}
+.row .t span{color:var(--muted);font-size:13px}
+.acts{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.btn{font-family:var(--sys);font-weight:700;font-size:14px;border-radius:999px;padding:8px 16px;cursor:pointer;border:1px solid var(--line);background:transparent;color:var(--ink)}
+.btn:hover{border-color:var(--gold)}
+.btn.pri{background:var(--gold);color:var(--on-gold);border-color:var(--gold)}
+.tag{font-size:12px;font-weight:700;border-radius:999px;padding:2px 9px;background:var(--leaf);color:var(--muted);white-space:nowrap}
+.tag.g{background:var(--gold);color:var(--on-gold)}
+.tag.l{background:#1f3b3a;color:var(--live)}
+.tag.w{background:#3b2533;color:var(--warn)}
+.ic{width:36px;height:36px;border-radius:12px;background:var(--leaf);display:grid;place-items:center;flex:none}
+.ic svg{width:18px;height:18px;fill:none;stroke:var(--gold);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.av{width:36px;height:36px;border-radius:50%;background:var(--leaf);display:grid;place-items:center;font-size:13px;font-weight:800;flex:none;color:var(--ink)}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.stat{padding:14px 16px}
+.stat span{color:var(--muted);font-size:13px}
+.stat b{display:block;font-family:var(--display);font-weight:400;font-size:30px;margin-top:2px;font-variant-numeric:tabular-nums}
+.stat small{color:var(--muted);font-size:12px}
+.done{padding:18px;color:var(--muted);text-align:center}
+.search{width:100%;font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 16px}
+.seg{display:inline-flex;background:var(--sunk);border:1px solid var(--line);border-radius:999px;padding:3px;gap:2px;flex-wrap:wrap}
+.seg button{all:unset;cursor:pointer;padding:6px 14px;border-radius:999px;font-weight:700;font-size:13px;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--gold);color:var(--on-gold)}
+.bar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.days{display:flex;gap:6px;overflow-x:auto}
+.day{all:unset;cursor:pointer;width:50px;padding:7px 0;border-radius:14px;border:1px solid var(--line);background:var(--surface);text-align:center;flex:none}
+.day small{display:block;font-size:11px;color:var(--muted);font-weight:600}
+.day b{font-size:19px;font-weight:800}
+.day[aria-pressed="true"]{background:var(--gold);color:var(--on-gold);border-color:var(--gold)}
+.day[aria-pressed="true"] small{color:var(--on-gold)}
+.sheetwrap{overflow-x:auto}
+.sheet{display:grid;grid-template-columns:64px repeat(4,minmax(110px,1fr));gap:6px;min-width:560px}
+.sheet .tm{font-weight:800;font-variant-numeric:tabular-nums;padding:9px 0;color:var(--muted)}
+.slot{all:unset;cursor:pointer;border-radius:10px;padding:8px 10px;font-size:13px;font-weight:600;background:transparent;border:1px dashed var(--line);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.slot.b{background:var(--surface);border:1px solid var(--line);color:var(--ink)}
+.slot.c{background:#2a2a3f;border:1px solid #4a3d55;color:var(--gold)}
+.slot.sel{outline:2px solid var(--gold)}
+.legend{display:flex;gap:14px;color:var(--muted);font-size:13px;margin-top:10px;flex-wrap:wrap}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:4px;vertical-align:-1px;margin-right:6px;border:1px solid var(--line)}
+.split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:16px;align-items:start}
+.comp{all:unset;cursor:pointer;display:flex;gap:12px;align-items:center;padding:13px 16px;width:100%;box-sizing:border-box}
+.comp[aria-pressed="true"]{background:var(--leaf)}
+.brk{display:flex;gap:18px;overflow-x:auto;padding:16px}
+.rnd{display:flex;flex-direction:column;justify-content:space-around;gap:10px;min-width:150px}
+.rnd>small{color:var(--muted);font-weight:700;font-size:12px;letter-spacing:.06em;text-transform:uppercase}
+.mt{border:1px solid var(--line);border-radius:12px;overflow:hidden;font-size:13px}
+.mt div{padding:6px 10px;display:flex;justify-content:space-between;gap:8px}
+.mt div+div{border-top:1px solid var(--line)}
+.mt .w{font-weight:800;color:var(--gold)}
+.mt.disp{border-color:var(--warn)}
+.mt .st{font-size:11px;color:var(--muted);background:var(--sunk)}
+.mt.disp .st{color:var(--warn)}
+.panel{position:absolute;top:0;right:0;bottom:0;width:min(380px,100%);background:var(--sunk);border-left:1px solid var(--line);padding:26px 24px;transform:translateX(100%);transition:transform .25s ease;overflow-y:auto;z-index:5}
+.panel.open{transform:none}
+.panel h2{font-family:var(--display);font-weight:400;font-size:26px;margin:0 0 4px}
+.fld{display:flex;flex-direction:column;gap:6px;margin-top:14px}
+.fld label{font-size:13px;color:var(--muted);font-weight:600}
+.fld input,.fld select{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.tog{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-top:1px solid var(--line);gap:12px}
+.tog span small{display:block;color:var(--muted);font-size:12px}
+.sw{all:unset;cursor:pointer;width:44px;height:26px;border-radius:999px;background:var(--leaf);position:relative;flex:none}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:var(--muted);transition:left .15s}
+.sw[aria-checked="true"]{background:var(--gold)}
+.sw[aria-checked="true"]::after{left:21px;background:var(--on-gold)}
+.pacts{display:flex;gap:8px;margin-top:22px;flex-wrap:wrap}
+.danger{color:var(--warn);border-color:#4a3d55}
+.x{all:unset;cursor:pointer;float:right;color:var(--muted);font-size:26px;line-height:1;padding:0 4px}
+.flag{border:1px dashed var(--gold);color:var(--gold);border-radius:12px;padding:10px 12px;font-size:13px;margin-top:16px;line-height:1.45}
+.toast{position:absolute;left:50%;bottom:22px;transform:translate(-50%,20px);background:var(--gold);color:var(--on-gold);font-weight:700;padding:10px 18px;border-radius:999px;opacity:0;transition:.2s;pointer-events:none;z-index:9;white-space:nowrap}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+@media (max-width:800px){
+  .scr{grid-template-columns:1fr}
+  nav{flex-direction:row;overflow-x:auto;padding:10px;border-right:0;border-bottom:1px solid var(--line)}
+  .club,.who,.navsp{display:none}
+  .navb{padding:8px 12px;white-space:nowrap}
+  main{padding:20px 16px}
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .split{grid-template-columns:1fr}
+  .ipad{padding:6px;border-radius:20px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<p class="note">A clickable sketch of the club office on an iPad. Everything here is example data. Tap the sections, approve a request, open a member, tap a tee time or a competition. Pieces marked <b>needs your OK</b> are the step 3 booking rules.</p>
+
+<div class="ipad"><div class="scr" id="scr">
+  <nav aria-label="Club office">
+    <div class="club">Castle Golf Club<small>Club office</small></div>
+    <div style="height:14px"></div>
+    <button class="navb" data-go="today" aria-current="true"><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9H4z"/><path d="M10 20v-5h4v5"/></svg>Today<span class="cnt" id="c-today"></span></button>
+    <button class="navb" data-go="members"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0113 0"/><path d="M16 4.5a3.5 3.5 0 010 7M18 14a6 6 0 013.5 6"/></svg>Members<span class="cnt" id="c-members"></span></button>
+    <button class="navb" data-go="tee"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Tee sheet<span class="cnt" id="c-tee"></span></button>
+    <button class="navb" data-go="comps"><svg viewBox="0 0 24 24"><path d="M8 4h8v5a4 4 0 01-8 0z"/><path d="M8 6H4a3 3 0 003 4M16 6h4a3 3 0 01-3 4M12 13v4M8 20h8"/></svg>Competitions<span class="cnt" id="c-comps"></span></button>
+    <button class="navb" data-go="club"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg>Club</button>
+    <div class="navsp"></div>
+    <div class="who"><b>Club office</b>Signed in on the iPad<br>Sign out</div>
+  </nav>
+  <main id="main"></main>
+  <aside class="panel" id="panel" aria-label="Details"></aside>
+  <div class="toast" id="toast" role="status"></div>
+</div></div>
+
+<script>
+const ic = {
+  key:'<path d="M14 10a4 4 0 10-3.5 4L4 20.5V22h3v-2h2v-2h2l1.5-1.5"/><circle cx="15.5" cy="8.5" r="1"/>',
+  mail:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>',
+  alert:'<path d="M12 3l10 18H2z"/><path d="M12 10v4M12 17.5v.5"/>',
+  flag:'<path d="M6 21V4l11 4-11 4"/>',
+  food:'<path d="M4 11h16a8 8 0 01-16 0zM8 7c0-1 1-1.5 1-3M12 7c0-1 1-1.5 1-3"/>',
+}
+const svg = k => `<span class="ic"><svg viewBox="0 0 24 24">${ic[k]}</svg></span>`
+const ini = n => n.split(/[ ,]+/).filter(Boolean).map(w => w[0]).slice(0,2).join('')
+
+const D = {
+  joins:[{id:1,name:'Sean Byrne',email:'sean.byrne@…',note:'Says he joined in September'},{id:2,name:'Aoife Kelly',email:'aoife.k@…',note:'Junior section'},{id:3,name:'Tom Reid',email:'t.reid@…',note:'Country member'}],
+  treqs:[{id:1,who:'Murphy, D',what:'4-ball, Sat 17 Oct around 9am',why:'Bookings open Fri 8pm'},{id:2,who:'Walsh, K',what:'2 players, Sun 18 Oct, any morning time',why:'Bookings open Sat 8pm'}],
+  disputes:[{id:1,comp:'Christmas Cup',what:'Round 1: Doherty v Quinn',why:'Doherty says 3&2, Quinn says 2&1'}],
+  members:[
+    {id:1,name:'Cochrane, Gerry',email:'gerry@…',admin:true,hut:false,pts:'4 of 6'},
+    {id:2,name:'Doherty, Pat',email:'pat.d@…',admin:false,hut:false,pts:'6 of 6'},
+    {id:3,name:'Kelly, Mary',email:'mary.kelly@…',admin:false,hut:true,pts:'6 of 6'},
+    {id:4,name:'Murphy, Dan',email:'dan.m@…',admin:false,hut:false,pts:'2 of 6'},
+    {id:5,name:'O’Neill, Ciara',email:'ciara@…',admin:false,hut:false,pts:'5 of 6'},
+    {id:6,name:'Quinn, Liam',email:'liam.q@…',admin:false,hut:false,pts:'6 of 6'},
+    {id:7,name:'Walsh, Kevin',email:'kev.walsh@…',admin:false,hut:false,pts:'3 of 6'},
+  ],
+  comps:[
+    {id:'xc',name:'Christmas Cup',kind:'Knockout · singles',state:'Round 1 of 3 · play by 25 Oct',tag:['w','1 disputed']},
+    {id:'wl',name:'Winter League',kind:'League · pairs · knockout finish',state:'Week 6 of 8 · top 4 to a knockout',tag:['l','Running']},
+    {id:'cp',name:'Captain’s Prize',kind:'Sign-up · Stableford',state:'Sat 24 Oct · 41 of 64 entered',tag:['g','Open']},
+    {id:'ss',name:'Saturday Stableford',kind:'Weekly · individual',state:'Every Saturday',tag:['l','Running']},
+  ],
+}
+const S = { view:'today', day:0, slot:null, comp:'xc', q:'' }
+const main = document.getElementById('main'), panel = document.getElementById('panel')
+
+function toast(t){ const el=document.getElementById('toast'); el.textContent=t; el.classList.add('on'); clearTimeout(toast.h); toast.h=setTimeout(()=>el.classList.remove('on'),1800) }
+function counts(){
+  const set=(id,n)=>document.getElementById(id).textContent=n||''
+  set('c-today',D.joins.length+D.treqs.length+D.disputes.length); set('c-members',D.joins.length); set('c-tee',D.treqs.length); set('c-comps',D.disputes.length)
+}
+function closePanel(){ panel.classList.remove('open'); S.slot=null; document.querySelectorAll('.slot.sel').forEach(s=>s.classList.remove('sel')) }
+function openPanel(html){ panel.innerHTML='<button class="x" aria-label="Close">×</button>'+html; panel.classList.add('open'); panel.querySelector('.x').onclick=closePanel }
+
+const joinRows = () => D.joins.map(j=>`<div class="row"><span class="av">${ini(j.name)}</span><span class="t"><b>${j.name}</b><span>${j.email} · ${j.note}</span></span><span class="acts"><button class="btn" data-refuse="${j.id}">Refuse</button><button class="btn pri" data-letin="${j.id}">Let in</button></span></div>`).join('')
+const treqRows = () => D.treqs.map(r=>`<div class="row">${svg('mail')}<span class="t"><b>${r.who}: ${r.what}</b><span>${r.why}</span></span><span class="acts"><button class="btn" data-decline="${r.id}">Decline</button><button class="btn pri" data-approve="${r.id}">Book it</button></span></div>`).join('')
+const dispRows = () => D.disputes.map(d=>`<div class="row">${svg('alert')}<span class="t"><b>${d.comp}: ${d.what}</b><span>${d.why}</span></span><span class="acts"><button class="btn pri" data-setres="${d.id}">Set the result</button></span></div>`).join('')
+
+const V = {
+  today(){
+    const n=D.joins.length+D.treqs.length+D.disputes.length
+    return `<h1>Saturday 10 October</h1><p class="sub">${n?`${n} thing${n>1?'s':''} waiting for you`:'Nothing waiting for you'}</p>
+    <div class="stats">
+      <div class="card stat"><span>Tee times booked</span><b>38<small> / 52</small></b><small>14 free after 2pm</small></div>
+      <div class="card stat"><span>Players out today</span><b>131</b><small>9 guests</small></div>
+      <div class="card stat"><span>Halfway hut</span><b>6</b><small>orders so far · on</small></div>
+      <div class="card stat"><span>Pins</span><b style="color:var(--warn)">Not set</b><small><a href="#" data-go="club" style="color:var(--gold)">Set today’s flags</a></small></div>
+    </div>
+    <h3>Needs you</h3>
+    ${n?`<div class="card rows">${joinRows()}${treqRows()}${dispRows()}</div>`:'<div class="card done">All done. Nothing needs you right now.</div>'}
+    <h3>Coming up</h3>
+    <div class="card rows">
+      <div class="row">${svg('flag')}<span class="t"><b>Saturday Stableford</b><span>Today · 64 playing · results in at 5pm</span></span><span class="tag l">Live</span></div>
+      <div class="row">${svg('flag')}<span class="t"><b>Captain’s Prize sign-up closes</b><span>Wed 21 Oct · 41 of 64 entered</span></span><span class="tag g">Open</span></div>
+    </div>`
+  },
+  members(){
+    const q=S.q.toLowerCase(), list=D.members.filter(m=>!q||m.name.toLowerCase().includes(q))
+    return `<h1>Members</h1><p class="sub">1,042 members · ${D.joins.length} asking to join</p>
+    <input class="search" id="mq" type="search" placeholder="Search by name or email" value="${S.q}">
+    ${D.joins.length?`<h3>Asking to join</h3><div class="card rows">${joinRows()}</div>`:''}
+    <h3>Members</h3>
+    <div class="card rows">${list.map(m=>`<div class="row"><span class="av">${ini(m.name)}</span><span class="t"><b>${m.name}</b><span>${m.email} · guest points ${m.pts}</span></span>${m.admin?'<span class="tag g">Admin</span>':''}${m.hut?'<span class="tag">Hut staff</span>':''}<button class="btn" data-edit="${m.id}">Edit</button></div>`).join('')||'<div class="done">No member matches.</div>'}</div>`
+  },
+  tee(){
+    const days=['Sat 10','Sun 11','Mon 12','Tue 13','Wed 14','Thu 15','Fri 16']
+    const times=['08:00','08:10','08:20','08:30','08:40','08:50','09:00','09:10','09:20','09:30']
+    const book={'08:00':['Cochrane','Murphy','O’Neill','Guest of Murphy'],'08:10':['Doherty','Walsh'],'08:40':['Kelly','Quinn','Byrne'],'09:10':['Reid']}
+    const comp=new Set(['08:20','08:30'])
+    return `<h1>Tee sheet</h1><p class="sub">Tap a time to see who’s in it</p>
+    <div class="bar"><div class="days">${days.map((d,i)=>`<button class="day" data-day="${i}" aria-pressed="${i===S.day}"><small>${d.split(' ')[0]}</small><b>${d.split(' ')[1]}</b></button>`).join('')}</div></div>
+    <div class="card" style="padding:14px"><div class="sheetwrap"><div class="sheet">${times.map(t=>`<div class="tm">${t}</div>`+[0,1,2,3].map(i=>{
+      if(comp.has(t)) return `<button class="slot c" data-slot="${t}" data-comp="1">Saturday Stableford</button>`
+      const p=(S.day?[]:book[t]||[])[i]; return p?`<button class="slot b" data-slot="${t}">${p}</button>`:`<button class="slot" data-slot="${t}">Free</button>`
+    }).join('')).join('')}</div></div>
+    <div class="legend"><span><i style="background:var(--surface)"></i>Booked</span><span><i style="background:#2a2a3f;border-color:#4a3d55"></i>Held for a competition</span><span><i style="border-style:dashed"></i>Free</span></div></div>
+    ${D.treqs.length?`<h3>Requests for days not open yet</h3><div class="card rows">${treqRows()}</div>`:''}
+    <h3>Booking rules</h3>
+    <div class="card rows"><div class="row"><span class="t"><b>Tee times open at 8pm, 8 days before</b><span>Every day · 4 players a time · 10-minute gaps</span></span><button class="btn" data-rules>Change</button></div></div>`
+  },
+  comps(){
+    const c=D.comps.find(x=>x.id===S.comp)
+    return `<h1>Competitions</h1><p class="sub">Everything the club runs. Members’ own events stay with them.</p>
+    <div class="split">
+      <div><div class="card rows" style="overflow:hidden">${D.comps.map(x=>`<button class="comp" data-comp="${x.id}" aria-pressed="${x.id===S.comp}"><span class="t"><b>${x.name}</b><span>${x.kind}</span></span><span class="tag ${x.tag[0]}">${x.id==='xc'&&!D.disputes.length?'Running':x.tag[1]}</span></button>`).join('')}</div>
+      <div style="margin-top:12px"><button class="btn pri" data-newcomp>New competition</button></div></div>
+      <div class="card">${c.id==='xc'?bracket():detail(c)}</div>
+    </div>`
+  },
+  club(){
+    return `<h1>Club</h1><p class="sub">Settings you set once and change now and then</p>
+    <div class="card rows">
+      <div class="row"><span class="t"><b>Name, colours and course</b><span>Castle Golf Club · navy and claret · map pin set</span></span><button class="btn">Edit</button></div>
+      <div class="row">${svg('flag')}<span class="t"><b>Pins</b><span style="color:var(--warn)">Not set today</span></span><button class="btn pri" data-pins>Set today’s flags</button></div>
+      <div class="row">${svg('food')}<span class="t"><b>Halfway hut</b><span>Ordering on · 9 items · 2 staff</span></span><button class="btn">Edit</button></div>
+      <div class="row"><span class="t"><b>Guest points</b><span>6 a year for each member</span></span><button class="btn">Change</button></div>
+    </div>`
+  },
+}
+function bracket(){
+  const disp=D.disputes.length
+  const m=(a,b,w,st,cls='')=>`<div class="mt ${cls}"><div class="${w===0?'w':''}"><span>${a}</span></div><div class="${w===1?'w':''}"><span>${b}</span></div><div class="st">${st}</div></div>`
+  return `<div style="padding:16px 16px 0;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><span><b style="font-family:var(--display);font-size:20px;font-weight:400">Christmas Cup</b><br><span style="color:var(--muted);font-size:13px">8 players · random draw · you set any result</span></span><button class="btn">Edit dates</button></div>
+  <div class="brk">
+    <div class="rnd"><small>Round 1 · by 25 Oct</small>${m('Cochrane','Walsh',0,'Won 4&3')}${disp?m('Doherty','Quinn',-1,'Disputed: set the result','disp'):m('Doherty','Quinn',0,'Won 3&2 (set by office)')}${m('Kelly','O’Neill',-1,'To play')}${m('Murphy','Byrne',1,'Won at the 19th')}</div>
+    <div class="rnd"><small>Semi-finals · by 15 Nov</small>${m('Cochrane',disp?'Doherty or Quinn':'Doherty',-1,'To play')}${m('Kelly or O’Neill','Byrne',-1,'To play')}</div>
+    <div class="rnd"><small>Final · by 6 Dec</small>${m('—','—',-1,'To play')}</div>
+  </div>`
+}
+function detail(c){
+  return `<div style="padding:18px"><b style="font-family:var(--display);font-size:20px;font-weight:400">${c.name}</b><p style="color:var(--muted);margin:4px 0 14px">${c.kind} · ${c.state}</p>
+  <div class="rows"><div class="row" style="padding-inline:0"><span class="t"><b>Entries and results</b><span>Who’s in, scores, the table</span></span><button class="btn">Open</button></div>
+  <div class="row" style="padding-inline:0"><span class="t"><b>Settings</b><span>Dates, format, limits</span></span><button class="btn">Edit</button></div></div></div>`
+}
+
+function draw(){
+  main.innerHTML=V[S.view](); counts()
+  document.querySelectorAll('.navb').forEach(b=>b.setAttribute('aria-current',b.dataset.go===S.view))
+  wire()
+}
+function go(v){ S.view=v; closePanel(); draw(); main.scrollTop=0 }
+function wire(){
+  main.querySelectorAll('[data-go]').forEach(a=>a.onclick=e=>{e.preventDefault();go(a.dataset.go)})
+  main.querySelectorAll('[data-letin]').forEach(b=>b.onclick=()=>{const j=D.joins.find(x=>x.id==b.dataset.letin);D.joins=D.joins.filter(x=>x!==j);D.members.push({id:100+j.id,name:j.name.split(' ').reverse().join(', '),email:j.email,admin:false,hut:false,pts:'6 of 6'});D.members.sort((a,b)=>a.name.localeCompare(b.name));draw();toast(`${j.name} can sign in now`)})
+  main.querySelectorAll('[data-refuse]').forEach(b=>b.onclick=()=>{D.joins=D.joins.filter(x=>x.id!=b.dataset.refuse);draw();toast('Request refused')})
+  main.querySelectorAll('[data-approve]').forEach(b=>b.onclick=()=>{D.treqs=D.treqs.filter(x=>x.id!=b.dataset.approve);draw();toast('Booked: they’ve been told')})
+  main.querySelectorAll('[data-decline]').forEach(b=>b.onclick=()=>{D.treqs=D.treqs.filter(x=>x.id!=b.dataset.decline);draw();toast('Declined: they’ve been told')})
+  main.querySelectorAll('[data-setres]').forEach(b=>b.onclick=()=>openPanel(`<h2>Set the result</h2><p class="sub" style="margin:0">Christmas Cup · Round 1</p>
+    <div class="fld"><label for="rw">Winner</label><select id="rw"><option>Doherty</option><option>Quinn</option></select></div>
+    <div class="fld"><label for="rs">Score</label><input id="rs" value="3&2"></div>
+    <p style="color:var(--muted);font-size:13px">Both players see it straight away; the winner goes into the semi-final.</p>
+    <div class="pacts"><button class="btn pri" id="rsave">Save the result</button></div>`)||(document.getElementById('rsave').onclick=()=>{D.disputes=[];closePanel();draw();toast('Result saved: Doherty goes through')}))
+  main.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>editMember(+b.dataset.edit))
+  const mq=document.getElementById('mq'); if(mq) mq.oninput=()=>{S.q=mq.value;const p=mq.selectionStart;draw();const n=document.getElementById('mq');n.focus();n.setSelectionRange(p,p)}
+  main.querySelectorAll('[data-day]').forEach(b=>b.onclick=()=>{S.day=+b.dataset.day;closePanel();draw()})
+  main.querySelectorAll('[data-slot]').forEach(b=>b.onclick=()=>slot(b))
+  main.querySelectorAll('[data-comp]').forEach(b=>{ if(b.classList.contains('comp')) b.onclick=()=>{S.comp=b.dataset.comp;draw()} })
+  main.querySelectorAll('[data-rules]').forEach(b=>b.onclick=()=>openPanel(`<h2>Booking rules</h2><div class="fld"><label for="bt">Tee times open at</label><select id="bt"><option>8:00pm</option><option>7:00am</option></select></div><div class="fld"><label for="bd">Days before</label><input id="bd" type="number" value="8"></div><div class="pacts"><button class="btn pri" onclick="closePanel();toast('Saved')">Save</button></div>`))
+  main.querySelectorAll('[data-pins]').forEach(b=>b.onclick=()=>toast('Opens the pins page you have today'))
+  main.querySelectorAll('[data-newcomp]').forEach(b=>b.onclick=()=>openPanel(`<h2>New competition</h2><p class="sub" style="margin:0">What kind?</p>
+    <div class="rows card" style="margin-top:14px">${['A one-day event|Stableford, medal, team','A sign-up competition|Members enter in advance, with a limit','A knockout|Random draw, play-by dates','A league|Weekly, singles or pairs, knockout finish'].map(s=>`<div class="row"><span class="t"><b>${s.split('|')[0]}</b><span>${s.split('|')[1]}</span></span></div>`).join('')}</div>`))
+}
+function editMember(id){
+  const m=D.members.find(x=>x.id===id)
+  openPanel(`<h2>${m.name}</h2><p class="sub" style="margin:0">${m.email}</p>
+  <div class="fld"><label for="me">Email</label><input id="me" value="${m.email}"></div>
+  <div class="tog"><span>Admin<small>Can sign in to the club office</small></span><button class="sw" role="switch" aria-checked="${m.admin}" data-k="admin" aria-label="Admin"></button></div>
+  <div class="tog"><span>Halfway hut staff<small>Sees and marks food orders</small></span><button class="sw" role="switch" aria-checked="${m.hut}" data-k="hut" aria-label="Halfway hut staff"></button></div>
+  <div class="tog"><span>Guest points<small>${m.pts} left this year</small></span><button class="btn">Adjust</button></div>
+  <div class="pacts"><button class="btn danger" id="rm">Remove access</button></div>
+  <div id="rmc"></div>`)
+  panel.querySelectorAll('.sw').forEach(s=>s.onclick=()=>{m[s.dataset.k]=!m[s.dataset.k];s.setAttribute('aria-checked',m[s.dataset.k]);draw();toast('Saved')})
+  document.getElementById('rm').onclick=()=>{document.getElementById('rmc').innerHTML=`<div class="flag">${m.name} won’t be able to sign in. Their bookings and scores stay. <div class="pacts" style="margin-top:10px"><button class="btn" onclick="editMember(${id})">Keep</button><button class="btn pri" id="rmy">Remove access</button></div></div>`;document.getElementById('rmy').onclick=()=>{D.members=D.members.filter(x=>x!==m);closePanel();draw();toast('Access removed')}}
+}
+function slot(b){
+  document.querySelectorAll('.slot.sel').forEach(s=>s.classList.remove('sel'))
+  const t=b.dataset.slot, row=[...document.querySelectorAll(`[data-slot="${t}"]`)]; row.forEach(s=>s.classList.add('sel'))
+  if(b.dataset.comp) return openPanel(`<h2>${t}</h2><p class="sub" style="margin:0">Held for the Saturday Stableford</p><p style="color:var(--muted)">Times held for a competition come from the competition itself. Change them there.</p><div class="pacts"><button class="btn" onclick="S.comp='ss';go('comps')">Open the competition</button></div>`)
+  const names=row.filter(s=>s.classList.contains('b')).map(s=>s.textContent)
+  if(!names.length) return openPanel(`<h2>${t}</h2><p class="sub" style="margin:0">Free · 4 spaces</p><p style="color:var(--muted)">Book it for members, or hold it (a society, the greenkeepers).</p><div class="pacts"><button class="btn pri">Book for members</button><button class="btn">Hold this time</button></div><div class="flag">Needs your OK: the office booking or holding times for others is part of step 3.</div>`)
+  openPanel(`<h2>${t}</h2><p class="sub" style="margin:0">${names.length} of 4 · booked by ${names[0]}</p>
+  <div class="card rows" style="margin-top:14px">${names.map(n=>`<div class="row"><span class="av">${ini(n)}</span><span class="t"><b>${n}</b></span></div>`).join('')}</div>
+  <div class="pacts"><button class="btn">Move to another time</button><button class="btn danger">Cancel the booking</button></div>
+  <div class="flag">Needs your OK: moving or cancelling a member’s booking is step 3. Everyone in the booking would get a message saying the office changed it.</div>`)
+}
+document.querySelectorAll('.navb').forEach(b=>b.onclick=()=>go(b.dataset.go))
+draw()
+</script>
