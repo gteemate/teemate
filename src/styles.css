@@ -861,3 +861,11 @@ h4,.sheet h4{font-family:var(--display);font-weight:600;letter-spacing:0}
 .orun label .opt{font-weight:500}
 .orunrow{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
 .orun .primary{align-self:flex-start}
+
+/* Entry fees and balances */
+.feeline{display:block;font-size:14px;font-weight:700;color:var(--gold)}
+.balances{display:grid;grid-template-columns:1fr 1fr;gap:0;padding:0}
+.balances>div{padding:14px 16px;display:flex;flex-direction:column;gap:2px}
+.balances>div+div{border-left:1px solid var(--line)}
+.balances span{color:var(--muted);font-size:13px}
+.balances b{font-family:var(--display);font-weight:400;font-size:26px}

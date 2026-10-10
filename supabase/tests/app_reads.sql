@@ -23,6 +23,13 @@ do $$ declare e text; begin
   perform t.ok('Members can read every column the app asks for (MEMBER_COLS), and filter on office', e is null, e);
   e := t.err('select email from public.members');
   perform t.ok('…but not anyone''s email', e like '%permission denied%', e);
+  e := t.err('select id, name, category, kind, closes_on, notes, open, draw_published, round_deadlines, max_entries, created_by, final_by, entry_fee_pence from public.signup_comps');
+  perform t.ok('Members can read every sign-up competition column the app asks for (with the entry fee)', e is null, e);
+  e := t.err('select id, name, entry_fee_pence from public.events');
+  perform t.ok('Members can read events'' entry fees', e is null, e);
+  perform t.ok('How fees are paid comes with the club colours', (public.get_theme() ? 'feePayment'));
+  e := t.err('select public.admin_set_fee_payment(''purse'')');
+  perform t.ok('Members can''t change how fees are paid', e like '%Only the club office%', e);
   e := t.err('select id, kind, date, old_time, new_time, note, created_at from public.booking_notices where seen = false');
   perform t.ok('Members can read their booking notices', e is null, e);
   reset role;

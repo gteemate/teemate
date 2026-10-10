@@ -109,6 +109,8 @@ export function draw({ members, me }) {
       <h3>Format</h3>
       <div class="games">${Object.entries(EVENT_TYPES).filter(([, t]) => !t.adminOnly || (me.admin && S.evScope === 'club')).map(([k, t]) => `<button class="gamecard" role="radio" aria-checked="${ev.style === k}" data-style="${k}"><span class="radio"></span><span class="who"><strong>${t.name}</strong><small>${t.desc}</small></span></button>`).join('')}</div>
       ${EVENT_TYPES[ev.style].formats.length > 1 ? `<div class="card evsec"><label for="ev-fmt">${ev.style === 'ryder' ? 'Match format' : 'Scoring'}</label><select id="ev-fmt" class="plainsel">${EVENT_TYPES[ev.style].formats.map(([k, n]) => `<option value="${k}" ${ev.fmt === k ? 'selected' : ''}>${n}</option>`).join('')}</select></div>` : ''}
+      ${ev.club && me.admin && ev.style !== 'league' ? `<div class="card evsec"><label for="ev-fee">Entry fee £ <span class="opt">blank: free</span></label><input id="ev-fee" type="number" class="plainsel" min="0" step="0.5" inputmode="decimal" value="${ev.entryFee ? ev.entryFee / 100 : ''}">
+        <span class="hint">Shown to members when they enter, with how the club takes it (Club office → Club).</span></div>` : ''}
       ${ev.club && me.admin ? `<div class="card evsec"><b>Who can see it</b>
         <div class="seg" role="group" aria-label="Who can see it"><button data-vis="all" aria-pressed="${!!ev.everyone}">All members</button><button data-vis="entrants" aria-pressed="${!ev.everyone}">Entrants only</button></div>
         <span class="hint">${ev.everyone ? 'Every member sees it on their Leaderboard tab.' : `Only the ${ev.style === 'league' ? 'league’s players' : 'players in it'} (and admins) see it.`}</span></div>
@@ -233,6 +235,7 @@ export function draw({ members, me }) {
   const redraw = () => keepScroll(render)
   const read = () => {
     if ($('ev-name')) { ev.name = $('ev-name').value; ev.startDate = $('ev-date').value; if ($('ev-fmt')) ev.fmt = $('ev-fmt').value }
+    if ($('ev-fee')) { const f = $('ev-fee').value.trim(); ev.entryFee = f && +f > 0 ? Math.min(100000, Math.round(+f * 100)) : null }
     if ($('ev-an')) { ev.A = { name: $('ev-an').value, col: $('ev-ac').value }; ev.B = { name: $('ev-bn').value, col: $('ev-bc').value } }
     if ($('lg-tn')) { const t = S.evTeam ?? 0; ev.teams[t] = { ...ev.teams[t], name: $('lg-tn').value || ev.teams[t].name, col: $('lg-tc').value } }
   }

@@ -489,6 +489,42 @@ describe('the pretend server', () => {
     expect(app.toast()).toContain('is open: members see it under Competitions → Events')
   })
 
+  it('25. The club office sets an entry fee and how fees are paid; members see it when they enter', async () => {
+    app = await boot(db => { db.asOffice = true; Object.assign(db.signups[0], { open: false, closesOn: null }) })
+    await app.tap('Club')
+    await app.tap('[data-o-fee="purse"]')
+    expect(app.db.theme.feePayment).toBe('purse')
+    await app.tap('Competitions')
+    await app.tap('[data-o-comp="s:1"]')
+    await app.type('#o-rclose', '2026-11-01')
+    await app.type('#o-rfinal', '2027-03-01')
+    await app.type('#o-rfee', '7.50')
+    await app.tap('#o-run')
+    expect(app.db.signups[0]).toMatchObject({ open: true, entryFee: 750 })
+  })
+
+  it('26. A member sees the fee on Events and when entering; once the club links balances, Account and the entry show them', async () => {
+    app = await boot(db => { db.theme.feePayment = 'purse'; db.signups[0].entryFee = 500 })
+    await app.tap('Gary Cochrane')
+    expect(app.text()).not.toContain('Competition purse') // no balances until the club links its system
+    await app.tap('‹ Home')
+    await app.tap('Competition')
+    await app.tap('Events')
+    expect(app.text()).toContain('Singles · £5 entry')
+    await app.tap('[data-sign="1"]')
+    expect(app.text()).toContain('Entry £5, taken from your competition purse')
+    app.done()
+    app = await boot(db => { db.theme.feePayment = 'purse'; db.signups[0].entryFee = 500; db.balances = { competition: 4250, clubhouse: 1210 } })
+    await app.tap('Gary Cochrane')
+    expect(app.text()).toContain('Competition purse£42.50')
+    expect(app.text()).toContain('Clubhouse£12.10')
+    await app.tap('‹ Home')
+    await app.tap('Competition')
+    await app.tap('Events')
+    await app.tap('[data-sign="1"]')
+    expect(app.text()).toContain('Entry £5 · £37.50 left in your competition purse after this')
+  })
+
   it('has every function src/api.js exports (so a new one is never silently missing)', () => {
     const dir = `${process.cwd()}/src/api`
     const real = readdirSync(dir).flatMap(f => [...readFileSync(`${dir}/${f}`, 'utf8').matchAll(/^export (?:async )?function (\w+)/gm)].map(m => m[1]))

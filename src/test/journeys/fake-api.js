@@ -10,7 +10,7 @@ const ME = 0
 
 /** Every name src/api.js exports (kept in step with it by a test). */
 export const API_NAMES = ['getMe', 'forgetMe', 'getSession', 'signIn', 'needsAccount', 'createAccount', 'myRequestPending', 'changePassword', 'signOut',
-  'onAuthChange', 'requestAccess', 'getTheme', 'setTheme', 'setClubName', 'setCourseLocation', 'getHut', 'setHutOn', 'saveHutItem', 'removeHutItem',
+  'onAuthChange', 'requestAccess', 'getTheme', 'setTheme', 'setFeePayment', 'getMyBalances', 'setClubName', 'setCourseLocation', 'getHut', 'setHutOn', 'saveHutItem', 'removeHutItem',
   'getHutStaff', 'setHutStaff', 'placeHutOrder', 'cancelMyHutOrder', 'myHutOrders', 'hutOrdersToday', 'setHutOrderStatus', 'getMembers', 'getBuddies',
   'addBuddy', 'removeBuddy', 'getFriends', 'saveContact', 'removeContact', 'setFriendFavourite', 'getAccessList', 'saveMember', 'getFavourites',
   'setFavourite', 'setOfficeLogin', 'getAccessRequests', 'declineRequest', 'deleteMember', 'resetLogin', 'getCourse', 'getPins', 'setGreenWidth', 'publishPins',
@@ -56,7 +56,8 @@ export function makeWorld(today, setup = () => {}) {
     contacts: [{ id: 1, name: 'Sam Visitor', club: 'Royal Portrush GC', hcp: '12.0', gui: '1234567', sharedOn: today, favourite: false, updatedAt: `${today}T08:00:00Z` }],
     slots: {}, bookings: [], guestVisits: [], rounds: [], requests: [], playerEvents: [],
     rules: { time: '20:00', days: 8, weekendsOnly: false },
-    theme: { main: '#19335A', accent: '#762A43', name: 'Royal Teemate Golf Club', courseLat: 55.2, courseLon: -6.65, coursePlace: 'Portrush' },
+    theme: { main: '#19335A', accent: '#762A43', name: 'Royal Teemate Golf Club', courseLat: 55.2, courseLon: -6.65, coursePlace: 'Portrush', feePayment: 'shop' },
+    balances: null, // the club's system once linked: { competition, clubhouse } in pence
     hut: { on: true, menu: [
       { id: 1, section: 'Food', name: 'Bacon roll', pricePence: 450, soldOut: false, sort: 1 },
       { id: 2, section: 'Food', name: 'Toastie', pricePence: 500, soldOut: false, sort: 2 },
@@ -104,6 +105,8 @@ export function makeWorld(today, setup = () => {}) {
     getSession: async () => ({ user: { id: 'u0', email: 'gary@example.invalid' } }), onAuthChange: () => {},
     myRequestPending: async () => false,
     getTheme: async () => ({ ...db.theme }),
+    setFeePayment: async p => { db.theme.feePayment = p },
+    getMyBalances: async () => copy(db.balances),
     getHut: async () => copy(db.hut),
     getHutStaff: async () => db.members.filter(m => m.hutStaff).map(m => m.id),
     setHutOn: async on => { db.hut.on = on },
@@ -264,9 +267,9 @@ export function makeWorld(today, setup = () => {}) {
     getSignupDeclines: async () => [...db.declines],
     declineSignup: async cid => { if (!db.declines.includes(cid)) db.declines.push(cid) },
     undeclineSignup: async cid => { db.declines = db.declines.filter(x => x !== cid) },
-    runSignup: async (cid, { closesOn, finalBy, maxEntries = null, notes = '' }) => {
+    runSignup: async (cid, { closesOn, finalBy, maxEntries = null, notes = '', fee = null }) => {
       db.koMatches = db.koMatches.filter(m => m.compId !== cid); db.signupEntries = db.signupEntries.filter(e => e.compId !== cid); db.declines = db.declines.filter(x => x !== cid)
-      Object.assign(db.signups.find(c => c.id === cid), { open: true, closesOn, finalBy, maxEntries: maxEntries ? +maxEntries : null, notes: notes || null, drawPublished: false, roundDeadlines: [] })
+      Object.assign(db.signups.find(c => c.id === cid), { open: true, closesOn, finalBy, maxEntries: maxEntries ? +maxEntries : null, notes: notes || null, drawPublished: false, roundDeadlines: [], entryFee: fee || null })
     },
     linkKoCard: async (mid, rid) => { db.koMatches.find(m => m.id === mid).roundId = rid },
     reportKoResult: async (mid, w, r) => Object.assign(db.koMatches.find(m => m.id === mid), { status: 'reported', winnerEntry: w, result: r, reportedEntry: db.signupEntries.find(e => e.memberId === ME || e.partnerId === ME)?.id }),

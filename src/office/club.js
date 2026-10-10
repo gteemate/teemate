@@ -19,6 +19,8 @@ export function draw({ theme, pinsToday, pinsBy, hut, staff, office, allowance, 
       ${row('colours', 'Name, colours and course', `${esc(theme?.name || 'No name yet')}${theme?.coursePlace ? ` · weather for ${esc(theme.coursePlace)}` : ' · no course location yet'}`, 'Edit')}
       ${row('pins', 'Pins', pinsToday ? `Set today by ${esc(pinsBy)}` : '<span class="owarn">Not set today</span>', pinsToday ? 'Change' : 'Set today’s flags', !pinsToday)}
       ${row('hutadmin', 'Halfway hut', `${hut.on ? 'Taking orders' : 'Off'} · ${hut.menu.length} on the menu · ${staff} staff`, 'Edit')}
+      <div class="orow"><span class="ot"><b>Entry fees</b><span>How members pay for competitions with a fee</span></span>
+        <span class="seg" role="group" aria-label="Entry fees"><button data-o-fee="purse" aria-pressed="${theme?.feePayment === 'purse'}">Competition purse</button><button data-o-fee="shop" aria-pressed="${theme?.feePayment !== 'purse'}">Pro shop</button></span></div>
       ${row('points', 'Guest points', `${allowance} a year for each member · see everyone’s balance`, 'Open')}
     </div>
     <h3>The office login</h3>
@@ -26,6 +28,10 @@ export function draw({ theme, pinsToday, pinsBy, hut, staff, office, allowance, 
       ${me.office ? '' : `<span class="oacts"><button class="ghost sm" id="o-office">${office?.email ? 'Change' : 'Set up'}</button></span>`}</div></div>
     ${me.office ? '<p class="hint">To change the office login, ask an admin to do it from their own account.</p>' : ''}
   </div>`
+  document.querySelectorAll('[data-o-fee]').forEach(b => (b.onclick = async () => {
+    try { await api.setFeePayment(b.dataset.oFee) } catch (err) { toast(err.message); return }
+    await keepScroll(render); toast(b.dataset.oFee === 'purse' ? 'Members are told fees come from their competition purse' : 'Members are told to pay fees in the pro shop')
+  }))
   document.querySelectorAll('[data-o-open]').forEach(b => (b.onclick = async () => { S.aview = b.dataset.oOpen; await render(); top0() }))
   if ($('o-office')) $('o-office').onclick = () => {
     const close = panel(`<h4>The office login</h4><p class="hint">Use an email for the club (e.g. the office or the secretary’s club address), not a member’s own. Then create the account on the sign-in screen with it.</p>

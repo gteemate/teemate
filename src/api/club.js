@@ -20,3 +20,8 @@ export async function setClubName(name) {
 export async function setCourseLocation(lat, lon, place) {
   must(await sb.rpc('admin_set_course_location', { p_lat: lat, p_lon: lon, p_place: place }))
 }
+
+/** How the club takes entry fees: 'purse' (the competition purse) or 'shop' (paid in the pro shop). Admins. */
+export async function setFeePayment(p) {
+  must(await sb.rpc('admin_set_fee_payment', { p }))
+}

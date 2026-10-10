@@ -40,10 +40,10 @@ do $$ declare c bigint; e text; ea bigint; eb bigint; begin
   perform t.act_as(991201);
   e := t.err(format('select public.admin_run_signup(%s, current_date + 10, current_date + 5)', c));
   perform t.ok('The final has to be after entries close', e like '%after entries close%', e);
-  perform public.admin_run_signup(c, current_date + 10, current_date + 60, 16, ' £5 a head ');
+  perform public.admin_run_signup(c, current_date + 10, current_date + 60, 16, ' £5 a head ', 500);
   reset role;
   perform t.ok('Running it opens it with the new dates, limit and notes, and no draw',
-    (select open and closes_on = current_date + 10 and final_by = current_date + 60 and max_entries = 16 and notes = '£5 a head' and not draw_published and round_deadlines = '{}' from public.signup_comps where id = c));
+    (select open and closes_on = current_date + 10 and final_by = current_date + 60 and max_entries = 16 and notes = '£5 a head' and entry_fee_pence = 500 and not draw_published and round_deadlines = '{}' from public.signup_comps where id = c));
   perform t.ok('Last time''s entries, draw and answers are cleared',
     not exists (select 1 from public.signup_entries where comp_id = c) and not exists (select 1 from public.ko_matches where comp_id = c) and not exists (select 1 from public.signup_declines where comp_id = c));
 

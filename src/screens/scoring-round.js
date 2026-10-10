@@ -9,6 +9,7 @@ import { getRound, resetRound } from './scores.js'
 import { countsForOptions, markerChoices } from '../round.js'
 import { markLeagueAsked } from './scores-league.js'
 import { eventFormat } from './event-editor.js'
+import { feeLine } from '../fees.js'
 
 let ticked = new Set() // option keys ticked on this visit
 let marker = null // who marks the card ({ m } / { g }), for leagues and standard competitions
@@ -20,11 +21,11 @@ export async function load() {
   const events = await api.getEvents()
   const date = isoDate(today())
   const leagues = events.filter(e => e.style === 'league')
-  const [leagueEntries, me, members, guests] = await Promise.all([api.getLeagueEntries(leagues.map(e => e.id)), api.getMe(), api.getMembers(),
-    api.getGuests(round.lineup.filter(e => e.g != null).map(e => e.g))])
+  const [leagueEntries, me, members, guests, theme, balances] = await Promise.all([api.getLeagueEntries(leagues.map(e => e.id)), api.getMe(), api.getMembers(),
+    api.getGuests(round.lineup.filter(e => e.g != null).map(e => e.g)), api.getTheme(), api.getMyBalances()])
   const name = x => (x.m != null ? members.find(m => m.id === x.m)?.name : guests.find(g => g.id === x.g)?.name) ?? 'Guest'
   const choices = markerChoices(round.lineup, me.id).map(x => ({ ...x, name: name(x) }))
-  return { round, me, choices, options: countsForOptions({ lineup: round.lineup, events, leagueEntries, date, meId: me.id }) }
+  return { round, me, choices, fees: { payment: theme?.feePayment ?? 'shop', purse: balances?.competition ?? null }, options: countsForOptions({ lineup: round.lineup, events, leagueEntries, date, meId: me.id }) }
 }
 
 const key = o => `${o.kind}:${o.e.id}`
@@ -51,7 +52,7 @@ async function start(round, options, me) {
   top0()
 }
 
-export function draw({ round, me, choices, options }) {
+export function draw({ round, me, choices, options, fees = { payment: 'shop', purse: null } }) {
   if (!round) { render(); return }
   if (!options.length) { start(round, options, me); return } // nothing to ask: straight to the card
   if (seen !== round) { seen = round; ticked = new Set(options.filter(o => o.auto).map(key)); marker = choices.length === 1 ? choices[0] : null } // your match counts already
@@ -68,12 +69,12 @@ export function draw({ round, me, choices, options }) {
     <p class="sub" style="margin:0">Tick the ones this round should count for, or leave them all for a general round.</p>
     ${entered.map(tick).join('')}` : ''}
     ${joinable.map(o => `<h3 style="margin:${entered.length ? '10px' : '0'} 0 0">${esc(o.e.name)} is on today. Do you want to play in it?</h3>
-      <p class="sub" style="margin:0">Tick it and you’re entered, with this round counting.</p>${tick(o)}`).join('')}
+      <p class="sub" style="margin:0">Tick it and you’re entered, with this round counting.</p>${feeLine(o.e.entryFee, fees.payment, fees.purse) ? `<span class="feeline">${esc(feeLine(o.e.entryFee, fees.payment, fees.purse))}</span>` : ''}${tick(o)}`).join('')}
     ${needMarker ? (choices.length === 1 ? `<p class="hint">Marker: <b>${esc(choices[0].name)}</b></p>`
       : `<span class="kicker">Who’s marking your card?</span><div class="chips" role="radiogroup" aria-label="Your marker">${choices.map((c, n) => `<button class="chip" role="radio" data-mk="${n}" aria-checked="${same(marker, c)}" aria-pressed="${same(marker, c)}">${esc(c.name)}</button>`).join('')}</div>`) : ''}
     <button class="primary" id="start" ${needMarker && !marker ? 'disabled' : ''}>${esc(needMarker && !marker ? 'Pick your marker' : label())}</button>
   </div>`
-  const again = () => draw({ round, me, choices, options })
+  const again = () => draw({ round, me, choices, options, fees })
   document.querySelectorAll('[data-k]').forEach(b => (b.onclick = () => { const k = b.dataset.k; ticked.has(k) ? ticked.delete(k) : ticked.add(k); again() }))
   document.querySelectorAll('[data-mk]').forEach(b => (b.onclick = () => { marker = choices[+b.dataset.mk]; again() }))
   $('start').onclick = async () => { $('start').disabled = true; await start(round, options, me) }

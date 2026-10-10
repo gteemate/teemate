@@ -9,20 +9,22 @@ import { eventFormatName } from '../games.js'
 import { competitionLists } from '../competitions.js'
 import { canEdit } from './events.js'
 import { canEnter, myEntries, partnerChoices, needsSection, placesLeft, splitDeclined } from '../signups.js'
+import { feeLine, money } from '../fees.js'
 
 const TABS = [['entered', 'Entered'], ['events', 'Events'], ['history', 'History']]
 const FORMAT = { individual: 'Individual', teams: 'Team Stableford', ryder: 'Ryder Cup', league: 'League' }
 
 export async function load() {
   const [events, me, playerEvents, signups, members, friends, declinedIds] = await Promise.all([api.getEvents(), api.getMe(), api.getMyPlayerEvents(), api.getSignups(), api.getMembers(), api.getFriends(), api.getSignupDeclines()])
-  const counts = await api.getSignupCounts()
+  const [counts, theme, balances] = await Promise.all([api.getSignupCounts(), api.getTheme(), api.getMyBalances()])
+  const fees = { payment: theme?.feePayment ?? 'shop', purse: balances?.competition ?? null } // how entry fees are paid, and my purse once linked
   const date = isoDate(today())
   const open = canEnter({ ...signups, me, date })
-  return { me, date, members, friends, signups, counts, lists: competitionLists({ me, events, playerEvents, date }),
+  return { me, date, members, friends, signups, counts, fees, lists: competitionLists({ me, events, playerEvents, date }),
     open, ...splitDeclined(open, declinedIds), entered: myEntries({ ...signups, me }) }
 }
 
-export function draw({ me, date, members, friends, signups, counts = {}, lists, open, offer = open, declined = [], entered }) {
+export function draw({ me, date, members, friends, signups, counts = {}, fees = { payment: 'shop', purse: null }, lists, open, offer = open, declined = [], entered }) {
   header('Competitions', '')
   const tab = TABS.some(([k]) => k === S.compTab) ? S.compTab : 'entered' // (Open is gone: a remembered 'open' falls back)
   const teamOf = e => e.teams?.[e.team?.[me.id]]?.name
@@ -49,7 +51,7 @@ export function draw({ me, date, members, friends, signups, counts = {}, lists, 
   // Season competitions I can enter: one line each, Enter or No thanks (No thanks moves it to Declined, where I can
   // still enter until it closes). Notes and choosing a partner come after Enter.
   const signRow = (c, wasDeclined) => { const left = placesLeft(c, counts)
-    const line = `${c.category === 'mixed' ? 'Mixed ' : ''}${kindText(c).toLowerCase()} · ${closes(c).replace('Entries close', 'entries close')}${left != null ? ` · ${left} place${left === 1 ? '' : 's'} left` : ''}`
+    const line = `${c.category === 'mixed' ? 'Mixed ' : ''}${kindText(c).toLowerCase()}${c.entryFee ? ` · ${money(c.entryFee)} entry` : ''} · ${closes(c).replace('Entries close', 'entries close')}${left != null ? ` · ${left} place${left === 1 ? '' : 's'} left` : ''}`
     return left === 0 ? `<div class="card comp"><span class="row"><span class="ct">${esc(c.name)}</span><span class="pill">Full</span></span><span class="sub">${kindText(c)} · all ${c.maxEntries} places taken</span></div>`
       : `<div class="card comp"><span class="ct">${esc(c.name)}</span><span class="sub">${line.charAt(0).toUpperCase() + line.slice(1)}</span>
       <div class="bk-btns">${wasDeclined ? '' : `<button class="ghost" data-nothanks="${c.id}">No thanks</button>`}<button class="primary" data-sign="${c.id}">Enter</button></div></div>` }
@@ -76,7 +78,7 @@ export function draw({ me, date, members, friends, signups, counts = {}, lists, 
   if ($('create')) $('create').onclick = () => createSheet(go)
   document.querySelectorAll('[data-edit]').forEach(b => (b.onclick = e => { e.stopPropagation(); go(() => { S.ev = null; S.evId = +b.dataset.edit; S.evStep = 1; S.evScope = 'player'; S.aview = 'event' }) }))
   if ($('setsec')) $('setsec').onclick = () => go(() => { S.aview = 'account' })
-  document.querySelectorAll('[data-sign]').forEach(b => (b.onclick = () => signSheet(open.find(c => c.id === +b.dataset.sign), me, members, friends, signups.entries)))
+  document.querySelectorAll('[data-sign]').forEach(b => (b.onclick = () => signSheet(open.find(c => c.id === +b.dataset.sign), me, members, friends, signups.entries, fees)))
   document.querySelectorAll('[data-nothanks]').forEach(b => (b.onclick = async () => {
     const c = open.find(x => x.id === +b.dataset.nothanks)
     b.disabled = true
@@ -100,7 +102,8 @@ export function draw({ me, date, members, friends, signups, counts = {}, lists, 
 }
 
 // Enter a season competition: singles is one tap to confirm; pairs pick a partner (favourites first, then search).
-function signSheet(c, me, members, friends, entries) {
+function signSheet(c, me, members, friends, entries, fees) {
+  const fee = feeLine(c.entryFee, fees.payment, fees.purse)
   const choices = c.kind === 'pairs' ? partnerChoices(c, me, members, entries) : []
   const fav = new Set(friends.buddies.filter(b => b.favourite).map(b => b.id)), mine = new Set(friends.buddies.map(b => b.id))
   let partner = null, q = ''
@@ -113,6 +116,7 @@ function signSheet(c, me, members, friends, entries) {
   const sheet = () => `<div class="overlay" id="ovl"><div class="sheet" role="dialog" aria-labelledby="sgt">
     <h4 id="sgt">Enter ${esc(c.name)}?</h4>
     <span class="hint">${c.kind === 'pairs' ? 'Pairs' : 'Singles'} · Entries close ${eventDates(c.closesOn, 1)}${c.notes ? ` · ${esc(c.notes)}` : ''}. You can withdraw until then.</span>
+    ${fee ? `<span class="feeline">${esc(fee)}${c.kind === 'pairs' ? ' (each)' : ''}</span>` : ''}
     ${c.kind === 'pairs' ? `<label for="sg-q">Your partner</label><input id="sg-q" type="search" autocomplete="off" placeholder="Type a name" value="${esc(q)}"><div class="pick picklist" id="sg-list">${list()}</div>` : ''}
     <div class="gm-btns"><button type="button" class="ghost" id="sg-no">Not now</button><button class="primary" id="sg-go" ${c.kind === 'pairs' && !partner ? 'disabled' : ''}>${c.kind === 'pairs' ? (partner ? 'Enter as a pair' : 'Pick your partner') : 'Enter'}</button></div>
   </div></div>`

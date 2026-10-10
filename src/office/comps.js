@@ -8,6 +8,7 @@ import { addDaysIso, eventDates, eventLastDay, isoDate, leagueWeek, today } from
 import { entryName, roundName, champion } from '../knockout.js'
 import { EVENT_TYPES } from '../screens/event-editor.js'
 import { clubComp, clubEvent, panel } from './shell.js'
+import { money, feeTotal } from '../fees.js'
 
 const CAT = { men: 'Men’s', ladies: 'Ladies’', mixed: 'Mixed', open: 'Open' }
 
@@ -70,12 +71,13 @@ export function draw({ evs, comps, kos, members, t }) {
   document.querySelectorAll('[data-o-card]').forEach(b => (b.onclick = () => go(() => { const [mid, cid] = b.dataset.oCard.split(':'); Object.assign(S, { koCard: +mid, koComp: +cid, kcFrom: 'office', aview: 'kocard' }) })))
   if ($('o-run')) $('o-run').onclick = async () => {
     const b = $('o-run'), x = sel, v = id => $(id).value.trim()
-    const closesOn = v('o-rclose'), finalBy = v('o-rfinal'), maxEntries = v('o-rmax'), notes = v('o-rnotes')
-    const err = !closesOn ? 'Pick when entries close.' : closesOn < t ? 'Entries have to close today or later.' : !finalBy ? 'Pick when the final has to be played by.' : finalBy <= closesOn ? 'The final has to be after entries close.' : maxEntries && +maxEntries < 2 ? 'A limit needs at least 2 places.' : ''
+    const closesOn = v('o-rclose'), finalBy = v('o-rfinal'), maxEntries = v('o-rmax'), notes = v('o-rnotes'), feeText = v('o-rfee')
+    const fee = feeText ? Math.round(+feeText * 100) : null
+    const err = !closesOn ? 'Pick when entries close.' : closesOn < t ? 'Entries have to close today or later.' : !finalBy ? 'Pick when the final has to be played by.' : finalBy <= closesOn ? 'The final has to be after entries close.' : maxEntries && +maxEntries < 2 ? 'A limit needs at least 2 places.' : feeText && !(fee >= 0 && fee <= 100000) ? 'Enter the entry fee in pounds, e.g. 5 or 7.50.' : ''
     if (err) { $('o-rerr').textContent = err; return }
     if ((x.n || kos[x.key]?.matches.length) && b.dataset.armed !== '1') { b.dataset.armed = '1'; b.textContent = 'Tap again: last time’s entries and draw are cleared'; return }
     b.disabled = true
-    try { await api.runSignup(x.c.id, { closesOn, finalBy, maxEntries, notes }) } catch (er) { $('o-rerr').textContent = er.message; b.disabled = false; return }
+    try { await api.runSignup(x.c.id, { closesOn, finalBy, maxEntries, notes, fee }) } catch (er) { $('o-rerr').textContent = er.message; b.disabled = false; return }
     await keepScroll(render); toast(`${x.c.name} is open: members see it under Competitions → Events`)
   }
   $('o-new').onclick = () => {
@@ -102,7 +104,8 @@ function runForm(x, ko, champ, members, t) {
       <p class="hint">Set this year’s dates and release it: members see it under Competitions → Events and answer Enter or No thanks.${x.n || ko?.matches.length ? ' Last time’s entries and draw are cleared.' : ''}</p>
       <div class="orunrow"><label>Entries close<input type="date" class="plainsel" id="o-rclose" min="${t}" value="${addDaysIso(t, 21)}"></label>
         <label>Final played by<input type="date" class="plainsel" id="o-rfinal" value="${addDaysIso(t, 120)}"></label>
-        <label>Places (blank: no limit)<input type="number" class="plainsel" id="o-rmax" min="2" inputmode="numeric" value="${c.maxEntries ?? ''}"></label></div>
+        <label>Places (blank: no limit)<input type="number" class="plainsel" id="o-rmax" min="2" inputmode="numeric" value="${c.maxEntries ?? ''}"></label>
+        <label>Entry fee £ (blank: free)<input type="number" class="plainsel" id="o-rfee" min="0" step="0.5" inputmode="decimal" value="${c.entryFee ? c.entryFee / 100 : ''}"></label></div>
       <label>Notes for members (optional)<input class="plainsel" id="o-rnotes" maxlength="300" value="${esc(c.notes ?? '')}" placeholder="e.g. £5 entry, paid in the shop"></label>
       <p class="gerr" id="o-rerr" role="alert"></p>
       <button class="primary sm" id="o-run">Release to members</button>
@@ -114,13 +117,13 @@ function detail(x, ko, members, t) {
     const e = x.e, wk = e.style === 'league' ? leagueWeek(e, t) : 0
     return `<div class="ohead"><div><h4>${esc(e.name)}</h4><p class="hint">${e.style === 'league' ? `${e.weeks}-week league from ${eventDates(e.startDate, 1)}${wk > 0 && wk <= e.weeks ? ` · week ${wk}` : ''}` : eventDates(e.startDate, e.days)}</p></div></div>
       <div class="olist">
-        <div class="orow"><span class="ot"><b>${e.style === 'league' ? 'Table and results' : 'Leaderboard'}</b><span>${e.players.length} player${e.players.length === 1 ? '' : 's'}${e.everyone ? ' · everyone can play' : ''}</span></span><span class="oacts"><button class="ghost sm" data-o-go="board:${e.id}">Open</button></span></div>
+        <div class="orow"><span class="ot"><b>${e.style === 'league' ? 'Table and results' : 'Leaderboard'}</b><span>${e.players.length} player${e.players.length === 1 ? '' : 's'}${e.everyone ? ' · everyone can play' : ''}${e.entryFee ? ` · entry ${money(e.entryFee)}` : ''}</span></span><span class="oacts"><button class="ghost sm" data-o-go="board:${e.id}">Open</button></span></div>
         <div class="orow"><span class="ot"><b>Settings</b><span>Dates, format, who plays</span></span><span class="oacts"><button class="ghost sm" data-o-go="edit:${e.id}">Edit</button></span></div>
         ${e.koComp ? `<div class="orow"><span class="ot"><b>The knockout finish</b><span>The top ${e.koTop} from the table</span></span><span class="oacts"><button class="ghost sm" data-o-go="draw:${e.koComp}">Open the draw</button></span></div>` : ''}
       </div>`
   }
   const c = x.c
-  const head = `<div class="ohead"><div><h4>${esc(c.name)}</h4><p class="hint">${CAT[c.category]} ${c.kind === 'pairs' ? 'pairs' : 'singles'} · ${x.n}${c.maxEntries ? ` of ${c.maxEntries}` : ''} entered${c.closesOn ? ` · entries ${c.closesOn >= t ? 'close' : 'closed'} ${eventDates(c.closesOn, 1)}` : ''}</p></div>
+  const head = `<div class="ohead"><div><h4>${esc(c.name)}</h4><p class="hint">${CAT[c.category]} ${c.kind === 'pairs' ? 'pairs' : 'singles'} · ${x.n}${c.maxEntries ? ` of ${c.maxEntries}` : ''} entered${c.closesOn ? ` · entries ${c.closesOn >= t ? 'close' : 'closed'} ${eventDates(c.closesOn, 1)}` : ''}</p>${c.entryFee ? `<p class="hint">Entry ${money(c.entryFee)}${c.kind === 'pairs' ? ' each' : ''} · ${feeTotal(c.kind === 'pairs' ? c.entryFee * 2 : c.entryFee, x.n).split(' · ')[1]}</p>` : ''}</div>
     <span class="oacts"><button class="ghost sm" data-o-go="signups">Entries and settings</button>${ko?.matches.length ? `<button class="primary sm" data-o-go="draw:${c.id}">${c.drawPublished ? 'Set results' : 'Make the draw'}</button>` : x.n > 1 ? `<button class="primary sm" data-o-go="draw:${c.id}">Make the draw</button>` : ''}</span></div>`
   if (!ko?.matches.length) return `${head}<div class="empty-state">${x.n ? 'No draw yet. Make it once entries close.' : 'Nobody has entered yet.'}</div>`
   const n = rounds(ko), name = id => entryName(id, ko.entries, members)

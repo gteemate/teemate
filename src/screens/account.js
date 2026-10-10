@@ -6,19 +6,20 @@ import { $, esc, header, top0, render, toast, fmtHcp } from '../ui.js'
 import { passwordSheet } from './login.js'
 import { shareText, qrSvg, shareCard } from '../share-card.js'
 import { friendLink } from '../friend-link.js'
+import { money } from '../fees.js'
 
 export async function load() {
   const me = await api.getMe()
-  const [theme, points, requests, teeReqs, hut] = await Promise.all([
+  const [theme, points, requests, teeReqs, hut, balances] = await Promise.all([
     api.getTheme(), api.getGuestPoints(),
     me.admin ? api.getAccessRequests() : [],
     me.admin ? api.getTeeTimeRequests() : [],
-    api.getHut(),
+    api.getHut(), api.getMyBalances(),
   ])
-  return { me, clubName: theme?.name ?? '', waiting: requests.length + teeReqs.filter(r => r.status === 'pending').length, points, hutOn: hut.on }
+  return { balances, me, clubName: theme?.name ?? '', waiting: requests.length + teeReqs.filter(r => r.status === 'pending').length, points, hutOn: hut.on }
 }
 
-export function draw({ me, clubName, waiting, points, hutOn }) {
+export function draw({ me, clubName, waiting, points, hutOn, balances }) {
   header('Account', `Signed in as <b>${esc(me.name)}</b>`, async () => { S.aview = 'home'; await render(); top0() }, 'Home')
   const link = friendLink(me, clubName, location.origin + import.meta.env.BASE_URL), card = shareText(me, clubName, link)
   const used = points.mine.reduce((t, x) => t + x.points, 0), left = points.allowance - used
@@ -36,6 +37,7 @@ export function draw({ me, clubName, waiting, points, hutOn }) {
   <div class="card evsec"><b>I play in</b>
     <div class="seg" role="group" aria-label="I play in"><button data-plays="men" aria-pressed="${me.playsIn === 'men'}">Men’s</button><button data-plays="ladies" aria-pressed="${me.playsIn === 'ladies'}">Ladies’</button></div>
     <span class="hint">${me.playsIn ? 'Competitions → Events shows the club competitions you can enter.' : 'Set this to see the Men’s, Ladies’ and Mixed competitions you can enter.'}</span></div>
+  ${balances ? `<div class="card balances"><div><span>Competition purse</span><b class="num">${balances.competition == null ? '–' : money(balances.competition)}</b></div><div><span>Clubhouse</span><b class="num">${balances.clubhouse == null ? '–' : money(balances.clubhouse)}</b></div></div>` : ''}
   <h3>Your account</h3>
   <div class="agrid">
     ${hutOn ? '<button class="atile row" data-a="hutorder"><span class="e">🥪</span><span class="rt"><b>Halfway hut</b><span>Order food and drinks; pay when you collect</span></span></button>' : ''}
