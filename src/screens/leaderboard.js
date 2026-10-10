@@ -24,7 +24,7 @@ export async function load() {
 
 export function draw(data) {
   if (data.board?.e) {
-    header(esc(data.board.e.name), `${data.board.e.players.length} players`)
+    header(esc(data.board.e.name), `${data.board.e.players.length} player${data.board.e.players.length === 1 ? '' : 's'}`)
     $('main').innerHTML = boardHtml(data.board, lbSeg(data.events))
     bindBoard(data.board)
     bindLbSeg()

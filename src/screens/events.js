@@ -39,8 +39,8 @@ export function draw({ events: all, me, matches, todayCard: tc }) {
       live ? '<span class="pill" style="background:var(--win)">On now</span>' : '',
       e.club ? `<span class="pill" style="background:var(--loss)">Club event${e.everyone ? '' : ' · entrants only'}</span>` : '',
       mine ? '<span class="pill">Yours</span>' : playing ? `<span class="pill ghosty">You’re playing${e.createdBy ? ` · set up by ${esc(e.createdBy.name.split(' ')[0])}` : ''}</span>` : '',
-      e.style === 'league' ? `<span class="pill ghosty">${e.teams.length} teams · ${e.players.length} players · best ${e.bestOf} count</span>`
-        : `<span class="pill ghosty">${e.players.length} players${e.style !== 'individual' ? ` · ${esc(e.A.name)} v ${esc(e.B.name)}` : ''}</span>`,
+      e.style === 'league' ? `<span class="pill ghosty">${e.teams.length} teams · ${e.players.length} player${e.players.length === 1 ? '' : 's'} · best ${e.bestOf} count</span>`
+        : `<span class="pill ghosty">${e.players.length} player${e.players.length === 1 ? '' : 's'}${e.style !== 'individual' ? ` · ${esc(e.A.name)} v ${esc(e.B.name)}` : ''}</span>`,
     ].join('')
     return `<div class="card evcard"><div class="who"><strong>${esc(e.name)}</strong><small>${EVENT_TYPES[e.style].name} · ${e.style === 'league' ? `${e.weeks} weeks from ${eventDates(e.startDate, 1)}` : eventDates(e.startDate, e.days)}</small><div class="pillrow">${pills}</div></div>
       <div class="peacts"><button class="linkbtn" data-view="${e.id}">${eventLastDay(e) < t ? 'Results' : 'View'}</button>${canEdit(e, me) ? `<button class="linkbtn" data-edit="${e.id}">Edit</button>` : ''}</div></div>`

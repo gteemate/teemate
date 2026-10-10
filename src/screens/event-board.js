@@ -185,7 +185,7 @@ export const load = () => loadBoard(S.evId)
 export function draw(data) {
   const back = async () => { S.aview = 'events'; S.evDay = null; await render(); top0() }
   if (!data.e) { header('Event', '', back); $('main').innerHTML = '<div class="screen"><div class="empty-state">This event is no longer available.</div></div>'; return }
-  header(esc(data.e.name), `${data.e.players.length} players`, back)
+  header(esc(data.e.name), `${data.e.players.length} player${data.e.players.length === 1 ? '' : 's'}`, back)
   $('main').innerHTML = boardHtml(data)
   bindBoard(data)
 }
