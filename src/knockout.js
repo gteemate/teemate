@@ -1,5 +1,6 @@
 // Knockout draws: round names, my next match, what I can do on a match, names for entries, the champion.
 // Plain functions of what the api returns, tested in knockout.test.js. The server does the draw and moves winners on.
+import { addDaysIso } from './dates.js'
 
 /** 'Final', 'Semi-finals', 'Quarter-finals', then 'Round of 16', 'Round of 32'… */
 export function roundName(round, rounds) {
@@ -31,3 +32,10 @@ export function entryName(id, entries, members, bye = false) {
 
 /** The champion's entry: the final's confirmed winner, or null. */
 export const champion = (matches, rounds) => matches.find(m => m.round === rounds && m.status === 'confirmed')?.winnerEntry ?? null
+
+/** Play-by dates for each round, spread evenly from `from` to the finish date (the final's). [] if the finish is earlier. */
+export function spreadDates(from, to, rounds) {
+  const days = Math.round((Date.parse(to) - Date.parse(from)) / 864e5)
+  if (days <= 0 || rounds < 1) return []
+  return Array.from({ length: rounds }, (_, i) => addDaysIso(from, Math.round((days * (i + 1)) / rounds)))
+}

@@ -1,6 +1,6 @@
 // UI state only: which tab and screen, selections, and drafts not yet saved. Data lives behind api.js.
 export const S = {
-  koComp: null, koRound: null, koView: 'round', koSwap: null, koFrom: null, // a knockout draw's page
+  signupNew: false, koComp: null, koRound: null, koView: 'round', koSwap: null, koFrom: null, // a knockout draw's page
   navReset: false, // a booking or request just finished: the back trail starts afresh from Home
   matchNo: null, matchDay: null, matchFrom: null, matchPick: null, matchMove: null, // an event match's page; Book this match's players
   hutPicks: {}, hutNote: '', hutQ: '', hutCaret: null, // halfway hut: order being picked; admin staff search

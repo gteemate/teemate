@@ -25,3 +25,6 @@ export function partnerChoices(comp, me, members, entries) {
 
 /** Should Events ask me to set Men's or Ladies' (an open competition needs it and I haven't)? */
 export const needsSection = (comps, me, date) => !me.playsIn && comps.some(c => isOpen(c, date) && c.category !== 'open')
+
+/** Places left under a competition's limit (counts: { [compId]: entries }), or null when there's no limit. */
+export const placesLeft = (c, counts) => (c.maxEntries == null ? null : Math.max(0, c.maxEntries - (counts[c.id] ?? 0)))

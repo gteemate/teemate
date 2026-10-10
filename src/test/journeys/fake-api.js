@@ -20,7 +20,7 @@ export const API_NAMES = ['getMe', 'forgetMe', 'getSession', 'signIn', 'needsAcc
   'getTodayRounds', 'getCardsForTeeTimes', 'getMyPlayerEvents', 'proposePlayerEvent', 'counterPlayerEvent', 'answerPlayerEvent', 'cancelPlayerEvent',
   'getEvents', 'saveEvent', 'deleteEvent', 'getCardsOn', 'getLeagueEntries', 'getCardsById', 'enterLeague', 'leaveLeague', 'enterEventToday',
   'getEventEntries', 'enterEventRound', 'leaveEventRound',
-  'getSignups', 'enterSignup', 'withdrawSignup', 'setMyPlaysIn', 'adminSetPlaysIn', 'saveSignup', 'deleteSignup',
+  'getSignups', 'getSignupCounts', 'enterSignup', 'withdrawSignup', 'setMyPlaysIn', 'adminSetPlaysIn', 'saveSignup', 'deleteSignup',
   'getKnockout', 'makeDraw', 'swapDraw', 'setRoundDeadlines', 'publishDraw', 'reportKoResult', 'confirmKoResult', 'disputeKoResult', 'adminSetKoResult']
 
 /** For vi.mock('…/api.js'): every export, each calling the current world's version (globalThis.__world). */
@@ -204,6 +204,9 @@ export function makeWorld(today, setup = () => {}) {
     enterLeague: async (rid, eid, ids, marker = null) => { ids.forEach(m => db.leagueEntries.push({ eventId: eid, week: 1, memberId: m, roundId: rid, marker })); return 1 },
     enterEventRound: async (rid, eid, ids, marker = null) => { ids.forEach(m => db.entries.push({ eventId: eid, day: 1, memberId: m, roundId: rid, marker })); return 1 },
     getSignups: async () => copy({ comps: db.signups, entries: db.signupEntries }),
+    saveSignup: async c => { if (c.id) Object.assign(db.signups.find(x => x.id === c.id), c); else db.signups.push({ ...c, id: id(), drawPublished: false, roundDeadlines: [] }) },
+    deleteSignup: async cid => { db.signups = db.signups.filter(c => c.id !== cid) },
+    getSignupCounts: async () => Object.fromEntries(db.signups.map(c => [c.id, db.signupEntries.filter(e => e.compId === c.id).length])),
     enterSignup: async (cid, partnerId = null) => { db.signupEntries.push({ compId: cid, memberId: ME, partnerId }) },
     withdrawSignup: async cid => { db.signupEntries = db.signupEntries.filter(e => !(e.compId === cid && (e.memberId === ME || e.partnerId === ME))) },
     setMyPlaysIn: async p => { db.members[0].playsIn = p },

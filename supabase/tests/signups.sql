@@ -62,6 +62,18 @@ do $$ declare e text; begin
   perform t.ok('The partner withdraws: the pair is out', not exists (select 1 from public.signup_entries where comp_id = t.id('T Mens Pairs')));
   reset role;
 
+  -- A limit of 2: the third is refused (first come, first served); counts are visible to members.
+  reset role;
+  update public.signup_comps set max_entries = 2 where id = t.id('T Open Singles');
+  insert into public.signup_entries (comp_id, member_id) values (t.id('T Open Singles'), 991404), (t.id('T Open Singles'), 991405);
+  perform t.act_as(991402);
+  e := t.err(format('select public.enter_signup(%s, null)', t.id('T Open Singles')));
+  perform t.ok('Full: no more entries', e like '%full%', e);
+  perform t.ok('Members see how many have entered', (public.signup_counts()->>(t.id('T Open Singles')::text))::int = 2);
+  reset role;
+  delete from public.signup_entries where comp_id = t.id('T Open Singles');
+  update public.signup_comps set max_entries = null where id = t.id('T Open Singles');
+
   perform t.act_as(991406); -- no section set
   perform public.enter_signup(t.id('T Open Singles'), null);
   perform t.ok('Open: anyone, even with no section set', exists (select 1 from public.signup_entries where comp_id = t.id('T Open Singles') and member_id = 991406));

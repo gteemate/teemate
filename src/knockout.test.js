@@ -44,3 +44,11 @@ describe('entryName and champion', () => {
     expect(champion([m({ round: 3, status: 'reported', winnerEntry: 11 })], 3)).toBeNull()
   })
 })
+
+import { spreadDates } from './knockout.js'
+describe('spreadDates: play-by dates spread evenly to the finish', () => {
+  it('5 rounds from 1 Nov to the end of January: the last is the finish date', () =>
+    expect(spreadDates('2026-11-01', '2027-01-31', 5)).toEqual(['2026-11-19', '2026-12-07', '2026-12-26', '2027-01-13', '2027-01-31']))
+  it('one round: the finish date', () => expect(spreadDates('2026-11-01', '2026-11-30', 1)).toEqual(['2026-11-30']))
+  it('a finish before the start: nothing', () => expect(spreadDates('2026-11-01', '2026-10-01', 3)).toEqual([]))
+})

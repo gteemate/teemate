@@ -8,19 +8,20 @@ import { isoDate, today, eventDates, hhmm } from '../dates.js'
 import { eventFormatName } from '../games.js'
 import { competitionLists } from '../competitions.js'
 import { canEdit } from './events.js'
-import { canEnter, myEntries, partnerChoices, needsSection } from '../signups.js'
+import { canEnter, myEntries, partnerChoices, needsSection, placesLeft } from '../signups.js'
 
 const TABS = [['entered', 'Entered'], ['events', 'Events'], ['history', 'History']]
 const FORMAT = { individual: 'Individual', teams: 'Team Stableford', ryder: 'Ryder Cup', league: 'League' }
 
 export async function load() {
   const [events, me, playerEvents, signups, members, friends] = await Promise.all([api.getEvents(), api.getMe(), api.getMyPlayerEvents(), api.getSignups(), api.getMembers(), api.getFriends()])
+  const counts = await api.getSignupCounts()
   const date = isoDate(today())
-  return { me, date, members, friends, signups, lists: competitionLists({ me, events, playerEvents, date }),
+  return { me, date, members, friends, signups, counts, lists: competitionLists({ me, events, playerEvents, date }),
     open: canEnter({ ...signups, me, date }), entered: myEntries({ ...signups, me }) }
 }
 
-export function draw({ me, date, members, friends, signups, lists, open, entered }) {
+export function draw({ me, date, members, friends, signups, counts = {}, lists, open, entered }) {
   header('Competitions', '')
   const tab = TABS.some(([k]) => k === S.compTab) ? S.compTab : 'entered' // (Open is gone: a remembered 'open' falls back)
   const teamOf = e => e.teams?.[e.team?.[me.id]]?.name
@@ -44,8 +45,10 @@ export function draw({ me, date, members, friends, signups, lists, open, entered
   const kindText = c => (c.kind === 'pairs' ? 'Pairs' : 'Singles')
   const closes = c => `Entries close ${eventDates(c.closesOn, 1)}`
   // Season competitions: to sign up for (Events), or signed up for (Entered: with whom, Withdraw until they close).
-  const signRow = c => `<button class="card comp" data-sign="${c.id}"><span class="row"><span class="ct">${esc(c.name)}</span><span class="pill gold">Enter ›</span></span>
-      <span class="sub">${kindText(c)} · ${closes(c)}${c.notes ? ` · ${esc(c.notes)}` : ''}</span></button>`
+  const signRow = c => { const left = placesLeft(c, counts)
+    return left === 0 ? `<div class="card comp"><span class="row"><span class="ct">${esc(c.name)}</span><span class="pill">Full</span></span><span class="sub">${kindText(c)} · all ${c.maxEntries} places taken</span></div>`
+      : `<button class="card comp" data-sign="${c.id}"><span class="row"><span class="ct">${esc(c.name)}</span><span class="pill gold">Enter ›</span></span>
+      <span class="sub">${kindText(c)} · ${closes(c)}${left != null ? ` · ${left} place${left === 1 ? '' : 's'} left` : ''}${c.notes ? ` · ${esc(c.notes)}` : ''}</span></button>` }
   const mineRow = x => `<div class="card comp${x.comp.drawPublished ? ' gold' : ''}"${x.comp.drawPublished ? ` data-ko="${x.comp.id}" role="button" tabindex="0"` : ''}><span class="row"><span class="ct">${esc(x.comp.name)}</span><span class="pill${x.comp.drawPublished ? ' gold' : ''}">${x.comp.drawPublished ? 'Draw ›' : 'Entered'}</span></span>
       <span class="sub">${x.partnerId ? `With ${esc(nameOf(x.partnerId))}` : 'Singles'} · ${x.comp.drawPublished ? 'The draw is out: see your match' : x.comp.closesOn && date > x.comp.closesOn ? 'Entries closed: the draw is coming' : closes(x.comp)}</span>
       ${x.comp.drawPublished || (x.comp.closesOn && date > x.comp.closesOn) ? '' : `<span class="row"><span></span><button class="linkbtn" data-wd="${x.comp.id}">Withdraw${x.partnerId ? ' (both of you)' : ''}</button></span>`}</div>`

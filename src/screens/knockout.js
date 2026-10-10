@@ -6,7 +6,7 @@ import * as api from '../api.js'
 import { S } from '../state.js'
 import { $, esc, header, keepScroll, render, toast, top0 } from '../ui.js'
 import { eventDates, isoDate, today } from '../dates.js'
-import { roundName, myNextMatch, matchState, entryName, champion } from '../knockout.js'
+import { roundName, myNextMatch, matchState, entryName, champion, spreadDates } from '../knockout.js'
 
 export async function load() {
   const [signups, me, members] = await Promise.all([api.getSignups(), api.getMe(), api.getMembers()])
@@ -55,7 +55,8 @@ export function draw({ comp, me, members, matches = [], entries = [], mine }) {
   // Admin, before publishing: make or remake the draw, swap two, play-by dates, publish.
   const admin = me.admin && !comp.drawPublished ? `<div class="card evsec"><b>${matches.length ? 'Draft draw' : 'Make the draw'}</b>
       <span class="hint">${matches.length ? 'Only admins see this. Tap two names to swap them. Set a play-by date for each round, then publish: everyone in it is shown their first match.' : `${entries.length} entr${entries.length === 1 ? 'y' : 'ies'}. The draw places them at random; byes go straight through to round 2.`}</span>
-      ${matches.length ? `<div class="kodates">${Array.from({ length: rounds }, (_, i) => `<label>${roundName(i + 1, rounds)}<input type="date" class="plainsel" data-kd="${i}" value="${comp.roundDeadlines[i] ?? ''}"></label>`).join('')}</div>` : ''}
+      ${matches.length ? `<div class="kofin"><label>Final played by<input type="date" class="plainsel" id="ko-fin" value="${comp.roundDeadlines[rounds - 1] ?? ''}"></label><button class="ghost sm" id="ko-spread">Spread the rounds evenly</button></div>
+      <div class="kodates">${Array.from({ length: rounds }, (_, i) => `<label>${roundName(i + 1, rounds)}<input type="date" class="plainsel" data-kd="${i}" value="${comp.roundDeadlines[i] ?? ''}"></label>`).join('')}</div>` : ''}
       <div class="bk-btns"><button class="${matches.length ? 'ghost' : 'primary'}" id="ko-make">${matches.length ? 'Draw again' : 'Make the draw'}</button>${matches.length ? '<button class="primary" id="ko-pub">Publish the draw</button>' : ''}</div></div>` : ''
 
   const view = S.koView === 'all' ? 'all' : 'round'
@@ -77,6 +78,11 @@ export function draw({ comp, me, members, matches = [], entries = [], mine }) {
     const b = $('ko-pub')
     if (b.dataset.armed !== '1') { b.dataset.armed = '1'; b.textContent = 'Tap again: everyone in it sees the draw'; return }
     await act(() => api.publishDraw(comp.id), 'The draw is out')
+  }
+  if ($('ko-spread')) $('ko-spread').onclick = () => {
+    const dates = spreadDates(date, $('ko-fin').value, rounds)
+    if (!dates.length) return toast('Pick when the final has to be played by (after today).')
+    act(() => api.setRoundDeadlines(comp.id, dates), 'Play-by dates spread out to the final')
   }
   document.querySelectorAll('[data-kd]').forEach(i => (i.onchange = () => {
     const dates = [...document.querySelectorAll('[data-kd]')].map(x => x.value || null)

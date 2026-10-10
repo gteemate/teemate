@@ -204,6 +204,32 @@ describe('journeys', () => {
     await app.homeFromHere()
   })
 
+  it('13. Admin: a knockout competition from Club events, with an entry limit; members see places left, then Full', async () => {
+    app = await boot()
+    await app.tap('Gary Cochrane')
+    await app.tap('Club events')
+    await app.tap('+ New knockout competition')
+    expect(document.getElementById('sc-name')).not.toBeNull() // the add form opens straight away
+    await app.type('#sc-name', 'Winter Knockout')
+    await app.type('#sc-close', '2026-10-31')
+    await app.type('#sc-max', '2')
+    await app.tap('#sc-open')
+    await app.tap('Add')
+    expect(app.db.signups.find(c => c.name === 'Winter Knockout')).toMatchObject({ category: 'men', kind: 'singles', closesOn: '2026-10-31', maxEntries: 2, open: true })
+    expect(app.text()).toContain('Winter Knockout')
+    await app.homeFromHere()
+  })
+
+  it('14. A competition with all its places taken shows Full, with no Enter', async () => {
+    app = await boot(db => { db.signups[0].maxEntries = 2; db.signupEntries.push({ id: 1, compId: 1, memberId: 3, partnerId: null }, { id: 2, compId: 1, memberId: 5, partnerId: null }); db.signups[1].maxEntries = 16 })
+    await app.tap('Competition')
+    await app.tap('Events')
+    expect(app.text()).toContain('all 2 places taken')
+    expect(app.text()).toContain('16 places left')
+    expect(app.labels().some(l => l.startsWith('Men’s Match Play') && l.includes('Enter'))).toBe(false)
+    await app.homeFromHere()
+  })
+
   it('8. Add a friend from a shared link', async () => {
     app = await boot(undefined, { hash: '#friend?n=Eoin+Fitzgerald&c=Royal+Teemate&h=2.1&m=9&d=2026-10-10' })
     expect(app.screen()).toBe('Add friend')

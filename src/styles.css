@@ -737,3 +737,6 @@ h4,.sheet h4{font-family:var(--display);font-weight:600;letter-spacing:0}
 .kocol{flex:0 0 220px;display:flex;flex-direction:column;justify-content:space-around;gap:8px}
 .kochamp{text-align:center;display:grid;gap:4px;padding:14px 16px;border-color:var(--gold)}
 .kochamp b{font-family:var(--display);font-size:24px;font-weight:400;color:var(--gold)}
+.kofin{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap}
+.kofin label{display:grid;gap:4px;font-size:13px;color:var(--muted)}
+#newko small{display:block;font-weight:400;font-size:12px;opacity:.8}

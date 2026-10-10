@@ -3,16 +3,19 @@ import { must, sb, forgetMe } from './client.js'
 /* ---------- Sign-up competitions (season competitions members put their names down for) ---------- */
 
 const toComp = c => ({ id: c.id, name: c.name, category: c.category, kind: c.kind, closesOn: c.closes_on, notes: c.notes, open: c.open,
-  drawPublished: !!c.draw_published, roundDeadlines: c.round_deadlines ?? [] })
+  drawPublished: !!c.draw_published, roundDeadlines: c.round_deadlines ?? [], maxEntries: c.max_entries ?? null })
 
 /** { comps: [{ id, name, category, kind, closesOn, notes, open }], entries: [{ compId, memberId, partnerId }] }
  *  Members see open competitions and their own entries; admins see everything. A published draw's entries come with
  *  getKnockout. */
 export async function getSignups() {
-  const [c, e] = await Promise.all([sb.from('signup_comps').select('id, name, category, kind, closes_on, notes, open, draw_published, round_deadlines').order('id'),
+  const [c, e] = await Promise.all([sb.from('signup_comps').select('id, name, category, kind, closes_on, notes, open, draw_published, round_deadlines, max_entries').order('id'),
     sb.from('signup_entries').select('id, comp_id, member_id, partner_id, created_at').order('created_at')])
   return { comps: must(c).map(toComp), entries: must(e).map(x => ({ id: x.id, compId: x.comp_id, memberId: x.member_id, partnerId: x.partner_id })) }
 }
+/** How many have entered each competition I can see: { [compId]: count } (for places left; not who). */
+export async function getSignupCounts() { return must(await sb.rpc('signup_counts')) }
+
 /** Enter (partnerId for pairs, else null). The server checks eligibility, the closing date and double entries. */
 export async function enterSignup(compId, partnerId = null) { must(await sb.rpc('enter_signup', { p_comp: compId, p_partner: partnerId })) }
 /** Withdraw me (and my partner, for pairs) until entries close. */
@@ -25,7 +28,8 @@ export async function adminSetPlaysIn(memberId, p) { must(await sb.rpc('admin_se
 
 /** Admins: add (no id) or change a competition. */
 export async function saveSignup(c) {
-  const row = { name: c.name.trim(), category: c.category, kind: c.kind, closes_on: c.closesOn || null, notes: c.notes?.trim() || null, open: !!c.open }
+  const row = { name: c.name.trim(), category: c.category, kind: c.kind, closes_on: c.closesOn || null, notes: c.notes?.trim() || null, open: !!c.open,
+    max_entries: c.maxEntries ? +c.maxEntries : null }
   if (c.id) must(await sb.from('signup_comps').update(row).eq('id', c.id).select('id'))
   else must(await sb.from('signup_comps').insert(row))
 }

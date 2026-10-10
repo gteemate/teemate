@@ -43,3 +43,12 @@ describe('needsSection: ask me to set Men’s or Ladies’', () => {
     expect(needsSection([comp({ category: 'open' })], unset, D)).toBe(false)
   })
 })
+
+import { placesLeft } from './signups.js'
+describe('placesLeft', () => {
+  it('limit minus entries; null when there is no limit', () => {
+    expect(placesLeft({ id: 1, maxEntries: 32 }, { 1: 30 })).toBe(2)
+    expect(placesLeft({ id: 1, maxEntries: 32 }, { 1: 32 })).toBe(0)
+    expect(placesLeft({ id: 1, maxEntries: null }, { 1: 5 })).toBeNull()
+  })
+})

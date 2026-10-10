@@ -46,7 +46,7 @@ export function draw({ events: all, me, matches, todayCard: tc }) {
       <div class="peacts"><button class="linkbtn" data-view="${e.id}">${eventLastDay(e) < t ? 'Results' : 'View'}</button>${canEdit(e, me) ? `<button class="linkbtn" data-edit="${e.id}">Edit</button>` : ''}</div></div>`
   }
   $('main').innerHTML = `<div class="screen">
-    ${club ? '<div class="bk-btns"><button class="primary" id="newev">+ New club event</button><button class="primary" id="newlg">+ New league</button></div>' : '<button class="primary" id="newev">+ New event</button>'}
+    ${club ? '<div class="bk-btns"><button class="primary" id="newev">+ New club event</button><button class="primary" id="newlg">+ New league</button></div><button class="ghost dashed" id="newko">+ New knockout competition <small>members sign up, then a knockout draw</small></button>' : '<button class="primary" id="newev">+ New event</button>'}
     ${!club && tc ? `<h3>Today’s card</h3><div class="card evcard"><div class="who"><strong>${esc(tc.game)}</strong><small>${tc.who.map(esc).join(', ')}</small><small class="pestate">${tc.holes ? `${tc.holes} hole${tc.holes > 1 ? 's' : ''} saved` : 'Not started'}</small></div>
       <div class="peacts"><button class="linkbtn" id="card-open">Open</button>${tc.mine ? '<button class="linkbtn" id="card-del">Delete</button>' : ''}</div></div>` : ''}
     ${!club && matches.length ? `<h3>Matches from the Scores tab</h3>${matches.map(e => `<div class="card evcard"><div class="who"><strong>${eventTitle(e)}</strong><small>${eventSubtitle(e)}</small><small class="pestate">${stateLine(e, me)}</small></div>
@@ -58,6 +58,7 @@ export function draw({ events: all, me, matches, todayCard: tc }) {
   $('newev').onclick = () => start(null)
   const lg = $('newlg')
   if (lg) lg.onclick = () => start('league')
+  if ($('newko')) $('newko').onclick = async () => { S.signupNew = true; S.aview = 'signups'; await render(); top0() } // Sign-up competitions, add form open
   document.querySelectorAll('[data-edit]').forEach(b => (b.onclick = async () => { S.ev = null; S.evId = +b.dataset.edit; S.evStep = 1; S.aview = 'event'; await render(); top0() }))
   bindCancel()
   if ($('card-open')) $('card-open').onclick = async () => { S.tab = 'scores'; S.sview = 'card'; await render(); top0() }

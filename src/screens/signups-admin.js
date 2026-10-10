@@ -11,17 +11,18 @@ const CAT = { men: 'Men’s', ladies: 'Ladies’', mixed: 'Mixed', open: 'Open' 
 
 export async function load() {
   const [signups, members] = await Promise.all([api.getSignups(), api.getMembers()])
-  return { ...signups, members }
+  const open = S.signupNew; S.signupNew = false // from Club events → + New knockout competition: the add form, open
+  return { ...signups, members, open }
 }
 
-export function draw({ comps, entries, members }) {
+export function draw({ comps, entries, members, open }) {
   header('Sign-up competitions', 'Season competitions members enter in advance', toAdmin)
   const count = id => entries.filter(e => e.compId === id).length
   $('main').innerHTML = `<div class="screen">
     <span class="hint">Members see a competition under Competitions → Events once it’s open and has an entries close date. Men’s ones show to men, Ladies’ to ladies; a Mixed pair is one of each.</span>
     <div class="card list">${comps.map(c => `<div class="lrow linkrow hutrow" data-sc="${c.id}" role="button" tabindex="0"><span class="who"><strong>${esc(c.name)}</strong>
       <small>${CAT[c.category]} · ${c.kind === 'pairs' ? 'Pairs' : 'Singles'} · ${c.open && c.closesOn ? `Open: entries close ${eventDates(c.closesOn, 1)}` : 'Hidden'}</small></span>
-      <b class="num">${count(c.id)} <small>${c.kind === 'pairs' ? 'pairs' : 'entered'}</small></b></div>`).join('') || '<div class="empty-state">None yet.</div>'}</div>
+      <b class="num">${count(c.id)}${c.maxEntries ? ` / ${c.maxEntries}` : ''} <small>${c.kind === 'pairs' ? 'pairs' : 'entered'}</small></b></div>`).join('') || '<div class="empty-state">None yet.</div>'}</div>
     <button class="ghost dashed" id="sc-add">+ Add a competition</button>
   </div>`
   document.querySelectorAll('[data-sc]').forEach(r => {
@@ -29,6 +30,7 @@ export function draw({ comps, entries, members }) {
     r.onkeydown = e => { if ((e.key === 'Enter' || e.key === ' ') && e.target === r) { e.preventDefault(); r.click() } }
   })
   $('sc-add').onclick = () => sheet(null, entries, members)
+  if (open) sheet(null, entries, members)
 }
 
 function sheet(c, entries, members) {
@@ -41,6 +43,7 @@ function sheet(c, entries, members) {
     <label for="sc-cat">Who can enter</label><select id="sc-cat" class="plainsel">${Object.entries(CAT).map(([k, n]) => `<option value="${k}" ${v.category === k ? 'selected' : ''}>${n}${k === 'mixed' ? ' (a pair is one man and one lady)' : k === 'open' ? ' (anyone)' : ''}</option>`).join('')}</select>
     <label for="sc-kind">Entries are</label><select id="sc-kind" class="plainsel"><option value="singles" ${v.kind === 'singles' ? 'selected' : ''}>Singles</option><option value="pairs" ${v.kind === 'pairs' ? 'selected' : ''}>Pairs</option></select>
     <label for="sc-close">Entries close</label><input id="sc-close" type="date" class="plainsel" value="${v.closesOn ?? ''}">
+    <label for="sc-max">Maximum entries <span class="opt">optional · first come, first served</span></label><input id="sc-max" inputmode="numeric" autocomplete="off" placeholder="e.g. 32" value="${v.maxEntries ?? ''}">
     <label for="sc-notes">Notes <span class="opt">optional · e.g. £5 entry, first round by 15 Nov</span></label><input id="sc-notes" maxlength="300" autocomplete="off" value="${esc(v.notes ?? '')}">
     <div class="actrow"><span class="who"><strong>Open for entries</strong><small>Members see it under Events</small></span><button type="button" class="switch" role="switch" id="sc-open" aria-checked="${!!v.open}" aria-label="Open for entries"><span></span></button></div>
     <p class="gerr" id="sc-err" role="alert"></p>
@@ -57,8 +60,9 @@ function sheet(c, entries, members) {
   $('sc-open').onclick = () => { open = !open; $('sc-open').setAttribute('aria-checked', open) }
   $('sc-form').onsubmit = async e => {
     e.preventDefault()
-    const row = { id: c?.id, name: $('sc-name').value, category: $('sc-cat').value, kind: $('sc-kind').value, closesOn: $('sc-close').value, notes: $('sc-notes').value, open }
-    const err = !row.name.trim() ? 'Give it a name.' : open && !row.closesOn ? 'Set when entries close before opening it.' : ''
+    const max = $('sc-max').value.trim()
+    const row = { id: c?.id, name: $('sc-name').value, category: $('sc-cat').value, kind: $('sc-kind').value, closesOn: $('sc-close').value, notes: $('sc-notes').value, open, maxEntries: max ? +max : null }
+    const err = !row.name.trim() ? 'Give it a name.' : open && !row.closesOn ? 'Set when entries close before opening it.' : max && !(+max >= 2) ? 'Maximum entries is a number, 2 or more.' : ''
     if (err) { $('sc-err').textContent = err; return }
     try { await api.saveSignup(row) } catch (er) { $('sc-err').textContent = er.message; return }
     close(); await keepScroll(render); toast(`${row.name.trim()} saved`)
