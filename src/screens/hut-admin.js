@@ -25,7 +25,8 @@ export function draw({ hut, members, staff }) {
     <div class="card evsec"><div class="actrow"><span class="who"><strong>Halfway hut ordering</strong><small>${hut.on ? 'On: players are asked after hole 8' : 'Off: no prompt, no ordering'}</small></span>
       <button type="button" class="switch" role="switch" id="hut-on" aria-checked="${hut.on}" aria-label="Halfway hut ordering"><span></span></button></div></div>
     <h3>Menu</h3>
-    ${SECTIONS.map(sec => { const items = hut.menu.filter(i => i.section === sec); return items.length ? `<span class="kicker">${sec}</span><div class="card list">${items.map(item).join('')}</div>` : '' }).join('')}
+    <span class="hint">Players order <b>hot food</b> ahead, since it takes time. Drinks and snacks are listed so they know what’s there, and they buy them at the hut.</span>
+    ${SECTIONS.map(sec => { const items = hut.menu.filter(i => i.section === sec); return items.length ? `<span class="kicker">${sec === 'Food' ? 'Hot food · ordered ahead' : `${sec} · at the hut`}</span><div class="card list">${items.map(item).join('')}</div>` : '' }).join('')}
     ${hut.menu.length ? '' : '<div class="empty-state">No menu yet. Add what the hut sells.</div>'}
     <button class="ghost dashed" id="hut-add">+ Add item</button>
     <h3>Hut staff</h3>
@@ -66,7 +67,7 @@ export function draw({ hut, members, staff }) {
 function itemSheet(i, menu) {
   $('modal').innerHTML = `<div class="overlay" id="ovl"><form class="sheet" id="hut-form" novalidate aria-labelledby="hut-t">
     <h4 id="hut-t">${i ? 'Change item' : 'Add an item'}</h4>
-    <label for="hut-sec">Section</label><select id="hut-sec" class="plainsel">${SECTIONS.map(s => `<option ${(i?.section ?? 'Food') === s ? 'selected' : ''}>${s}</option>`).join('')}</select>
+    <label for="hut-sec">Section</label><select id="hut-sec" class="plainsel">${SECTIONS.map(s => `<option value="${s}" ${(i?.section ?? 'Food') === s ? 'selected' : ''}>${s === 'Food' ? 'Hot food (ordered ahead)' : `${s} (shown, bought at the hut)`}</option>`).join('')}</select>
     <label for="hut-name">Name</label><input id="hut-name" maxlength="40" autocomplete="off" placeholder="e.g. Bacon roll" value="${esc(i?.name ?? '')}">
     <label for="hut-price">Price (£)</label><input id="hut-price" inputmode="decimal" autocomplete="off" placeholder="e.g. 4.50" value="${i ? (i.pricePence / 100).toFixed(2) : ''}">
     <p class="gerr" id="hut-err" role="alert"></p>

@@ -26,3 +26,6 @@ export function hutPromptDue({ on, card, asked, orders }) {
 const NEXT = { sent: ['ready', 'cancelled'], ready: ['collected', 'cancelled'] }
 /** Where an order can go next (hut staff). */
 export const nextStatuses = s => NEXT[s] ?? []
+
+/** Ordered ahead: hot food only (it's what takes the time). Drinks and snacks are listed so players know, bought at the hut. */
+export const orderable = i => i.section === 'Food'

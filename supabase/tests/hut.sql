@@ -33,14 +33,15 @@ insert into t.ids select 'card', id from r;
 do $$ declare e text; j jsonb; o bigint; begin
   perform t.act_as(990901);
   perform public.admin_set_hut_on(true);
-  insert into public.hut_menu (section, name, price_pence, sort) values ('Food', 'Bacon roll', 450, 1), ('Drinks', 'Tea', 250, 1), ('Food', 'Sausage roll', 400, 2);
+  insert into public.hut_menu (section, name, price_pence, sort) values ('Food', 'Bacon roll', 450, 1), ('Drinks', 'Tea', 250, 1), ('Food', 'Sausage roll', 400, 2), ('Food', 'Toastie', 500, 3);
   update public.hut_menu set sold_out = true where name = 'Sausage roll';
   perform public.admin_set_hut_staff(990904, true);
-  perform t.ok('Admin switches the hut on, sets the menu and the staff', (public.get_hut()->>'on')::boolean and jsonb_array_length(public.get_hut()->'menu') = 3
+  perform t.ok('Admin switches the hut on, sets the menu and the staff', (public.get_hut()->>'on')::boolean and jsonb_array_length(public.get_hut()->'menu') = 4
     and (select hut_staff from public.members where id = 990904));
   reset role;
   perform t.set('bacon', (select id from public.hut_menu where name = 'Bacon roll'));
   perform t.set('tea', (select id from public.hut_menu where name = 'Tea'));
+  perform t.set('toastie', (select id from public.hut_menu where name = 'Toastie'));
   perform t.set('sausage', (select id from public.hut_menu where name = 'Sausage roll'));
 
   perform t.act_as(990902);
@@ -48,24 +49,26 @@ do $$ declare e text; j jsonb; o bigint; begin
   perform t.ok('Members can''t change the menu', e is not null, e);
   e := t.err('select public.admin_set_hut_on(false)');
   perform t.ok('Members can''t switch the hut', e like '%Only admins%', e);
-  o := public.place_hut_order(jsonb_build_array(jsonb_build_object('id', t.id('bacon'), 'qty', 2), jsonb_build_object('id', t.id('tea'), 'qty', 1)), '  no ketchup  ', t.id('card'));
+  e := t.err(format('select public.place_hut_order(%L, null, null)', jsonb_build_array(jsonb_build_object('id', t.id('tea'), 'qty', 1))));
+  perform t.ok('Order: drinks aren''t ordered ahead (bought at the hut)', e like '%hot food%', e);
+  o := public.place_hut_order(jsonb_build_array(jsonb_build_object('id', t.id('bacon'), 'qty', 2), jsonb_build_object('id', t.id('toastie'), 'qty', 1)), '  no ketchup  ', t.id('card'));
   perform t.set('order', o);
   perform t.ok('Order: total and items from the menu, note trimmed, sent',
-    (select total_pence = 1150 and status = 'sent' and note = 'no ketchup' and jsonb_array_length(items) = 2 and round_id = t.id('card') from public.hut_orders where id = o));
+    (select total_pence = 1400 and status = 'sent' and note = 'no ketchup' and jsonb_array_length(items) = 2 and round_id = t.id('card') from public.hut_orders where id = o));
   e := t.err(format('select public.place_hut_order(%L, null, null)', jsonb_build_array(jsonb_build_object('id', t.id('sausage'), 'qty', 1))));
   perform t.ok('Order: sold out refused', e like '%sold out%', e);
   e := t.err('select public.place_hut_order(''[]'', null, null)');
   perform t.ok('Order: empty refused', e like '%Pick%', e);
-  e := t.err(format('select public.place_hut_order(%L, null, null)', jsonb_build_array(jsonb_build_object('id', t.id('tea'), 'qty', 21))));
+  e := t.err(format('select public.place_hut_order(%L, null, null)', jsonb_build_array(jsonb_build_object('id', t.id('toastie'), 'qty', 21))));
   perform t.ok('Order: more than 20 of one thing refused', e is not null, e);
-  perform public.place_hut_order(jsonb_build_array(jsonb_build_object('id', t.id('tea'), 'qty', 1)), null, null);
-  perform public.place_hut_order(jsonb_build_array(jsonb_build_object('id', t.id('tea'), 'qty', 1)), null, null);
-  e := t.err(format('select public.place_hut_order(%L, null, null)', jsonb_build_array(jsonb_build_object('id', t.id('tea'), 'qty', 1))));
+  perform public.place_hut_order(jsonb_build_array(jsonb_build_object('id', t.id('toastie'), 'qty', 1)), null, null);
+  perform public.place_hut_order(jsonb_build_array(jsonb_build_object('id', t.id('toastie'), 'qty', 1)), null, null);
+  e := t.err(format('select public.place_hut_order(%L, null, null)', jsonb_build_array(jsonb_build_object('id', t.id('toastie'), 'qty', 1))));
   perform t.ok('Order: at most 3 waiting', e like '%3 orders%', e);
   reset role;
 
   perform t.act_as(990903);
-  e := t.err(format('select public.place_hut_order(%L, null, %s)', jsonb_build_array(jsonb_build_object('id', t.id('tea'), 'qty', 1)), t.id('card')));
+  e := t.err(format('select public.place_hut_order(%L, null, %s)', jsonb_build_array(jsonb_build_object('id', t.id('toastie'), 'qty', 1)), t.id('card')));
   perform t.ok('Order: not for a card you''re not on', e like '%card%', e);
   perform t.ok('Members see only their own orders', not exists (select 1 from public.hut_orders where member_id = 990902));
   e := t.err(format('select public.hut_set_order_status(%s, ''ready'', null)', t.id('order')));
@@ -95,13 +98,13 @@ do $$ declare e text; j jsonb; o bigint; begin
   e := t.err(format('select public.cancel_my_hut_order(%s)', t.id('order')));
   perform t.ok('Player can''t cancel once the hut has it', e like '%already%', e);
   perform t.ok('My orders today', jsonb_array_length(public.my_hut_orders()) = 3);
-  e := t.err(format('select public.place_hut_order(%L, null, null)', jsonb_build_array(jsonb_build_object('id', t.id('tea'), 'qty', 1))));
+  e := t.err(format('select public.place_hut_order(%L, null, null)', jsonb_build_array(jsonb_build_object('id', t.id('toastie'), 'qty', 1))));
   perform t.ok('Order: refused while the hut is off', e like '%isn''t taking orders%', e);
   reset role;
 
   perform set_config('request.jwt.claims', '{"role":"anon"}', true);
   set local role anon;
-  e := t.err(format('select public.place_hut_order(%L, null, null)', jsonb_build_array(jsonb_build_object('id', t.id('tea'), 'qty', 1))));
+  e := t.err(format('select public.place_hut_order(%L, null, null)', jsonb_build_array(jsonb_build_object('id', t.id('toastie'), 'qty', 1))));
   perform t.ok('Visitors can''t order', e is not null, e);
   reset role;
 end $$;

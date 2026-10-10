@@ -49,3 +49,8 @@ describe('nextStatuses', () => {
     expect(nextStatuses('cancelled')).toEqual([])
   })
 })
+
+import { orderable } from './hut.js'
+describe('orderable: only hot food is ordered ahead (it takes time); drinks and snacks are bought at the hut', () => {
+  it('Food yes, Drinks and Snacks no', () => expect(menu.map(i => [i.name, orderable(i)])).toEqual([['Tea', false], ['Bacon roll', true], ['Sausage roll', true], ['Mars bar', false]]))
+})

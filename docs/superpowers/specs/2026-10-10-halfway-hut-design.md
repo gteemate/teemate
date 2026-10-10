@@ -11,6 +11,10 @@ which tells the player. Admins switch it on or off, and keep the menu and the li
 Agreed in chat: order from a menu in TeeMate; **pay at the hut** (no payments in TeeMate); **hut staff log in**
 to a Hut screen; asked **once per round**, only while the hut is switched on.
 
+**Changed during the build (user, 10 Oct):** only **hot food** is ordered ahead (it's what causes the wait).
+Drinks and snacks are listed on the order screen with prices, so players know what's there, and are bought at the
+hut. The server refuses an order for anything not in the Food section.
+
 ## 1. Admin: Club admin → Halfway hut
 
 - **Switch:** "Halfway hut ordering" on/off. When off, there's no prompt, no ordering, and the staff screen says

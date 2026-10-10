@@ -1,9 +1,10 @@
-// Halfway hut (player): order from the menu (pay when you collect), and today's orders with how they're getting on.
+// Halfway hut (player): order hot food ahead (it's what takes the time; pay when you collect), see what drinks and
+// snacks the hut has (bought there), and today's orders with how they're getting on.
 // Reached from the "Halfway hut is open" alert after hole 8, or Account → Halfway hut while the hut is on.
 import * as api from '../api.js'
 import { S } from '../state.js'
 import { $, esc, header, keepScroll, render, toast, top0 } from '../ui.js'
-import { menuSections, orderTotal, penceText } from '../hut.js'
+import { menuSections, orderTotal, penceText, orderable } from '../hut.js'
 
 export async function load() {
   const [hut, orders, card] = await Promise.all([api.getHut(), api.myHutOrders(), api.getCurrentRound()])
@@ -27,13 +28,16 @@ export function draw({ hut, orders, card }) {
     ${o.status === 'cancelled' && o.cancelNote ? `<span class="hint">${esc(o.cancelNote)}</span>` : ''}
     ${o.status === 'sent' ? `<button class="linkbtn" data-cancel="${o.id}">Cancel order</button>` : ''}</div>`
   const sections = menuSections(hut.menu)
+  const food = sections.filter(s => s.items.some(orderable)).flatMap(s => s.items), atHut = sections.filter(s => !s.items.some(orderable))
   $('main').innerHTML = `<div class="screen">
     ${orders.length ? `<span class="kicker">Your orders today</span>${orders.map(orderRow).join('')}` : ''}
-    ${hut.on ? (sections.length ? `${sections.map(s => `<span class="kicker">${s.section}</span><div class="card list">${s.items.map(row).join('')}</div>`).join('')}
-      <label for="hut-note" class="kicker">Anything else?</label><textarea id="hut-note" class="plainsel" rows="2" maxlength="200" placeholder="e.g. no onions, tea with milk">${esc(S.hutNote ?? '')}</textarea>` : '<div class="empty-state">Nothing on the menu just now.</div>')
+    ${hut.on ? (sections.length ? `${food.length ? `<span class="kicker">Hot food · order now, ready when you get there</span><div class="card list">${food.map(row).join('')}</div>` : '<div class="empty-state">No hot food on today.</div>'}
+      ${food.length ? `<label for="hut-note" class="kicker">Anything else?</label><textarea id="hut-note" class="plainsel" rows="2" maxlength="200" placeholder="e.g. no onions, extra ketchup">${esc(S.hutNote ?? '')}</textarea>` : ''}
+      ${atHut.map(s => `<span class="kicker">${s.section} · at the hut</span><div class="card list">${s.items.map(i => `<div class="lrow hutrow"><span class="who"><strong>${esc(i.name)}</strong></span><b class="num">${penceText(i.pricePence)}</b></div>`).join('')}</div>`).join('')}
+      ` : '<div class="empty-state">Nothing on the menu just now.</div>')
       : '<div class="empty-state">The halfway hut isn’t taking orders just now.</div>'}
   </div>
-  ${hut.on && sections.length ? `<div class="cta"><div class="tot">${count ? `${count} item${count === 1 ? '' : 's'}` : 'Nothing yet'}<b>${penceText(total)}</b></div><button class="primary" id="hut-send" ${count ? '' : 'disabled'}>Send order</button></div>` : ''}`
+  ${hut.on && food.length ? `<div class="cta"><div class="tot">${count ? `${count} item${count === 1 ? '' : 's'}` : 'Nothing yet'}<b>${penceText(total)}</b></div><button class="primary" id="hut-send" ${count ? '' : 'disabled'}>Send order</button></div>` : ''}`
 
   const step = (id, d) => { const q = Math.max(0, Math.min(20, (picks[id] ?? 0) + d)); if (q) picks[id] = q; else delete picks[id]; keepScroll(render) }
   document.querySelectorAll('[data-plus]').forEach(b => (b.onclick = () => step(+b.dataset.plus, 1)))
