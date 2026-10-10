@@ -4,13 +4,17 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --mode test --host",
+    "dev:live": "vite",
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",
     "db:migrate": "node scripts/db.mjs migrate",
+    "db:migrate:live": "node scripts/db.mjs migrate --live",
     "db:seed": "node scripts/make-seed.mjs && node scripts/db.mjs seed",
+    "db:scenarios": "node scripts/make-seed.mjs && node scripts/db.mjs scenarios",
     "db:test": "node scripts/db.mjs test",
+    "db:test:live": "node scripts/db.mjs test --live",
     "db:race": "node scripts/db.mjs race"
   },
   "devDependencies": {

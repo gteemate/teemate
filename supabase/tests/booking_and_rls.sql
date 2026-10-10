@@ -75,6 +75,9 @@ do $$ begin
 end $$;
 
 -- ------------------------------------------------------------------ an ordinary member (Declan)
+-- A card Gary (0) started that Declan (1) isn't on, for the "someone else's card" checks.
+insert into public.rounds (created_by, lineup, scores, done) values (0, '[{"m":0},{"m":9}]', '[]', '[]');
+
 do $$ declare e text; total bigint := (select count(*) from public.members); begin
   perform t.act_as(1);
   perform t.ok('Member: sees the member list', t.val('select count(*) from public.members') = total);
@@ -89,12 +92,12 @@ do $$ declare e text; total bigint := (select count(*) from public.members); beg
   perform t.ok('Member: cannot add guest points rows directly', t.err($q$insert into public.guest_visits (member_id, date, guest_name, course_id, points) values (1, current_date, 'x', 1, 0)$q$) is not null);
   perform t.ok('Member: sees only own guest points', t.val('select count(*) from public.guest_visits where member_id <> 1') = 0
                                                    and t.val('select count(*) from public.guest_visits') = 2);
-  perform t.ok('Member: cannot edit someone else''s scorecard', t.val($q$with u as (update public.rounds set game = 'x' where created_by = 0 returning 1) select count(*) from u$q$) = 0);
+  perform t.ok('Member: cannot edit someone else''s scorecard', t.val($q$with u as (update public.rounds set game = 'x' where created_by = 0 and not lineup @> '[{"m":1}]' returning 1) select count(*) from u$q$) = 0);
   perform t.ok('Member: can start own scorecard', t.err($q$insert into public.rounds (lineup) values ('[{"m":1},{"m":2}]')$q$) is null);
   perform t.ok('My games: can save my own preference', t.err($q$insert into public.member_game_prefs values (1, 2, 'sm2')$q$) is null);
   perform t.ok('My games: cannot set someone else''s', t.err($q$insert into public.member_game_prefs values (0, 2, 'sm2')$q$) is not null);
   perform t.ok('My games: only see my own', t.val('select count(*) from public.member_game_prefs where member_id <> 1') = 0);
-  perform t.ok('Member: cannot delete someone else''s card', t.val('with d as (delete from public.rounds where created_by = 0 returning 1) select count(*) from d') = 0);
+  perform t.ok('Member: cannot delete someone else''s card', t.val($q$with d as (delete from public.rounds where created_by = 0 and not lineup @> '[{"m":1}]' returning 1) select count(*) from d$q$) = 0);
   perform t.ok('Member: cannot start a card as someone else', t.err($q$insert into public.rounds (created_by, lineup) values (0, '[{"m":0}]')$q$) is not null);
   perform t.done();
 end $$;

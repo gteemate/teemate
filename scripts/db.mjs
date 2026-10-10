@@ -4,24 +4,39 @@
 //   node scripts/db.mjs seed           load supabase/seed.sql (wipes and reloads sample data)
 //   node scripts/db.mjs test           run supabase/tests/*.sql (each rolls back) and print results
 //   node scripts/db.mjs sql "<sql>"    run one statement and print the rows
+//   add --live to use the live database (migrate, test and sql only); without it, the test database
 //
-// Needs SUPABASE_ACCESS_TOKEN and VITE_SUPABASE_URL in .env (see .env.example).
+// Needs SUPABASE_ACCESS_TOKEN and VITE_SUPABASE_URL in .env (live) and .env.test (test; see .env.example).
 import { readFileSync, readdirSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 
 const root = new URL('..', import.meta.url).pathname
-if (existsSync(join(root, '.env'))) {
-  for (const line of readFileSync(join(root, '.env'), 'utf8').split('\n')) {
-    const m = line.match(/^([A-Z_]+)=(.*)$/)
-    if (m && !process.env[m[1]]) process.env[m[1]] = m[2].trim()
-  }
-}
-const token = process.env.SUPABASE_ACCESS_TOKEN
-const ref = process.env.VITE_SUPABASE_URL?.match(/https:\/\/([a-z0-9]+)\.supabase\.co/)?.[1]
-if (!token || !ref) {
-  console.error('Set SUPABASE_ACCESS_TOKEN and VITE_SUPABASE_URL in .env')
+
+// Which database: the TEST one (teemate-test, settings in .env.test) unless --live is given. Seeding, scenarios and
+// the race test wipe or add data, so they only ever run against the test database.
+const LIVE = process.argv.includes('--live')
+const readEnv = f => (existsSync(join(root, f)) ? Object.fromEntries(readFileSync(join(root, f), 'utf8').split('\n')
+  .map(l => l.match(/^([A-Z_]+)=(.*)$/)).filter(Boolean).map(m => [m[1], m[2].trim()])) : {})
+const base = readEnv('.env'), testEnv = readEnv('.env.test')
+const refOf = url => url?.match(/https:\/\/([a-z0-9]+)\.supabase\.co/)?.[1]
+const liveRef = refOf(base.VITE_SUPABASE_URL)
+if (!LIVE && !refOf(testEnv.VITE_SUPABASE_URL)) {
+  console.error('No test database set up: add VITE_SUPABASE_URL and SUPABASE_ACCESS_TOKEN to .env.test (or pass --live for the live one).')
   process.exit(1)
 }
+const env = LIVE ? base : { ...base, ...testEnv }
+const token = env.SUPABASE_ACCESS_TOKEN
+const ref = refOf(env.VITE_SUPABASE_URL)
+if (!token || !ref) {
+  console.error(`Set SUPABASE_ACCESS_TOKEN and VITE_SUPABASE_URL in ${LIVE ? '.env' : '.env.test'}`)
+  process.exit(1)
+}
+if (!LIVE && ref === liveRef) {
+  console.error('.env.test points at the LIVE database. Refusing: the test settings must be a different project.')
+  process.exit(1)
+}
+export const target = LIVE ? 'live' : 'test'
+const TEST_ONLY = new Set(['seed', 'race', 'scenarios'])
 
 // The Management API throttles bursts (429); wait and retry rather than fail half-way (e.g. mid clean-up).
 export async function query(sql, tries = 6) {
@@ -62,6 +77,15 @@ async function seed() {
   process.stdout.write('Loading supabase/seed.sql … ')
   await query(readFileSync(join(root, 'supabase/seed.sql'), 'utf8'))
   console.log('done')
+}
+
+// Every situation the app handles, on top of the sample club (test database only).
+async function scenarios() {
+  await seed()
+  process.stdout.write('Loading supabase/scenarios.sql … ')
+  const r = await query(readFileSync(join(root, 'supabase/scenarios.sql'), 'utf8'))
+  console.log('done')
+  console.log(r.at?.(-1) ?? r)
 }
 
 async function test() {
@@ -157,10 +181,15 @@ async function race() {
   }
 }
 
-const [cmd, arg] = process.argv.slice(2)
-const run = { migrate, seed, test, race: async () => process.exit((await race()) ? 0 : 1), sql: async () => console.log(JSON.stringify(await query(arg), null, 2)) }[cmd]
+const [cmd, arg] = process.argv.slice(2).filter(a => a !== '--live')
+const run = { migrate, seed, scenarios, test, race: async () => process.exit((await race()) ? 0 : 1), sql: async () => console.log(JSON.stringify(await query(arg), null, 2)) }[cmd]
 if (!run) {
-  console.error('Usage: node scripts/db.mjs migrate | seed | test | sql "<sql>"')
+  console.error('Usage: node scripts/db.mjs migrate | seed | scenarios | test | race | sql "<sql>"  [--live]')
   process.exit(1)
 }
+if (LIVE && TEST_ONLY.has(cmd)) {
+  console.error(`"${cmd}" only runs against the test database: it changes or wipes data. Refusing to run it on live.`)
+  process.exit(1)
+}
+console.error(LIVE ? '→ LIVE database' : '→ test database (teemate-test)')
 run().catch(e => { console.error(e.message); process.exit(1) })

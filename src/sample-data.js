@@ -67,7 +67,7 @@ export const GAME_SETTINGS = { settings: {}, pref: { 2: 'sm2', 3: 'six', 4: 'bbl
 // My group's round in progress: 11 holes played, as score differences to par.
 const DEL = [[1, 0, 1, 1, 1, 0, 0, 1, 1, 0, 2], [0, 1, 0, 0, 1, 0, 1, 0, -1, 1, 0], [0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1], [1, 0, 1, -1, 1, 1, 0, 1, 1, 0, 0]]
 export const CURRENT_ROUND = {
-  id: 1, players: [0, 1, 3, 5], game: 'bbl', // seed stores these as the card's lineup pairing: 0, submitted: {},
+  id: 1, players: [0, 1, 3, 5], game: 'bbl', pairing: 0, submitted: {}, // seed stores the players as the card's lineup
   scores: COURSE.holes.map((h, i) => DEL.map(d => h.par + (i < 11 ? d[i] : 0))),
   done: COURSE.holes.map((_, i) => i < 11),
 }
