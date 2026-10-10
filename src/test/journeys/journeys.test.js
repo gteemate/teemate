@@ -77,6 +77,17 @@ describe('journeys', () => {
     await app.homeFromHere()
   })
 
+  it('4b. An approved request whose booking was cancelled says so, and can be removed from the list', async () => {
+    app = await boot(db => db.requests.push({ id: 36, memberId: 0, slotId: 1, date: '2026-10-30', time: 460, memberIds: [], guests: [], reason: 'Visitors flying in from Boston',
+      status: 'approved', bookingId: null, note: null, decidedAt: '2026-10-09T18:45:00Z', seen: true, createdAt: '2026-10-09T18:00:00Z' }))
+    await app.tap('Booking')
+    expect(app.text()).toContain('Approved, then cancelled')
+    await app.tap('Remove')
+    expect(app.text()).not.toContain('Visitors flying in from Boston')
+    expect(app.taps).toBeLessThanOrEqual(2)
+    await app.homeFromHere()
+  })
+
   it('5. Book your match from the event, then rearrange it', async () => {
     app = await boot()
     await app.tap('Competition')

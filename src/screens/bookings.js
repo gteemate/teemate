@@ -74,11 +74,11 @@ export function draw({ bookings, me, requests }) {
     : '<div class="empty-state">No upcoming rounds.<br>Add a booking and it will show here.</div>'}
     ${requests.length ? `<span class="kicker">Requests</span><div class="bklist">${requests.map(r => {
       const st = requestStatus(r), d = fromIso(r.date)
-      const row = `<div class="card bk req ${st.tone}${r.status === 'pending' ? ' swrow" data-swipe="1' : ''}"><span class="bk-d"><b class="num">${d.getDate()}</b><small>${MN[d.getMonth()]}</small></span>
+      const row = `<div class="card bk req ${st.tone} swrow" data-swipe="1"><span class="bk-d"><b class="num">${d.getDate()}</b><small>${MN[d.getMonth()]}</small></span>
         <span class="bk-m"><span class="bk-t num">${hhmm(r.time)}</span><span class="sub">${esc(r.reason)}</span><span class="rqst">${esc(st.text)}</span></span>
         ${r.status === 'pending' ? `<button class="linkbtn" data-rqc="${r.id}">Cancel</button>` : '<span></span>'}</div>`
-      // A waiting request: swipe it left to cancel it too, like a booking.
-      return r.status === 'pending' ? `<div class="swipe"><button class="swdel" data-rqc="${r.id}">Cancel</button>${row}</div>` : row
+      // Swipe left: a waiting request is cancelled; an answered one is removed from this list.
+      return `<div class="swipe">${r.status === 'pending' ? `<button class="swdel" data-rqc="${r.id}">Cancel</button>` : `<button class="swdel" data-rqx="${r.id}">Remove</button>`}${row}</div>`
     }).join('')}</div>` : ''}
     <button class="primary" id="bt">+ Add a booking</button>
     <button class="ghost dashed" id="rq">Request a tee time further ahead</button></div>`
@@ -88,6 +88,11 @@ export function draw({ bookings, me, requests }) {
     b.disabled = true
     try { await api.cancelTeeTimeRequest(+b.dataset.rqc) } catch (err) { toast(err.message); b.disabled = false; return }
     await keepScroll(render); toast('Request cancelled')
+  }))
+  document.querySelectorAll('[data-rqx]').forEach(b => (b.onclick = async () => {
+    b.disabled = true
+    try { await api.dismissTeeTimeRequest(+b.dataset.rqx) } catch (err) { toast(err.message); b.disabled = false; return }
+    await keepScroll(render); toast('Removed from your list')
   }))
   if (bt) bt.onclick = async () => { S.reqMode = false; S.aview = 'tee'; await render(); top0() }
   $('rq').onclick = async () => { S.reqMode = true; S.reqDate = null; S.reqReason = ''; S.aview = 'tee'; await render(); top0() }

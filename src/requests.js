@@ -4,6 +4,7 @@ const STATUS = { pending: ['Waiting for an admin', 'wait'], approved: ['Approved
 /** { text, tone: 'wait' | 'ok' | 'no' | 'off' } */
 export function requestStatus(r) {
   if (r.status === 'declined') return { text: `Declined: ${r.note || 'no reason given'}`, tone: 'no' }
+  if (r.status === 'approved' && r.bookingId == null) return { text: 'Approved, then cancelled', tone: 'off' } // the booking it made has gone
   const [text, tone] = STATUS[r.status]
   return { text, tone }
 }
