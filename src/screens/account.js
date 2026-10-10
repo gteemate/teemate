@@ -4,22 +4,21 @@ import * as api from '../api.js'
 import { S } from '../state.js'
 import { $, esc, header, top0, render, toast, fmtHcp } from '../ui.js'
 import { passwordSheet } from './login.js'
-import { buildLibrary } from '../games.js'
 import { shareText, qrSvg, shareCard } from '../share-card.js'
 import { friendLink } from '../friend-link.js'
 
 export async function load() {
   const me = await api.getMe()
-  const [theme, friends, games, points, requests, teeReqs, hut] = await Promise.all([
-    api.getTheme(), api.getFriends(), api.getGameSettings(), api.getGuestPoints(),
+  const [theme, points, requests, teeReqs, hut] = await Promise.all([
+    api.getTheme(), api.getGuestPoints(),
     me.admin ? api.getAccessRequests() : [],
     me.admin ? api.getTeeTimeRequests() : [],
     api.getHut(),
   ])
-  return { me, clubName: theme?.name ?? '', waiting: requests.length + teeReqs.filter(r => r.status === 'pending').length, friendCount: friends.buddies.length + friends.contacts.length, L: buildLibrary(games), points, hutOn: hut.on }
+  return { me, clubName: theme?.name ?? '', waiting: requests.length + teeReqs.filter(r => r.status === 'pending').length, points, hutOn: hut.on }
 }
 
-export function draw({ me, clubName, waiting, friendCount, L, points, hutOn }) {
+export function draw({ me, clubName, waiting, points, hutOn }) {
   header('Account', `Signed in as <b>${esc(me.name)}</b>`, async () => { S.aview = 'home'; await render(); top0() }, 'Home')
   const link = friendLink(me, clubName, location.origin + import.meta.env.BASE_URL), card = shareText(me, clubName, link)
   const used = points.mine.reduce((t, x) => t + x.points, 0), left = points.allowance - used
@@ -39,7 +38,6 @@ export function draw({ me, clubName, waiting, friendCount, L, points, hutOn }) {
     <span class="hint">${me.playsIn ? 'Competitions → Events shows the club competitions you can enter.' : 'Set this to see the Men’s, Ladies’ and Mixed competitions you can enter.'}</span></div>
   <h3>Your account</h3>
   <div class="agrid">
-    <button class="atile row" data-a="buddies"><span class="e">👥</span><span class="rt"><b>Friends</b><span>${friendCount} friend${friendCount === 1 ? '' : 's'}</span></span></button>
     ${hutOn ? '<button class="atile row" data-a="hutorder"><span class="e">🥪</span><span class="rt"><b>Halfway hut</b><span>Order food and drinks; pay when you collect</span></span></button>' : ''}
     <button class="atile row" data-a="course"><span class="e">⛳</span><span class="rt"><b>Course guide</b><span>Every hole, tees and today's pins</span></span></button>
     <button class="atile row" data-a="mygames"><span class="e">🎯</span><span class="rt"><b>Games</b></span></button>
@@ -66,7 +64,6 @@ export function draw({ me, clubName, waiting, friendCount, L, points, hutOn }) {
     if (b.dataset.a === 'course') { S.tab = 'course'; await render(); top0(); return } // the guide outside a round
     if (b.dataset.a === 'office') { Object.assign(S, { office: true, ov: 'today', aview: 'office', navReset: true }); await render(); top0(); return }
     S.aview = b.dataset.a
-    if (S.aview === 'buddies') { S.bseg = 'mine'; S.bfrom = null }
     await render()
     top0()
   }))
