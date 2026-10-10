@@ -733,8 +733,12 @@ h4,.sheet h4{font-family:var(--display);font-weight:600;letter-spacing:0}
 .kos[role="button"]{cursor:pointer}
 .kodates{display:grid;gap:8px}
 .kodates label{display:grid;gap:4px;font-size:13px;color:var(--muted)}
-.kogrid{display:flex;gap:10px;overflow-x:auto;padding-bottom:8px}
-.kocol{flex:0 0 220px;display:flex;flex-direction:column;justify-content:space-around;gap:8px}
+.kobracket{display:grid;grid-template-columns:repeat(var(--rounds),minmax(158px,1fr));grid-template-rows:auto repeat(var(--rows),auto);gap:10px 14px;overflow-x:auto;padding-bottom:8px;align-items:center}
+.kohead{grid-row:1;padding:0 4px}
+.koslot{display:flex;align-self:center;min-width:0}
+.koslot>.kom{flex:1;min-width:0}
+.kobracket .kom{padding:10px 12px}
+.kobracket .kos{overflow-wrap:anywhere}
 .kochamp{text-align:center;display:grid;gap:4px;padding:14px 16px;border-color:var(--gold)}
 .kochamp b{font-family:var(--display);font-size:24px;font-weight:400;color:var(--gold)}
 .kofin{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap}

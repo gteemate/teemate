@@ -70,7 +70,9 @@ export function draw({ comp, me, members, matches = [], entries = [], mine, cour
 
   const view = S.koView === 'all' ? 'all' : 'round'
   const body = !rounds ? '' : view === 'all'
-    ? `<div class="kogrid">${Array.from({ length: rounds }, (_, i) => `<div class="kocol"><span class="kicker">${roundName(i + 1, rounds)}</span>${matches.filter(m => m.round === i + 1).map(card).join('')}</div>`).join('')}</div>`
+    // The whole draw as a bracket: round names along the top; each match sits level with the two it comes from.
+    ? `<div class="kobracket" style="--rounds:${rounds};--rows:${matches.filter(m => m.round === 1).length}">${Array.from({ length: rounds }, (_, i) => `<span class="kicker kohead" style="grid-column:${i + 1}">${roundName(i + 1, rounds)}</span>`).join('')}
+       ${matches.map(m => `<div class="koslot" style="grid-column:${m.round};grid-row:${m.slot * 2 ** (m.round - 1) + 2} / span ${2 ** (m.round - 1)}">${card(m)}</div>`).join('')}</div>`
     : `<div class="tabs-pill" role="group" aria-label="Round">${Array.from({ length: rounds }, (_, i) => `<button data-kr="${i + 1}" aria-pressed="${round === i + 1}">${roundName(i + 1, rounds)}</button>`).join('')}</div>
        ${matches.filter(m => m.round === round).map(card).join('')}`
   $('main').innerHTML = `<div class="screen">${top}${admin}
