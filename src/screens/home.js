@@ -21,15 +21,15 @@ const ICON = {
 const svg = k => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICON[k]}</svg>`
 
 export async function load() {
-  const [me, theme, card, teeTimes, playerEvents, buddies, requests] = await Promise.all([
-    api.getMe(), api.getTheme(), api.getCurrentRound(), api.getMyTeeTimes(today()), api.getMyPlayerEvents(), api.getBuddies(), api.getMyTeeTimeRequests(),
+  const [me, theme, card, teeTimes, playerEvents, friends, requests] = await Promise.all([
+    api.getMe(), api.getTheme(), api.getCurrentRound(), api.getMyTeeTimes(today()), api.getMyPlayerEvents(), api.getFriends(), api.getMyTeeTimeRequests(),
   ])
   const date = isoDate(today())
   const invites = playerEvents.filter(e => e.date === date && needsMyAnswer(e, me)).length
   const answered = requests.some(r => (r.status === 'approved' || r.status === 'declined') && !r.seen && r.decidedAt && Date.now() - Date.parse(r.decidedAt) < 7 * 864e5)
   const pill = card ? await cardPill(card) : null
   const loc = theme?.courseLat != null ? { lat: theme.courseLat, lon: theme.courseLon } : null
-  return { me, clubName: theme?.name ?? '', card, pill, tee: teeTimes[0], buddies, invites, answered, loc }
+  return { me, clubName: theme?.name ?? '', card, pill, tee: teeTimes[0], friendCount: friends.buddies.length + friends.contacts.length, invites, answered, loc }
 }
 
 // "Hole 4 · +1": my shots per hole worked out as the scorecard does (scores.js), so net games show net.
@@ -57,14 +57,14 @@ function fitRemote() {
   if (!watching) { watching = new ResizeObserver(() => fitRemote()); watching.observe(main) }
 }
 
-export function draw({ me, clubName, card, pill, tee, buddies, invites, answered, loc }) {
+export function draw({ me, clubName, card, pill, tee, friendCount, invites, answered, loc }) {
   $('hdr').innerHTML = `<div class="homehdr"><div class="homedate">${today().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}</div><button class="hwx" id="hwx" hidden></button></div>`
   const tile = (k, label, sub, cls = '', extra = '') => `<button class="htile ${cls}" data-tile="${k}"><span class="hic">${svg(k)}${extra}</span><span class="hlb">${label}<small>${sub}</small></span></button>`
   $('main').innerHTML = `<div class="screen home">
     <div class="hquad">
       ${tile('booking', 'Booking', answered ? 'Request answered' : tee ? `${hhmm(tee.time)} today` : 'Book a tee time', answered ? 'glow' : '')}
       ${tile('comp', 'Competition', invites ? `${invites} invitation${invites > 1 ? 's' : ''}` : 'Your competitions', `r${invites ? ' glow' : ''}`)}
-      ${tile('friends', 'Friends', `${buddies.length} playing partner${buddies.length === 1 ? '' : 's'}`, 'b')}
+      ${tile('friends', 'Friends', `${friendCount} friend${friendCount === 1 ? '' : 's'}`, 'b')}
       ${tile('scoring', 'Scoring', card ? 'Round on the go' : tee ? `${hhmm(tee.time)} today` : 'Start a round', 'r b', pill ? `<span class="hpill">${esc(pill.replace(/ · .*/, ''))} <i>· ${esc(pill.replace(/.* · /, ''))}</i></span>` : '')}
       <button class="hdisc" id="account" aria-label="Your membership card. Opens your account">
         <span class="nm">${esc(me.name)}</span>${clubName ? `<span class="cl">${esc(clubName)}</span>` : ''}
