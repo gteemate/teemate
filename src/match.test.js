@@ -16,11 +16,14 @@ describe('matchBooking: where the four stand on the tee sheet', () => {
   it('all four in one tee time: together', () => expect(matchBooking(ids, [slot(10, 490, [1, 2, 3, 4])], 1)).toEqual({ kind: 'together', slot: expect.objectContaining({ id: 10 }) }))
   it('me and one other booked, room for the rest: partial', () =>
     expect(matchBooking(ids, [slot(10, 490, [1, 3])], 1)).toEqual({ kind: 'partial', slot: expect.objectContaining({ id: 10 }), missing: [2, 4] }))
-  it("no room for the rest on mine, and they aren't booked: busy (book the match at another time)", () =>
-    expect(matchBooking(ids, [slot(10, 470, [1, 9, 8, 7])], 1)).toEqual({ kind: 'busy', slot: expect.objectContaining({ id: 10, time: 470 }) }))
+  it("I'm on a full tee time with others, and nobody else in the match is booked: apart (book a new time)", () =>
+    expect(matchBooking(ids, [slot(10, 470, [1, 9, 8, 7])], 1)).toEqual({ kind: 'apart', booked: [{ id: 1, time: 470 }] }))
+  it('booked separately, each with other people: apart, listing everyone’s times (book 2 hours or more from each)', () =>
+    expect(matchBooking(ids, [slot(10, 470, [1, 9, 8, 7]), slot(11, 680, [2, 12])], 1)).toEqual({ kind: 'apart', booked: [{ id: 1, time: 470 }, { id: 2, time: 680 }] }))
   it('no room on mine, and one of them is already on it with me: split (sort it out between you)', () =>
     expect(matchBooking(ids, [slot(10, 490, [1, 3, 9])], 1).kind).toBe('split'))
-  it('someone booked in another tee time: split, saying who and when', () =>
+  it('two of us together and another elsewhere: split, saying who and when', () =>
     expect(matchBooking(ids, [slot(10, 490, [1, 2]), slot(11, 500, [3])], 1)).toEqual({ kind: 'split', clash: { id: 3, time: 500 } }))
-  it("others booked but I'm not: split (they book, or I join them)", () => expect(matchBooking(ids, [slot(11, 500, [3, 4])], 1)).toEqual({ kind: 'split', clash: { id: 3, time: 500 } }))
+  it("two of the others together, I'm not booked: split (they book, or I join them)", () => expect(matchBooking(ids, [slot(11, 500, [3, 4])], 1)).toEqual({ kind: 'split', clash: { id: 3, time: 500 } }))
+  it('only one of the others booked, alone: apart', () => expect(matchBooking(ids, [slot(11, 500, [3])], 1)).toEqual({ kind: 'apart', booked: [{ id: 3, time: 500 }] }))
 })

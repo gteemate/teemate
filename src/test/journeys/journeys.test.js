@@ -111,14 +111,17 @@ describe('journeys', () => {
     await app.homeFromHere()
   })
 
-  it("5b. Booked on a full tee time with other people: the match still offers Book this match", async () => {
-    app = await boot(db => db.book(0, at(db, 480).id, [9, 8, 7])) // 08:00 with three others, none in the match
+  it("5b. Booked apart (each with other people): the match offers Book this match, 2 hours from everyone's tee times", async () => {
+    app = await boot(db => { db.book(0, at(db, 480).id, [9, 8, 7]); db.book(3, at(db, 700).id, [12]) }) // me 08:00, Ciarán 11:40, each with others
     await app.tap('Competition')
     await app.tap('Christmas Cup')
-    expect(app.text()).toContain('You’re on the 08:00 with other players')
+    expect(app.text()).toContain('Already booked today: you at 08:00, Ciarán O\'Neill at 11:40')
     await app.tap('Book this match')
     expect(app.screen()).toBe('Book tee times')
     expect(app.text()).toContain('Booking your match')
+    const open = [...document.querySelectorAll('.slot:not(.full)')].map(b => b.textContent.match(/\d\d:\d\d/)[0])
+    expect(open.length).toBeGreaterThan(5)
+    expect(open.every(t => { const m = +t.slice(0, 2) * 60 + +t.slice(3); return Math.abs(m - 480) >= 120 && Math.abs(m - 700) >= 120 })).toBe(true)
     await app.homeFromHere()
   })
 

@@ -33,7 +33,9 @@ export function draw({ days, sheet, points, me, rules, req, skew }) {
   const closed = !req && at && at > now(), locked = closed && !me.admin // admins can book ahead; requests pick any time
   const mine = sheet.filter(s => s.players.some(p => p.memberId === me.id))
   const isMine = s => mine.includes(s)
-  const tooClose = s => !isMine(s) && mine.find(m => Math.abs(m.time - s.time) < GAP)
+  // Booking a match: the other players' tee times count too (everyone has to be 2 hours from their own).
+  const theirs = S.matchPick ? sheet.filter(s => !isMine(s) && s.players.some(p => S.matchPick.includes(p.memberId))) : []
+  const tooClose = s => !isMine(s) && [...mine, ...theirs].find(m => m !== s && Math.abs(m.time - s.time) < GAP)
   const free = s => s.capacity - s.players.length
   header(req ? 'Request a tee time' : 'Book tee times', `${longDay(req ? fromIso(req.date) : days[S.day])} · <b>${sheet.filter(s => free(s) > 0).length}</b> of ${sheet.length} available`)
   if (req) $('dateWrap').innerHTML = `<div class="reqdate"><label for="rq-date">Day</label><input type="date" id="rq-date" class="plainsel" min="${req.min}" max="${req.max}" value="${req.date}">
@@ -70,7 +72,10 @@ export function draw({ days, sheet, points, me, rules, req, skew }) {
     if (isMine(s)) { Object.assign(S, { aview: 'mine' }); await render(); top0(); return } // see it in Bookings
     if (mv) return moveSheet(s, mv) // the old time goes when the new one is booked, so the 2-hour gap doesn't apply here
     const near = tooClose(s)
-    if (near) { toast(`You’re booked at ${hhmm(near.time)}. Tee times have to be at least 2 hours apart`); return }
+    if (near) {
+      const who = isMine(near) ? 'You’re' : `${near.players.find(p => S.matchPick?.includes(p.memberId))?.name ?? 'Someone in your match'} is`
+      toast(`${who} booked at ${hhmm(near.time)}. Tee times have to be at least 2 hours apart`); return
+    }
     if (!free(s)) { toast('That time is full'); return }
     Object.assign(S, { slotId: s.id, picked: S.matchPick ?? [], guests: [], aview: 'book', matchPick: null }) // Book this match: the other three already added
     await render()

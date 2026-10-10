@@ -11,7 +11,7 @@ export function myMatch(event, day, meId) {
 /**
  * Where the match's players are booked that day (sheet = [{ id, time, capacity, players: [{ memberId }] }]):
  * none (nobody), together (all in one tee time), partial (I'm booked with room for the ones not booked anywhere),
- * busy (only I'm booked, on a full tee time with others: book the match at another time), or split (anything else; clash = the first one booked in a tee time other than mine, and when).
+ * apart (nobody in the match shares a tee time: book a new one, 2 hours or more from each), or split (anything else; clash = the first one booked in a tee time other than mine, and when).
  */
 export function matchBooking(ids, sheet, meId) {
   const at = id => sheet.find(s => s.players.some(p => p.memberId === id))
@@ -23,8 +23,9 @@ export function matchBooking(ids, sheet, meId) {
   const elsewhere = booked.find(id => at(id) !== mine)
   const missing = ids.filter(id => !at(id))
   if (mine && elsewhere == null && mine.capacity - mine.players.length >= missing.length) return { kind: 'partial', slot: mine, missing }
-  // I'm on a tee time with other people and none of the match is booked: book the match at another time.
-  if (mine && booked.length === 1) return { kind: 'busy', slot: mine }
+  // Nobody in the match shares a tee time (each is booked with other people, or not at all): book the match at a new
+  // time, 2 hours or more from everyone's existing tee times.
+  if (!booked.some(id => booked.some(o => o !== id && at(o) === at(id)))) return { kind: 'apart', booked: booked.map(id => ({ id, time: at(id).time })) }
   const c = elsewhere ?? booked[0]
   return { kind: 'split', ...(elsewhere != null ? { clash: { id: c, time: at(c).time } } : {}) }
 }

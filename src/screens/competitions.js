@@ -58,12 +58,12 @@ export function draw({ me, date, members, friends, signups, lists, open, entered
     ${tab === 'events' ? open.map(signRow).join('') : ''}
     ${tab === 'entered' ? entered.map(mineRow).join('') : ''}
     ${list.length ? list.map(row).join('') : (tab === 'events' && open.length) || (tab === 'entered' && entered.length) || !empty[tab] ? '' : `<div class="empty-state">${empty[tab]}</div>`}
-    <button class="ghost dashed" id="create">+ Create your own event</button>
+    ${tab === 'events' ? '<button class="ghost dashed" id="create">+ Create your own event</button>' : ''}
   </div>`
   const go = async f => { f(); await render(); top0() }
   document.querySelectorAll('[data-tab]').forEach(b => (b.onclick = () => go(() => { S.compTab = b.dataset.tab })))
   if ($('field')) $('field').onclick = () => go(() => { S.tab = 'lb'; S.lbv = 'today' })
-  $('create').onclick = () => go(() => { S.ev = null; S.evId = null; S.evStep = 1; S.evNew = null; S.evScope = 'player'; S.aview = 'event' })
+  if ($('create')) $('create').onclick = () => go(() => { S.ev = null; S.evId = null; S.evStep = 1; S.evNew = null; S.evScope = 'player'; S.aview = 'event' })
   document.querySelectorAll('[data-edit]').forEach(b => (b.onclick = e => { e.stopPropagation(); go(() => { S.ev = null; S.evId = +b.dataset.edit; S.evStep = 1; S.evScope = 'player'; S.aview = 'event' }) }))
   if ($('setsec')) $('setsec').onclick = () => go(() => { S.aview = 'account' })
   document.querySelectorAll('[data-sign]').forEach(b => (b.onclick = () => signSheet(open.find(c => c.id === +b.dataset.sign), me, members, friends, signups.entries)))
