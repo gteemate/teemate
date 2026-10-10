@@ -50,6 +50,23 @@ comes from the match day's tee sheet (who is booked where):
   entered.
 - Events without drawn matches (team or individual Stableford, and leagues) work as now.
 
+## 3b. Needs a marker (Winter League and standard competitions)
+
+Agreed 10 Oct: a round counts for a **Winter League** or a **standard competition** (individual or team
+Stableford) only when there is **at least one other player on the card** to mark it. That player can be anyone on
+the card, member or guest.
+
+- On "What does this round count for?", these competitions are offered only when someone else is on the card. On
+  your own, they're not offered.
+- With exactly one other player, they're your marker automatically ("Marker: Peter Reid").
+- With two or more, a **Who's marking your card?** choice appears under the ticked competition (one per
+  competition is overkill, so one marker covers all the competitions ticked on this card). It's required before
+  **Start round**.
+- The marker is stored with the entry: `league_entries.marker` and `event_entries.marker`, as `{m: memberId}` or
+  `{g: guestId}`, set through the existing entry functions with a new optional parameter. It must be someone on the
+  card other than me. Part 3 uses it to confirm the score.
+- Matches (section 3) need no marker: the other side marks you.
+
 ## 4. Code
 
 - `src/match.js` (pure, tested):
@@ -73,8 +90,10 @@ comes from the match day's tee sheet (who is booked where):
   - `myMatch`: in a match, not in any, and a different day.
   - `matchBooking`: all five rows of section 2, including a tee time with no room.
   - `holeStates`: AS, up, down, and a match won early.
-- `src/round.test.js`: the option only appears when all four are on the card (not for 3 of 4); it's pre-ticked;
-  team and Stableford events are unchanged.
+- `src/round.test.js`: a match option only appears when all four are on the card (not for 3 of 4), and is
+  pre-ticked; league and Stableford options need another player on the card; `markerChoices` (the others on the
+  card) and the automatic marker when there's one.
+- `supabase/tests/`: the marker is stored, and refused if it isn't on the card or is me.
 - `src/event-scoring.test.js`: the new `winners` and player details per match.
 - Preview with sample data: the board with "Your match" and its action in each state; a match page live, finished,
   and not started; read-only for another match.
