@@ -184,14 +184,12 @@ export function draw({ course, members, guests, L, me, teeTimes, events, leagues
   }).join('')
   const hcpNote = noHcp.length ? `<div class="hcpnote">${noHcp.map(p => esc(p.name.split(' ')[0])).join(' and ')} ${noHcp.length > 1 ? 'have' : 'has'} no handicap yet, so ${noHcp.length > 1 ? 'they play' : 'plays'} off an index of 0 until you set one. Shots and points update as soon as you do.</div>` : ''
   $('main').innerHTML = `<div class="screen">${eventsTop(events, me)}${grid}${checks}${hcpNote}
-    <div class="rstatus"><b>${esc(line)}</b> · ${esc(LG.name)}</div>
+    <div class="rstatus"><b>${esc(line)}</b> · <span class="gpick"><select id="gsel" aria-label="Game">${playable(L, n).map(x => `<option value="${x.k}" ${x.k === round.game ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select>${CHEV}</span>
+      <button class="linkbtn gchip" id="gchip" aria-expanded="${!!S.gmenu}" aria-controls="gmenu">Pairs, players &amp; shots ${S.gmenu ? '▴' : '›'}</button></div>
+    ${gamebar}
     ${body}
     <span class="hint">${round.done[i] ? 'Saved' : 'Gross scores. Shots applied automatically.'}</span>
     ${!G.pairs && g !== 'match1' && gs.thru ? `<h3>Standings</h3>${standings(ps, gs, g)}` : ''}
-    <div class="card gamebox"><label class="kicker" for="gsel">Game</label>
-      <select id="gsel" class="plainsel">${playable(L, n).map(x => `<option value="${x.k}" ${x.k === round.game ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select>
-      <button class="linkbtn" id="gchip" aria-expanded="${!!S.gmenu}" aria-controls="gmenu">Pairs, players &amp; shots ${S.gmenu ? '▴' : '›'}</button></div>
-    ${gamebar}
     ${eventsBottom(events)}
     ${round.id ? '<button class="ghost accremove" id="delcard">Delete scorecard</button>' : ''}
   </div>
