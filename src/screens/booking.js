@@ -4,18 +4,19 @@ import { S } from '../state.js'
 import { $, esc, ini, header, keepScroll, top0, render, toast, parseHcp, fmtHcp } from '../ui.js'
 import { isoDate, nextDays, dayMonth, longDay, hhmm, fromIso } from '../dates.js'
 import { nextFreeNote } from '../release.js'
+import { pickerGroups } from '../friend-link.js'
 
 export async function load() {
   const date = S.reqMode ? fromIso(S.reqDate) : nextDays(S.day + 1)[S.day] // the day picked on the tee sheet (or for a request)
-  const [sheet, me, members, buddies, points] = await Promise.all([api.getTeeSheet(isoDate(date)), api.getMe(), api.getMembers(), api.getBuddies(), api.getGuestPoints()])
-  return { date, slot: sheet.find(s => s.id === S.slotId), me, members, buddies, points }
+  const [sheet, me, members, friends, points] = await Promise.all([api.getTeeSheet(isoDate(date)), api.getMe(), api.getMembers(), api.getFriends(), api.getGuestPoints()])
+  return { date, slot: sheet.find(s => s.id === S.slotId), me, members, friends, points }
 }
 
 const back = () => { S.aview = 'tee'; S.guests = []; S.gmodal = false; render() }
 
 const sub = m => [m.gui && 'GUI ' + m.gui, m.hcp != null && 'HCP ' + fmtHcp(m.hcp)].filter(Boolean).join(' · ')
 
-export function draw({ date, slot: s, me, members, buddies, points }) {
+export function draw({ date, slot: s, me, members, friends, points }) {
   if (!s) { back(); return }
   const free = s.capacity - s.players.length, max = free - 1, fee = s.twilight ? 25 : 0, cost = points.cost
   header(S.reqMode ? `Request ${hhmm(s.time)}` : hhmm(s.time), `${longDay(date)} · 1st tee`, back)
@@ -48,7 +49,7 @@ export function draw({ date, slot: s, me, members, buddies, points }) {
   <div class="cta"><div class="tot">${1 + used} player${used ? 's' : ''}<b>${fee ? `€${fee * (1 + S.picked.length)}` : "Members' time"}</b></div><button class="primary" id="confirm">${S.reqMode ? 'Send request' : 'Confirm booking'}</button></div>`
 
   const taken = new Set([me.id, ...S.picked, ...s.players.map(p => p.memberId)])
-  if (S.gmodal === 'pick') pickSheet(members.filter(m => !taken.has(m.id)), buddies, canGuest, points, left)
+  if (S.gmodal === 'pick') pickSheet(members, friends, taken, canGuest, points, left)
   else if (S.gmodal) guestForm(points, after)
   document.querySelectorAll('[data-open]').forEach(b => (b.onclick = () => { S.gmodal = 'pick'; keepScroll(render) }))
   document.querySelectorAll('[data-rm]').forEach(b => (b.onclick = () => { S.picked = S.picked.filter(x => x !== +b.dataset.rm); keepScroll(render) }))
@@ -90,15 +91,17 @@ export function draw({ date, slot: s, me, members, buddies, points }) {
 
 export const bar = (left, allowance) => `<span class="pbar"><i style="width:${Math.max(0, (left / allowance) * 100).toFixed(1)}%" class="${left <= 6 ? 'low' : ''}"></i></span>`
 
-// Tapping an open space: your buddies first, search everyone, or add a guest.
-function pickSheet(choices, buddies, canGuest, points, left) {
-  const row = m => `<button class="brow" data-add="${m.id}"><span class="av">${ini(m.name)}</span><span class="who"><strong>${esc(m.name)}</strong><small>${esc(sub(m))}</small></span><span class="chev">+</span></button>`
-  const mine = choices.filter(m => buddies.includes(m.id))
+// Tapping an open space: favourites first, then your friends (club, then other clubs: they come in as guests,
+// with the guest form filled in), search everyone, or add a guest.
+function pickSheet(members, friends, taken, canGuest, points, left) {
+  const guestNames = new Set(S.guests.map(g => g.name.trim().toLowerCase().replace(/\s+/g, ' ')))
+  const row = r => r.kind === 'member'
+    ? `<button class="brow" data-add="${r.m.id}"><span class="av">${ini(r.m.name)}</span><span class="who"><strong>${esc(r.m.name)}</strong><small>${esc(sub(r.m))}</small></span><span class="chev">+</span></button>`
+    : `<button class="brow" data-addc="${r.c.id}" ${r.disabled ? 'disabled' : ''}><span class="av gst">${ini(r.c.name)}</span><span class="who"><strong>${esc(r.c.name)}</strong><small>${esc(r.c.club ?? 'Another club')} · guest${r.disabled ? ' · not enough guest points' : ` · ${points.cost} points`}</small></span><span class="chev">+</span></button>`
   const list = q => {
-    const words = q.toLowerCase().split(/\s+/).filter(Boolean)
-    if (!words.length) return mine.length ? `<div class="hint">Your playing partners</div>${mine.map(row).join('')}` : '<div class="empty-state">Search for a member above.</div>'
-    const hits = choices.filter(m => words.every(w => m.name.toLowerCase().includes(w))).slice(0, 30)
-    return hits.length ? hits.map(row).join('') : '<div class="empty-state">No members match.</div>'
+    const groups = pickerGroups({ members, friends, taken, guestNames, q, canGuest })
+    if (groups.length) return groups.map(g => `<div class="hint">${g.title}</div>${g.rows.map(row).join('')}`).join('')
+    return q.trim() ? '<div class="empty-state">No members match.</div>' : '<div class="empty-state">Search for a member above.</div>'
   }
   $('modal').innerHTML = `<div class="overlay" id="ovl"><div class="sheet" role="dialog" aria-labelledby="ptitle">
     <h4 id="ptitle">Add to your group</h4>
@@ -108,26 +111,35 @@ function pickSheet(choices, buddies, canGuest, points, left) {
     <div class="gm-btns"><button type="button" class="ghost" id="pcancel">Cancel</button></div>
   </div></div>`
   const close = () => { S.gmodal = false; keepScroll(render) }
-  const wire = () => document.querySelectorAll('[data-add]').forEach(b => (b.onclick = () => { S.picked = [...S.picked, +b.dataset.add]; close() }))
+  const wire = () => {
+    document.querySelectorAll('[data-add]').forEach(b => (b.onclick = () => { S.picked = [...S.picked, +b.dataset.add]; close() }))
+    document.querySelectorAll('[data-addc]').forEach(b => (b.onclick = () => {
+      const c = friends.contacts.find(x => x.id === +b.dataset.addc)
+      S.guestPrefill = { name: c.name, club: c.club ?? '', gui: c.gui ?? '', hcp: c.hcp ?? '' }
+      S.gmodal = true; keepScroll(render)
+    }))
+  }
   wire()
   $('pq').oninput = e => { $('plist').innerHTML = list(e.target.value); wire() }
-  $('addG').onclick = () => { S.gmodal = true; keepScroll(render) }
+  $('addG').onclick = () => { S.guestPrefill = null; S.gmodal = true; keepScroll(render) }
   $('pcancel').onclick = close
   $('ovl').onclick = e => { if (e.target.id === 'ovl') close() }
 }
 
 function guestForm(points, after) {
+  const pre = S.guestPrefill ?? {} // a friend from another club: their details, ready to check
+  S.guestPrefill = null
   $('modal').innerHTML = `<div class="overlay" id="ovl"><form class="sheet" id="gform" novalidate aria-labelledby="gtitle">
     <h4 id="gtitle">Add a guest</h4>
-    <label for="g-name">Full name</label><input id="g-name" autocomplete="off" placeholder="e.g. Paul Hughes">
-    <label for="g-club">Home club <span class="opt">optional</span></label><input id="g-club" autocomplete="off" placeholder="Leave blank if not a club member">
-    <label for="g-gui">GUI number <span class="opt">optional</span></label><input id="g-gui" inputmode="numeric" autocomplete="off" placeholder="On their handicap card, if they have one">
-    <label for="g-hcp">Handicap index <span class="opt">optional · you can set it later on the scorecard</span></label><input id="g-hcp" inputmode="decimal" autocomplete="off" placeholder="e.g. 18.4, or +2">
+    <label for="g-name">Full name</label><input id="g-name" autocomplete="off" placeholder="e.g. Paul Hughes" value="${esc(pre.name ?? '')}">
+    <label for="g-club">Home club <span class="opt">optional</span></label><input id="g-club" autocomplete="off" value="${esc(pre.club ?? '')}" placeholder="Leave blank if not a club member">
+    <label for="g-gui">GUI number <span class="opt">optional</span></label><input id="g-gui" inputmode="numeric" autocomplete="off" value="${esc(pre.gui ?? '')}" placeholder="On their handicap card, if they have one">
+    <label for="g-hcp">Handicap index <span class="opt">optional · you can set it later on the scorecard</span></label><input id="g-hcp" inputmode="decimal" autocomplete="off" value="${esc(pre.hcp ?? '')}" placeholder="e.g. 18.4, or +2">
     <p class="gerr" id="gerr" role="alert"></p>
     <div class="gcost"><span>Uses <b>${points.cost} points</b> on the ${esc(points.course)}</span><span>${after} → <b>${after - points.cost}</b> left</span></div>
     <div class="gm-btns"><button type="button" class="ghost" id="gcancel">Cancel</button><button type="submit" class="primary">Add guest</button></div>
   </form></div>`
-  setTimeout(() => $('g-name')?.focus(), 30)
+  setTimeout(() => $(pre.name ? 'g-hcp' : 'g-name')?.focus(), 30)
   const close = () => { S.gmodal = false; keepScroll(render) }
   $('gcancel').onclick = close
   $('ovl').onclick = e => { if (e.target.id === 'ovl') close() }

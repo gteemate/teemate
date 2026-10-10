@@ -51,3 +51,25 @@ describe('addFriendAction: what the Add friend page offers', () => {
     expect(addFriendAction({ ...other, gui: null }, ctx({ contacts: [a, b] }))).toEqual({ kind: 'update', contact: a })
   })
 })
+
+import { pickerGroups } from './friend-link.js'
+describe('pickerGroups: who to offer when adding players to a booking', () => {
+  const members = [{ id: 1, name: 'Ann Able' }, { id: 2, name: 'Bob Best' }, { id: 3, name: 'Cal Cole' }, { id: 4, name: 'Dee Dunn' }]
+  const friends = {
+    buddies: [{ id: 1, favourite: true }, { id: 2, favourite: false }, { id: 3, favourite: false }],
+    contacts: [{ id: 9, name: 'Sam Visitor', favourite: true }, { id: 8, name: 'Jo Away', favourite: false }],
+  }
+  const base = { members, friends, taken: new Set(), guestNames: new Set(), q: '', canGuest: true }
+  const shape = gs => gs.map(g => [g.title, g.rows.map(r => (r.kind === 'member' ? r.m.id : `c${r.c.id}`))])
+  it('favourites (club and other clubs), then your friends, then friends from other clubs', () =>
+    expect(shape(pickerGroups(base))).toEqual([['Favourites', [1, 'c9']], ['Your friends', [2, 3]], ['Friends from other clubs', ['c8']]]))
+  it('people already in the booking are left out, and empty groups go', () =>
+    expect(shape(pickerGroups({ ...base, taken: new Set([1]), guestNames: new Set(['sam visitor']) }))).toEqual([['Your friends', [2, 3]], ['Friends from other clubs', ['c8']]]))
+  it('not enough guest points: other-club friends are greyed out', () => {
+    const rows = pickerGroups({ ...base, canGuest: false }).flatMap(g => g.rows).filter(r => r.kind === 'contact')
+    expect(rows.every(r => r.disabled)).toBe(true)
+  })
+  it('searching: all members who match, then matching friends from other clubs', () =>
+    expect(shape(pickerGroups({ ...base, q: 'a' }))).toEqual([['Members', [1, 3]], ['Friends from other clubs', ['c9', 'c8']]]))
+  it('no friends and no search: nothing', () => expect(pickerGroups({ ...base, friends: { buddies: [], contacts: [] } })).toEqual([]))
+})

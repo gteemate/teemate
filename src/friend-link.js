@@ -43,3 +43,25 @@ export function addFriendAction(card, { me, members, buddies, contacts }) {
   const same = norm(contact.name) === norm(card.name) && (contact.club ?? null) === card.club && (contact.hcp ?? null) === card.hcp
   return same ? { kind: 'same' } : { kind: 'update', contact }
 }
+
+/**
+ * The booking picker's lists. No search: Favourites (club + other clubs), Your friends, Friends from other clubs.
+ * Searching: matching members (at most 30), then matching friends from other clubs. People already in the booking
+ * are left out (members by id, guests by name); other-club friends are greyed out without guest points.
+ * → [{ title, rows: [{ kind: 'member', m } | { kind: 'contact', c, disabled }] }], empty groups left out.
+ */
+export function pickerGroups({ members, friends, taken, guestNames, q, canGuest }) {
+  const byId = new Map(members.map(m => [m.id, m]))
+  const member = b => byId.get(b.id)
+  const free = friends.buddies.filter(b => member(b) && !taken.has(b.id))
+  const contacts = friends.contacts.filter(c => !guestNames.has(norm(c.name)))
+  const mRow = m => ({ kind: 'member', m }), cRow = c => ({ kind: 'contact', c, disabled: !canGuest })
+  const words = norm(q).split(' ').filter(Boolean)
+  const groups = words.length
+    ? [['Members', members.filter(m => !taken.has(m.id) && words.every(w => m.name.toLowerCase().includes(w))).slice(0, 30).map(mRow)],
+       ['Friends from other clubs', contacts.filter(c => words.every(w => c.name.toLowerCase().includes(w))).map(cRow)]]
+    : [['Favourites', [...free.filter(b => b.favourite).map(b => mRow(member(b))), ...contacts.filter(c => c.favourite).map(cRow)]],
+       ['Your friends', free.filter(b => !b.favourite).map(b => mRow(member(b)))],
+       ['Friends from other clubs', contacts.filter(c => !c.favourite).map(cRow)]]
+  return groups.filter(([, rows]) => rows.length).map(([title, rows]) => ({ title, rows }))
+}

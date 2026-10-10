@@ -666,3 +666,4 @@ h4,.sheet h4{font-family:var(--display);font-weight:600;letter-spacing:0}
 .star.on{color:var(--gold)}
 .linkrow{cursor:pointer}
 .linkrow:focus-visible{outline:2px solid var(--gold);outline-offset:-2px}
+.favmark{color:var(--gold)}
