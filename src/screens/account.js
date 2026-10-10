@@ -40,7 +40,7 @@ export function draw({ me, clubName, waiting, points, hutOn }) {
   <div class="agrid">
     ${hutOn ? '<button class="atile row" data-a="hutorder"><span class="e">🥪</span><span class="rt"><b>Halfway hut</b><span>Order food and drinks; pay when you collect</span></span></button>' : ''}
     <button class="atile row" data-a="course"><span class="e">⛳</span><span class="rt"><b>Course guide</b><span>Every hole, tees and today's pins</span></span></button>
-    <button class="atile row" data-a="mygames"><span class="e">🎯</span><span class="rt"><b>Games</b></span></button>
+    <button class="atile row" data-a="mygames"><span class="e">🎯</span><span class="rt"><b>Game preferences</b></span></button>
     <button class="atile row slim" data-a="points"><span class="e">🎟️</span><span class="rt"><b>Guest points</b><span>${left} of ${points.allowance} left · ${guests ? `enough for ${guests} guest${guests > 1 ? 's' : ''}` : 'none left this year'}</span></span></button>
   </div>
   ${me.admin ? `<h3 class="adminhead">Club admin <span class="hint">only admins see this</span></h3>

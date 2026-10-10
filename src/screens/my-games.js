@@ -10,7 +10,7 @@ export async function load() {
 }
 
 export function draw({ L }) {
-  header('Games', 'Your preferred game for each group size', toAdmin)
+  header('Game preferences', 'Your preferred game for each group size', toAdmin)
   const sec = n => {
     const ok = playable(L, n), pick = preferredGame(L, n)
     const later = n < 4 ? L.sections[n].games.filter(x => x.on && !x.play) : []
