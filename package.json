@@ -14,6 +14,7 @@
     "db:race": "node scripts/db.mjs race"
   },
   "devDependencies": {
+    "happy-dom": "^15.11.7",
     "vite": "^8.3.3",
     "vitest": "^5.0.3"
   },
