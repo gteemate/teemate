@@ -3,8 +3,8 @@
 // Members' own events, leagues and knockouts stay with them.
 import * as api from '../api.js'
 import { S } from '../state.js'
-import { $, esc, header, keepScroll, render, top0 } from '../ui.js'
-import { eventDates, eventLastDay, isoDate, leagueWeek, today } from '../dates.js'
+import { $, esc, header, keepScroll, render, toast, top0 } from '../ui.js'
+import { addDaysIso, eventDates, eventLastDay, isoDate, leagueWeek, today } from '../dates.js'
 import { entryName, roundName, champion } from '../knockout.js'
 import { EVENT_TYPES } from '../screens/event-editor.js'
 import { clubComp, clubEvent, panel } from './shell.js'
@@ -23,12 +23,17 @@ export async function load() {
 export function draw({ evs, comps, kos, members, t }) {
   const all = [...comps, ...evs]
   const disputed = k => (kos[k]?.matches ?? []).filter(m => m.status === 'disputed').length
-  const live = all.filter(x => !(x.done || (x.c && (x.c.drawPublished ? champion(kos[x.key].matches, rounds(kos[x.key])) != null : false))))
-  const finished = all.filter(x => !live.includes(x))
+  // A club sign-up competition is a template between runs: hidden, or its knockout finished. Run it again from there.
+  const champ = x => (x.c?.drawPublished && kos[x.key]?.matches.length ? champion(kos[x.key].matches, rounds(kos[x.key])) : null)
+  const isTemplate = x => !!x.c && (!x.c.open || champ(x) != null)
+  const live = all.filter(x => !x.done && !isTemplate(x))
+  const templates = comps.filter(isTemplate)
+  const finished = evs.filter(x => x.done)
   const sel = all.find(x => x.key === S.oComp) ?? all.find(x => disputed(x.key)) ?? live[0] ?? all[0]
   header('Competitions', `<b>${live.length}</b> running or coming up`)
 
   const tag = x => {
+    if (x.c && isTemplate(x)) return '<span class="pill ghosty">Ready to run</span>'
     if (x.c) {
       const d = disputed(x.key)
       return d ? `<span class="pill warn">${d} disputed</span>` : x.c.drawPublished ? '<span class="pill live">Draw out</span>'
@@ -36,7 +41,8 @@ export function draw({ evs, comps, kos, members, t }) {
     }
     return x.e.startDate <= t && !x.done ? '<span class="pill live">On now</span>' : x.done ? '<span class="pill ghosty">Finished</span>' : '<span class="pill">Coming up</span>'
   }
-  const line = x => x.c ? `${CAT[x.c.category]} · ${x.c.kind === 'pairs' ? 'pairs' : 'singles'} · ${x.n}${x.c.maxEntries ? ` of ${x.c.maxEntries}` : ''} entered`
+  const line = x => x.c && isTemplate(x) ? `${CAT[x.c.category]} · ${x.c.kind === 'pairs' ? 'pairs' : 'singles'}${champ(x) != null ? ` · last won by ${esc(entryName(champ(x), kos[x.key].entries, members))}` : ''}`
+    : x.c ? `${CAT[x.c.category]} · ${x.c.kind === 'pairs' ? 'pairs' : 'singles'} · ${x.n}${x.c.maxEntries ? ` of ${x.c.maxEntries}` : ''} entered`
     : x.e.style === 'league' ? `League · ${x.e.weeks} weeks${x.e.koTop ? ` · top ${x.e.koTop} to a knockout` : ''}` : `${EVENT_TYPES[x.e.style]?.name ?? 'Event'} · ${eventDates(x.e.startDate, x.e.days)}`
   const row = x => `<button class="orow obtn ocomp" data-o-comp="${x.key}" aria-pressed="${x === sel}"><span class="ot"><b>${esc(x.c?.name ?? x.e.name)}</b><span>${line(x)}</span></span>${tag(x)}</button>`
 
@@ -45,9 +51,10 @@ export function draw({ evs, comps, kos, members, t }) {
       <div class="ocol">
         <button class="primary sm" id="o-new">New competition</button>
         <div class="card olist">${live.map(row).join('') || '<div class="empty-state">Nothing running.</div>'}</div>
+        ${templates.length ? `<h3>Templates</h3><span class="hint">The club’s standard competitions. Pick one to run it with new dates.</span><div class="card olist">${templates.map(row).join('')}</div>` : ''}
         ${finished.length ? `<h3>Finished</h3><div class="card olist">${finished.map(row).join('')}</div>` : ''}
       </div>
-      <div class="card odetail">${sel ? detail(sel, kos[sel.key], members, t) : '<div class="empty-state">No club competitions yet. Start one with New competition.</div>'}</div>
+      <div class="card odetail">${sel && isTemplate(sel) ? runForm(sel, kos[sel.key], champ(sel), members, t) : sel ? detail(sel, kos[sel.key], members, t) : '<div class="empty-state">No club competitions yet. Start one with New competition.</div>'}</div>
     </div>
   </div>`
 
@@ -61,6 +68,16 @@ export function draw({ evs, comps, kos, members, t }) {
     if (what === 'signups') S.aview = 'signups'
   })))
   document.querySelectorAll('[data-o-card]').forEach(b => (b.onclick = () => go(() => { const [mid, cid] = b.dataset.oCard.split(':'); Object.assign(S, { koCard: +mid, koComp: +cid, kcFrom: 'office', aview: 'kocard' }) })))
+  if ($('o-run')) $('o-run').onclick = async () => {
+    const b = $('o-run'), x = sel, v = id => $(id).value.trim()
+    const closesOn = v('o-rclose'), finalBy = v('o-rfinal'), maxEntries = v('o-rmax'), notes = v('o-rnotes')
+    const err = !closesOn ? 'Pick when entries close.' : closesOn < t ? 'Entries have to close today or later.' : !finalBy ? 'Pick when the final has to be played by.' : finalBy <= closesOn ? 'The final has to be after entries close.' : maxEntries && +maxEntries < 2 ? 'A limit needs at least 2 places.' : ''
+    if (err) { $('o-rerr').textContent = err; return }
+    if ((x.n || kos[x.key]?.matches.length) && b.dataset.armed !== '1') { b.dataset.armed = '1'; b.textContent = 'Tap again: last time’s entries and draw are cleared'; return }
+    b.disabled = true
+    try { await api.runSignup(x.c.id, { closesOn, finalBy, maxEntries, notes }) } catch (er) { $('o-rerr').textContent = er.message; b.disabled = false; return }
+    await keepScroll(render); toast(`${x.c.name} is open: members see it under Competitions → Events`)
+  }
   $('o-new').onclick = () => {
     panel(`<h4>New competition</h4><p class="hint">What kind?</p>
       <div class="card olist">
@@ -76,6 +93,21 @@ export function draw({ evs, comps, kos, members, t }) {
 }
 
 const rounds = ko => Math.max(0, ...ko.matches.map(m => m.round))
+
+// A template: run it with new dates (entries close, the final played by, a limit, notes), opened to members.
+function runForm(x, ko, champ, members, t) {
+  const c = x.c
+  return `<div class="ohead"><div><h4>${esc(c.name)}</h4><p class="hint">${CAT[c.category]} ${c.kind === 'pairs' ? 'pairs' : 'singles'}${champ != null ? ` · last won by ${esc(entryName(champ, ko.entries, members))}` : ''}</p></div></div>
+    <div class="opad orun">
+      <p class="hint">Set this year’s dates and release it: members see it under Competitions → Events and answer Enter or No thanks.${x.n || ko?.matches.length ? ' Last time’s entries and draw are cleared.' : ''}</p>
+      <div class="orunrow"><label>Entries close<input type="date" class="plainsel" id="o-rclose" min="${t}" value="${addDaysIso(t, 21)}"></label>
+        <label>Final played by<input type="date" class="plainsel" id="o-rfinal" value="${addDaysIso(t, 120)}"></label>
+        <label>Places (blank: no limit)<input type="number" class="plainsel" id="o-rmax" min="2" inputmode="numeric" value="${c.maxEntries ?? ''}"></label></div>
+      <label>Notes for members (optional)<input class="plainsel" id="o-rnotes" maxlength="300" value="${esc(c.notes ?? '')}" placeholder="e.g. £5 entry, paid in the shop"></label>
+      <p class="gerr" id="o-rerr" role="alert"></p>
+      <button class="primary sm" id="o-run">Release to members</button>
+    </div>`
+}
 
 function detail(x, ko, members, t) {
   if (x.e) {

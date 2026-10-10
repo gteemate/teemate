@@ -21,7 +21,7 @@ export const API_NAMES = ['getMe', 'forgetMe', 'getSession', 'signIn', 'needsAcc
   'getTodayRounds', 'getCardsForTeeTimes', 'getMyPlayerEvents', 'proposePlayerEvent', 'counterPlayerEvent', 'answerPlayerEvent', 'cancelPlayerEvent',
   'getEvents', 'saveEvent', 'deleteEvent', 'getCardsOn', 'getLeagueEntries', 'getCardsById', 'enterLeague', 'leaveLeague', 'enterEventToday',
   'getEventEntries', 'enterEventRound', 'leaveEventRound', 'startLeagueKnockout',
-  'getSignups', 'getSignupCounts', 'enterSignup', 'withdrawSignup', 'setMyPlaysIn', 'adminSetPlaysIn', 'saveSignup', 'deleteSignup',
+  'getSignups', 'getSignupCounts', 'getSignupDeclines', 'declineSignup', 'undeclineSignup', 'runSignup', 'enterSignup', 'withdrawSignup', 'setMyPlaysIn', 'adminSetPlaysIn', 'saveSignup', 'deleteSignup',
   'getKnockout', 'createMemberKnockout', 'deleteMemberKnockout', 'makeDraw', 'swapDraw', 'setRoundDeadlines', 'publishDraw', 'linkKoCard', 'reportKoResult', 'confirmKoResult', 'disputeKoResult', 'adminSetKoResult']
 
 /** For vi.mock('…/api.js'): every export, each calling the current world's version (globalThis.__world). */
@@ -51,7 +51,7 @@ export function makeWorld(today, setup = () => {}) {
       { id: 2, name: 'Men’s Fourball', category: 'men', kind: 'pairs', closesOn: '2026-10-31', notes: '£5 a pair', open: true },
       { id: 3, name: 'Ladies Singles', category: 'ladies', kind: 'singles', closesOn: '2026-10-31', notes: null, open: true },
       { id: 4, name: 'Mixed Foursome', category: 'mixed', kind: 'pairs', closesOn: '2026-10-31', notes: null, open: true }],
-    signupEntries: [], koMatches: [],
+    signupEntries: [], koMatches: [], declines: [], // declines: compIds I've said No thanks to
     buddies: [{ id: 1, favourite: false }, { id: 3, favourite: true }, { id: 5, favourite: false }, { id: 7, favourite: false }, { id: 11, favourite: false }],
     contacts: [{ id: 1, name: 'Sam Visitor', club: 'Royal Portrush GC', hcp: '12.0', gui: '1234567', sharedOn: today, favourite: false, updatedAt: `${today}T08:00:00Z` }],
     slots: {}, bookings: [], guestVisits: [], rounds: [], requests: [], playerEvents: [],
@@ -261,6 +261,13 @@ export function makeWorld(today, setup = () => {}) {
     },
     deleteMemberKnockout: async cid => { db.signups = db.signups.filter(c => c.id !== cid); db.koMatches = db.koMatches.filter(m => m.compId !== cid) },
     getKnockout: async cid => copy({ matches: db.koMatches.filter(m => m.compId === cid), entries: db.signupEntries.filter(e => e.compId === cid) }),
+    getSignupDeclines: async () => [...db.declines],
+    declineSignup: async cid => { if (!db.declines.includes(cid)) db.declines.push(cid) },
+    undeclineSignup: async cid => { db.declines = db.declines.filter(x => x !== cid) },
+    runSignup: async (cid, { closesOn, finalBy, maxEntries = null, notes = '' }) => {
+      db.koMatches = db.koMatches.filter(m => m.compId !== cid); db.signupEntries = db.signupEntries.filter(e => e.compId !== cid); db.declines = db.declines.filter(x => x !== cid)
+      Object.assign(db.signups.find(c => c.id === cid), { open: true, closesOn, finalBy, maxEntries: maxEntries ? +maxEntries : null, notes: notes || null, drawPublished: false, roundDeadlines: [] })
+    },
     linkKoCard: async (mid, rid) => { db.koMatches.find(m => m.id === mid).roundId = rid },
     reportKoResult: async (mid, w, r) => Object.assign(db.koMatches.find(m => m.id === mid), { status: 'reported', winnerEntry: w, result: r, reportedEntry: db.signupEntries.find(e => e.memberId === ME || e.partnerId === ME)?.id }),
     confirmKoResult: async mid => { const m = db.koMatches.find(x => x.id === mid); m.status = 'confirmed'; db.koAdvance(m) },

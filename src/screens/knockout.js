@@ -64,7 +64,7 @@ export function draw({ comp, me, members, matches = [], entries = [], mine, cour
   // Admin, before publishing: make or remake the draw, swap two, play-by dates, publish.
   const admin = me.admin && !comp.drawPublished ? `<div class="card evsec"><b>${matches.length ? 'Draft draw' : 'Make the draw'}</b>
       <span class="hint">${matches.length ? 'Only admins see this. Tap two names to swap them. Set a play-by date for each round, then publish: everyone in it is shown their first match.' : `${entries.length} entr${entries.length === 1 ? 'y' : 'ies'}. The draw places them at random; byes go straight through to round 2.`}</span>
-      ${matches.length ? `<div class="kofin"><label>Final played by<input type="date" class="plainsel" id="ko-fin" value="${comp.roundDeadlines[rounds - 1] ?? ''}"></label><button class="ghost sm" id="ko-spread">Spread the rounds evenly</button></div>
+      ${matches.length ? `<div class="kofin"><label>Final played by<input type="date" class="plainsel" id="ko-fin" value="${comp.roundDeadlines[rounds - 1] ?? comp.finalBy ?? ''}"></label><button class="ghost sm" id="ko-spread">Spread the rounds evenly</button></div>
       <div class="kodates">${Array.from({ length: rounds }, (_, i) => `<label>${roundName(i + 1, rounds)}<input type="date" class="plainsel" data-kd="${i}" value="${comp.roundDeadlines[i] ?? ''}"></label>`).join('')}</div>` : ''}
       <div class="bk-btns"><button class="${matches.length ? 'ghost' : 'primary'}" id="ko-make">${matches.length ? 'Draw again' : 'Make the draw'}</button>${matches.length ? '<button class="primary" id="ko-pub">Publish the draw</button>' : ''}</div></div>` : ''
 

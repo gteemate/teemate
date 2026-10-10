@@ -28,3 +28,7 @@ export const needsSection = (comps, me, date) => !me.playsIn && comps.some(c => 
 
 /** Places left under a competition's limit (counts: { [compId]: entries }), or null when there's no limit. */
 export const placesLeft = (c, counts) => (c.maxEntries == null ? null : Math.max(0, c.maxEntries - (counts[c.id] ?? 0)))
+
+/** Competitions → Events: what's open to me, split into ones to answer (Enter / No thanks) and ones I said No thanks
+ *  to (still enterable until they close). open: from canEnter; declined: [compId]. */
+export const splitDeclined = (open, declined) => ({ offer: open.filter(c => !declined.includes(c.id)), declined: open.filter(c => declined.includes(c.id)) })

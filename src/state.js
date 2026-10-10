@@ -32,7 +32,7 @@ export const S = {
   // events admin
   trqDecline: null, // Club admin → Tee time requests: the one being declined
   reqMode: false, reqDate: null, reqReason: '', // Request a tee time: on, the day, the reason being typed
-  compTab: 'entered', // Competitions: entered | open | events | history
+  compTab: 'entered', showDeclined: false, // Competitions: entered | open | events | history; the Declined list open on Events
   evScope: 'player', // events area: 'player' (Admin → Events) or 'club' (Club admin → Club events)
   evId: null, evStep: 1, evNew: null, // evNew: 'league' when starting a new league
   ev: null, evQ: '', evSwap: null, evTeam: null, // event draft, player search, pending swap; league setup: null = entrants, 0.. = a team

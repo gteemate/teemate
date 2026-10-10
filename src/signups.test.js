@@ -52,3 +52,14 @@ describe('placesLeft', () => {
     expect(placesLeft({ id: 1, maxEntries: null }, { 1: 5 })).toBeNull()
   })
 })
+
+import { splitDeclined } from './signups.js'
+describe('splitDeclined: Enter / No thanks, and the Declined list', () => {
+  it("No thanks moves a competition to Declined; the rest still need an answer", () => {
+    const open = [{ id: 1 }, { id: 2 }, { id: 3 }]
+    expect(splitDeclined(open, [2, 9])).toEqual({ offer: [{ id: 1 }, { id: 3 }], declined: [{ id: 2 }] })
+  })
+  it('a declined one that has closed (or I entered) is gone from both, as canEnter leaves it out', () => {
+    expect(splitDeclined([], [2])).toEqual({ offer: [], declined: [] })
+  })
+})

@@ -8,20 +8,21 @@ import { isoDate, today, eventDates, hhmm } from '../dates.js'
 import { eventFormatName } from '../games.js'
 import { competitionLists } from '../competitions.js'
 import { canEdit } from './events.js'
-import { canEnter, myEntries, partnerChoices, needsSection, placesLeft } from '../signups.js'
+import { canEnter, myEntries, partnerChoices, needsSection, placesLeft, splitDeclined } from '../signups.js'
 
 const TABS = [['entered', 'Entered'], ['events', 'Events'], ['history', 'History']]
 const FORMAT = { individual: 'Individual', teams: 'Team Stableford', ryder: 'Ryder Cup', league: 'League' }
 
 export async function load() {
-  const [events, me, playerEvents, signups, members, friends] = await Promise.all([api.getEvents(), api.getMe(), api.getMyPlayerEvents(), api.getSignups(), api.getMembers(), api.getFriends()])
+  const [events, me, playerEvents, signups, members, friends, declinedIds] = await Promise.all([api.getEvents(), api.getMe(), api.getMyPlayerEvents(), api.getSignups(), api.getMembers(), api.getFriends(), api.getSignupDeclines()])
   const counts = await api.getSignupCounts()
   const date = isoDate(today())
+  const open = canEnter({ ...signups, me, date })
   return { me, date, members, friends, signups, counts, lists: competitionLists({ me, events, playerEvents, date }),
-    open: canEnter({ ...signups, me, date }), entered: myEntries({ ...signups, me }) }
+    open, ...splitDeclined(open, declinedIds), entered: myEntries({ ...signups, me }) }
 }
 
-export function draw({ me, date, members, friends, signups, counts = {}, lists, open, entered }) {
+export function draw({ me, date, members, friends, signups, counts = {}, lists, open, offer = open, declined = [], entered }) {
   header('Competitions', '')
   const tab = TABS.some(([k]) => k === S.compTab) ? S.compTab : 'entered' // (Open is gone: a remembered 'open' falls back)
   const teamOf = e => e.teams?.[e.team?.[me.id]]?.name
@@ -45,10 +46,13 @@ export function draw({ me, date, members, friends, signups, counts = {}, lists, 
   const kindText = c => (c.kind === 'pairs' ? 'Pairs' : 'Singles')
   const closes = c => `Entries close ${eventDates(c.closesOn, 1)}`
   // Season competitions: to sign up for (Events), or signed up for (Entered: with whom, Withdraw until they close).
-  const signRow = c => { const left = placesLeft(c, counts)
+  // Season competitions I can enter: one line each, Enter or No thanks (No thanks moves it to Declined, where I can
+  // still enter until it closes). Notes and choosing a partner come after Enter.
+  const signRow = (c, wasDeclined) => { const left = placesLeft(c, counts)
+    const line = `${c.category === 'mixed' ? 'Mixed ' : ''}${kindText(c).toLowerCase()} · ${closes(c).replace('Entries close', 'entries close')}${left != null ? ` · ${left} place${left === 1 ? '' : 's'} left` : ''}`
     return left === 0 ? `<div class="card comp"><span class="row"><span class="ct">${esc(c.name)}</span><span class="pill">Full</span></span><span class="sub">${kindText(c)} · all ${c.maxEntries} places taken</span></div>`
-      : `<button class="card comp" data-sign="${c.id}"><span class="row"><span class="ct">${esc(c.name)}</span><span class="pill gold">Enter ›</span></span>
-      <span class="sub">${kindText(c)} · ${closes(c)}${left != null ? ` · ${left} place${left === 1 ? '' : 's'} left` : ''}${c.notes ? ` · ${esc(c.notes)}` : ''}</span></button>` }
+      : `<div class="card comp"><span class="ct">${esc(c.name)}</span><span class="sub">${line.charAt(0).toUpperCase() + line.slice(1)}</span>
+      <div class="bk-btns">${wasDeclined ? '' : `<button class="ghost" data-nothanks="${c.id}">No thanks</button>`}<button class="primary" data-sign="${c.id}">Enter</button></div></div>` }
   const mineRow = x => `<div class="card comp${x.comp.drawPublished ? ' gold' : ''}"${x.comp.drawPublished ? ` data-ko="${x.comp.id}" role="button" tabindex="0"` : ''}><span class="row"><span class="ct">${esc(x.comp.name)}</span><span class="pill${x.comp.drawPublished ? ' gold' : ''}">${x.comp.drawPublished ? 'Draw ›' : 'Entered'}</span></span>
       <span class="sub">${x.partnerId ? `With ${esc(nameOf(x.partnerId))}` : 'Singles'} · ${x.comp.drawPublished ? 'The draw is out: see your match' : x.comp.closesOn && date > x.comp.closesOn ? 'Entries closed: the draw is coming' : closes(x.comp)}</span>
       ${x.comp.drawPublished || (x.comp.closesOn && date > x.comp.closesOn) ? '' : `<span class="row"><span></span><button class="linkbtn" data-wd="${x.comp.id}">Withdraw${x.partnerId ? ' (both of you)' : ''}</button></span>`}</div>`
@@ -58,10 +62,12 @@ export function draw({ me, date, members, friends, signups, counts = {}, lists, 
     <div class="seg seg4" role="tablist" aria-label="Competitions">${TABS.map(([k, n]) => `<button role="tab" data-tab="${k}" aria-pressed="${tab === k}">${n}</button>`).join('')}</div>
     ${tab === 'entered' ? '<button class="card comp" id="field"><span class="row"><span class="ct">Today at the club</span><span class="link">Scores ›</span></span><span class="sub">Everyone’s round today: gross, net, Stableford</span></button>' : ''}
     ${tab === 'events' && needsSection(signups.comps, me, date) ? '<button class="card comp gold" id="setsec"><span class="ct">Men’s or Ladies’?</span><span class="sub">Set which you play in on your Account to see the competitions you can enter.</span><span class="row"><span></span><span class="link">Account ›</span></span></button>' : ''}
-    ${tab === 'events' ? open.map(signRow).join('') : ''}
+    ${tab === 'events' ? offer.map(c => signRow(c)).join('') : ''}
+    ${tab === 'events' && declined.length ? `<button class="linkbtn" id="declined" aria-expanded="${!!S.showDeclined}" style="align-self:flex-start">${S.showDeclined ? 'Hide declined' : `Declined (${declined.length})`}</button>
+      ${S.showDeclined ? `<span class="hint">You said no thanks to these. You can still enter until entries close.</span>${declined.map(c => signRow(c, true)).join('')}` : ''}` : ''}
     ${tab === 'entered' ? entered.map(mineRow).join('') : ''}
     ${tab === 'entered' ? signups.comps.filter(c => c.createdBy === me.id && !entered.some(x => x.comp.id === c.id)).map(c => `<div class="card comp gold" data-ko="${c.id}" role="button" tabindex="0"><span class="row"><span class="ct">${esc(c.name)}</span><span class="pill gold">Draw ›</span></span><span class="sub">Your knockout · you’re organising it</span></div>`).join('') : ''}
-    ${list.length ? list.map(row).join('') : (tab === 'events' && open.length) || (tab === 'entered' && entered.length) || !empty[tab] ? '' : `<div class="empty-state">${empty[tab]}</div>`}
+    ${list.length ? list.map(row).join('') : (tab === 'events' && (offer.length || declined.length)) || (tab === 'entered' && entered.length) || !empty[tab] ? '' : `<div class="empty-state">${empty[tab]}</div>`}
     ${tab === 'events' ? '<button class="ghost dashed" id="create">+ Create your own event</button>' : ''}
   </div>`
   const go = async f => { f(); await render(); top0() }
@@ -71,6 +77,13 @@ export function draw({ me, date, members, friends, signups, counts = {}, lists, 
   document.querySelectorAll('[data-edit]').forEach(b => (b.onclick = e => { e.stopPropagation(); go(() => { S.ev = null; S.evId = +b.dataset.edit; S.evStep = 1; S.evScope = 'player'; S.aview = 'event' }) }))
   if ($('setsec')) $('setsec').onclick = () => go(() => { S.aview = 'account' })
   document.querySelectorAll('[data-sign]').forEach(b => (b.onclick = () => signSheet(open.find(c => c.id === +b.dataset.sign), me, members, friends, signups.entries)))
+  document.querySelectorAll('[data-nothanks]').forEach(b => (b.onclick = async () => {
+    const c = open.find(x => x.id === +b.dataset.nothanks)
+    b.disabled = true
+    try { await api.declineSignup(c.id) } catch (err) { toast(err.message); b.disabled = false; return }
+    await keepScroll(render); toast(`No thanks to ${c.name}: it’s under Declined if you change your mind`)
+  }))
+  if ($('declined')) $('declined').onclick = () => { S.showDeclined = !S.showDeclined; keepScroll(render) }
   document.querySelectorAll('[data-ko]').forEach(c => (c.onclick = () => go(() => { S.koComp = +c.dataset.ko; S.koRound = null; S.koFrom = 'comp'; S.aview = 'ko' })))
   document.querySelectorAll('[data-wd]').forEach(b => (b.onclick = async () => {
     if (b.dataset.armed !== '1') { b.dataset.armed = '1'; b.textContent = 'Tap again to withdraw'; return }

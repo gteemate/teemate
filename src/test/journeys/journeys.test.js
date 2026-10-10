@@ -167,7 +167,7 @@ describe('journeys', () => {
     await app.tap('Events')
     expect(app.text()).toContain('Men’s Match Play')
     expect(app.text()).not.toContain('Ladies Singles') // a man doesn't see the ladies' competitions
-    await app.tap('Men’s Fourball')
+    await app.tap('[data-sign="2"]') // Men’s Fourball: Enter
     await app.tap('Declan Murphy')
     await app.tap('Enter as a pair')
     expect(app.db.signupEntries).toEqual([{ compId: 2, memberId: 0, partnerId: 1 }])
@@ -450,6 +450,43 @@ describe('the pretend server', () => {
     expect(app.screen()).toBe('Gary Cochrane v Declan Murphy')
     expect(app.text()).toContain('Match after each hole')
     await app.homeFromHere()
+  })
+
+  it('23. Events: No thanks moves a competition to Declined, where I can still enter it', async () => {
+    app = await boot()
+    await app.tap('Competition')
+    await app.tap('Events')
+    expect(app.text()).toContain('Men’s Match Play')
+    await app.tap('[data-nothanks="1"]')
+    expect(app.db.declines).toEqual([1])
+    expect(document.querySelector('[data-sign="1"]')).toBeNull() // out of the list to answer
+    await app.tap('Declined (1)')
+    expect(app.text()).toContain('You said no thanks to these')
+    await app.tap('[data-sign="1"]')
+    await app.tap('#sg-go')
+    expect(app.db.signupEntries.map(e => [e.compId, e.memberId])).toEqual([[1, 0]])
+    expect(app.text()).not.toContain('Declined (1)')
+    await app.homeFromHere()
+  })
+
+  it('24. The club office runs a template: new dates, opened to members, last time\'s entries cleared', async () => {
+    app = await boot(db => {
+      db.asOffice = true
+      Object.assign(db.signups[1], { open: false, closesOn: '2025-09-01' })
+      db.signupEntries.push({ id: 300, compId: 2, memberId: 3, partnerId: 5 })
+    })
+    await app.tap('Competitions')
+    expect(app.text()).toContain('Templates')
+    await app.tap('[data-o-comp="s:2"]')
+    await app.type('#o-rclose', '2026-11-01')
+    await app.type('#o-rfinal', '2027-03-01')
+    await app.type('#o-rmax', '16')
+    await app.tap('#o-run')
+    expect(app.text()).toContain('Tap again: last time’s entries and draw are cleared')
+    await app.tap('#o-run')
+    expect(app.db.signups[1]).toMatchObject({ open: true, closesOn: '2026-11-01', finalBy: '2027-03-01', maxEntries: 16 })
+    expect(app.db.signupEntries.filter(e => e.compId === 2)).toEqual([])
+    expect(app.toast()).toContain('is open: members see it under Competitions → Events')
   })
 
   it('has every function src/api.js exports (so a new one is never silently missing)', () => {

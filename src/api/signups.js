@@ -3,18 +3,27 @@ import { must, sb, forgetMe } from './client.js'
 /* ---------- Sign-up competitions (season competitions members put their names down for) ---------- */
 
 const toComp = c => ({ id: c.id, name: c.name, category: c.category, kind: c.kind, closesOn: c.closes_on, notes: c.notes, open: c.open,
-  drawPublished: !!c.draw_published, roundDeadlines: c.round_deadlines ?? [], maxEntries: c.max_entries ?? null, createdBy: c.created_by ?? null })
+  drawPublished: !!c.draw_published, roundDeadlines: c.round_deadlines ?? [], maxEntries: c.max_entries ?? null, createdBy: c.created_by ?? null, finalBy: c.final_by ?? null })
 
 /** { comps: [{ id, name, category, kind, closesOn, notes, open }], entries: [{ compId, memberId, partnerId }] }
  *  Members see open competitions and their own entries; admins see everything. A published draw's entries come with
  *  getKnockout. */
 export async function getSignups() {
-  const [c, e] = await Promise.all([sb.from('signup_comps').select('id, name, category, kind, closes_on, notes, open, draw_published, round_deadlines, max_entries, created_by').order('id'),
+  const [c, e] = await Promise.all([sb.from('signup_comps').select('id, name, category, kind, closes_on, notes, open, draw_published, round_deadlines, max_entries, created_by, final_by').order('id'),
     sb.from('signup_entries').select('id, comp_id, member_id, partner_id, created_at').order('created_at')])
   return { comps: must(c).map(toComp), entries: must(e).map(x => ({ id: x.id, compId: x.comp_id, memberId: x.member_id, partnerId: x.partner_id })) }
 }
 /** How many have entered each competition I can see: { [compId]: count } (for places left; not who). */
 export async function getSignupCounts() { return must(await sb.rpc('signup_counts')) }
+
+/** The competitions I've said No thanks to: [compId]. */
+export async function getSignupDeclines() { return must(await sb.from('signup_declines').select('comp_id')).map(r => r.comp_id) }
+export async function declineSignup(compId) { must(await sb.rpc('decline_signup', { p_comp: compId })) }
+export async function undeclineSignup(compId) { must(await sb.rpc('undecline_signup', { p_comp: compId })) }
+/** The club office runs a club competition (again): new dates, open to members; last time's entries and draw go. */
+export async function runSignup(compId, { closesOn, finalBy, maxEntries = null, notes = '' }) {
+  must(await sb.rpc('admin_run_signup', { p_comp: compId, p_closes: closesOn, p_final: finalBy, p_max: maxEntries ? +maxEntries : null, p_notes: notes }))
+}
 
 /** Enter (partnerId for pairs, else null). The server checks eligibility, the closing date and double entries. */
 export async function enterSignup(compId, partnerId = null) { must(await sb.rpc('enter_signup', { p_comp: compId, p_partner: partnerId })) }
