@@ -68,7 +68,7 @@ Modify `src/api/members.js`.
   - `getFriends(): { buddies: [{ id, favourite }], contacts: [{ id, name, club, hcp, gui, sharedOn, favourite, updatedAt }] }`
   - `saveContact(card, id?)` (insert, or update when id is given)
   - `removeContact(id)`
-  - `setFavourite({ memberId } | { contactId }, on)`
+  - `setFriendFavourite({ memberId } | { contactId }, on)`
 
 - [ ] SQL test (the shape of course_location.sql):
   - Owner inserts, updates and deletes.
@@ -104,7 +104,7 @@ Modify `src/api/members.js`.
 
 - [ ] The Friends tab is labelled "Friends" (was "Playing partners").
   - Sections: Favourites, then Your club, then Other clubs. Each row has a ☆/★ button
-    (`aria-pressed`, `setFavourite`).
+    (`aria-pressed`, `setFriendFavourite`).
   - Club rows keep their existing add/remove. Contact rows open a sheet showing the card, "updated <date>" and
     **Remove** (tap again to confirm).
 - [ ] The Home and Account tiles say "N friends" (buddies + contacts).

@@ -18,6 +18,35 @@ export async function removeBuddy(id) {
   must(await sb.from('buddies').delete().eq('buddy_id', id))
 }
 
+/* ---------- Friends: club friends (buddies) with favourites, and contact cards from other clubs ---------- */
+
+const CONTACT_COLS = 'id, name, club, hcp, gui, shared_on, favourite, updated_at'
+const toContact = c => ({ id: c.id, name: c.name, club: c.club, hcp: c.hcp, gui: c.gui, sharedOn: c.shared_on, favourite: c.favourite, updatedAt: c.updated_at })
+
+/** { buddies: [{ id, favourite }], contacts: [{ id, name, club, hcp, gui, sharedOn, favourite, updatedAt }] } — mine only. */
+export async function getFriends() {
+  const [b, c] = await Promise.all([sb.from('buddies').select('buddy_id, favourite'), sb.from('friend_contacts').select(CONTACT_COLS).order('name')])
+  return { buddies: must(b).map(r => ({ id: r.buddy_id, favourite: r.favourite })), contacts: must(c).map(toContact) }
+}
+
+/** Save a contact card from a friend link ({ name, club, hcp, gui, sharedOn }); with id, update that one. */
+export async function saveContact(card, id = null) {
+  const row = { name: card.name.slice(0, 80), club: card.club?.slice(0, 80) ?? null, hcp: card.hcp?.slice(0, 8) ?? null, gui: card.gui?.slice(0, 20) ?? null,
+    shared_on: card.sharedOn ?? null, updated_at: new Date().toISOString() }
+  if (id) must(await sb.from('friend_contacts').update(row).eq('id', id))
+  else must(await sb.from('friend_contacts').insert({ ...row, owner: await myId() }))
+}
+
+export async function removeContact(id) {
+  must(await sb.from('friend_contacts').delete().eq('id', id))
+}
+
+/** Star or unstar a friend: { memberId } (club friend) or { contactId } (other club). */
+export async function setFriendFavourite({ memberId, contactId }, on) {
+  if (memberId != null) must(await sb.from('buddies').update({ favourite: on }).eq('buddy_id', memberId))
+  else must(await sb.from('friend_contacts').update({ favourite: on }).eq('id', contactId))
+}
+
 /* ---------- Access (admins only) ---------- */
 
 /** Everyone, with email and whether they've created an account: [{ id, name, gui, hcp, email, admin, signedIn }] */
