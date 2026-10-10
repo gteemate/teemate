@@ -42,9 +42,10 @@ export function draw({ e, course, members, guests, cards, L, me }) {
   } else if (r.kind === 'match') {
     const [ga, gb] = groups, lead = r.lead === 'A' ? ga : r.lead === 'B' ? gb : null
     body = `<div class="status"><div class="side">${esc(ga.name)}<br><small>${thruText(r.ahead.A)}</small></div>
-      <div class="big">${r.thru ? (lead ? `${esc(lead.name)}<br>${r.over ? `win ${r.text}` : r.text}` : r.text) : 'Not started'}<small>${r.thru && !r.finished ? `thru ${r.thru} (both groups)` : r.finished ? 'Final' : ''}</small></div>
+      <div class="big">${r.thru ? (lead ? `${esc(lead.name)}<br>${r.over ? `win ${r.text}` : r.text}` : r.text) : 'Not started'}<small>${r.thru && !r.finished ? `thru ${r.thru} (${e.style === 'singles' ? 'both of you' : 'both groups'})` : r.finished ? 'Final' : ''}</small></div>
       <div class="side">${esc(gb.name)}<br><small>${thruText(r.ahead.B)}</small></div></div>
-      <div class="hint">Each hole goes to the lowest net score in either group, with shots off the lowest handicap across both. A hole counts once both groups have played it.</div>`
+      <div class="hint">${e.style === 'singles' ? `${e.format === 'sc2' ? 'Lower gross score wins each hole, no shots.' : e.format === 'sm2' ? 'More Stableford points wins each hole, shots off the lower handicap.' : 'Lower net score wins each hole, shots off the lower handicap at the full difference.'} A hole counts once you’ve both played it.`
+        : 'Each hole goes to the lowest net score in either group, with shots off the lowest handicap across both. A hole counts once both groups have played it.'}</div>`
   } else if (r.kind === 'ryder') {
     const sc = r.score, wA = sc.tot ? (sc.pA / sc.tot) * 100 : 0, wB = sc.tot ? (sc.pB / sc.tot) * 100 : 0
     body = `<div class="card evscore">

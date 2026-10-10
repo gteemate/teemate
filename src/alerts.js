@@ -19,7 +19,8 @@ export function pickAlerts({ me, playerEvents, requests, date, now = Date.now(),
     const theirs = e.groups.find(g => g.slot === (e.proposerSlot ?? e.groups.find(x => x.host)?.slot))
     return {
       key: `pe:${e.id}`, kind: 'challenge', ref: { peId: e.id },
-      title: `${e.proposedBy?.name ?? 'Another member'}'s four-ball${theirs ? ` (${hhmm(theirs.time)})` : ''} has challenged your group`,
+      title: e.style === 'singles' ? `${e.proposedBy?.name ?? 'Another member'}${theirs ? ` (${hhmm(theirs.time)})` : ''} has challenged you to a one-on-one`
+        : `${e.proposedBy?.name ?? 'Another member'}'s four-ball${theirs ? ` (${hhmm(theirs.time)})` : ''} has challenged your group`,
       detail: eventFormatName(e.format),
       actions: [{ id: 'accept', label: 'Accept', primary: true }, { id: 'decline', label: 'Decline' }, { id: 'details', label: 'See details' }, later],
     }

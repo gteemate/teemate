@@ -114,7 +114,7 @@ describe('a full round of every game on the scorecard', () => {
     if (app.screen() === 'Scoring round?') await app.tap('#start')
     await app.tap('#gname')
     await app.tap('[data-am="one"]')
-    await app.tap('[data-op="2"]') // the third player on the card
+    await app.tap('[data-op="c2"]') // the third player on the card
     await app.tap('[data-ok="kos"]')
     await app.tap('#am-go')
     const opp = app.db.rounds.at(-1).lineup[2]

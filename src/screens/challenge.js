@@ -97,7 +97,7 @@ function optionsSheet(pe, groups, me) {
   if (!formats.some(f => f.k === pe.format)) pe.format = formats[0].k
   const pick = pe.style === 'ryder' || pe.style === 'teams'
   const players = groups.flatMap(s => s.players)
-  // Starting teams: Ryder Cup puts the first two in each four-ball on A; own teams alternate.
+  // Starting teams: Four-ball team match play puts the first two in each four-ball on A; own teams alternate.
   if (pick) players.forEach((p, i) => { pe.teams[p.id] ??= pe.style === 'ryder' ? (groups.find(s => s.players.includes(p)).players.indexOf(p) < 2 ? 'A' : 'B') : (i % 2 ? 'B' : 'A') })
   const nA = ps => ps.filter(p => pe.teams[p.id] === 'A').length
   const problem = !pick ? ''

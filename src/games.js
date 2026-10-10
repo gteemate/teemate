@@ -32,9 +32,12 @@ export const GAME_DEFS = {
 // Player events: one group challenges another.
 export const EVENT_STYLES = {
   fourball: { name: 'Four-ball v four-ball', desc: 'Each group is a team. No picking needed.' },
-  ryder: { name: 'Ryder Cup', desc: 'Two teams, two from each team in every four-ball. Each four-ball plays a better-ball match for a point.' },
+  ryder: { name: 'Four-ball team match play', desc: 'Two teams, two from each team in every four-ball. Each four-ball plays a better-ball match for a point.' },
   teams: { name: 'Your own teams', desc: 'Split everyone into two equal teams however you like.' },
 }
+// A one-on-one with a player in another group: not one of the styles a group picks on the challenge screen.
+export const SINGLES = { name: 'One against one', desc: 'You against one player in another group.' }
+export const eventStyleName = k => (k === 'singles' ? SINGLES.name : EVENT_STYLES[k]?.name ?? k)
 export const EVENT_FORMATS = {
   fourball: [
     { k: 'best2', name: 'Best 2 Stableford per hole', desc: 'Each group’s two best Stableford scores on every hole count.' },
@@ -46,12 +49,17 @@ export const EVENT_FORMATS = {
     { k: 'bbstab', name: 'Better ball · Stableford', desc: 'Most Stableford points wins each hole. 1 point a match.' },
     { k: 'bbscr', name: 'Better ball · scratch', desc: 'No shots. 1 point a match.' },
   ],
+  singles: [
+    { k: 'kos', name: 'Handicap match play', desc: 'Lower net score wins each hole, shots off the low handicap at the full difference.' },
+    { k: 'sm2', name: 'Stableford match play', desc: 'More Stableford points on a hole wins it.' },
+    { k: 'sc2', name: 'Scratch match play', desc: 'Lower gross score wins each hole. No shots.' },
+  ],
   teams: [
     { k: 'teamstab', name: 'Team Stableford', desc: 'Everyone’s Stableford points count for their team.' },
   ],
 }
 // Which club game setting supplies the handicap allowance for each event format.
-export const EVENT_ALLOWANCE_GAME = { best2: 'stab', all4: 'stab', teamstab: 'stab', stab: 'stab', net: 'stroke', bestball: 'bbl', bbl: 'bbl', bbstab: 'bbstab', bbscr: 'bbscr' }
+export const EVENT_ALLOWANCE_GAME = { best2: 'stab', all4: 'stab', teamstab: 'stab', stab: 'stab', net: 'stroke', bestball: 'bbl', bbl: 'bbl', bbstab: 'bbstab', bbscr: 'bbscr', kos: 'kos', sm2: 'sm2', sc2: 'sc2' }
 export const eventFormatName = k => Object.values(EVENT_FORMATS).flat().find(f => f.k === k)?.name ?? k
 
 // Better-ball pairings as player indexes [a1, a2, b1, b2]; player 0 is always "you".

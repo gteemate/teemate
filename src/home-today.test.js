@@ -25,4 +25,9 @@ describe('needsMyAnswer: a match invitation my group still has to answer', () =>
   it('my own group proposed it: no', () => expect(needsMyAnswer(pe({ proposerSlot: 10 }), me)).toBe(false))
   it('no proposerSlot: the host group proposed it', () => expect(needsMyAnswer(pe({ proposerSlot: null, groups: [{ slot: 10, time: 490, host: true, answer: null }, { slot: 20, time: 470, host: false, answer: null }] }), me)).toBe(false))
   it('called off: no', () => expect(needsMyAnswer(pe({ status: 'cancelled' }), me)).toBe(false))
+  it('a one-on-one: the player challenged answers, not their group-mates', () => {
+    const singles = (b, mates = []) => pe({ style: 'singles', players: [{ memberId: 2, slot: 20, team: 'A' }, { memberId: b, slot: 10, team: 'B' }, ...mates] })
+    expect(needsMyAnswer(singles(me.id), me)).toBe(true)
+    expect(needsMyAnswer(singles(3), me)).toBe(false)
+  })
 })

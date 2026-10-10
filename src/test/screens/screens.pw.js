@@ -109,6 +109,9 @@ test('every main screen', async ({ page }, testInfo) => {
   if (await page.locator('#alerts [data-al]').first().isVisible()) await check(page, '03 an alert dropping down', testInfo)
   await dismissAlerts(page)
   await check(page, '04 scorecard (round in progress)', testInfo)
+  await tap(page, '#gname'); await check(page, '04b add or change the match (sheet)', testInfo)
+  await tap(page, '[data-am="one"]'); await page.waitForTimeout(800); await check(page, '04c one against one (sheet)', testInfo)
+  await page.click('#am-no'); await page.click('#am-no')
   await dismissAlerts(page) // the halfway hut asks once hole 8 is done
   await home(page)
   await check(page, '05 home', testInfo)
@@ -133,7 +136,7 @@ test('every main screen', async ({ page }, testInfo) => {
   await home(page)
   await tap(page, '[data-tile="comp"]'); await tap(page, '[data-tab="entered"]')
   await openCard(page, '.card.comp', 'Christmas Cup')
-  await check(page, '15 event leaderboard (Ryder Cup)', testInfo)
+  await check(page, '15 event leaderboard (Four-ball team match play)', testInfo)
   if (await page.locator('[data-match]').count()) { await tap(page, '[data-match]'); await check(page, '16 a match and its scorecard', testInfo) }
   await home(page)
   await tap(page, '[data-tile="comp"]'); await tap(page, '[data-tab="entered"]')

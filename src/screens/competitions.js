@@ -12,7 +12,7 @@ import { canEnter, myEntries, partnerChoices, needsSection, placesLeft, splitDec
 import { feeLine, money } from '../fees.js'
 
 const TABS = [['entered', 'Entered'], ['events', 'Events'], ['history', 'History']]
-const FORMAT = { individual: 'Individual', teams: 'Team Stableford', ryder: 'Ryder Cup', league: 'League' }
+const FORMAT = { individual: 'Individual', teams: 'Team Stableford', ryder: 'Four-ball team match play', league: 'League' }
 
 export async function load() {
   const [events, me, playerEvents, signups, members, friends, declinedIds] = await Promise.all([api.getEvents(), api.getMe(), api.getMyPlayerEvents(), api.getSignups(), api.getMembers(), api.getFriends(), api.getSignupDeclines()])
@@ -143,7 +143,7 @@ function signSheet(c, me, members, friends, entries, fees) {
 function createSheet(go) {
   $('modal').innerHTML = `<div class="overlay" id="ovl"><div class="sheet" role="dialog" aria-labelledby="crt">
     <h4 id="crt">Create your own</h4>
-    <button class="card pecard" id="cr-ev"><span class="pe-tx"><b>An event</b><small>Ryder Cup, team or individual Stableford over 1–3 days</small></span><span class="chev">›</span></button>
+    <button class="card pecard" id="cr-ev"><span class="pe-tx"><b>An event</b><small>Four-ball team match play, team or individual Stableford over 1–3 days</small></span><span class="chev">›</span></button>
     <button class="card pecard" id="cr-ko"><span class="pe-tx"><b>A knockout</b><small>Pick the players or pairs; a random draw; rounds with play-by dates</small></span><span class="chev">›</span></button>
     <div class="gm-btns"><button type="button" class="ghost" id="cr-no">Cancel</button></div>
   </div></div>`

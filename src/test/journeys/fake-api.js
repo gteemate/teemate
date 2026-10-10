@@ -18,7 +18,7 @@ export const API_NAMES = ['getMe', 'forgetMe', 'getSession', 'signIn', 'needsAcc
   'getBookingNotices', 'seenBookingNotice', 'getMyBookings',
   'getGuestPoints', 'getBookingRules', 'setBookingRules', 'requestTeeTime', 'cancelTeeTimeRequest', 'getMyTeeTimeRequests', 'getTeeTimeRequests',
   'decideTeeTimeRequest', 'markTeeTimeRequestsSeen', 'dismissTeeTimeRequest', 'getGameSettings', 'setMyGamePref', 'getCurrentRound', 'getRound', 'deleteRound', 'saveRound',
-  'getTodayRounds', 'getCardsForTeeTimes', 'getMyPlayerEvents', 'proposePlayerEvent', 'counterPlayerEvent', 'answerPlayerEvent', 'cancelPlayerEvent',
+  'getTodayRounds', 'getCardsForTeeTimes', 'getMyPlayerEvents', 'proposePlayerEvent', 'proposeSingles', 'counterPlayerEvent', 'answerPlayerEvent', 'cancelPlayerEvent',
   'getEvents', 'saveEvent', 'deleteEvent', 'getCardsOn', 'getLeagueEntries', 'getCardsById', 'enterLeague', 'leaveLeague', 'enterEventToday',
   'getEventEntries', 'enterEventRound', 'leaveEventRound', 'startLeagueKnockout',
   'getSignups', 'getSignupCounts', 'getSignupDeclines', 'declineSignup', 'undeclineSignup', 'runSignup', 'enterSignup', 'withdrawSignup', 'setMyPlaysIn', 'adminSetPlaysIn', 'saveSignup', 'deleteSignup',
@@ -119,6 +119,14 @@ export function makeWorld(today, setup = () => {}) {
       const e = { id: id(), date: today, style, format, status: 'pending', proposerSlot: hostSlot, proposedBy: { id: ME, name: member(ME).name }, createdBy: { id: ME, name: member(ME).name },
         teamNames, players: slots.flatMap(s => s.players.map(p => ({ id: p.id, memberId: p.memberId, name: p.name, slot: s.id, team: teams[p.id] ?? null }))),
         groups: slots.map(s => ({ slot: s.id, time: s.time, host: s.id === hostSlot, answer: s.id === hostSlot ? 'accepted' : null })) }
+      db.playerEvents.push(e); return e.id
+    },
+    proposeSingles: async (mySlot, bpId, format) => {
+      const mine = slotById(mySlot), theirs = db.slotsOn(today).find(s => s.players.some(p => p.id === bpId)), opp = theirs.players.find(p => p.id === bpId)
+      const me = mine.players.find(p => p.memberId === ME)
+      const e = { id: id(), date: today, style: 'singles', format, status: 'pending', proposerSlot: mySlot, proposedBy: { id: ME, name: member(ME).name }, createdBy: { id: ME, name: member(ME).name },
+        teamNames: { A: me.name, B: opp.name }, players: [{ id: me.id, memberId: ME, name: me.name, slot: mySlot, team: 'A' }, { id: opp.id, memberId: opp.memberId, name: opp.name, slot: theirs.id, team: 'B' }],
+        groups: [mine, theirs].sort((a, b) => a.time - b.time).map(s => ({ slot: s.id, time: s.time, host: s.id === mySlot, answer: s.id === mySlot ? 'accepted' : null })) }
       db.playerEvents.push(e); return e.id
     },
     counterPlayerEvent: async (pid, setup) => { Object.assign(db.playerEvents.find(x => x.id === pid), { style: setup.style, format: setup.format }) },

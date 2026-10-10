@@ -25,7 +25,7 @@ export function buildEventGroups(event, holes, tee, cards, indexOf, timeOf = () 
         gross: holes.map((_, i) => (k >= 0 && card.done[i] ? card.scores[i][k] : null)),
       }
     })
-    return { key: String(g.slot), name: event.teamNames[g.slot] ?? timeOf(g), time: g.time, players, hasCard: !!card }
+    return { key: String(g.slot), name: event.style === 'singles' ? players[0]?.name : event.teamNames[g.slot] ?? timeOf(g), time: g.time, players, hasCard: !!card }
   })
 }
 
@@ -83,7 +83,23 @@ export function groupBestBall(holes, [ga, gb], allow) {
 }
 
 /**
- * Ryder Cup: in every four-ball, team A's pair plays team B's pair at better ball.
+ * One against one, a player from each of two groups. format: 'kos' (handicap, full difference off the low),
+ * 'sm2' (Stableford points, off the low), 'sc2' (scratch). Counts holes both have played.
+ */
+export function singlesMatch(holes, [ga, gb], format, allow) {
+  const [a, b] = [ga.players[0], gb.players[0]]
+  const ph = playingHandicaps([a.courseHcp, b.courseHcp], format === 'sc2' ? 0 : allow, true)
+  const thru = Math.min(groupThru([a]), groupThru([b]))
+  const winners = []
+  for (let i = 0; i < thru; i++) {
+    const [x, y] = [a, b].map((p, k) => (format === 'sm2' ? -points(holes[i], p.gross[i], ph[k]) : p.gross[i] - shotsOnHole(ph[k], holes[i].si)))
+    winners.push(Math.sign(y - x))
+  }
+  return { ...matchProgress(winners), ahead: { A: groupThru([a]), B: groupThru([b]) } }
+}
+
+/**
+ * Four-ball team match play: in every four-ball, team A's pair plays team B's pair at better ball.
  * format: 'bbl' (off the low), 'bbstab' (Stableford points), 'bbscr' (scratch). 1 point a match.
  */
 export function ryderMatches(holes, groups, format, allow) {
@@ -123,6 +139,7 @@ export function teamStableford(holes, groups, allow) {
 export function scorePlayerEvent({ style, format }, holes, groups, allow) {
   if (style === 'fourball' && format === 'bestball') return { kind: 'match', ...groupBestBall(holes, groups, allow) }
   if (style === 'fourball') return { kind: 'table', rows: groupStableford(holes, groups, allow, format === 'best2' ? 2 : Infinity) }
+  if (style === 'singles') return { kind: 'match', ...singlesMatch(holes, groups, format, allow) }
   if (style === 'ryder') return { kind: 'ryder', ...ryderMatches(holes, groups, format, allow) }
   return { kind: 'teams', ...teamStableford(holes, groups, allow) }
 }

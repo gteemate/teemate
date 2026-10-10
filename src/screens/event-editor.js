@@ -1,5 +1,5 @@
 // Admin → Events → New/Edit: set up an event in advance in five steps:
-// details, players, teams, draw (Ryder Cup), review. Scores come from players' own cards on the day.
+// details, players, teams, draw (Four-ball team match play), review. Scores come from players' own cards on the day.
 import * as api from '../api.js'
 import { S } from '../state.js'
 import { $, esc, ini, sur, header, keepScroll, top0, render, toast, fmtHcp, goBack } from '../ui.js'
@@ -7,7 +7,7 @@ import { addDaysIso, eventDates, isoDate, today } from '../dates.js'
 import { drawTeams, drawCaptains } from '../event-scoring.js'
 
 export const EVENT_TYPES = {
-  ryder: { name: 'Ryder Cup', desc: 'Two teams. Pairs play better-ball matches, 1 point each.', formats: [['bbl', 'Better ball · off the low'], ['bbstab', 'Better ball · Stableford'], ['bbscr', 'Better ball · scratch']] },
+  ryder: { name: 'Four-ball team match play', desc: 'Two teams. Pairs play better-ball matches, 1 point each.', formats: [['bbl', 'Better ball · off the low'], ['bbstab', 'Better ball · Stableford'], ['bbscr', 'Better ball · scratch']] },
   teams: { name: 'Team Stableford', desc: 'Two teams. Everyone’s Stableford points count for their team.', formats: [['teamstab', 'Team Stableford']] },
   individual: { name: 'Individual', desc: 'A leaderboard of everyone: Stableford or net.', formats: [['stab', 'Stableford'], ['net', 'Net strokeplay']] },
   league: { name: 'League', desc: 'Over several weeks: singles or pairs Stableford, with teams for club leagues and an optional knockout finish.', formats: [['beststab', 'Best Stableford rounds']] },
@@ -59,7 +59,7 @@ function problem(ev, step) {
   }
   if (step === 2) {
     if (ev.players.length < 2) return 'Pick at least two players.'
-    if (ev.style === 'ryder' && ev.players.length % 4) return `Ryder Cup needs a multiple of 4 players (pairs v pairs). You have ${ev.players.length}.`
+    if (ev.style === 'ryder' && ev.players.length % 4) return `Four-ball team match play needs a multiple of 4 players (pairs v pairs). You have ${ev.players.length}.`
     if (ev.style === 'teams' && ev.players.length % 2) return `Two equal teams need an even number of players. You have ${ev.players.length}.`
   }
   if (step === 7 && (ev.leaguePairs?.length ?? 0) < 2) return 'Make at least two pairs.'
@@ -129,7 +129,7 @@ export function draw({ members, me }) {
     const q = (S.evQ || '').trim().toLowerCase()
     const list = members.filter(m => !q || m.name.toLowerCase().includes(q) || (m.gui || '').includes(q))
     body = `<div class="search"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="ev-q" type="search" placeholder="Name or GUI number" value="${esc(S.evQ || '')}" autocomplete="off"></div>
-      <div class="hint"><b class="count">${ev.players.length} picked</b>${ev.style === 'ryder' ? ' · Ryder Cup needs a multiple of 4 (pairs v pairs)' : ev.style === 'teams' ? ' · an even number for two equal teams' : ''}. Members only.</div>
+      <div class="hint"><b class="count">${ev.players.length} picked</b>${ev.style === 'ryder' ? ' · Four-ball team match play needs a multiple of 4 (pairs v pairs)' : ev.style === 'teams' ? ' · an even number for two equal teams' : ''}. Members only.</div>
       <div class="pick">${list.map(m => { const on = ev.players.includes(m.id); return `<button class="brow" data-pick="${m.id}" aria-pressed="${on}"><span class="av">${ini(m.name)}</span><span class="who"><strong>${esc(m.name)}${m.id === me.id ? ' (you)' : ''}</strong><small>Index ${fmtHcp(m.hcp)}</small></span><span class="check">${on ? '✓' : ''}</span></button>` }).join('')}</div>`
   } else if (step === 7) {
     const q = (S.evQ || '').trim().toLowerCase(), half = S.evHalf ?? null

@@ -89,7 +89,7 @@ describe('events: make each kind, play it, see the leaderboard', () => {
     expect(app.main()).toContain(e.A.name)
     expect(app.main()).toContain(e.B.name)
   })
-  it('Ryder Cup: teams, the draw, play the match on one card, the board shows the match result', async () => {
+  it('Four-ball team match play: teams, the draw, play the match on one card, the board shows the match result', async () => {
     app = await boot(fourBall)
     const e = await makeEvent('ryder', 'Cats v Dogs', [10, 12, 9])
     expect(e.matches[1]).toHaveLength(1) // one four-ball match on the day
@@ -124,6 +124,41 @@ describe('challenges with other four-balls', () => {
     expect(app.text()).toContain('has challenged your group')
     await app.tap('Decline')
     expect(app.db.playerEvents[0].status).toBe('cancelled')
+  })
+})
+
+describe('one against one with a player in another group', () => {
+  const twoGroups = db => { db.book(0, at(db, 570).id, [10]); db.book(7, at(db, 580).id, [11]) }
+  it('+ Add a match → One against one → someone out today → Send challenge', async () => {
+    app = await boot(twoGroups)
+    await app.tap('Scoring'); await app.tap('09:30')
+    if (app.screen() === 'Scoring round?') await app.tap('#start')
+    await app.tap('#gname')
+    await app.tap('[data-am="one"]')
+    const declan = at(app.db, 580).players.find(p => p.memberId === 11)
+    expect(app.text()).toContain('Out today')
+    expect(document.querySelector('[data-op="t' + at(app.db, 580).players.find(p => p.memberId === 7).id + '"]')).not.toBeNull()
+    expect(document.querySelector(`[data-op="t${at(app.db, 570).players.find(p => p.memberId === 10).id}"]`)).toBeNull() // on my card: listed above instead
+    await app.tap(`[data-op="t${declan.id}"]`)
+    await app.tap('[data-ok="sm2"]')
+    expect(document.getElementById('am-go').textContent).toBe('Send challenge')
+    await app.tap('#am-go')
+    expect(app.toast()).toContain('Challenge sent')
+    expect(app.db.playerEvents.at(-1)).toMatchObject({ style: 'singles', format: 'sm2', status: 'pending', players: [{ memberId: 0, team: 'A' }, { memberId: 11, team: 'B' }] })
+    expect(app.db.rounds.at(-1)?.game ?? 'none').toBe('none') // my card stays scores only
+    expect(app.text()).toMatch(/waiting for/)
+  })
+  it('accept a one-on-one from the drop-down: only the player asked answers', async () => {
+    app = await boot(db => {
+      const mine = db.book(0, at(db, 570).id, [1]), theirs = db.book(7, at(db, 560).id, [11])
+      db.playerEvents.push({ id: 6, date: db.today, style: 'singles', format: 'kos', status: 'pending', proposerSlot: theirs.slotId, proposedBy: { id: 7, name: 'Peter Walsh' },
+        createdBy: { id: 7, name: 'Peter Walsh' }, teamNames: { A: 'Peter Walsh', B: 'Gary Cochrane' },
+        players: [{ id: 2, memberId: 7, name: 'Peter Walsh', slot: theirs.slotId, team: 'A' }, { id: 1, memberId: 0, name: 'Gary Cochrane', slot: mine.slotId, team: 'B' }],
+        groups: [{ slot: theirs.slotId, time: 560, host: true, answer: 'accepted' }, { slot: mine.slotId, time: 570, host: false, answer: null }] })
+    })
+    expect(app.text()).toContain('has challenged you to a one-on-one')
+    await app.tap('Accept')
+    expect(app.db.playerEvents[0].status).toBe('accepted')
   })
 })
 

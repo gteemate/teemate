@@ -47,3 +47,8 @@ export async function answerPlayerEvent(id, accept) {
 export async function cancelPlayerEvent(id) {
   must(await sb.rpc('cancel_player_event', { p_id: id }))
 }
+
+/** Challenge one player in another group the same day (bookingPlayerId: their place on the tee sheet) to a match play game. */
+export async function proposeSingles(mySlot, bookingPlayerId, game) {
+  return must(await sb.rpc('create_singles_match', { p_my_slot: mySlot, p_opponent: bookingPlayerId, p_game: game }))
+}

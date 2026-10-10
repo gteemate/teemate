@@ -56,7 +56,7 @@ describe('four-ball v four-ball match play (best ball)', () => {
   })
 })
 
-describe('Ryder Cup', () => {
+describe('Four-ball team match play', () => {
   const g1 = { key: 'g1', name: '08:10', players: [P('a1', 'A', 0, 3, 4), P('a2', 'A', 0, 5, 4), P('b1', 'B', 0, 4, 4), P('b2', 'B', 0, 4, 4)] }
   const g2 = { key: 'g2', name: '08:20', players: [P('c1', 'A', 0), P('c2', 'B', 0), P('c3', 'A', 0), P('c4', 'B', 0)] }
 
@@ -157,7 +157,7 @@ describe('events set up in advance', () => {
     expect(grossOnDay(day1, 9, FLAT).every(x => x === null)).toBe(true)
   })
 
-  it('Ryder Cup: a drawn match is scored even when the four are on different cards', () => {
+  it('Four-ball team match play: a drawn match is scored even when the four are on different cards', () => {
     const ev = { style: 'ryder', fmt: 'bbscr', days: 2, players: [1, 2, 3, 4], team: { 1: 'A', 3: 'A', 2: 'B', 4: 'B' },
       matches: { 1: [{ a: [1, 3], b: [2, 4] }], 2: [{ a: [1, 2], b: [3, 4] }] } }
     const r = scoreAdvanceEvent(ev, FLAT, { 1: day1 }, player, 0)
@@ -358,5 +358,25 @@ describe("a member's singles league (no teams): the individual table is its play
     const r = scoreLeague(event, FLAT, [{ week: 1, memberId: 1, roundId: 9 }, { week: 1, memberId: 2, roundId: 9 }], cards, id => ({ name: `P${id}`, courseHcp: 0 }), 1)
     expect(r.players.map(p => [p.id, p.total])).toEqual([[1, 36], [2, 18]])
     expect(r.teams).toEqual([])
+  })
+})
+
+import { singlesMatch } from './event-scoring.js'
+describe('one against one with a player in another group', () => {
+  const g = (key, p) => ({ key, name: p.name, players: [p] })
+  it('handicap match play: full difference off the low, holes both have played', () => {
+    // 2 shots' difference on SI 1–2: B's 5s halve A's 4s there, then A's 4s beat B's 5s
+    const r = singlesMatch(FLAT, [g('1', P('Ann', 'A', 4, 4, 4, 4, 4)), g('2', P('Bob', 'B', 6, 5, 5, 5))], 'kos', 1)
+    expect(r.thru).toBe(3)
+    expect(r.lead).toBe('A')
+    expect(r.ahead).toEqual({ A: 4, B: 3 })
+  })
+  it('scratch: no shots', () => {
+    const r = singlesMatch(FLAT, [g('1', P('Ann', 'A', 0, 5, 5)), g('2', P('Bob', 'B', 18, 4, 4))], 'sc2', 1)
+    expect(r.lead).toBe('B')
+    expect(r.text).toBe('2 up')
+  })
+  it('scored by scorePlayerEvent as a match', () => {
+    expect(scorePlayerEvent({ style: 'singles', format: 'sm2' }, FLAT, [g('1', P('Ann', 'A', 0, 4)), g('2', P('Bob', 'B', 0, 4))], 0.85).kind).toBe('match')
   })
 })

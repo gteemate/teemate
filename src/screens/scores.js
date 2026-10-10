@@ -77,7 +77,7 @@ function eventsBottom(events, card = false) {
   // On New round it's an invitation worth noticing; on the scorecard, a quiet link (scoring comes first there).
   return card ? `<button class="card pecard" id="pe-new">
       <span class="pe-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4a3 3 0 0 0 4 4M17 6h3a3 3 0 0 1-4 4M12 14v4M8 21h8"/></svg></span>
-      <span class="pe-tx"><b>Play a match against other groups</b><small>Challenge another four-ball on today’s tee sheet: Ryder Cup, better-ball or team Stableford</small></span>
+      <span class="pe-tx"><b>Play a match against other groups</b><small>Challenge another four-ball on today’s tee sheet: four-ball team match play, better ball or team Stableford</small></span>
       <span class="chev" aria-hidden="true">›</span></button>`
     : '<button class="linkbtn" id="pe-new" style="align-self:flex-start">+ Play an event with other groups</button>'
 }
@@ -330,22 +330,37 @@ function matchSheet({ L, n, ps }) {
   const group = playable(L, n), ones = oneOnOneGames(L)
   let mode = null, gk = group.some(x => x.k === now.base) && !now.pair ? now.base : preferredGame(L, n)
   let ok = ones.some(x => x.k === now.base) ? now.base : ones.find(x => x.k === 'kos')?.k ?? ones[0]?.k, opp = null
+  // Members out today in other groups (from a booked tee time only): [{ id (booking player), name, time }]
+  let out = round.slotId ? null : []
   const close = () => { $('modal').innerHTML = '' }
   const save = async (game, pairsMenu = false) => { round.game = game; if (pairsMenu) S.gmenu = true; await api.saveRound(round); close(); keepScroll(render) }
+  const challenge = async () => {
+    const who = out.find(x => x.id === +opp.slice(1))
+    $('am-go').disabled = true
+    try { await api.proposeSingles(round.slotId, who.id, ok) } catch (err) { $('amerr').textContent = err.message; $('am-go').disabled = false; return }
+    close(); await keepScroll(render)
+    toast(`Challenge sent to ${who.name}. It’s on once they accept`)
+  }
   const choice = (k, t, sub) => `<button class="card pecard" data-am="${k}"><span class="pe-tx"><b>${t}</b><small>${sub}</small></span><span class="chev">›</span></button>`
   const radio = (attr, x, on) => `<button class="gamecard sm" role="radio" aria-checked="${on}" ${attr}="${x.k}"><span class="radio"></span><span class="who"><strong>${esc(x.name)}</strong><small>${esc(x.desc)}</small></span></button>`
+  const person = (key, name, sub = '') => `<button class="gamecard sm" role="radio" aria-checked="${opp === key}" data-op="${key}"><span class="radio"></span><span class="who"><strong>${esc(name)}</strong>${sub ? `<small>${sub}</small>` : ''}</span></button>`
   const draw = () => {
     const body = !mode ? `<h4 id="amt">${now.base === NO_GAME ? 'Add a match' : 'Change the match'}</h4>
         ${n >= 2 ? choice('group', `A game for ${n === 4 ? 'the four-ball' : n === 3 ? 'the three-ball' : 'the two of you'}`, 'Better ball, skins, Stableford and more, everyone on this card') : ''}
-        ${n >= 2 ? choice('one', 'One against one', 'You against one player on your card, match play') : ''}
+        ${n >= 2 || round.slotId ? choice('one', 'One against one', `You against one player${n >= 2 ? ' on your card' : ''}${round.slotId ? `${n >= 2 ? ' or' : ''} out today` : ''}, match play`) : ''}
         ${choice('challenge', 'Challenge another four-ball', 'A match against a group on today’s tee sheet')}
         ${now.base !== NO_GAME ? choice('none', 'No match: scores only', 'Everyone’s own score and Stableford points') : ''}`
       : mode === 'group' ? `<h4 id="amt">A game for the group</h4><div class="games" role="radiogroup" aria-label="Game">${group.map(x => radio('data-gk', x, x.k === gk)).join('')}</div>`
-      : `<h4 id="amt">One against one</h4><span class="kicker">Against</span>
-        <div class="games" role="radiogroup" aria-label="Opponent">${ps.map((p, k) => (k ? `<button class="gamecard sm" role="radio" aria-checked="${opp === k}" data-op="${k}"><span class="radio"></span><span class="who"><strong>${esc(p.name)}</strong></span></button>` : '')).join('')}</div>
-        <span class="kicker">Game</span><div class="games" role="radiogroup" aria-label="Game">${ones.map(x => radio('data-ok', x, x.k === ok)).join('')}</div>`
+      : `<h4 id="amt">One against one</h4>
+        ${n >= 2 ? `<span class="kicker">On your card</span><div class="games" role="radiogroup" aria-label="Opponent on your card">${ps.map((p, k) => (k ? person(`c${k}`, p.name) : '')).join('')}</div>` : ''}
+        ${round.slotId ? `<span class="kicker">Out today</span>${out == null ? '<p class="hint">Loading today’s tee sheet…</p>'
+          : out.length ? `<div class="games" role="radiogroup" aria-label="Opponent out today">${out.map(x => person(`t${x.id}`, x.name, `${hhmm(x.time)} · they’re asked to accept`)).join('')}</div>`
+          : '<p class="hint">No other members are booked today.</p>'}` : ''}
+        <span class="kicker">Game</span><div class="games" role="radiogroup" aria-label="Game">${ones.map(x => radio('data-ok', x, x.k === ok)).join('')}</div>
+        <p class="gerr" id="amerr" role="alert"></p>`
+    const go = mode === 'one' && opp == null ? 'Pick who' : mode === 'one' && opp[0] === 't' ? 'Send challenge' : 'Play this'
     $('modal').innerHTML = `<div class="overlay" id="ovl"><div class="sheet" role="dialog" aria-labelledby="amt">${body}
-      <div class="gm-btns"><button type="button" class="ghost" id="am-no">${mode ? 'Back' : 'Cancel'}</button>${mode ? `<button class="primary" id="am-go" ${mode === 'one' && opp == null ? 'disabled' : ''}>${mode === 'one' && opp == null ? 'Pick who' : 'Play this'}</button>` : ''}</div></div></div>`
+      <div class="gm-btns"><button type="button" class="ghost" id="am-no">${mode ? 'Back' : 'Cancel'}</button>${mode ? `<button class="primary" id="am-go" ${mode === 'one' && opp == null ? 'disabled' : ''}>${go}</button>` : ''}</div></div></div>`
     $('am-no').onclick = () => { if (mode) { mode = null; draw() } else close() }
     $('ovl').onclick = e => { if (e.target.id === 'ovl') close() }
     document.querySelectorAll('[data-am]').forEach(b => (b.onclick = async () => {
@@ -353,11 +368,17 @@ function matchSheet({ L, n, ps }) {
       if (k === 'none') return save(NO_GAME)
       if (k === 'challenge') { close(); S.sview = 'challenge'; await render(); top0(); return }
       mode = k; draw()
+      if (k === 'one' && out == null) {
+        const onCard = new Set(round.lineup.map(x => x.m).filter(m => m != null))
+        const sheet = await api.getTeeSheet(isoDate(today()))
+        out = sheet.filter(sl => sl.id !== round.slotId).flatMap(sl => sl.players.filter(p => !p.guest && !onCard.has(p.memberId)).map(p => ({ id: p.id, name: p.name, time: sl.time })))
+        if (mode === 'one') draw()
+      }
     }))
     document.querySelectorAll('[data-gk]').forEach(b => (b.onclick = () => { gk = b.dataset.gk; draw() }))
     document.querySelectorAll('[data-ok]').forEach(b => (b.onclick = () => { ok = b.dataset.ok; draw() }))
-    document.querySelectorAll('[data-op]').forEach(b => (b.onclick = () => { opp = +b.dataset.op; draw() }))
-    if ($('am-go')) $('am-go').onclick = () => (mode === 'group' ? save(gk, n === 4 && !!L.lib[gk]?.play?.pairs) : save(oneOnOneKey(ok, round.lineup[0], round.lineup[opp])))
+    document.querySelectorAll('[data-op]').forEach(b => (b.onclick = () => { opp = b.dataset.op; draw() }))
+    if ($('am-go')) $('am-go').onclick = () => (mode === 'group' ? save(gk, n === 4 && !!L.lib[gk]?.play?.pairs) : opp[0] === 't' ? challenge() : save(oneOnOneKey(ok, round.lineup[0], round.lineup[+opp.slice(1)])))
   }
   draw()
 }

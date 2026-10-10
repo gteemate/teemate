@@ -10,6 +10,7 @@ const proposerSlot = e => e.proposerSlot ?? e.groups.find(g => g.host)?.slot
 /** A player event (match) invitation my group still has to answer (not one my group proposed). */
 export function needsMyAnswer(e, me) {
   if (e.status !== 'pending') return false
+  if (e.style === 'singles' && e.players.find(p => p.team === 'B')?.memberId !== me.id) return false // a one-on-one: just the player asked
   const mySlot = e.players.find(p => p.memberId === me.id)?.slot
   const mine = e.groups.find(g => g.slot === mySlot)
   return !!mine && mySlot !== proposerSlot(e) && mine.answer == null
