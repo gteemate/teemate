@@ -8,9 +8,12 @@
 //
 // Needs SUPABASE_ACCESS_TOKEN and VITE_SUPABASE_URL in .env (live) and .env.test (test; see .env.example).
 import { readFileSync, readdirSync, existsSync } from 'node:fs'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
+import { fileURLToPath, pathToFileURL } from 'node:url'
+import { spawnSync } from 'node:child_process'
 
-const root = new URL('..', import.meta.url).pathname
+// The project folder (worked out with Node's path tools: inside the simulated browser, URL resolves differently).
+const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 
 // Which database: the TEST one (teemate-test, settings in .env.test) unless --live is given. Seeding, scenarios and
 // the race test wipe or add data, so they only ever run against the test database.
@@ -51,7 +54,10 @@ const read = async res => {
   if (!res.ok) throw new Error(`${res.status}: ${body}`)
   return JSON.parse(body)
 }
-const send = sql => fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, {
+// The end-to-end tests run inside a simulated browser, whose fetch drops the Authorization header: they pass Node's.
+let doFetch = (...a) => fetch(...a)
+export const useFetch = f => { doFetch = f }
+const send = sql => doFetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ query: sql }),
@@ -80,12 +86,37 @@ async function seed() {
 }
 
 // Every situation the app handles, on top of the sample club (test database only).
-async function scenarios() {
+export async function scenarios() {
   await seed()
   process.stdout.write('Loading supabase/scenarios.sql … ')
   const r = await query(readFileSync(join(root, 'supabase/scenarios.sql'), 'utf8'))
   console.log('done')
   console.log(r.at?.(-1) ?? r)
+}
+
+// End-to-end test sign-ins (test database only): Gary (0, admin) and Declan (1) with this password. The scenarios
+// are loaded with Gary's email swapped for the test one; afterwards `scenarios` puts the owner's email back.
+export const E2E = { gary: 'e2e-gary@teemate.test', declan: 'e2e-declan@teemate.test' }
+export async function e2eSetup(password) {
+  const made = spawnSync(process.execPath, [join(root, 'scripts/make-seed.mjs')], { env: { ...process.env, OWNER_EMAIL: E2E.gary }, encoding: 'utf8' })
+  if (made.status !== 0) throw new Error(made.stderr)
+  await scenarios()
+  const pw = password.replace(/'/g, "''")
+  await query(`
+    delete from auth.users where email like 'e2e-%@teemate.test';
+    update public.members set email = '${E2E.declan}' where id = 1;
+    with u as (
+      insert into auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
+                              created_at, updated_at, confirmation_token, email_change, email_change_token_new, recovery_token)
+      select '00000000-0000-0000-0000-000000000000', gen_random_uuid(), 'authenticated', 'authenticated', e, extensions.crypt('${pw}', extensions.gen_salt('bf')), now(),
+             '{"provider":"email","providers":["email"]}', '{}', now(), now(), '', '', '', ''
+        from unnest(array['${E2E.gary}', '${E2E.declan}']) e
+      returning id, email)
+    insert into auth.identities (id, user_id, provider_id, identity_data, provider, created_at, updated_at, last_sign_in_at)
+    select gen_random_uuid(), id, id::text, jsonb_build_object('sub', id::text, 'email', email, 'email_verified', true), 'email', now(), now(), now() from u;
+    update public.members m set user_id = u.id from auth.users u where lower(u.email) = m.email and m.user_id is null;`)
+  const linked = await query(`select count(*)::int as n from public.members m join auth.users u on u.id = m.user_id where u.email like 'e2e-%@teemate.test'`)
+  if (linked[0].n !== 2) throw new Error('The end-to-end sign-ins were not linked to Gary and Declan')
 }
 
 async function test() {
@@ -181,15 +212,17 @@ async function race() {
   }
 }
 
-const [cmd, arg] = process.argv.slice(2).filter(a => a !== '--live')
+// Run as a command (node scripts/db.mjs …); when imported (the end-to-end tests) just export query and friends.
+const asCommand = import.meta.url === pathToFileURL(process.argv[1] ?? '').href
+const [cmd, arg] = asCommand ? process.argv.slice(2).filter(a => a !== '--live') : []
 const run = { migrate, seed, scenarios, test, race: async () => process.exit((await race()) ? 0 : 1), sql: async () => console.log(JSON.stringify(await query(arg), null, 2)) }[cmd]
-if (!run) {
+if (asCommand && !run) {
   console.error('Usage: node scripts/db.mjs migrate | seed | scenarios | test | race | sql "<sql>"  [--live]')
   process.exit(1)
 }
-if (LIVE && TEST_ONLY.has(cmd)) {
+if (asCommand && LIVE && TEST_ONLY.has(cmd)) {
   console.error(`"${cmd}" only runs against the test database: it changes or wipes data. Refusing to run it on live.`)
   process.exit(1)
 }
-console.error(LIVE ? '→ LIVE database' : '→ test database (teemate-test)')
-run().catch(e => { console.error(e.message); process.exit(1) })
+if (asCommand) console.error(LIVE ? '→ LIVE database' : '→ test database (teemate-test)')
+if (asCommand) run().catch(e => { console.error(e.message); process.exit(1) })
