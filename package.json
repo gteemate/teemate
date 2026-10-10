@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.3",
+    "leaflet": "^1.9.4",
     "qrcode-generator": "^1.4.4"
   }
 }
