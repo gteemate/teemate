@@ -8,6 +8,7 @@
 export { getMe, forgetMe } from './api/client.js'
 export * from './api/auth.js'
 export * from './api/club.js'
+export * from './api/hut.js'
 export * from './api/members.js'
 export * from './api/course.js'
 export * from './api/tee-times.js'
