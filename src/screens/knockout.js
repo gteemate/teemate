@@ -4,7 +4,7 @@
 // publish) and set any result or walkover.
 import * as api from '../api.js'
 import { S } from '../state.js'
-import { $, esc, header, keepScroll, render, toast, top0 } from '../ui.js'
+import { $, esc, header, keepScroll, render, toast, top0, goBack } from '../ui.js'
 import { eventDates, isoDate, today } from '../dates.js'
 import { roundName, myNextMatch, matchState, entryName, champion, spreadDates } from '../knockout.js'
 import { koStates, koStateText } from './ko-card.js'
@@ -23,7 +23,7 @@ export async function load() {
 const RESULTS = ['1 up', '2&1', '3&2', '4&3', '5&4', 'At the 19th', 'Conceded']
 
 export function draw({ comp, me, members, matches = [], entries = [], mine, course, games, states = {} }) {
-  const back = async () => { S.aview = S.koFrom ?? 'comp'; await render(); top0() }
+  const back = () => goBack(async () => { S.aview = S.koFrom ?? 'comp'; await render(); top0() })
   if (!comp) { header('Competition', '', back); $('main').innerHTML = '<div class="screen"><div class="empty-state">This competition is no longer available.</div></div>'; return }
   const rounds = Math.max(0, ...matches.map(m => m.round))
   const name = id => entryName(id, entries, members)

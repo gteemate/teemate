@@ -2,7 +2,7 @@
 // Shown on the Leaderboard tab while it's on, and from Admin → Events (View / Results).
 import * as api from '../api.js'
 import { S } from '../state.js'
-import { $, esc, ini, sur, header, keepScroll, render, top0, toast } from '../ui.js'
+import { $, esc, ini, sur, header, keepScroll, render, top0, toast, goBack } from '../ui.js'
 import { courseHandicap, fmtPts, toPar } from '../scoring.js'
 import { scoreAdvanceEvent, scoreLeague, scorePairsLeague, leagueSeeds } from '../event-scoring.js'
 import { spreadDates } from '../knockout.js'
@@ -199,7 +199,7 @@ function leagueHtml({ e, members, course, L, entries, cards, me }, top) {
 // As an Admin → Events screen (View / Results).
 export const load = () => loadBoard(S.evId)
 export function draw(data) {
-  const back = async () => { S.aview = 'events'; S.evDay = null; await render(); top0() }
+  const back = () => { S.evDay = null; return goBack(async () => { S.aview = 'comp'; await render(); top0() }) } // the way you came
   if (!data.e) { header('Event', '', back); $('main').innerHTML = '<div class="screen"><div class="empty-state">This event is no longer available.</div></div>'; return }
   header(esc(data.e.name), `${data.e.players.length} player${data.e.players.length === 1 ? '' : 's'}`, back)
   $('main').innerHTML = boardHtml(data)

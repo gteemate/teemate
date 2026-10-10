@@ -1,7 +1,7 @@
 // Admin → Tee times → a time: tap an open space to add a member or a guest, then confirm.
 import * as api from '../api.js'
 import { S } from '../state.js'
-import { $, esc, ini, header, keepScroll, top0, render, toast, parseHcp, fmtHcp } from '../ui.js'
+import { $, esc, ini, header, keepScroll, top0, render, toast, parseHcp, fmtHcp, goBack } from '../ui.js'
 import { isoDate, nextDays, dayMonth, longDay, hhmm, fromIso } from '../dates.js'
 import { nextFreeNote } from '../release.js'
 import { pickerGroups } from '../friend-link.js'
@@ -12,7 +12,7 @@ export async function load() {
   return { date, slot: sheet.find(s => s.id === S.slotId), me, members, friends, points }
 }
 
-const back = () => { S.aview = 'tee'; S.guests = []; S.gmodal = false; render() }
+const back = () => { S.guests = []; S.gmodal = false; return goBack(() => { S.aview = 'tee'; return render() }) } // to the tee sheet, or a match you came from
 
 const sub = m => [m.gui && 'GUI ' + m.gui, m.hcp != null && 'HCP ' + fmtHcp(m.hcp)].filter(Boolean).join(' · ')
 

@@ -4,7 +4,7 @@
 // fixture's state, so it can show the lead and offer the result.
 import * as api from '../api.js'
 import { S } from '../state.js'
-import { $, esc, ini, sur, header, render, top0 } from '../ui.js'
+import { $, esc, ini, sur, header, render, top0, goBack } from '../ui.js'
 import { courseHandicap, shotsOnHole } from '../scoring.js'
 import { buildLibrary, gameSpec, teeRating } from '../games.js'
 import { entryName, entryPlayers, koCardState, koSpec, roundName } from '../knockout.js'
@@ -43,7 +43,7 @@ export async function load() {
 }
 
 export function draw({ comp, m, matches = [], entries = [], members, course, st }) {
-  const back = async () => { S.aview = S.kcFrom ?? 'ko'; await render(); top0() }
+  const back = () => goBack(async () => { S.aview = S.kcFrom ?? 'ko'; await render(); top0() })
   if (!comp || !m || !st) { header('Scorecard', '', back); $('main').innerHTML = '<div class="screen"><div class="empty-state">This scorecard isn’t available any more.</div></div>'; return }
   const rounds = Math.max(...matches.map(x => x.round)), name = id => entryName(id, entries, members)
   header(`${esc(name(m.aEntry))} v ${esc(name(m.bEntry))}`, `${esc(comp.name)} · ${roundName(m.round, rounds)}`, back)

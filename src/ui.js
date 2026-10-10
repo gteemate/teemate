@@ -46,6 +46,13 @@ export function toast(t) {
 // trail of screens the member came through (main.js sets that with setDefaultBack).
 let defaultBack = () => null
 export const setDefaultBack = f => (defaultBack = f)
+/** Back the way you came (the trail of screens main.js keeps); `otherwise` when there's nowhere to go back to.
+ *  Screens that tidy up before leaving call this rather than sending you to a fixed screen. */
+export async function goBack(otherwise) {
+  const go = defaultBack()
+  if (go) await go()
+  else await otherwise?.()
+}
 export function header(title, sub, back, backLabel = 'Back') {
   const go = back ?? defaultBack()
   $('hdr').innerHTML = `${go ? `<button class="back" id="back">‹ ${backLabel}</button>` : ''}<h2>${title}</h2>${sub ? `<div class="sub">${sub}</div>` : ''}`

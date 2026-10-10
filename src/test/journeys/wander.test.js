@@ -69,4 +69,52 @@ describe('wander: every screen within two taps of Home', () => {
     expect(fails).toEqual([])
     expect(reached.size, `pages reached: ${[...reached].join(', ')}`).toBeGreaterThanOrEqual(10)
   }, 60000)
+
+  it('one press of Back returns to the screen you were just on (every screen within two taps of Home)', async () => {
+    app = await boot(busy)
+    if (app.screen() !== 'Home') await app.homeFromHere()
+    const fails = []
+    let checked = 0
+    const firsts = app.labels().filter(l => !SKIP.test(l))
+    for (const a of firsts) {
+      app.done(); app = await boot(busy)
+      if (app.screen() !== 'Home') await app.homeFromHere()
+      await app.tap(a, { count: false })
+      const there = app.screen()
+      if (there === 'Home') continue // a drop-down or sheet, not a screen
+      const seconds = app.labels().filter(l => !SKIP.test(l) && l !== '‹ Back' && !firsts.includes(l))
+      // one Back from a first-level screen goes Home
+      await app.tap('#back', { count: false }).catch(() => {})
+      if (app.screen() !== 'Home') { fails.push(`${there}: Back went to "${app.screen()}", not Home`); await app.homeFromHere().catch(() => {}) }
+      for (const b of seconds) {
+        try {
+          // a fresh app for each pair: screens remember things (a Competitions tab) that would hide the next one
+          app.done(); app = await boot(busy)
+          if (app.screen() !== 'Home') await app.homeFromHere()
+          await app.tap(a, { count: false })
+          if (app.screen() !== there || !app.labels().includes(b)) continue
+          await app.tap(b, { count: false })
+          const next = app.screen()
+          if (next === there || !document.getElementById('back')) continue // stayed (a sheet, a tab) or a round screen
+          checked++
+          await app.tap('#back', { count: false })
+          if (app.screen() !== there) fails.push(`${there} → ${b.slice(0, 30)} (${next}): Back went to "${app.screen()}", not "${there}"`)
+        } catch (e) { fails.push(`${a} → ${b}: ${e.message.split('\n')[0]}`); app.errors.length = 0 }
+      }
+    }
+    expect(fails).toEqual([])
+    expect(checked, 'it really checked screens').toBeGreaterThanOrEqual(8)
+  }, 60000)
+
+  it("a competition's leaderboard: Back returns to Competitions (not the old Events page)", async () => {
+    app = await boot()
+    await app.tap('Competition')
+    await app.tap('[data-tab="entered"]')
+    await app.tap('Winter League')
+    expect(app.screen()).not.toBe('Competitions')
+    await app.tap('#back')
+    expect(app.screen()).toBe('Competitions')
+    await app.tap('#back')
+    expect(app.screen()).toBe('Home')
+  })
 })

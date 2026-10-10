@@ -3,7 +3,7 @@
 // which also gets its one action: Book this match / Add the rest / Start scoring (matchActionHtml, also on the board).
 import * as api from '../api.js'
 import { S } from '../state.js'
-import { $, esc, ini, sur, header, render, toast, top0 } from '../ui.js'
+import { $, esc, ini, sur, header, render, toast, top0, goBack } from '../ui.js'
 import { hhmm, longDay, fromIso, isoDate, today, nextDays } from '../dates.js'
 import { shotsOnHole } from '../scoring.js'
 import { buildLibrary, preferredGame } from '../games.js'
@@ -67,7 +67,7 @@ export function bindMatchAction(st) {
 const stateText = d => (d === 0 ? 'AS' : `${Math.abs(d)}`)
 
 export function draw(data) {
-  const back = async () => { S.aview = S.matchFrom ?? 'evboard'; await render(); top0() }
+  const back = () => goBack(async () => { S.aview = S.matchFrom ?? 'evboard'; await render(); top0() })
   const { e } = data
   const day = S.matchDay, no = S.matchNo
   const r = e && boardResult(data)

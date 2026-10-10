@@ -3,7 +3,7 @@
 // published in one step; everyone picked sees it under Entered.
 import * as api from '../api.js'
 import { S } from '../state.js'
-import { $, esc, ini, header, render, toast, top0 } from '../ui.js'
+import { $, esc, ini, header, render, toast, top0, goBack } from '../ui.js'
 import { addDaysIso, isoDate, today } from '../dates.js'
 import { spreadDates } from '../knockout.js'
 
@@ -17,7 +17,7 @@ const F = () => (S.koNew ??= { name: '', kind: 'singles', picked: [], pairs: [],
 
 export function draw({ members, friends, me }) {
   const f = F()
-  const back = async () => { S.koNew = null; S.aview = 'comp'; await render(); top0() }
+  const back = () => { S.koNew = null; return goBack(async () => { S.aview = 'comp'; await render(); top0() }) }
   header('New knockout', 'You pick the players; the draw is random', back)
   const fav = new Set(friends.buddies.filter(b => b.favourite).map(b => b.id)), mine = new Set(friends.buddies.map(b => b.id))
   const inPair = id => f.pairs.some(p => p.includes(id))

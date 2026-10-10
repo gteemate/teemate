@@ -3,7 +3,7 @@
 // Reached from the "Halfway hut is open" alert after hole 8, or Account → Halfway hut while the hut is on.
 import * as api from '../api.js'
 import { S } from '../state.js'
-import { $, esc, header, keepScroll, render, toast, top0 } from '../ui.js'
+import { $, esc, header, keepScroll, render, toast, top0, goBack } from '../ui.js'
 import { menuSections, orderTotal, penceText, orderable } from '../hut.js'
 
 export async function load() {
@@ -20,7 +20,7 @@ export function draw({ hut, orders, card }) {
   // From the scorecard's "would you like to order?": back to the scorecard. From anywhere else (Account): back the way
   // you came. (Always going to the scorecard during a round made a loop: its back led here again.)
   const toCard = live && S.hutFrom === 'card'
-  const back = async () => { S.hutPicks = {}; S.hutNote = ''; S.hutFrom = null; if (toCard) { S.tab = 'scores'; S.sview = 'card' } else S.aview = 'account'; await render(); top0() }
+  const back = async () => { S.hutPicks = {}; S.hutNote = ''; S.hutFrom = null; if (toCard) { S.tab = 'scores'; S.sview = 'card'; await render(); top0() } else await goBack(async () => { S.aview = 'account'; await render(); top0() }) }
   header('Halfway hut', hut.on ? 'Pay when you collect at the hut' : 'Not taking orders just now', back, toCard ? 'Scorecard' : 'Back')
   const picks = (S.hutPicks ??= {})
   const total = orderTotal(hut.menu, picks), count = Object.values(picks).reduce((t, q) => t + q, 0)

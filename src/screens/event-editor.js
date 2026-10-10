@@ -2,7 +2,7 @@
 // details, players, teams, draw (Ryder Cup), review. Scores come from players' own cards on the day.
 import * as api from '../api.js'
 import { S } from '../state.js'
-import { $, esc, ini, sur, header, keepScroll, top0, render, toast, fmtHcp } from '../ui.js'
+import { $, esc, ini, sur, header, keepScroll, top0, render, toast, fmtHcp, goBack } from '../ui.js'
 import { addDaysIso, eventDates, isoDate, today } from '../dates.js'
 import { drawTeams, drawCaptains } from '../event-scoring.js'
 
@@ -42,7 +42,12 @@ export async function load() {
   return { members, me }
 }
 
-const leave = async () => { S.ev = null; S.evQ = ''; S.evSwap = null; S.evTeam = null; cache = null; S.aview = 'events'; await render(); top0() }
+// Done (saved or cancelled): back the way you came. Deleted: to Competitions (its leaderboard has gone).
+const leave = async (deleted = false) => {
+  S.ev = null; S.evQ = ''; S.evSwap = null; S.evTeam = null; cache = null
+  if (deleted) { S.aview = 'comp'; await render(); top0(); return }
+  await goBack(async () => { S.aview = 'comp'; await render(); top0() })
+}
 const teamOf = (ev, id) => ev.team[id]
 const sideIds = (ev, t) => ev.players.filter(id => teamOf(ev, id) === t)
 
@@ -364,7 +369,7 @@ export function draw({ members, me }) {
     const b = $('ev-del')
     if (b.dataset.armed !== '1') { b.dataset.armed = '1'; b.textContent = 'Tap again to delete this event'; return }
     try { await api.deleteEvent(ev.id) } catch (e) { $('ev-err').textContent = e.message; return }
-    await leave()
+    await leave(true)
     toast('Event deleted')
   })
   $('ev-next').onclick = async () => {
