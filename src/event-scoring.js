@@ -96,7 +96,8 @@ export function ryderMatches(holes, groups, format, allow) {
     for (let i = 0; i < thru; i++) winners.push(betterBallWinner(holeCalc(holes[i], four.map(p => p.gross[i]), ph), format === 'bbstab' ? 'pts' : 'net'))
     const m = matchProgress(winners)
     const res = { st: m.thru === 0 ? 'ns' : m.finished ? 'done' : 'live', d: m.diff, txt: m.text, thru: m.thru }
-    return { key: g.key, name: g.name, a: a.map(p => p.name), b: b.map(p => p.name), res, match: m }
+    const players = four.map((p, k) => ({ id: p.id, name: p.name, team: p.team, gross: p.gross, ph: ph[k] })) // for the match's page
+    return { key: g.key, name: g.name, a: a.map(p => p.name), b: b.map(p => p.name), res, match: m, players }
   })
   return { matches, score: teamEventScore(matches) }
 }

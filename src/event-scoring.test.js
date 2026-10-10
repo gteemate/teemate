@@ -77,6 +77,14 @@ describe('Ryder Cup', () => {
     expect(r.score).toMatchObject({ cA: 0.5, cB: 1.5 })
   })
 
+  it('each match also gives its players (gross, playing handicap) and the running state per hole, for its page', () => {
+    const m = ryderMatches(FLAT, [g1], 'bbl', 0.9).matches[0]
+    expect(m.players.map(p => [p.id, p.team])).toEqual([['a1', 'A'], ['a2', 'A'], ['b1', 'B'], ['b2', 'B']])
+    expect(m.players[0]).toHaveProperty('gross')
+    expect(m.players[0]).toHaveProperty('ph')
+    expect(m.match.running).toEqual([1, 1])
+  })
+
   it('Stableford better ball compares points, not net', () => {
     // a1 with 2 shots on SI 1 scores 5 = net 3 = 3 pts; b1 a scratch 3 = 3 pts. Halved on points.
     const g = { key: 'g', name: 'g', players: [P('a1', 'A', 36, 5), P('a2', 'A', 0, 6), P('b1', 'B', 0, 3), P('b2', 'B', 0, 6)] }
