@@ -201,6 +201,7 @@ export function makeWorld(today, setup = () => {}) {
   }
   // Record every call (journeys check what reached the server).
   for (const [k, f] of Object.entries(api)) api[k] = (...a) => { db.calls.push(k); return f(...a) }
+  db.slotsOn = sheet
   setup(db, { sheet, slotById, id })
   return { api, db }
 }
