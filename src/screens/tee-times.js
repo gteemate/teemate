@@ -39,11 +39,12 @@ export function draw({ days, sheet, points, me, rules, req, skew }) {
   if (req) $('dateWrap').innerHTML = `<div class="reqdate"><label for="rq-date">Day</label><input type="date" id="rq-date" class="plainsel" min="${req.min}" max="${req.max}" value="${req.date}">
     <span class="hint">Any day not open for booking yet. Pick a time, then say why you need it; an admin approves or declines.</span></div>`
   else $('dateWrap').innerHTML = `<div class="dates" role="group" aria-label="Choose day">${days.map((d, i) => `<button class="day" data-d="${i}" aria-pressed="${i === S.day}"><small>${i === 0 ? 'Today' : DN[d.getDay()]}</small><b>${d.getDate()}</b></button>`).join('')}</div>`
-  const list = sheet.filter(s => S.filter === 'all' || (S.filter === 'open' && free(s) > 0) || (S.filter === '2' && free(s) >= 2))
+  const need = S.matchPick ? 1 + S.matchPick.length : 0 // Book this match: only times with room for everyone in it
+  const list = sheet.filter(s => (need ? free(s) >= need : S.filter === 'all' || (S.filter === 'open' && free(s) > 0) || (S.filter === '2' && free(s) >= 2)))
   const left = points.allowance - points.mine.reduce((t, x) => t + x.points, 0)
   const until = () => (at - now() < DAY ? countdown(at - now()) : 'You can see the times, but not book them yet.')
   const banner = closed ? `<div class="relbanner"><b>${openLabel(iso, rules)}</b><span id="relcd">${me.admin ? 'Not open to members yet. You can book it as an admin.' : until()}</span>${me.admin ? '' : '<button class="linkbtn" id="rq-day">Request a time on this day</button>'}</div>` : ''
-  let h = `<div class="screen">${banner}<div class="ptsmini${left < points.cost ? ' low' : ''}">🎟️ <b>${left}</b> of ${points.allowance} guest points left · ${points.cost} per guest${left < points.cost ? ' · not enough for a guest' : ''}</div><div class="filters" role="group" aria-label="Filter">${[['all', 'All'], ['open', 'Has space'], ['2', '2+ spaces']].map(([k, l]) => `<button class="chip" data-f="${k}" aria-pressed="${S.filter === k}">${l}</button>`).join('')}</div>`
+  let h = `<div class="screen">${banner}${need ? `<div class="hcpnote">Booking your match: showing tee times with room for all ${need}.</div>` : ''}<div class="ptsmini${left < points.cost ? ' low' : ''}">🎟️ <b>${left}</b> of ${points.allowance} guest points left · ${points.cost} per guest${left < points.cost ? ' · not enough for a guest' : ''}</div><div class="filters" role="group" aria-label="Filter">${[['all', 'All'], ['open', 'Has space'], ['2', '2+ spaces']].map(([k, l]) => `<button class="chip" data-f="${k}" aria-pressed="${S.filter === k}">${l}</button>`).join('')}</div>`
   for (const [g, a, b] of [['Morning', 0, 720], ['Afternoon', 720, 900], ['Twilight', 900, 1440]]) {
     const gs = list.filter(s => s.time >= a && s.time < b)
     if (!gs.length) continue

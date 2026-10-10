@@ -52,7 +52,7 @@ function screenFor() {
 // Where the member has been, for the back arrows. A place is the screen state, with the parts that
 // don't apply to a tab left out ('-'), so returning to a tab doesn't depend on stale sub-screens.
 const place = () => (S.tab === 'home' ? { tab: 'home', aview: S.aview, sview: '-' } : { tab: S.tab, aview: '-', sview: S.tab === 'scores' ? S.sview : '-' })
-const nav = navStack({ tab: 'home', aview: 'home', sview: '-' })
+const nav = navStack({ tab: 'home', aview: 'home', sview: '-' }, { passing: p => p.aview === 'booked' }) // Booked: passed through
 setDefaultBack(() => (nav.canGoBack() ? async () => {
   const p = nav.back()
   S.tab = p.tab
@@ -120,7 +120,8 @@ async function render() {
     else {
       if (!startTabChosen) { startTabChosen = true; S.tab = await chooseStartTab(); if (S.tab === 'home') S.aview = 'home'; else S.sview = 'card'; nav.reset(place()) }
       if (pendingFriend()) { S.tab = 'home'; S.aview = 'friend' } // opened from a friend link (maybe before signing in)
-      nav.visit(place())
+      if (S.matchPick && !(S.tab === 'home' && ['tee', 'book'].includes(S.aview))) S.matchPick = null // left Book this match
+      if (S.navReset) { S.navReset = false; nav.reset(place()) } else nav.visit(place()) // a finished booking starts afresh from Home
       screen = screenFor()
     }
     data = screen.load ? await screen.load() : undefined

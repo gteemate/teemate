@@ -11,7 +11,7 @@ export async function load() {
 export function draw({ points }) {
   const b = S.lastBooking
   const left = points.allowance - points.mine.reduce((t, x) => t + x.points, 0)
-  header('Booked', '', async () => { S.aview = 'mine'; await render() }) // back to your bookings
+  header('Booked', '', async () => { S.aview = 'home'; await render() }, 'Home') // done: back to Home (My bookings is the button below)
   $('main').innerHTML = `<div class="done"><div class="flagmark">⛳</div><h4>You're on the tee</h4>
    <p>${longDay(fromIso(b.date))} at ${hhmm(b.time)}<br>${b.players.map(esc).join(', ')}</p>
    ${b.guests ? `<p class="hint"><b style="color:var(--ink)">${b.pointsUsed} guest points used.</b> You have ${left} of ${points.allowance} left this year.</p>` : ''}

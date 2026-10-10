@@ -60,3 +60,22 @@ describe('navStack: jumping back to a screen further up the trail', () => {
     expect(n.back()).toEqual(HOME)
   })
 })
+
+describe('navStack: a finished booking starts afresh from Home', () => {
+  const booked = at('home', 'booked')
+  const opts = { passing: p => p.aview === 'booked' }
+  it('booked from a match (not from your bookings): Booked → your bookings → back goes Home, no loop', () => {
+    const n = navStack(HOME, opts)
+    for (const v of ['comp', 'evboard', 'match', 'tee', 'book']) n.visit(at('home', v))
+    n.reset(booked) // the booking is made: the trail starts again
+    n.visit(at('home', 'mine'))
+    expect(n.back()).toEqual(HOME)
+    expect(n.canGoBack()).toBe(false)
+  })
+  it("Booked is passed through: going on from it doesn't come back to it", () => {
+    const n = navStack(HOME, opts)
+    n.reset(booked)
+    n.visit(at('home', 'tee')) // Book another
+    expect(n.back()).toEqual(HOME)
+  })
+})

@@ -62,7 +62,7 @@ export function draw({ date, slot: s, me, members, friends, points }) {
       try {
         await api.requestTeeTime({ slotId: s.id, memberIds: S.picked, guests: S.guests, reason: S.reqReason })
       } catch (err) { toast(err.message); e.target.disabled = false; return }
-      Object.assign(S, { guests: [], picked: [], reqMode: false, reqReason: '', aview: 'mine' })
+      Object.assign(S, { guests: [], picked: [], reqMode: false, reqReason: '', aview: 'mine', navReset: true }) // done: back goes Home
       await render()
       top0()
       toast('Request sent. The answer will show in Booking.')
@@ -84,6 +84,7 @@ export function draw({ date, slot: s, me, members, friends, points }) {
     S.guests = []
     S.picked = []
     S.aview = 'booked'
+    S.navReset = true // done: back goes Home from here
     await render()
     top0()
   }
