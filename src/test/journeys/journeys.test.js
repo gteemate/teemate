@@ -251,6 +251,45 @@ describe('journeys', () => {
     await app.homeFromHere()
   })
 
+  it('16. A member sets up a pairs league with a knockout finish', async () => {
+    app = await boot()
+    await app.tap('Competition')
+    await app.tap('Events')
+    await app.tap('+ Create your own event')
+    await app.tap('An event')
+    await app.type('#ev-name', 'Pals Pairs League')
+    await app.tap('[data-style="league"]')
+    await app.tap('Pairs')
+    const ko = document.getElementById('ev-ko'); ko.value = '4'; ko.dispatchEvent(new Event('change', { bubbles: true })); await app.settle()
+    await app.tap('Next: pairs')
+    for (const n of ['Declan Murphy', 'Ciarán O\'Neill', 'Mark Doherty', 'Peter Walsh']) await app.tap(n)
+    await app.tap('Next: review')
+    expect(app.text()).toContain('Top 4 into a knockout')
+    await app.tap('Save event')
+    const lg = app.db.events.find(e => e.name === 'Pals Pairs League')
+    expect(lg).toMatchObject({ style: 'league', club: false, koTop: 4, leaguePairs: [[1, 3], [5, 7]] })
+    await app.homeFromHere()
+  })
+
+  it('17. At the end of a league, the organiser starts the seeded knockout', async () => {
+    app = await boot((db, h) => {
+      const card = (rid, m, score) => db.rounds.push({ id: rid, date: '2026-08-10', lineup: [{ m }], scores: Array.from({ length: 18 }, () => [score]), done: Array(18).fill(true), game: 'stab', submitted: {}, pairing: 0 })
+      db.events.push({ id: 30, name: 'Pals League', style: 'league', fmt: 'beststab', club: false, everyone: false, startDate: '2026-08-01', days: 1, weeks: 8, bestOf: 4, teams: [], team: {},
+        players: [0, 1, 3, 5, 7], matches: {}, koTop: 4, koFinish: '2026-12-20', koComp: null, leaguePairs: null, createdBy: { id: 0, name: 'Gary Cochrane' }, entryRequired: false })
+      ;[[0, 4], [1, 3], [3, 5], [5, 4], [7, 6]].forEach(([m, sc], i) => { card(900 + i, m, sc); db.leagueEntries.push({ eventId: 30, week: 2, memberId: m, roundId: 900 + i }) })
+    })
+    await app.tap('Competition')
+    expect(app.text()).toContain('Season over: knockout next')
+    await app.tap('Pals League')
+    expect(app.text()).toContain('Knockout finish')
+    await app.tap('Start the knockout (4 qualifiers)')
+    await app.tap('Tap again: draw the top 4, seeded')
+    expect(app.screen()).toBe('Pals League knockout')
+    const ko = app.db.signups.find(c => c.name === 'Pals League knockout')
+    expect(app.db.signupEntries.filter(e => e.compId === ko.id).map(e => e.memberId)).toEqual([1, 0, 5, 3]) // table order: birdies, pars, pars, bogeys
+    await app.homeFromHere()
+  })
+
   it('8. Add a friend from a shared link', async () => {
     app = await boot(undefined, { hash: '#friend?n=Eoin+Fitzgerald&c=Royal+Teemate&h=2.1&m=9&d=2026-10-10' })
     expect(app.screen()).toBe('Add friend')

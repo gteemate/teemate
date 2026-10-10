@@ -2,9 +2,10 @@
 // Shown on the Leaderboard tab while it's on, and from Admin → Events (View / Results).
 import * as api from '../api.js'
 import { S } from '../state.js'
-import { $, esc, ini, sur, header, keepScroll, render, top0 } from '../ui.js'
+import { $, esc, ini, sur, header, keepScroll, render, top0, toast } from '../ui.js'
 import { courseHandicap, fmtPts, toPar } from '../scoring.js'
-import { scoreAdvanceEvent, scoreLeague } from '../event-scoring.js'
+import { scoreAdvanceEvent, scoreLeague, scorePairsLeague, leagueSeeds } from '../event-scoring.js'
+import { spreadDates } from '../knockout.js'
 import { buildLibrary, teeRating, EVENT_ALLOWANCE_GAME } from '../games.js'
 import { addDaysIso, eventDates, isoDate, today, fromIso, longDay, leagueWeek } from '../dates.js'
 import { EVENT_TYPES, eventFormat } from './event-editor.js'
@@ -101,6 +102,17 @@ export function boardHtml(data, top = '') {
 }
 
 export function bindBoard(data = {}) {
+  document.querySelectorAll('[data-lgko]').forEach(b => (b.onclick = async () => { Object.assign(S, { koComp: +b.dataset.lgko, koRound: null, koFrom: S.tab === 'home' ? S.aview : null, tab: 'home', aview: 'ko' }); await render(); top0() }))
+  if (document.getElementById('lg-kostart')) document.getElementById('lg-kostart').onclick = async ev => {
+    const b = ev.currentTarget, e = data.e, seeds = koSeeds
+    if (seeds.length < 2) { toast('Not enough players have played yet.'); return }
+    if (b.dataset.armed !== '1') { b.dataset.armed = '1'; b.textContent = `Tap again: draw the top ${seeds.length}, seeded`; return }
+    const finish = e.koFinish && e.koFinish > isoDate(today()) ? e.koFinish : addDaysIso(isoDate(today()), 56)
+    try {
+      const id = await api.startLeagueKnockout(e.id, seeds, spreadDates(isoDate(today()), finish, Math.ceil(Math.log2(seeds.length))))
+      Object.assign(S, { koComp: id, koRound: null, koFrom: null, tab: 'home', aview: 'ko' }); await render(); top0()
+    } catch (err) { toast(err.message) }
+  }
   // A match opens its page (scorecard); your match also carries its action (book / add / score).
   document.querySelectorAll('[data-match]').forEach(c => {
     c.onclick = async () => { Object.assign(S, { evId: data.e.id, matchNo: +c.dataset.match, matchDay: data.day, matchFrom: S.tab === 'home' ? S.aview : null, tab: 'home', aview: 'match' }); await render(); top0() }
@@ -125,7 +137,10 @@ function leagueHtml({ e, members, course, L, entries, cards, me }, top) {
   const tee = teeRating(course), m = id => members.find(x => x.id === id)
   const player = id => ({ name: m(id)?.name ?? 'Former member', courseHcp: courseHandicap(m(id)?.hcp ?? 0, tee) })
   const g = L.lib.stab, allow = g?.pct == null ? 1 : g.pct / 100
-  const r = scoreLeague(e, course.holes, entries.filter(x => x.eventId === e.id), cards, player, allow)
+  const mine = entries.filter(x => x.eventId === e.id)
+  if (Array.isArray(e.leaguePairs)) return pairsLeagueHtml(e, scorePairsLeague(e, course.holes, mine, cards, player, allow), me, top)
+  const r = scoreLeague(e, course.holes, mine, cards, player, allow)
+  if (!e.teams?.length) S.lgView = 'individual' // a member's league: just its players
   const now = Math.min(e.weeks, leagueWeek(e, isoDate(today())))
   const wk = S.lgWeek === 'season' || !S.lgWeek ? 'season' : Math.min(S.lgWeek, e.weeks)
   const view = S.lgView === 'individual' ? 'individual' : 'teams'
@@ -176,7 +191,8 @@ function leagueHtml({ e, members, course, L, entries, cards, me }, top) {
   return `<div class="screen">${top}
     <div class="matchline"><b style="color:var(--ink)">League · best ${e.bestOf} Stableford rounds a week</b><span>${e.weeks} weeks · ${wk === 'season' ? `${eventDates(e.startDate, 1)} – ${eventDates(addDaysIso(e.startDate, e.weeks * 7 - 1), 1)}` : `Week ${wk}: ${weekDates(wk)}`}</span></div>
     ${notYet ? `<div class="hcpnote">Starts ${longDay(fromIso(e.startDate))}. Players enter a round from their scorecard before they tee off.</div>` : ''}
-    ${seg}${chips}${body}
+    ${e.teams?.length ? seg : ''}${chips}${body}
+    ${koFinishHtml(e, me, leagueSeeds(e, r))}
     <div class="hint" style="text-align:center">Players enter one round a week from their scorecard, before the first hole. Points update as holes are saved.</div></div>`
 }
 
@@ -188,4 +204,32 @@ export function draw(data) {
   header(esc(data.e.name), `${data.e.players.length} player${data.e.players.length === 1 ? '' : 's'}`, back)
   $('main').innerHTML = boardHtml(data)
   bindBoard(data)
+}
+
+// A pairs league: the pairs table (season total, or one week), and the knockout finish.
+function pairsLeagueHtml(e, rows, me, top) {
+  const now = Math.min(e.weeks, leagueWeek(e, isoDate(today())))
+  const wk = S.lgWeek === 'season' || !S.lgWeek ? 'season' : Math.min(S.lgWeek, e.weeks)
+  const chips = `<div class="tabs-pill" role="group" aria-label="Week"><button data-lgweek="season" aria-pressed="${wk === 'season'}">Season</button>${Array.from({ length: e.weeks }, (_, i) => `<button data-lgweek="${i + 1}" aria-pressed="${wk === i + 1}">Wk ${i + 1}</button>`).join('')}</div>`
+  const list = wk === 'season' ? rows : rows.filter(p => p.perWeek[wk]).map(p => ({ ...p, v: p.perWeek[wk].pts })).sort((a, b) => b.v - a.v)
+  const sur = n => n.split(' ').slice(-1)[0]
+  const body = list.length ? `<div class="lblist">${list.map((p, i) => `<div class="lbrow${p.pair.includes(me.id) ? ' me' : ''}"><span class="lpos">${wk === 'season' ? `${p.tied ? 'T' : ''}${p.pos}` : i + 1}</span>
+      <span class="who"><strong>${esc(sur(p.names[0]))} & ${esc(sur(p.names[1]))}</strong><small>${wk === 'season' ? `${p.rounds} of ${e.weeks} weeks together` : p.perWeek[wk].thru === 18 ? 'Finished' : `thru ${p.perWeek[wk].thru}`}</small></span>
+      <span class="hcp">${wk === 'season' ? p.total : p.v}<small>pts</small></span></div>`).join('')}</div>` : '<div class="empty-state">No pairs have played together yet.</div>'
+  return `<div class="screen">${top}
+    <div class="matchline"><b style="color:var(--ink)">Pairs league · better-ball Stableford</b><span>${e.weeks} weeks · week ${Math.max(1, now)}</span></div>
+    ${chips}${body}
+    ${koFinishHtml(e, me, leagueSeeds(e, { pairs: rows }))}
+    <div class="hint" style="text-align:center">A pair’s week counts when they play together on one card and both enter it. Their better ball, hole by hole.</div></div>`
+}
+
+// The knockout finish: what it is, Start the knockout (organiser, after the last week), or the draw once started.
+let koSeeds = [] // the qualifiers in table order, for Start the knockout
+function koFinishHtml(e, me, seeds) {
+  koSeeds = seeds
+  if (!e.koTop) return ''
+  if (e.koComp) return `<button class="card comp gold" data-lgko="${e.koComp}"><span class="row"><span class="ct">The knockout</span><span class="link">Draw ›</span></span><span class="sub">Top ${e.koTop} from the table · seeded</span></button>`
+  const over = leagueWeek(e, isoDate(today())) > e.weeks, organiser = me.admin || e.createdBy?.id === me.id
+  return `<div class="card evsec"><b>Knockout finish</b><span class="hint">After week ${e.weeks}, the top ${e.koTop} go into a knockout, seeded from the table${e.koFinish ? `; the final by ${eventDates(e.koFinish, 1)}` : ''}.</span>
+    ${organiser ? `<button class="primary" id="lg-kostart" ${over || me.admin ? '' : 'disabled'}>${over ? `Start the knockout (${Math.min(seeds.length, e.koTop)} qualifiers)` : me.admin ? 'Start the knockout now' : `Starts after week ${e.weeks}`}</button>` : ''}</div>`
 }

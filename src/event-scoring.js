@@ -220,7 +220,7 @@ export function scoreLeague(event, holes, entries, cards, player, allow) {
     return { ...en, team: event.team[en.memberId], pts, thru }
   })
   const weeks = Array.from({ length: event.weeks }, (_, i) => i + 1)
-  const teams = event.teams.map((t, idx) => {
+  const teams = (event.teams ?? []).map((t, idx) => {
     const perWeek = weeks.map(w => {
       const mine = rounds.filter(r => r.team === idx && r.week === w).sort((a, b) => b.pts - a.pts)
       const counted = mine.slice(0, event.bestOf)
@@ -229,7 +229,8 @@ export function scoreLeague(event, holes, entries, cards, player, allow) {
     return { idx, name: t.name, col: t.col, perWeek, total: perWeek.reduce((s, w) => s + w.score, 0) }
   })
   rankBy(teams, t => t.total)
-  const players = Object.keys(event.team).map(Number).map(id => {
+  const ids = event.teams?.length ? Object.keys(event.team).map(Number) : event.players // a league with no teams: just its players
+  const players = ids.map(id => {
     const mine = rounds.filter(r => r.memberId === id)
     return { id, name: player(id).name, team: event.team[id], total: mine.reduce((s, r) => s + r.pts, 0), rounds: mine.length, perWeek: Object.fromEntries(mine.map(r => [r.week, { pts: r.pts, thru: r.thru }])) }
   })
@@ -310,4 +311,38 @@ export function drawCaptains(pool, players, nTeams, rand = Math.random) {
   const left = [...new Set(pool)].filter(id => players.includes(id))
   for (let i = left.length - 1; i > 0; i--) { const j = Math.floor(rand() * (i + 1)); [left[i], left[j]] = [left[j], left[i]] }
   return Array.from({ length: nTeams }, (_, k) => left[k] ?? null)
+}
+
+/**
+ * A pairs league: each week a pair scores its better-ball Stableford on a card both of them played (and entered)
+ * that week; the table is the total. → [{ pair: [a, b], names, total, rounds, perWeek: { [week]: { pts, thru } }, pos, tied }]
+ */
+export function scorePairsLeague(event, holes, entries, cards, player, allow) {
+  const rows = event.leaguePairs.map(pair => {
+    const [a, b] = pair, perWeek = {}
+    for (let w = 1; w <= event.weeks; w++) {
+      const ea = entries.find(x => x.memberId === a && x.week === w), eb = entries.find(x => x.memberId === b && x.week === w)
+      const card = ea && eb && ea.roundId === eb.roundId ? cards[ea.roundId] : null
+      if (!card) continue
+      const ka = card.lineup.findIndex(x => x.m === a), kb = card.lineup.findIndex(x => x.m === b)
+      if (ka < 0 || kb < 0) continue
+      const gross = k => holes.map((_, i) => (card.done[i] ? card.scores[i][k] : null))
+      const ga = gross(ka), gb = gross(kb), thru = groupThru([{ gross: ga }, { gross: gb }])
+      const [pa, pb] = [a, b].map(id => playingHandicaps([player(id).courseHcp], allow)[0])
+      let pts = 0
+      for (let i = 0; i < thru; i++) pts += Math.max(stablefordPoints(ga[i], holes[i].par, shotsOnHole(pa, holes[i].si)), stablefordPoints(gb[i], holes[i].par, shotsOnHole(pb, holes[i].si)))
+      perWeek[w] = { pts, thru }
+    }
+    const weeks = Object.values(perWeek)
+    return { pair, names: pair.map(id => player(id).name), total: weeks.reduce((s, x) => s + x.pts, 0), rounds: weeks.length, perWeek }
+  })
+  rankBy(rows, p => p.total)
+  return rows.sort((x, y) => x.pos - y.pos)
+}
+
+/** A league's knockout qualifiers in table order: the top koTop pairs ([[a, b]]) or players ([[id]]) who've played. */
+export function leagueSeeds(event, table) {
+  const top = event.koTop ?? 0
+  return table.pairs ? table.pairs.filter(p => p.rounds).slice(0, top).map(p => p.pair)
+    : table.players.filter(p => p.rounds).slice(0, top).map(p => [p.id])
 }

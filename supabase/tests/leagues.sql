@@ -26,8 +26,8 @@ grant all on t.ids to authenticated;
 do $$ declare e text; lg bigint; r1 bigint; r2 bigint; w int; begin
   -- a league that started this week's Monday
   perform t.act_as(1);
-  e := t.err($q$insert into public.events (name, start_date, style, fmt, weeks, best_of, league_teams) values ('Sneaky League', current_date, 'league', 'beststab', 6, 7, '[{"name":"A"},{"name":"B"}]')$q$);
-  perform t.ok('Setup: only admins can create a league', e is not null, e);
+  e := t.err($q$insert into public.events (name, start_date, style, fmt, weeks, best_of, league_teams, club, created_by) values ('Sneaky League', current_date, 'league', 'beststab', 6, 7, '[{"name":"A"},{"name":"B"}]', true, 1)$q$);
+  perform t.ok('Setup: only admins can create a club league (members make leagues for their own group)', e is not null, e);
   perform t.done();
 
   perform t.act_as(5);

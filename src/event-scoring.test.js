@@ -321,3 +321,42 @@ describe('drawCaptains: one captain per team, at random, from the candidates', (
     expect(new Set(draws).size).toBeGreaterThan(1)
   })
 })
+
+import { scorePairsLeague, leagueSeeds } from './event-scoring.js'
+describe('pairs leagues: a pair scores its better ball each week, when both play on the same card', () => {
+  const event = { weeks: 3, leaguePairs: [[1, 2], [3, 4], [5, 6]], players: [1, 2, 3, 4, 5, 6] }
+  const player = id => ({ name: `P${id}`, courseHcp: 0 })
+  // A card for two players: their scores hole by hole (par 4 everywhere, off 0: par = 2 points).
+  const two = (a, b, sa, sb, n = 18) => ({ lineup: [{ m: a }, { m: b }], scores: FLAT.map((_, i) => [sa(i), sb(i)]), done: FLAT.map((_, i) => i < n) })
+  const cards = {
+    11: two(1, 2, i => (i % 2 ? 3 : 5), i => (i % 2 ? 5 : 3)), // between them a birdie every hole: 18 × 3 = 54
+    12: two(3, 4, () => 4, () => 5),                           // pars: 36
+    13: two(5, 1, () => 3, () => 3),                           // 5 and 1 together: not a pair, doesn't count for either pair
+    14: two(3, 4, () => 4, () => 4, 9),                        // week 2, live: 9 pars = 18 so far
+  }
+  const entries = [
+    { week: 1, memberId: 1, roundId: 11 }, { week: 1, memberId: 2, roundId: 11 },
+    { week: 1, memberId: 3, roundId: 12 }, { week: 1, memberId: 4, roundId: 12 },
+    { week: 2, memberId: 5, roundId: 13 }, { week: 2, memberId: 1, roundId: 13 },
+    { week: 2, memberId: 3, roundId: 14 }, { week: 2, memberId: 4, roundId: 14 },
+  ]
+  const r = scorePairsLeague(event, FLAT, entries, cards, player, 1)
+  it('better ball per hole, only when the pair played together; ranked', () => {
+    expect(r.map(p => [p.pair, p.total, p.rounds, p.pos])).toEqual([[[1, 2], 54, 1, 1], [[3, 4], 54, 2, 1], [[5, 6], 0, 0, 3]])
+    expect(r.find(p => p.pair[0] === 3).perWeek[2]).toMatchObject({ pts: 18, thru: 9 })
+  })
+  it('the knockout seeds: top N pairs in table order', () =>
+    expect(leagueSeeds({ ...event, koTop: 4 }, { pairs: r })).toEqual([[1, 2], [3, 4]]))
+  it('singles: top N players who have played, in table order', () =>
+    expect(leagueSeeds({ koTop: 4 }, { players: [{ id: 7, rounds: 2 }, { id: 8, rounds: 1 }, { id: 9, rounds: 0 }] })).toEqual([[7], [8]]))
+})
+
+describe("a member's singles league (no teams): the individual table is its players", () => {
+  it('lists every player, ranked by points', () => {
+    const event = { weeks: 1, bestOf: 1, teams: [], team: {}, players: [1, 2] }
+    const cards = { 9: { lineup: [{ m: 1 }, { m: 2 }], scores: FLAT.map(() => [4, 5]), done: FLAT.map(() => true) } }
+    const r = scoreLeague(event, FLAT, [{ week: 1, memberId: 1, roundId: 9 }, { week: 1, memberId: 2, roundId: 9 }], cards, id => ({ name: `P${id}`, courseHcp: 0 }), 1)
+    expect(r.players.map(p => [p.id, p.total])).toEqual([[1, 36], [2, 18]])
+    expect(r.teams).toEqual([])
+  })
+})

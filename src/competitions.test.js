@@ -45,3 +45,15 @@ describe('competitionLists: Entered, Open, Events, History', () => {
     expect(ids(r.history)).toEqual([22, 21, 23])
   })
 })
+
+describe('a league waiting for its knockout finish', () => {
+  it('stays in Entered (not History) until the knockout starts', () => {
+    const lg = { id: 30, name: 'Pals League', style: 'league', club: false, startDate: '2026-08-01', weeks: 8, players: [1], koTop: 4, koComp: null }
+    const me = { id: 1 }
+    const r = competitionLists({ me, date: '2026-10-11', events: [lg], playerEvents: [] })
+    expect(r.entered.map(x => x.e.id)).toEqual([30])
+    expect(r.history).toEqual([])
+    const done = competitionLists({ me, date: '2026-10-11', events: [{ ...lg, koComp: 99 }], playerEvents: [] })
+    expect(done.history.map(x => x.id ?? x.e.id)).toEqual([30])
+  })
+})

@@ -12,7 +12,9 @@ const item = (e, date) => ({ kind: kindOf(e), e, running: e.startDate <= date,
 
 export function competitionLists({ me, events, playerEvents, date }) {
   const mine = e => e.players.includes(me.id)
-  const live = events.filter(e => eventLastDay(e) >= date)
+  // A league whose knockout finish hasn't started yet stays live (its organiser starts it from the league's board).
+  const waitingKo = e => e.style === 'league' && e.koTop && !e.koComp
+  const live = events.filter(e => eventLastDay(e) >= date || waitingKo(e))
   const entered = [
     ...live.filter(mine).map(e => item(e, date)),
     ...playerEvents.filter(e => e.date === date && e.status === 'accepted').map(e => ({ kind: 'match', e, running: true })),
@@ -24,7 +26,7 @@ export function competitionLists({ me, events, playerEvents, date }) {
     ...entered,
     ...live.filter(e => byPlayers(e) && !mine(e) && e.createdBy?.id === me.id).map(e => item(e, date)),
   ]
-  const history = events.filter(e => eventLastDay(e) < date && mine(e))
+  const history = events.filter(e => eventLastDay(e) < date && !waitingKo(e) && mine(e))
     .sort((a, b) => (eventLastDay(a) < eventLastDay(b) ? 1 : -1)).map(e => item(e, date))
   return { entered: all, history } // Events: sign-up competitions (signups.js); club competitions on the day are joined from Scoring round?
 }
