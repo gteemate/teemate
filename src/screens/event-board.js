@@ -33,6 +33,12 @@ export async function loadBoard(id, dayWanted = null) {
     const name = mid => members.find(x => x.id === mid)?.name ?? 'A player'
     action = { ...matchBooking(ids, sheet, me.id), date, ids, meId: me.id, names: name, eventName: e.name,
       started: (dayCards[day] ?? []).some(c => ids.every(mid => c.lineup.some(x => x.m === mid))) }
+    // Rearrange: only when the four are one booking with nobody else on it (so moving it bumps no one).
+    if (action.kind === 'together' && !action.started) {
+      const b = (await api.getMyBookings()).find(x => x.date === date && x.time === action.slot.time)
+      const inIt = b?.people.filter(p => p.inBooking) ?? []
+      if (b && inIt.length === ids.length && inIt.every(p => p.memberId != null && ids.includes(p.memberId))) action.moveBooking = b.id
+    }
   }
   return { e, members, course, L: buildLibrary(games), dayCards, entries, me, mine, action, day }
 }

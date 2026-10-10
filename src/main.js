@@ -121,6 +121,7 @@ async function render() {
       if (!startTabChosen) { startTabChosen = true; S.tab = await chooseStartTab(); if (S.tab === 'home') S.aview = 'home'; else S.sview = 'card'; nav.reset(place()) }
       if (pendingFriend()) { S.tab = 'home'; S.aview = 'friend' } // opened from a friend link (maybe before signing in)
       if (S.matchPick && !(S.tab === 'home' && ['tee', 'book'].includes(S.aview))) S.matchPick = null // left Book this match
+      if (S.matchMove && !(S.tab === 'home' && S.aview === 'tee')) S.matchMove = null // left Rearrange
       if (S.navReset) { S.navReset = false; nav.reset(place()) } else nav.visit(place()) // a finished booking starts afresh from Home
       screen = screenFor()
     }

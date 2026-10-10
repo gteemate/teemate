@@ -39,18 +39,19 @@ export function draw({ days, sheet, points, me, rules, req, skew }) {
   if (req) $('dateWrap').innerHTML = `<div class="reqdate"><label for="rq-date">Day</label><input type="date" id="rq-date" class="plainsel" min="${req.min}" max="${req.max}" value="${req.date}">
     <span class="hint">Any day not open for booking yet. Pick a time, then say why you need it; an admin approves or declines.</span></div>`
   else $('dateWrap').innerHTML = `<div class="dates" role="group" aria-label="Choose day">${days.map((d, i) => `<button class="day" data-d="${i}" aria-pressed="${i === S.day}"><small>${i === 0 ? 'Today' : DN[d.getDay()]}</small><b>${d.getDate()}</b></button>`).join('')}</div>`
-  const need = S.matchPick ? 1 + S.matchPick.length : 0 // Book this match: only times with room for everyone in it
+  const mv = S.matchMove // Rearrange a match: pick its new time
+  const need = mv ? mv.size : S.matchPick ? 1 + S.matchPick.length : 0 // Book this match / Rearrange: only times with room for everyone in it
   const list = sheet.filter(s => (need ? free(s) >= need : S.filter === 'all' || (S.filter === 'open' && free(s) > 0) || (S.filter === '2' && free(s) >= 2)))
   const left = points.allowance - points.mine.reduce((t, x) => t + x.points, 0)
   const until = () => (at - now() < DAY ? countdown(at - now()) : 'You can see the times, but not book them yet.')
   const banner = closed ? `<div class="relbanner"><b>${openLabel(iso, rules)}</b><span id="relcd">${me.admin ? 'Not open to members yet. You can book it as an admin.' : until()}</span>${me.admin ? '' : '<button class="linkbtn" id="rq-day">Request a time on this day</button>'}</div>` : ''
-  let h = `<div class="screen">${banner}${need ? `<div class="hcpnote">Booking your match: showing tee times with room for all ${need}.</div>` : ''}<div class="ptsmini${left < points.cost ? ' low' : ''}">🎟️ <b>${left}</b> of ${points.allowance} guest points left · ${points.cost} per guest${left < points.cost ? ' · not enough for a guest' : ''}</div><div class="filters" role="group" aria-label="Filter">${[['all', 'All'], ['open', 'Has space'], ['2', '2+ spaces']].map(([k, l]) => `<button class="chip" data-f="${k}" aria-pressed="${S.filter === k}">${l}</button>`).join('')}</div>`
+  let h = `<div class="screen">${banner}${need ? `<div class="hcpnote">${mv ? `Moving your match from ${hhmm(mv.from)}: pick a new time.` : 'Booking your match:'} Showing tee times with room for all ${need}.</div>` : ''}<div class="ptsmini${left < points.cost ? ' low' : ''}">🎟️ <b>${left}</b> of ${points.allowance} guest points left · ${points.cost} per guest${left < points.cost ? ' · not enough for a guest' : ''}</div>${need ? '' : `<div class="filters" role="group" aria-label="Filter">${[['all', 'All'], ['open', 'Has space'], ['2', '2+ spaces']].map(([k, l]) => `<button class="chip" data-f="${k}" aria-pressed="${S.filter === k}">${l}</button>`).join('')}</div>`}`
   for (const [g, a, b] of [['Morning', 0, 720], ['Afternoon', 720, 900], ['Twilight', 900, 1440]]) {
     const gs = list.filter(s => s.time >= a && s.time < b)
     if (!gs.length) continue
     h += `<div class="period">${g}${g === 'Afternoon' ? " · 12:20–13:00 held for Ladies' Comp" : ''}</div>`
     gs.forEach(s => {
-      const f = free(s), near = tooClose(s), off = !f || near || isMine(s), taken = s.players.length
+      const f = free(s), near = mv ? null : tooClose(s), off = !f || near || isMine(s), taken = s.players.length
       const what = isMine(s) ? 'You’re booked on this' : near ? `Within 2 hours of your ${hhmm(near.time)}` : !f ? 'Fully booked' : f === 4 ? 'Open tee' : `${f} space${f > 1 ? 's' : ''} left`
       h += `<button class="slot${off ? ' full' : ''}${locked ? ' notyet' : ''}${isMine(s) ? ' minebk' : ''}" data-id="${s.id}" ${off ? 'aria-disabled="true"' : ''}><span class="time">${hhmm(s.time)}</span>
         <span class="meta"><strong>${what}${s.twilight ? '<span class="pill tag">Twilight</span>' : ''}</strong>1st tee · 18 holes</span>
@@ -67,6 +68,7 @@ export function draw({ days, sheet, points, me, rules, req, skew }) {
     const s = sheet.find(x => x.id === +b.dataset.id)
     if (locked) { toast(`${openLabel(iso, rules)}`); return }
     if (isMine(s)) { Object.assign(S, { aview: 'mine' }); await render(); top0(); return } // see it in Bookings
+    if (mv) return moveSheet(s, mv) // the old time goes when the new one is booked, so the 2-hour gap doesn't apply here
     const near = tooClose(s)
     if (near) { toast(`You’re booked at ${hhmm(near.time)}. Tee times have to be at least 2 hours apart`); return }
     if (!free(s)) { toast('That time is full'); return }
@@ -81,4 +83,23 @@ export function draw({ days, sheet, points, me, rules, req, skew }) {
     if (at - now() <= 0) { clearInterval(tick); render(); return }
     el.textContent = until()
   }, 1000)
+}
+
+// Rearrange a match: confirm the new time; the booking moves in one step (the old time is freed).
+function moveSheet(s, mv) {
+  $('modal').innerHTML = `<div class="overlay" id="ovl"><div class="sheet" role="dialog" aria-labelledby="mvt">
+    <h4 id="mvt">Move your match to ${hhmm(s.time)}?</h4>
+    <span class="hint">All ${mv.size} of you move from ${hhmm(mv.from)} to ${hhmm(s.time)}. ${hhmm(mv.from)} is freed up for others.</span>
+    <div class="gm-btns"><button type="button" class="ghost" id="mv-keep">Keep ${hhmm(mv.from)}</button><button class="primary" id="mv-go">Move match to ${hhmm(s.time)}</button></div>
+  </div></div>`
+  const close = () => { $('modal').innerHTML = '' }
+  $('mv-keep').onclick = close
+  $('ovl').onclick = e => { if (e.target.id === 'ovl') close() }
+  $('mv-go').onclick = async () => {
+    $('mv-go').disabled = true
+    try { await api.moveMatchBooking(mv.bookingId, s.id) } catch (err) { toast(err.message); close(); await render(); return } // nothing changed
+    Object.assign(S, { matchMove: null, aview: 'match', navReset: true })
+    close(); await render(); top0()
+    toast(`Match moved to ${hhmm(s.time)}`)
+  }
 }

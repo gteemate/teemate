@@ -40,6 +40,11 @@ export async function cancelBooking(id, removeScores = false) {
   return must(await sb.rpc('cancel_booking', { p_booking: id, p_remove_scores: removeScores }))
 }
 
+/** Rearrange a match: move a booking (members only) to another tee time that day, in one step. → the new booking */
+export async function moveMatchBooking(bookingId, slotId) {
+  return must(await sb.rpc('move_match_booking', { p_booking: bookingId, p_slot: slotId }))
+}
+
 export async function getMyBookings() {
   return must(await sb.rpc('get_my_bookings'))
 }

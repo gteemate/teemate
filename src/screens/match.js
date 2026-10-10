@@ -24,8 +24,9 @@ export function matchActionHtml(st) {
   const name = id => esc(st.names(id))
   if (st.kind === 'none') return '<button class="primary sm" data-mact="book">Book this match</button>'
   if (st.kind === 'partial') return `<button class="primary sm" data-mact="add">Add the rest to your ${hhmm(st.slot.time)}</button>`
-  if (st.kind === 'together') return st.date === isoDate(today()) ? `<button class="primary sm" data-mact="score">${st.started ? 'Enter scores' : 'Start scoring'}</button>`
-    : `<span class="mbooked">Booked: ${longDay(fromIso(st.date)).split(' ')[0]} ${hhmm(st.slot.time)}</span>`
+  const move = st.moveBooking ? '<button class="ghost sm" data-mact="move">Rearrange</button>' : ''
+  if (st.kind === 'together') return st.date === isoDate(today()) ? `<button class="primary sm" data-mact="score">${st.started ? 'Enter scores' : 'Start scoring'}</button>${move}`
+    : `<span class="mbooked">Booked: ${longDay(fromIso(st.date)).split(' ')[0]} ${hhmm(st.slot.time)}</span>${move}`
   return `<span class="mwarn">Your match needs all four in one tee time.${st.clash ? ` ${name(st.clash.id)} is booked at ${hhmm(st.clash.time)}.` : ' There isn’t room for everyone on yours.'}</span>`
 }
 
@@ -33,7 +34,12 @@ export function bindMatchAction(st) {
   document.querySelectorAll('[data-mact]').forEach(b => (b.onclick = async e => {
     e.stopPropagation() // not the match card's own tap
     const others = st.ids.filter(id => id !== st.meId)
-    if (b.dataset.mact === 'book') {
+    if (b.dataset.mact === 'move') {
+      // Rearrange: the day's tee sheet with room for all four; picking a time moves the booking (tee-times.js).
+      const days = nextDays(((await api.getBookingRules()).days) + 1).map(isoDate), i = days.indexOf(st.date)
+      if (i < 0) { toast('Tee times for that day aren’t open yet.'); return }
+      Object.assign(S, { tab: 'home', aview: 'tee', day: i, reqMode: false, matchMove: { bookingId: st.moveBooking, from: st.slot.time, size: st.ids.length } })
+    } else if (b.dataset.mact === 'book') {
       // The tee sheet on the match day with the other three ready to add; beyond the booking window, a request.
       const rules = await api.getBookingRules(), days = nextDays(rules.days + 1).map(isoDate), i = days.indexOf(st.date)
       Object.assign(S, { tab: 'home', aview: 'tee', matchPick: others, reqMode: i < 0, ...(i < 0 ? { reqDate: st.date, reqReason: `Match in ${st.eventName}` } : { day: i }) })
