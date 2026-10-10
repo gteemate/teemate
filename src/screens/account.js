@@ -37,7 +37,7 @@ export function draw({ me, clubName, waiting, points, hutOn, balances }) {
   <div class="card evsec"><b>I play in</b>
     <div class="seg" role="group" aria-label="I play in"><button data-plays="men" aria-pressed="${me.playsIn === 'men'}">Men’s</button><button data-plays="ladies" aria-pressed="${me.playsIn === 'ladies'}">Ladies’</button></div>
     <span class="hint">${me.playsIn ? 'Competitions → Events shows the club competitions you can enter.' : 'Set this to see the Men’s, Ladies’ and Mixed competitions you can enter.'}</span></div>
-  ${balances ? `<div class="card balances"><div><span>Competition purse</span><b class="num">${balances.competition == null ? '–' : money(balances.competition)}</b></div><div><span>Clubhouse</span><b class="num">${balances.clubhouse == null ? '–' : money(balances.clubhouse)}</b></div></div>` : ''}
+  ${balances ? `${balances.example ? '<span class="hint baleg">Example balances: the real ones appear once the club links its system</span>' : ''}<div class="card balances"><div><span>Competition purse</span><b class="num">${balances.competition == null ? '–' : money(balances.competition)}</b></div><div><span>Clubhouse</span><b class="num">${balances.clubhouse == null ? '–' : money(balances.clubhouse)}</b></div></div>` : ''}
   <h3>Your account</h3>
   <div class="agrid">
     ${hutOn ? '<button class="atile row" data-a="hutorder"><span class="e">🥪</span><span class="rt"><b>Halfway hut</b><span>Order food and drinks; pay when you collect</span></span></button>' : ''}
