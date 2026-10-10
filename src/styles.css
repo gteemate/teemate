@@ -691,7 +691,7 @@ h4,.sheet h4{font-family:var(--display);font-weight:600;letter-spacing:0}
 /* Event matches: tap a match for its page; your match and its action */
 .mcard.tap{cursor:pointer}
 .mcard.minem{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset}
-.mact{display:flex;justify-content:center;margin-top:12px}
+.mact{display:flex;flex-direction:column;align-items:center;gap:8px;margin-top:12px;text-align:center}
 .mbooked{color:var(--gold);font-weight:700}
 .mwarn{color:var(--loss);font-size:14px;text-align:center}
 .msum{display:grid;gap:10px;padding:12px}

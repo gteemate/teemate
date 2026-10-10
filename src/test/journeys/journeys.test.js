@@ -111,6 +111,17 @@ describe('journeys', () => {
     await app.homeFromHere()
   })
 
+  it("5b. Booked on a full tee time with other people: the match still offers Book this match", async () => {
+    app = await boot(db => db.book(0, at(db, 470).id, [9, 8, 7])) // 07:50 with three others, none in the match
+    await app.tap('Competition')
+    await app.tap('Christmas Cup')
+    expect(app.text()).toContain('You’re on the 07:50 with other players')
+    await app.tap('Book this match')
+    expect(app.screen()).toBe('Book tee times')
+    expect(app.text()).toContain('Booking your match')
+    await app.homeFromHere()
+  })
+
   const teeTimeToday = db => db.book(0, at(db, 570).id, [1]) // 09:30 with Declan Murphy (both in the Winter League)
 
   it('6. Start a round, count it for the Winter League (marker), save to hole 8, order a bacon roll', async () => {

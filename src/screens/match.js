@@ -23,6 +23,7 @@ export function matchActionHtml(st) {
   if (!st) return ''
   const name = id => esc(st.names(id))
   if (st.kind === 'none') return '<button class="primary sm" data-mact="book">Book this match</button>'
+  if (st.kind === 'busy') return `<span class="mwarn">You’re on the ${hhmm(st.slot.time)} with other players, so there’s no room for your match there. Book it at another time, 2 hours or more from ${hhmm(st.slot.time)}.</span><button class="primary sm" data-mact="book">Book this match</button>`
   if (st.kind === 'partial') return `<button class="primary sm" data-mact="add">Add the rest to your ${hhmm(st.slot.time)}</button>`
   const move = st.moveBooking ? '<button class="ghost sm" data-mact="move">Rearrange</button>' : ''
   if (st.kind === 'together') return st.date === isoDate(today()) ? `<button class="primary sm" data-mact="score">${st.started ? 'Enter scores' : 'Start scoring'}</button>${move}`
