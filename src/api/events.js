@@ -56,7 +56,7 @@ export async function getLeagueEntries(eventIds) {
 /** Cards by id: { [id]: { lineup, scores, done } } */
 export async function getCardsById(ids) {
   if (!ids.length) return {}
-  return Object.fromEntries(must(await sb.from('rounds').select('id, lineup, scores, done').in('id', ids)).map(r => [r.id, r]))
+  return Object.fromEntries(must(await sb.from('rounds').select('id, date, lineup, scores, done, game').in('id', ids)).map(r => [r.id, r]))
 }
 
 /** Enter players on my card into a league this week (before the first hole is saved), with who marks them

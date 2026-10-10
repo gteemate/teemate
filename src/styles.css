@@ -842,3 +842,15 @@ h4,.sheet h4{font-family:var(--display);font-weight:600;letter-spacing:0}
   .osplit{grid-template-columns:1fr}
   .orow{flex-wrap:wrap}
 }
+
+/* A knockout fixture's scorecard: holes won tinted in the side's colour. */
+.msc td.kw0{background:#e3c37560}
+.msc td.kw1{background:#6f8fd860}
+.kocardln{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.kocardln .linkbtn{padding:2px 0}
+
+/* Signed out on an iPad or computer: the sign-in sits on the page, no phone frame around it. */
+@media (min-width:461px) and (min-height:501px){
+  #app.signed-out{background:transparent;border:0;box-shadow:none;height:auto;min-height:calc(100vh - 48px);max-width:420px}
+}
+.ost .linkbtn{font-size:12px;padding:0;color:var(--gold)}

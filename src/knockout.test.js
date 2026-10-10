@@ -52,3 +52,37 @@ describe('spreadDates: play-by dates spread evenly to the finish', () => {
   it('one round: the finish date', () => expect(spreadDates('2026-11-01', '2026-11-30', 1)).toEqual(['2026-11-30']))
   it('a finish before the start: nothing', () => expect(spreadDates('2026-11-01', '2026-10-01', 3)).toEqual([]))
 })
+
+import { koCardState, koSpec, entryPlayers } from './knockout.js'
+
+describe('koCardState: a knockout match from its scorecard', () => {
+  const holes = Array.from({ length: 18 }, (_, i) => ({ par: 4, si: i + 1 }))
+  const ch = { 1: 10, 2: 4, 3: 20, 4: 0, 5: 0 }
+  const card = (lineup, n) => ({ lineup: lineup.map(m => ({ m })), scores: holes.map(() => lineup.map(() => 4)), done: holes.map((_, i) => i < n) })
+  const singles = koSpec(null, false)
+
+  it('singles at the full difference, off the low: 10 v 4 gets 6 shots, wins SI 1–6 and the match 6&5', () => {
+    const s = koCardState(card([2, 1], 13), holes, [[1], [2]], id => ch[id], singles) // the opponent started the card
+    expect(s).toMatchObject({ finished: true, text: '6&5', lead: 0, thru: 13 })
+    expect(s.players.map(p => [p.id, p.side, p.ph])).toEqual([[1, 0, 6], [2, 1, 0]])
+  })
+  it('part way round: the lead so far, not finished', () => {
+    expect(koCardState(card([1, 2], 5), holes, [[1], [2]], id => ch[id], singles)).toMatchObject({ finished: false, text: '5 up', lead: 0, thru: 5, run: [1, 2, 3, 4, 5] })
+  })
+  it('pairs: better ball at 90%, off the low', () => {
+    const s = koCardState(card([1, 3, 4, 5], 18), holes, [[1, 3], [4, 5]], id => ch[id], koSpec(null, true))
+    expect(s.players.map(p => p.ph)).toEqual([9, 18, 0, 0])
+    expect(s).toMatchObject({ finished: true, text: '10&8', lead: 0 })
+  })
+  it("a card without both sides on it doesn't count", () => {
+    expect(koCardState(card([1, 4], 18), holes, [[1], [2]], id => ch[id], singles)).toBeNull()
+  })
+  it("uses the card's game when it's net match play, else the knockout default", () => {
+    expect(koSpec({ kind: 'match1', cmp: 'net', allow: 0.85, offLow: true }, false)).toEqual({ cmp: 'net', allow: 0.85, offLow: true })
+    expect(koSpec({ kind: 'stab', allow: 0.95 }, true)).toEqual({ cmp: 'net', allow: 0.9, offLow: true })
+  })
+  it('an entry\'s players', () => {
+    expect(entryPlayers(7, [{ id: 7, memberId: 1, partnerId: 3 }])).toEqual([1, 3])
+    expect(entryPlayers(8, [{ id: 8, memberId: 2, partnerId: null }])).toEqual([2])
+  })
+})

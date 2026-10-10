@@ -60,6 +60,7 @@ export function draw({ evs, comps, kos, members, t }) {
     if (what === 'draw') Object.assign(S, { koComp: +id, koRound: null, koFrom: 'office', aview: 'ko' })
     if (what === 'signups') S.aview = 'signups'
   })))
+  document.querySelectorAll('[data-o-card]').forEach(b => (b.onclick = () => go(() => { const [mid, cid] = b.dataset.oCard.split(':'); Object.assign(S, { koCard: +mid, koComp: +cid, kcFrom: 'office', aview: 'kocard' }) })))
   $('o-new').onclick = () => {
     panel(`<h4>New competition</h4><p class="hint">What kind?</p>
       <div class="card olist">
@@ -97,5 +98,5 @@ function detail(x, ko, members, t) {
     : m.status === 'disputed' ? 'Disputed: set the result' : m.status === 'reported' ? 'Waiting for the other side to confirm' : c.roundDeadlines[m.round - 1] ? `To play by ${eventDates(c.roundDeadlines[m.round - 1], 1)}` : 'To play'
   return `${head}${!c.drawPublished ? '<p class="hint opad">Draft: members don’t see it until it’s published.</p>' : ''}${champ ? `<p class="opad"><span class="pill gold">Champion: ${esc(name(champ))}</span></p>` : ''}
     <div class="obracket">${[...Array(n)].map((_, r) => `<div class="oround"><small>${roundName(r + 1, n)}${c.roundDeadlines[r] ? `<span>By ${eventDates(c.roundDeadlines[r], 1)}</span>` : ''}</small>
-      ${ko.matches.filter(m => m.round === r + 1).sort((a, b) => a.slot - b.slot).map(m => `<div class="omatch${m.status === 'disputed' ? ' disp' : ''}">${side(m, m.aEntry)}${side(m, m.bEntry, m.status === 'bye')}<div class="ost">${state(m)}</div></div>`).join('')}</div>`).join('')}</div>`
+      ${ko.matches.filter(m => m.round === r + 1).sort((a, b) => a.slot - b.slot).map(m => `<div class="omatch${m.status === 'disputed' ? ' disp' : ''}">${side(m, m.aEntry)}${side(m, m.bEntry, m.status === 'bye')}<div class="ost">${state(m)}${m.roundId ? ` · <button class="linkbtn" data-o-card="${m.id}:${c.id}">Scorecard</button>` : ''}</div></div>`).join('')}</div>`).join('')}</div>`
 }

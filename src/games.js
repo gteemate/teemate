@@ -6,7 +6,8 @@ export const GAME_DEFS = {
   2: { title: '2 golfers', games: [
     { k: 'sm2', name: 'Stableford match play', sub: 'Off the low man', pct: 85, desc: 'More Stableford points on a hole wins it.', play: { kind: 'match1', cmp: 'pts', offLow: true } },
     { k: 'st2', name: 'Stableford total', sub: 'Stableford', pct: 100, desc: 'Higher Stableford total over 18 wins.', play: { kind: 'stab' } },
-    { k: 'sc2', name: 'Scratch match play', sub: 'No shots', pct: null, desc: 'Lower gross score wins each hole. No shots.', play: { kind: 'match1', cmp: 'net' } }] },
+    { k: 'sc2', name: 'Scratch match play', sub: 'No shots', pct: null, desc: 'Lower gross score wins each hole. No shots.', play: { kind: 'match1', cmp: 'net' } },
+    { k: 'kos', name: 'Handicap match play', sub: 'Full difference', pct: 100, desc: 'Lower net score wins each hole, shots off the low handicap at the full difference. How club knockouts are played.', play: { kind: 'match1', cmp: 'net', offLow: true } }] },
   3: { title: '3 golfers', games: [
     { k: 'six', name: 'Six pointer (Stableford)', sub: 'Stableford', pct: 100, desc: '4 / 2 / 0 a hole by Stableford points.', play: { kind: 'six', cmp: 'pts' } },
     { k: 'sixs', name: 'Six pointer (scratch)', sub: 'No shots', pct: null, desc: '4 / 2 / 0 a hole by gross score. No shots.', play: { kind: 'six', cmp: 'net' } },

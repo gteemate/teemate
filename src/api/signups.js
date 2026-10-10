@@ -38,11 +38,11 @@ export async function deleteSignup(id) { must(await sb.from('signup_comps').dele
 /* ---------- Knockout draw ---------- */
 
 const toMatch = m => ({ id: m.id, round: m.round, slot: m.slot, aEntry: m.a_entry, bEntry: m.b_entry, winnerEntry: m.winner_entry, result: m.result,
-  status: m.status, reportedEntry: m.reported_entry })
+  status: m.status, reportedEntry: m.reported_entry, roundId: m.round_id ?? null })
 
 /** A competition's draw: { matches: [...], entries: [{ id, memberId, partnerId }] } (players see it once published). */
 export async function getKnockout(compId) {
-  const [m, e] = await Promise.all([sb.from('ko_matches').select('id, round, slot, a_entry, b_entry, winner_entry, result, status, reported_entry').eq('comp_id', compId).order('round').order('slot'),
+  const [m, e] = await Promise.all([sb.from('ko_matches').select('id, round, slot, a_entry, b_entry, winner_entry, result, status, reported_entry, round_id').eq('comp_id', compId).order('round').order('slot'),
     sb.rpc('ko_entries', { p_comp: compId })])
   return { matches: must(m).map(toMatch), entries: must(e) }
 }
@@ -55,6 +55,8 @@ export async function makeDraw(compId) { must(await sb.rpc('admin_make_draw', { 
 export async function swapDraw(compId, x, y) { must(await sb.rpc('admin_swap_draw', { p_comp: compId, p_x: x, p_y: y })) }
 export async function setRoundDeadlines(compId, dates) { must(await sb.rpc('admin_set_round_deadlines', { p_comp: compId, p_dates: dates })) }
 export async function publishDraw(compId) { must(await sb.rpc('admin_publish_draw', { p_comp: compId })) }
+/** Link my scorecard to my match (Score this match). */
+export async function linkKoCard(matchId, roundId) { must(await sb.rpc('ko_link_card', { p_match: matchId, p_round: roundId })) }
 export async function reportKoResult(matchId, winnerEntry, result) { must(await sb.rpc('report_ko_result', { p_match: matchId, p_winner: winnerEntry, p_result: result })) }
 export async function confirmKoResult(matchId) { must(await sb.rpc('confirm_ko_result', { p_match: matchId })) }
 export async function disputeKoResult(matchId) { must(await sb.rpc('dispute_ko_result', { p_match: matchId })) }

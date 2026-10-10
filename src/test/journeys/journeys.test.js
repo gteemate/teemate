@@ -425,6 +425,33 @@ describe('the pretend server', () => {
     expect(app.toast()).toContain('everyone on it has been told')
   })
 
+  it('22. Knockout: score the match on a card from the draw; the result comes from the card; anyone can open the scorecard', async () => {
+    app = await boot(db => {
+      Object.assign(db.signups[0], { closesOn: '2026-10-01', drawPublished: true, roundDeadlines: ['2026-11-15', '2026-12-06'] })
+      db.signupEntries.push(...[0, 1, 3, 5].map((m, i) => ({ id: 100 + i, compId: 1, memberId: m, partnerId: null })))
+      db.koMatches.push({ id: 1, compId: 1, round: 1, slot: 0, aEntry: 100, bEntry: 101, winnerEntry: null, result: null, status: 'open', reportedEntry: null },
+        { id: 2, compId: 1, round: 1, slot: 1, aEntry: 102, bEntry: 103, winnerEntry: null, result: null, status: 'open', reportedEntry: null },
+        { id: 3, compId: 1, round: 2, slot: 0, aEntry: null, bEntry: null, winnerEntry: null, result: null, status: 'open', reportedEntry: null })
+    })
+    await app.tap('Competition')
+    await app.tap('Men’s Match Play')
+    await app.tap('Score this match')
+    const card = app.db.rounds.at(-1)
+    expect(card).toMatchObject({ game: 'kos', lineup: [{ m: 0 }, { m: 1 }] })
+    expect(app.db.koMatches[0].roundId).toBe(card.id)
+    // The match is played: Gary wins every hole to the 10th (on his phone the holes are saved as they go).
+    card.scores = card.scores.map(() => [3, 5]); card.done = card.done.map((_, i) => i < 10)
+    await app.back()
+    expect(app.screen()).toBe('Men’s Match Play')
+    expect(app.text()).toContain('From the scorecard: Gary Cochrane won 10&8')
+    await app.tap('Send this result')
+    expect(app.db.koMatches[0]).toMatchObject({ status: 'reported', winnerEntry: 100, result: '10&8' })
+    await app.tap('[data-kcard="1"]')
+    expect(app.screen()).toBe('Gary Cochrane v Declan Murphy')
+    expect(app.text()).toContain('Match after each hole')
+    await app.homeFromHere()
+  })
+
   it('has every function src/api.js exports (so a new one is never silently missing)', () => {
     const dir = `${process.cwd()}/src/api`
     const real = readdirSync(dir).flatMap(f => [...readFileSync(`${dir}/${f}`, 'utf8').matchAll(/^export (?:async )?function (\w+)/gm)].map(m => m[1]))
