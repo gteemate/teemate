@@ -388,6 +388,43 @@ describe('the pretend server', () => {
     await app.homeFromHere()
   })
 
+  it('20. The club office moves a booking to another time; the members on it are told in the app', async () => {
+    let from, to
+    app = await boot(db => { from = at(db, 600); to = at(db, 660); db.book(0, from.id, [1]) })
+    await app.tap('Gary Cochrane')
+    await app.tap('Club office')
+    await app.tap('Tee sheet')
+    await app.tap(`[data-o-slot="${from.id}"]`)
+    expect(app.text()).toContain('Booked by Gary Cochrane')
+    await app.tap('Move to another time')
+    expect(app.text()).toContain('Moving Gary Cochrane’s booking (2 players)')
+    await app.tap(`[data-o-slot="${to.id}"]`)
+    await app.type('#o-mvnote', 'A society has the tee at 10')
+    await app.tap('#o-mvgo')
+    expect(from.players).toEqual([])
+    expect(to.players.map(p => p.memberId)).toEqual([0, 1])
+    expect(app.db.notices.map(n => [n.memberId, n.kind, n.oldTime, n.newTime, n.note])).toEqual([[0, 'moved', 600, 660, 'A society has the tee at 10'], [1, 'moved', 600, 660, 'A society has the tee at 10']])
+    await app.tap('#o-back')
+    await app.settle()
+    expect(document.getElementById('alerts').textContent).toContain('Your 10:00 tee time on Sat 10 Oct has moved to 11:00')
+    await app.tap('OK')
+    expect(app.db.notices.find(n => n.memberId === 0).seen).toBe(true)
+    await app.homeFromHere()
+  })
+
+  it('21. The club office cancels a booking, with a note', async () => {
+    let slot
+    app = await boot(db => { db.asOffice = true; slot = at(db, 600); db.book(1, slot.id, [3]) })
+    await app.tap('Tee sheet')
+    await app.tap(`[data-o-slot="${slot.id}"]`)
+    await app.tap('Cancel the booking')
+    await app.type('#o-cxnote', 'Course closed for the frost')
+    await app.tap('#o-cxgo')
+    expect(slot.players).toEqual([])
+    expect(app.db.notices.map(n => [n.memberId, n.kind, n.note])).toEqual([[1, 'cancelled', 'Course closed for the frost'], [3, 'cancelled', 'Course closed for the frost']])
+    expect(app.toast()).toContain('everyone on it has been told')
+  })
+
   it('has every function src/api.js exports (so a new one is never silently missing)', () => {
     const dir = `${process.cwd()}/src/api`
     const real = readdirSync(dir).flatMap(f => [...readFileSync(`${dir}/${f}`, 'utf8').matchAll(/^export (?:async )?function (\w+)/gm)].map(m => m[1]))

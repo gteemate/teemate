@@ -1,6 +1,6 @@
 // UI state only: which tab and screen, selections, and drafts not yet saved. Data lives behind api.js.
 export const S = {
-  office: false, ov: 'today', oQ: '', oDay: 0, oComp: null, // the club office: on, which section, members search, tee sheet day, competition picked
+  office: false, ov: 'today', oQ: '', oDay: 0, oComp: null, oMove: null, // the club office: on, which section, members search, tee sheet day, competition picked, a booking being moved
   koNew: null, knCaret: null, // New knockout (members)
   signupNew: false, koComp: null, koRound: null, koView: 'round', koSwap: null, koFrom: null, // a knockout draw's page
   navReset: false, // a booking or request just finished: the back trail starts afresh from Home

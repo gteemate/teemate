@@ -4,6 +4,7 @@
 import * as api from '../api.js'
 import { S } from '../state.js'
 import { $, esc, render, top0 } from '../ui.js'
+import { forceAlertCheck } from '../alert-bar.js'
 
 export const SECTIONS = [
   ['today', 'Today', '<path d="M4 11l8-7 8 7v9H4z"/><path d="M10 20v-5h4v5"/>'],
@@ -34,7 +35,7 @@ const COUNT = { today: s => s.joins.length + s.treqs.length + s.disputes.length,
 
 /** Open an office section (from the sidebar, or a link on a page). */
 export async function openSection(ov) {
-  Object.assign(S, { ov, aview: 'office', oPanel: null })
+  Object.assign(S, { ov, aview: 'office', oMove: null })
   S.navReset = true
   await render(); top0()
 }
@@ -50,7 +51,7 @@ export function drawSide(s, me, clubName) {
     <div class="owho">${me.office ? 'Signed in as the club office' : `Signed in as <b>${esc(me.name)}</b>`}</div>`
   side.querySelectorAll('[data-ov]').forEach(b => (b.onclick = () => openSection(b.dataset.ov)))
   if ($('o-out')) $('o-out').onclick = () => api.signOut()
-  if ($('o-back')) $('o-back').onclick = async () => { S.office = false; S.aview = 'account'; S.navReset = true; await render(); top0() }
+  if ($('o-back')) $('o-back').onclick = async () => { S.office = false; S.aview = 'account'; S.navReset = true; await render(); top0(); forceAlertCheck() } // anything new for me while I was in the office
 }
 
 export function hideSide() {

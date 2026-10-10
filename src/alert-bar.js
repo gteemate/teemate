@@ -1,5 +1,6 @@
 // The alerts drop-down: things that need you (alerts.js picks them) slide down from the top of the screen, one at a
-// time, on every screen. Accept/Decline a match challenge, OK an answered tee time request, the halfway hut (order
+// time, on every screen. OK the club office moving or cancelling your tee time, Accept/Decline a match challenge,
+// OK an answered tee time request, the halfway hut (order
 // after hole 8; your order is ready), or Later (hides it until
 // the app is next opened; a gold dot by the date, or at the top right, brings it back). Checked after every screen
 // is drawn and when the app comes back to the front. No live pushes.
@@ -43,9 +44,9 @@ async function run() {
   if (busy || !$('alerts')) return
   busy = true
   try {
-    const [me, playerEvents, requests, hutState] = await Promise.all([api.getMe(), api.getMyPlayerEvents(), api.getMyTeeTimeRequests(), hutNow()])
+    const [me, playerEvents, requests, hutState, notices] = await Promise.all([api.getMe(), api.getMyPlayerEvents(), api.getMyTeeTimeRequests(), hutNow(), api.getBookingNotices()])
     if (!me) return clear()
-    const all = pickAlerts({ me, playerEvents, requests, date: isoDate(today()), hut: hutState }).filter(a => !done.has(a.key))
+    const all = pickAlerts({ me, playerEvents, requests, date: isoDate(today()), hut: hutState, notices }).filter(a => !done.has(a.key))
     // The Scores tab asks about a challenge itself, so it doesn't drop down there too.
     showAlerts(all.filter(a => !(a.kind === 'challenge' && S.tab === 'scores')))
   } catch (err) {
@@ -100,6 +101,13 @@ async function act(a, id, btn) {
     if (id === 'nothanks') return draw()
     S.tab = 'home'; S.aview = 'hutorder'
     return render()
+  }
+  if (id === 'ok' && a.kind === 'notice') {
+    done.add(a.key)
+    shown = shown.filter(x => x.key !== a.key)
+    api.seenBookingNotice(a.ref.noticeId).catch(() => {})
+    if (S.tab === 'home' && ['home', 'mine'].includes(S.aview)) await render() // the booking has changed: show it as it is now
+    return draw()
   }
   if (id === 'ok' && a.kind === 'hutready') {
     remember('teemate.hutSeen', a.ref.orderId)

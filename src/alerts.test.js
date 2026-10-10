@@ -30,6 +30,16 @@ describe('pickAlerts: what drops down from the header', () => {
     expect(pickAlerts({ ...base, playerEvents: events })).toEqual([])
   })
 
+  it('the club office moved or cancelled my tee time: told first, with its note; OK only (no Later)', () => {
+    const moved = { id: 4, kind: 'moved', date: '2026-10-17', oldTime: 600, newTime: 660, note: 'A society has the tee at 10' }
+    const [a, b] = pickAlerts({ ...base, requests: [req()], notices: [moved] })
+    expect(a).toMatchObject({ key: 'bn:4', kind: 'notice', title: 'Your 10:00 tee time on Sat 17 Oct has moved to 11:00', detail: 'The club office: “A society has the tee at 10”', ref: { noticeId: 4 } })
+    expect(ids(a)).toEqual(['ok'])
+    expect(b.kind).toBe('request')
+    expect(pickAlerts({ ...base, notices: [{ id: 5, kind: 'cancelled', date: '2026-10-17', oldTime: 600, note: null }] })[0])
+      .toMatchObject({ title: 'Your 10:00 tee time on Sat 17 Oct was cancelled', detail: 'The club office cancelled it. Everyone on the booking has been told.' })
+  })
+
   it('a request approved: OK or Later', () => {
     const [a] = pickAlerts({ ...base, requests: [req()] })
     expect(a).toMatchObject({ key: 'rq:3', kind: 'request', title: 'Request approved: Sat 14 Nov 08:10', detail: 'Booked. It’s in your bookings.', ref: { reqId: 3 } })

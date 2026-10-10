@@ -9,12 +9,12 @@ const WEEK = 7 * 864e5
 const later = { id: 'later', label: 'Later' }
 
 /**
- * → [{ key, kind: 'challenge' | 'request', title, detail, actions: [{ id, label, primary? }], ref: { peId? , reqId? } }],
- * challenges first, then answered requests (oldest answer first), then halfway hut orders ready to collect, then the
+ * → [{ key, kind: 'notice' | 'challenge' | 'request' | 'hutready' | 'hut', title, detail, actions: [{ id, label, primary? }], ref: { peId? , reqId? } }],
+ * the club office's changes to my tee times first, then challenges, then answered requests (oldest answer first), then halfway hut orders ready to collect, then the
  * hut's "would you like to order?" after hole 8. Keys in `hidden` (Later) are left out.
  * hut = { on, card, asked: cardIds, orders: my orders today, seen: ready orders already OK'd }
  */
-export function pickAlerts({ me, playerEvents, requests, date, now = Date.now(), hidden = new Set(), hut = null }) {
+export function pickAlerts({ me, playerEvents, requests, date, now = Date.now(), hidden = new Set(), hut = null, notices = [] }) {
   const challenges = playerEvents.filter(e => e.date === date && needsMyAnswer(e, me)).map(e => {
     const theirs = e.groups.find(g => g.slot === (e.proposerSlot ?? e.groups.find(x => x.host)?.slot))
     return {
@@ -33,6 +33,13 @@ export function pickAlerts({ me, playerEvents, requests, date, now = Date.now(),
       detail: r.status === 'approved' ? 'Booked. It’s in your bookings.' : r.note || 'No reason given',
       actions: [{ id: 'ok', label: 'OK', primary: true }, later],
     }))
+  // The club office cancelled or moved one of my tee times.
+  const office = notices.map(n => ({
+    key: `bn:${n.id}`, kind: 'notice', ref: { noticeId: n.id },
+    title: n.kind === 'moved' ? `Your ${hhmm(n.oldTime)} tee time on ${longDay(fromIso(n.date))} has moved to ${hhmm(n.newTime)}` : `Your ${hhmm(n.oldTime)} tee time on ${longDay(fromIso(n.date))} was cancelled`,
+    detail: n.note ? `The club office: “${n.note}”` : n.kind === 'moved' ? 'The club office moved it. Everyone on the booking has been told.' : 'The club office cancelled it. Everyone on the booking has been told.',
+    actions: [{ id: 'ok', label: 'OK', primary: true }],
+  }))
   const ready = (hut?.orders ?? []).filter(o => o.status === 'ready' && !hut.seen.includes(o.id)).map(o => ({
     key: `hutok:${o.id}`, kind: 'hutready', ref: { orderId: o.id },
     title: 'Your halfway hut order is ready', detail: o.items.map(i => (i.qty > 1 ? `${i.qty} × ${i.name}` : i.name)).join(', '),
@@ -43,7 +50,7 @@ export function pickAlerts({ me, playerEvents, requests, date, now = Date.now(),
     title: 'Halfway hut is open', detail: 'Would you like to place an order?',
     actions: [{ id: 'order', label: 'Order', primary: true }, { id: 'nothanks', label: 'No thanks' }],
   }] : []
-  return [...challenges, ...answered, ...ready, ...prompt].filter(a => !hidden.has(a.key))
+  return [...office, ...challenges, ...answered, ...ready, ...prompt].filter(a => !hidden.has(a.key))
 }
 
 /** Look for alerts on a new screen, or at most once a minute while the same screen redraws (a scorecard redraws on every tap). */

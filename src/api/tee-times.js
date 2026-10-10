@@ -45,6 +45,21 @@ export async function moveMatchBooking(bookingId, slotId) {
   return must(await sb.rpc('move_match_booking', { p_booking: bookingId, p_slot: slotId }))
 }
 
+/** The club office: cancel a member's booking, or move it to another time (same players and guests). Everyone on
+ *  it gets a notice, with the note if there is one. */
+export async function adminCancelBooking(bookingId, note = '') {
+  return must(await sb.rpc('admin_cancel_booking', { p_booking: bookingId, p_note: note }))
+}
+export async function adminMoveBooking(bookingId, slotId, note = '') {
+  return must(await sb.rpc('admin_move_booking', { p_booking: bookingId, p_slot: slotId, p_note: note }))
+}
+/** The office changed one of my bookings: [{ id, kind: 'cancelled' | 'moved', date, oldTime, newTime, note, createdAt }], not yet OK'd. */
+export async function getBookingNotices() {
+  return must(await sb.from('booking_notices').select('id, kind, date, old_time, new_time, note, created_at').eq('seen', false).order('created_at'))
+    .map(n => ({ id: n.id, kind: n.kind, date: n.date, oldTime: n.old_time, newTime: n.new_time, note: n.note, createdAt: n.created_at }))
+}
+export async function seenBookingNotice(id) { must(await sb.rpc('seen_booking_notice', { p_id: id })) }
+
 export async function getMyBookings() {
   return must(await sb.rpc('get_my_bookings'))
 }

@@ -14,7 +14,8 @@ export const API_NAMES = ['getMe', 'forgetMe', 'getSession', 'signIn', 'needsAcc
   'getHutStaff', 'setHutStaff', 'placeHutOrder', 'cancelMyHutOrder', 'myHutOrders', 'hutOrdersToday', 'setHutOrderStatus', 'getMembers', 'getBuddies',
   'addBuddy', 'removeBuddy', 'getFriends', 'saveContact', 'removeContact', 'setFriendFavourite', 'getAccessList', 'saveMember', 'getFavourites',
   'setFavourite', 'setOfficeLogin', 'getAccessRequests', 'declineRequest', 'deleteMember', 'resetLogin', 'getCourse', 'getPins', 'setGreenWidth', 'publishPins',
-  'getTeeSheet', 'bookTeeTime', 'getMyTeeTimes', 'getGuests', 'setGuestHandicap', 'cancelBooking', 'moveMatchBooking', 'getMyBookings',
+  'getTeeSheet', 'bookTeeTime', 'getMyTeeTimes', 'getGuests', 'setGuestHandicap', 'cancelBooking', 'moveMatchBooking', 'adminCancelBooking', 'adminMoveBooking',
+  'getBookingNotices', 'seenBookingNotice', 'getMyBookings',
   'getGuestPoints', 'getBookingRules', 'setBookingRules', 'requestTeeTime', 'cancelTeeTimeRequest', 'getMyTeeTimeRequests', 'getTeeTimeRequests',
   'decideTeeTimeRequest', 'markTeeTimeRequestsSeen', 'dismissTeeTimeRequest', 'getGameSettings', 'setMyGamePref', 'getCurrentRound', 'getRound', 'deleteRound', 'saveRound',
   'getTodayRounds', 'getCardsForTeeTimes', 'getMyPlayerEvents', 'proposePlayerEvent', 'counterPlayerEvent', 'answerPlayerEvent', 'cancelPlayerEvent',
@@ -61,6 +62,7 @@ export function makeWorld(today, setup = () => {}) {
       { id: 2, section: 'Food', name: 'Toastie', pricePence: 500, soldOut: false, sort: 2 },
       { id: 3, section: 'Drinks', name: 'Tea', pricePence: 250, soldOut: false, sort: 1 }] },
     orders: [], entries: [], leagueEntries: [],
+    notices: [], // the office changed a booking: { id, memberId, kind, date, oldTime, newTime, note, seen }
     joins: [], emails: { 0: 'gary@example.invalid' }, office: null, asOffice: false, pinsToday: false, // club office: asking to join, sign-in emails, the office login
     events: [
       { id: 2, name: 'Winter League', style: 'league', fmt: 'beststab', club: true, everyone: false, startDate: addDaysIso(today, -5), days: 1, weeks: 6, bestOf: 4,
@@ -147,7 +149,23 @@ export function makeWorld(today, setup = () => {}) {
     getPins: async () => ({ ...copy(PIN_SHEET), date: db.pinsToday ? today : '2026-10-01' }),
     getGameSettings: async () => ({ ...copy(GAME_SETTINGS), mine: {} }),
     setMyGamePref: async () => {},
-    getTeeSheet: async date => copy(sheet(date)),
+    getTeeSheet: async date => copy(sheet(date).map(s => ({ ...s, players: s.players.map(p => ({ ...p, bookedBy: db.bookings.find(b => b.id === p.bookingId)?.bookedBy })) }))),
+    adminCancelBooking: async (bid, note = '') => {
+      const b = db.bookings.find(x => x.id === bid), s = slotById(b.slotId), ids = s.players.filter(p => p.bookingId === bid && !p.guest).map(p => p.memberId)
+      unbook(b)
+      ids.forEach(m => db.notices.push({ id: id(), memberId: m, kind: 'cancelled', date: s.date, oldTime: s.time, newTime: null, note: note || null, seen: false }))
+      return { told: ids.length }
+    },
+    adminMoveBooking: async (bid, sid, note = '') => {
+      const b = db.bookings.find(x => x.id === bid), s = slotById(b.slotId), to = slotById(sid), mine = s.players.filter(p => p.bookingId === bid)
+      if (to.capacity - to.players.length < mine.length) throw new Error('Sorry, those spaces have just been taken. Pick another time.')
+      unbook(b)
+      const ids = mine.filter(p => !p.guest).map(p => p.memberId)
+      db.book(b.bookedBy, sid, ids.filter(m => m !== b.bookedBy), mine.filter(p => p.guest).map(p => ({ name: p.name, club: p.club, hcp: p.hcp })))
+      ids.forEach(m => db.notices.push({ id: id(), memberId: m, kind: 'moved', date: to.date, oldTime: s.time, newTime: to.time, note: note || null, seen: false }))
+    },
+    getBookingNotices: async () => copy(db.notices.filter(n => n.memberId === ME && !n.seen)),
+    seenBookingNotice: async nid => { const n = db.notices.find(x => x.id === nid); if (n?.memberId === ME) n.seen = true },
     getMyTeeTimes: async date => copy(sheet(isoDate(date)).filter(s => s.players.some(p => p.memberId === ME))),
     bookTeeTime: async ({ slotId, memberIds = [], guests = [] }) => {
       const b = db.book(ME, slotId, memberIds, guests), s = slotById(slotId)
