@@ -39,7 +39,7 @@ export function draw({ me, lists }) {
   const list = lists[tab]
   const empty = { entered: 'You’re not in any competitions right now. When a club competition is on, you can join it as you start your round.', events: 'No invitations or events. Create your own below.', history: 'Finished competitions you played in will show here.' }[tab]
   $('main').innerHTML = `<div class="screen">
-    <div class="seg" role="tablist" aria-label="Competitions">${TABS.map(([k, n]) => `<button role="tab" data-tab="${k}" aria-pressed="${tab === k}">${n}</button>`).join('')}</div>
+    <div class="seg seg4" role="tablist" aria-label="Competitions">${TABS.map(([k, n]) => `<button role="tab" data-tab="${k}" aria-pressed="${tab === k}">${n}</button>`).join('')}</div>
     ${tab === 'entered' ? '<button class="card comp" id="field"><span class="row"><span class="ct">Today at the club</span><span class="link">Scores ›</span></span><span class="sub">Everyone’s round today: gross, net, Stableford</span></button>' : ''}
     ${list.length ? list.map(row).join('') : `<div class="empty-state">${empty}</div>`}
     <button class="ghost dashed" id="create">+ Create your own event</button>
