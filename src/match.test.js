@@ -14,6 +14,11 @@ describe('matchBooking: where the four stand on the tee sheet', () => {
   const slot = (id, time, players, capacity = 4) => ({ id, time, capacity, players: players.map(memberId => ({ memberId })) })
   it('nobody booked: none', () => expect(matchBooking(ids, [slot(10, 490, [9])], 1)).toEqual({ kind: 'none' }))
   it('all four in one tee time: together', () => expect(matchBooking(ids, [slot(10, 490, [1, 2, 3, 4])], 1)).toEqual({ kind: 'together', slot: expect.objectContaining({ id: 10 }) }))
+  it('all four together, even when one of us has another tee time that day (earlier or later): together', () => {
+    // Gareth at 07:50 with others, then all four at 15:30.
+    expect(matchBooking(ids, [slot(10, 470, [1, 9]), slot(20, 930, [1, 2, 3, 4])], 1)).toEqual({ kind: 'together', slot: expect.objectContaining({ id: 20 }) })
+    expect(matchBooking(ids, [slot(10, 470, [2, 9]), slot(20, 930, [1, 2, 3, 4]), slot(30, 1000, [3])], 1).kind).toBe('together')
+  })
   it('me and one other booked, room for the rest: partial', () =>
     expect(matchBooking(ids, [slot(10, 490, [1, 3])], 1)).toEqual({ kind: 'partial', slot: expect.objectContaining({ id: 10 }), missing: [2, 4] }))
   it("I'm on a full tee time with others, and nobody else in the match is booked: apart (book a new time)", () =>
@@ -25,5 +30,7 @@ describe('matchBooking: where the four stand on the tee sheet', () => {
   it('two of us together and another elsewhere: split, saying who and when', () =>
     expect(matchBooking(ids, [slot(10, 490, [1, 2]), slot(11, 500, [3])], 1)).toEqual({ kind: 'split', clash: { id: 3, time: 500 } }))
   it("two of the others together, I'm not booked: split (they book, or I join them)", () => expect(matchBooking(ids, [slot(11, 500, [3, 4])], 1)).toEqual({ kind: 'split', clash: { id: 3, time: 500 } }))
+  it('two of us share a tee time and I have another: partial on the one with them (not my other one)', () =>
+    expect(matchBooking(ids, [slot(10, 470, [1, 9]), slot(20, 930, [1, 3])], 1)).toEqual({ kind: 'partial', slot: expect.objectContaining({ id: 20 }), missing: [2, 4] }))
   it('only one of the others booked, alone: apart', () => expect(matchBooking(ids, [slot(11, 500, [3])], 1)).toEqual({ kind: 'apart', booked: [{ id: 3, time: 500 }] }))
 })

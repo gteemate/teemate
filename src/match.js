@@ -14,11 +14,15 @@ export function myMatch(event, day, meId) {
  * apart (nobody in the match shares a tee time: book a new one, 2 hours or more from each), or split (anything else; clash = the first one booked in a tee time other than mine, and when).
  */
 export function matchBooking(ids, sheet, meId) {
-  const at = id => sheet.find(s => s.players.some(p => p.memberId === id))
+  // Someone can have more than one tee time that day (a morning round, then the match): all four on any one of them
+  // is together, and each player's tee time for the match is the one they share with others in it, if any.
+  const has = (s, id) => s.players.some(p => p.memberId === id)
+  const slotsOf = id => sheet.filter(s => has(s, id))
+  const at = id => slotsOf(id).find(s => ids.some(o => o !== id && has(s, o))) ?? slotsOf(id)[0]
   const booked = ids.filter(at)
   if (!booked.length) return { kind: 'none' }
-  const all = at(ids[0])
-  if (booked.length === ids.length && ids.every(id => at(id) === all)) return { kind: 'together', slot: all }
+  const all = sheet.find(s => ids.every(id => has(s, id)))
+  if (all) return { kind: 'together', slot: all }
   const mine = at(meId)
   const elsewhere = booked.find(id => at(id) !== mine)
   const missing = ids.filter(id => !at(id))
