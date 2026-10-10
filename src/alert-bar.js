@@ -99,7 +99,7 @@ async function act(a, id, btn) {
     done.add(a.key)
     shown = shown.filter(x => x.key !== a.key)
     if (id === 'nothanks') return draw()
-    S.tab = 'home'; S.aview = 'hutorder'
+    S.tab = 'home'; S.aview = 'hutorder'; S.hutFrom = 'card' // Back returns to the scorecard
     return render()
   }
   if (id === 'ok' && a.kind === 'notice') {

@@ -11,6 +11,7 @@
     "test": "vitest run",
     "test:e2e": "vitest run --config vitest.e2e.config.js",
     "report:taps": "node scripts/tap-report.mjs",
+    "test:screens": "playwright test",
     "db:migrate": "node scripts/db.mjs migrate",
     "db:migrate:live": "node scripts/db.mjs migrate --live",
     "db:seed": "node scripts/make-seed.mjs && node scripts/db.mjs seed",
@@ -21,6 +22,7 @@
     "load-test": "node scripts/load-test.mjs"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.0",
     "happy-dom": "^15.11.7",
     "vite": "^8.3.3",
     "vitest": "^5.0.3"

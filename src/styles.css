@@ -33,7 +33,7 @@ header.top{padding:22px 20px 8px;flex-shrink:0;position:relative}
 .top h2{font-family:var(--display);font-size:32px;font-weight:400;letter-spacing:0;margin:0;line-height:1.1}
 .top .sub{color:var(--muted);font-size:16px;margin-top:6px}
 .top .sub b{color:var(--ink);font-weight:700}
-.back{background:none;border:0;color:var(--muted);font-size:15px;font-weight:600;padding:4px 0;margin-bottom:6px;cursor:pointer}
+.back{background:none;border:0;color:var(--muted);font-size:15px;font-weight:600;padding:10px 16px 10px 0;margin:-6px 0 0;cursor:pointer} /* a 40px+ tap area, same look */
 main{flex:1;overflow-y:auto;min-height:0}
 .screen{padding:12px 16px 24px;display:flex;flex-direction:column;gap:14px}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:20px}
@@ -80,7 +80,7 @@ h3{font-family:var(--display);font-size:21px;font-weight:600;letter-spacing:0;ma
 .who{min-width:0}
 .who strong{display:block;font-size:16px;font-weight:700;line-height:1.2}
 .who small{color:var(--muted);font-size:13px;font-variant-numeric:tabular-nums}
-.x{background:none;border:0;color:var(--ink);cursor:pointer;padding:6px;border-radius:8px;font-size:20px;line-height:1}
+.x{background:none;border:0;color:var(--ink);cursor:pointer;padding:6px;border-radius:8px;font-size:20px;line-height:1;min-width:40px;min-height:40px;display:inline-grid;place-items:center} /* easy to tap */
 .brow{display:grid;grid-template-columns:44px 1fr auto;gap:12px;align-items:center;padding:10px 14px;border-radius:18px;background:var(--surface);border:2px solid var(--line);cursor:pointer;text-align:left;width:100%;color:var(--ink)}
 .brow[aria-pressed="true"]{border-color:var(--leaf-line);background:var(--leaf)}
 .brow:disabled{opacity:.45;cursor:not-allowed}

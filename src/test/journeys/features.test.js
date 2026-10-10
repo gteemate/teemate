@@ -127,6 +127,20 @@ describe('challenges with other four-balls', () => {
   })
 })
 
+describe('getting back Home', () => {
+  it('Halfway hut opened from Account during a round: back goes back the way you came, not round in a loop', async () => {
+    app = await boot(db => db.rounds.push({ id: 77, date: db.today, createdBy: 0, lineup: [{ m: 0 }, { m: 1 }], game: 'st2', pairing: 0, submitted: {},
+      scores: Array.from({ length: 18 }, () => [4, 4]), done: Array.from({ length: 18 }, (_, i) => i < 11), slotId: null }))
+    if (app.screen() !== 'Home') await app.homeFromHere()
+    if (document.querySelector('[data-al="nothanks"]')) await app.tap('[data-al="nothanks"]') // the hut's own prompt
+    await app.tap('Gary Cochrane')
+    await app.tap('[data-a="hutorder"]')
+    expect(app.screen()).toBe('Halfway hut')
+    await app.homeFromHere() // fails if back goes round in circles
+    expect(app.backPresses).toBeLessThanOrEqual(2)
+  })
+})
+
 describe('the smaller jobs', () => {
   it('pins: the office sets today’s flags and the course guide shows them', async () => {
     app = await boot()
