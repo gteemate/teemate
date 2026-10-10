@@ -13,6 +13,9 @@ right, "Hole 4 · +1" on Scoring).
 
 ## 1. Home layout
 
+*Changed after trying it (user, 10 Oct): the remote now sits at the top under the date, like every other screen's
+content. Centred, it jumped when you tapped through. It still doesn't scroll and still sizes from the shorter side.*
+
 - **One centred block.** The disc and four tiles form a square, centred horizontally and vertically in the space
   below the header. The square is sized from the screen's shorter side (`min(width, height − header) − gutters`,
   capped for large screens), so it is the same remote upright, sideways, on a tablet and on a computer. Home

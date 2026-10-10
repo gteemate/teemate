@@ -501,14 +501,15 @@ button.wlpill{cursor:pointer}
 .relbanner span{font-size:14px;color:var(--muted);font-variant-numeric:tabular-nums}
 .slot.notyet{opacity:.55}
 
-/* Home: a remote. One square block (four tiles notched around the disc) centred in the space under the header,
-   sized from the shorter side so it's the same upright, sideways and on a big screen. No scroll. */
+/* Home: a remote. One square block (four tiles notched around the disc) at the top under the date, like every
+   other screen's content (centred, it jumped when you tapped through), sized from the shorter side so it's the same
+   upright, sideways and on a big screen. No scroll. */
 .homehdr{display:flex;justify-content:space-between;align-items:center;gap:12px}
 .hwx{display:flex;gap:14px;background:none;border:0;padding:4px 0;color:var(--muted);font:600 15px var(--sys);cursor:pointer}
 .hwx span{display:inline-flex;align-items:center;gap:6px}
 .hwx svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
 #app.onhome main{display:flex;overflow:hidden}
-.screen.home{flex:1;display:grid;place-items:center;padding:0;--gap:10px;--q:320px;--d:calc(var(--q) * .42)} /* --q: set from the space available (home.js) */
+.screen.home{flex:1;display:grid;justify-items:center;align-items:start;padding:12px 0 0;--gap:10px;--q:320px;--d:calc(var(--q) * .42)} /* --q: set from the space available (home.js) */
 @media (max-width:460px),(max-height:500px){#app.onhome{height:100dvh;min-height:0}#app.onhome main{padding-bottom:env(safe-area-inset-bottom,0px)}}
 .hquad{position:relative;display:grid;grid-template-columns:1fr 1fr;gap:var(--gap);width:var(--q);height:var(--q)}
 .htile{--r:calc(var(--d) * .547 + 9px); /* disc + its ring + a clear gap */

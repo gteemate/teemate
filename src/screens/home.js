@@ -1,4 +1,4 @@
-// Home: a remote control. The membership disc in the middle of the screen (tap it for Account), four tiles around
+// Home: a remote control. The membership disc at the top of the screen (tap it for Account), four tiles around
 // it (Booking, Competition, Friends, Scoring; a tile glows gold when something there needs you), and the date and
 // course weather in the header. Nothing else: things that need you drop down from the header (alert-bar.js).
 // No tab bar: these tiles and each screen's back arrow are the way around.
@@ -48,12 +48,12 @@ async function cardPill(card) {
 const WIND = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8h10a3 3 0 1 0-3-3M3 12h15a3 3 0 1 1-3 3M3 16h8"/></svg>'
 const RAIN = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 15a4 4 0 0 1-.5-8A6 6 0 0 1 18 8a3.5 3.5 0 0 1 0 7z"/><path d="M8 18l-1 3M12 18l-1 3M16 18l-1 3"/></svg>'
 
-// The remote is a square from the shorter side of the space under the header (16px clear all round, at most 520px).
+// The remote is a square from the shorter side of the space under the header (clear of the edges, at most 520px).
 let watching = null
 function fitRemote() {
   const main = $('main'), box = main.querySelector('.screen.home')
   if (!box) return
-  box.style.setProperty('--q', `${Math.max(200, Math.min(main.clientWidth - 32, main.clientHeight - 32, 520))}px`)
+  box.style.setProperty('--q', `${Math.max(200, Math.min(main.clientWidth - 32, main.clientHeight - 24, 520))}px`)
   if (!watching) { watching = new ResizeObserver(() => fitRemote()); watching.observe(main) }
 }
 

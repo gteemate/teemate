@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Slide between screens</title>
+<style>
+:root{--bg:#141f3b;--surface:#1b2a4b;--line:#2b3c63;--ink:#e8ecf5;--muted:#9aa7c4;--gold:#e3c375;--ring:#762A43;--cream:#f3efe7}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font:16px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;overflow:hidden}
+.view{position:absolute;inset:0;display:flex;flex-direction:column;background:var(--bg);transition:transform .32s cubic-bezier(.2,.8,.2,1),opacity .32s}
+.hdr{padding:18px 20px 8px;color:var(--muted);font-weight:600;display:flex;justify-content:space-between}
+.home .mid{flex:1;display:grid;place-items:center}
+.quad{position:relative;width:min(88vw,62vh,420px);aspect-ratio:1;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.t{border-radius:22px;background:var(--surface);border:1px solid var(--line);color:var(--ink);font:600 17px inherit;padding:16px;text-align:left;display:flex;flex-direction:column;gap:6px;cursor:pointer}
+.t small{color:var(--muted);font-weight:400;font-size:13px}
+.t.r{text-align:right;align-items:flex-end}.t.b{justify-content:flex-end}
+.disc{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:42%;aspect-ratio:1;border-radius:50%;background:var(--cream);color:#16233b;display:grid;place-items:center;text-align:center;box-shadow:0 0 0 7px var(--ring),0 0 0 15px var(--bg);font:19px Georgia,serif;line-height:1.2}
+.disc b{display:block;font-size:30px}
+.page .back{background:none;border:0;color:var(--muted);font:600 16px inherit;padding:18px 20px 0;text-align:left;cursor:pointer}
+.page h1{font:400 32px Georgia,serif;margin:6px 20px 4px}
+.page .sub{color:var(--muted);margin:0 20px 16px}
+.card{margin:0 16px 12px;padding:16px;border-radius:18px;background:var(--surface);border:1px solid var(--line)}
+.card b{font-size:20px}
+.page{transform:translateX(100%)}
+.open .page{transform:none}
+.open .home{transform:translateX(-25%);opacity:.4}
+.note{position:absolute;left:0;right:0;bottom:14px;text-align:center;color:var(--muted);font-size:13px;pointer-events:none;z-index:5}
+</style></head><body>
+<div id="app">
+  <div class="view home">
+    <div class="hdr"><span>Saturday 10 October</span><span>17 mph · 3 mm</span></div>
+    <div class="mid"><div class="quad">
+      <button class="t" data-go="Booking">Booking<small>Book a tee time</small></button>
+      <button class="t r" data-go="Competition">Competition<small>Your competitions</small></button>
+      <button class="t b" data-go="Friends">Friends<small>5 friends</small></button>
+      <button class="t r b" data-go="Scoring">Scoring<small>Start a round</small></button>
+      <div class="disc"><div>Gareth<br>Cochrane<b>54</b></div></div>
+    </div></div>
+  </div>
+  <div class="view page">
+    <button class="back" id="back">‹ Back</button>
+    <h1 id="title">Booking</h1><div class="sub">2 coming up</div>
+    <div class="card"><b>Sat 17 Oct · 08:10</b><div style="color:var(--muted)">You, Peter Reid</div></div>
+    <div class="card"><b>Sun 18 Oct · 09:30</b><div style="color:var(--muted)">You, Declan Murphy</div></div>
+  </div>
+  <div class="note" id="note">Tap any tile, then ‹ Back</div>
+</div>
+<script>
+const app=document.getElementById('app');
+document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{document.getElementById('title').textContent=b.dataset.go;app.classList.add('open');document.getElementById('note').textContent='Tap ‹ Back'});
+document.getElementById('back').onclick=()=>{app.classList.remove('open');document.getElementById('note').textContent='Tap any tile, then ‹ Back'};
+</script></body></html>
