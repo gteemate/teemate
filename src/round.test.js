@@ -46,6 +46,19 @@ describe('countsForOptions: a marker, and matches only when all four are on the 
     expect(countsForOptions({ lineup: [{ m: 9 }, { m: 2 }, { m: 3 }, { m: 4 }], events: [cup({ players: [2, 3, 4, 9] })], leagueEntries: [], date: D, meId: 9 })).toEqual([]))
 })
 
+describe('countsForOptions: club competitions on today that I can join as I start', () => {
+  const medal = over => ({ id: 21, name: 'Saturday Medal', style: 'individual', club: true, selfEntry: true, startDate: D, days: 1, players: [], entryRequired: true, matches: {}, ...over })
+  const card = [{ m: 1 }, { m: 2 }]
+  it("open for entry, on today, I'm not in it: offered to join (needs a marker), not ticked", () =>
+    expect(countsForOptions({ lineup: card, events: [medal()], leagueEntries: [], date: D, meId: 1 })).toEqual([{ kind: 'join', e: medal(), players: [1], day: 1, needsMarker: true }]))
+  it('not offered: on my own, not open for entry, not today, has a draw', () => {
+    expect(countsForOptions({ lineup: [{ m: 1 }], events: [medal()], leagueEntries: [], date: D, meId: 1 })).toEqual([])
+    expect(countsForOptions({ lineup: card, events: [medal({ selfEntry: false }), medal({ id: 22, startDate: '2026-10-10' }), medal({ id: 23, style: 'ryder', matches: { 1: [{ a: [5, 6], b: [7, 8] }] } })], leagueEntries: [], date: D, meId: 1 })).toEqual([])
+  })
+  it("already in it: the usual 'count this round' instead", () =>
+    expect(countsForOptions({ lineup: card, events: [medal({ players: [1] })], leagueEntries: [], date: D, meId: 1 })[0].kind).toBe('event'))
+})
+
 import { markerChoices } from './round.js'
 describe('markerChoices: who can mark my card', () => {
   it('everyone on the card but me, guests too', () => expect(markerChoices([{ m: 1 }, { m: 2 }, { g: 50 }], 1)).toEqual([{ m: 2 }, { g: 50 }]))

@@ -100,7 +100,7 @@ export function draw({ members, me }) {
       ${ev.club && me.admin ? `<div class="card evsec"><b>Who can see it</b>
         <div class="seg" role="group" aria-label="Who can see it"><button data-vis="all" aria-pressed="${!!ev.everyone}">All members</button><button data-vis="entrants" aria-pressed="${!ev.everyone}">Entrants only</button></div>
         <span class="hint">${ev.everyone ? 'Every member sees it on their Leaderboard tab.' : `Only the ${ev.style === 'league' ? 'league’s players' : 'players in it'} (and admins) see it.`}</span></div>
-      <div class="card evsec"><div class="actrow"><span class="who"><strong>Members can enter themselves</strong><small>${ev.selfEntry ? 'Shown under Competitions → Open; members enter or withdraw until the day it starts.' : 'Only admins add entrants.'}</small></span>
+      <div class="card evsec"><div class="actrow"><span class="who"><strong>Members can enter themselves</strong><small>${ev.selfEntry ? 'On the day, members starting a round are asked if they want to play in it (not for events with a draw).' : 'Only admins add entrants.'}</small></span>
         <button type="button" class="switch" role="switch" id="ev-self" aria-checked="${!!ev.selfEntry}" aria-label="Members can enter themselves"><span></span></button></div></div>`
       : '<div class="hint">Only the players you pick will see this event.</div>'}`
   } else if (step === 2) {

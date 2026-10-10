@@ -4,7 +4,8 @@ import { myMatch } from './match.js'
 
 /**
  * Competitions this card could count for today:
- *   [{ kind: 'league', e, players, week, needsMarker } | { kind: 'event', e, players, day, needsMarker } | { kind: 'event', e, players, day, match, auto }]
+ *   [{ kind: 'league', e, players, week, needsMarker } | { kind: 'event', e, players, day, needsMarker } | { kind: 'event', e, players, day, match, auto }
+ *    | { kind: 'join', e, players: [me], day, needsMarker }]   (join: a club competition on today I can enter as I start)
  * Leagues running this week, for the card's players in them who haven't counted a round this week; events on today
  * that count only ticked cards (entryRequired), for the card's players in them. Both need someone else on the card
  * to mark it (anyone, guests too). An event with drawn matches is offered only when all four of my match are on the
@@ -15,8 +16,15 @@ export function countsForOptions({ lineup, events, leagueEntries, date, meId }) 
   const marked = lineup.length >= 2
   const out = []
   for (const e of events) {
+    if (e.startDate > date || eventLastDay(e) < date) continue
     const inIt = onCard.filter(m => e.players.includes(m))
-    if (!inIt.length || e.startDate > date || eventLastDay(e) < date) continue
+    // A club competition on today, open for entry (no draw), that I'm not in: join it as I start (enter_event_today).
+    const drawn = Object.values(e.matches ?? {}).some(d => d.length)
+    if (e.club && e.selfEntry && !drawn && e.style !== 'league' && meId != null && !e.players.includes(meId)) {
+      if (marked) out.push({ kind: 'join', e, players: [meId], day: Array.from({ length: e.days }, (_, i) => addDaysIso(e.startDate, i)).indexOf(date) + 1, needsMarker: true })
+      continue
+    }
+    if (!inIt.length) continue
     if (e.style === 'league') {
       const week = leagueWeek(e, date)
       const players = inIt.filter(m => !leagueEntries.some(x => x.eventId === e.id && x.week === week && x.memberId === m))

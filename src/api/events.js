@@ -67,14 +67,9 @@ export async function leaveLeague(roundId, eventId, memberIds) {
   must(await sb.rpc('leave_league', { p_round: roundId, p_event: eventId, p_members: memberIds }))
 }
 
-/** Enter a club competition open for entry, until the day it starts. */
-export async function enterEvent(id) {
-  must(await sb.rpc('enter_event', { p_id: id }))
-}
-
-/** Withdraw from a club competition open for entry, until the day it starts. */
-export async function withdrawEvent(id) {
-  must(await sb.rpc('withdraw_event', { p_id: id }))
+/** On the day: enter a club competition open for entry and count this card for me, with my marker, in one step. */
+export async function enterEventToday(roundId, eventId, marker) {
+  return must(await sb.rpc('enter_event_today', { p_round: roundId, p_event: eventId, p_marker: marker }))
 }
 
 /** Cards ticked to count for events: [{ eventId, day, memberId, roundId }]. */

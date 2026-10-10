@@ -8,6 +8,7 @@ import { isoDate, today } from '../dates.js'
 import { getRound, resetRound } from './scores.js'
 import { countsForOptions, markerChoices } from '../round.js'
 import { markLeagueAsked } from './scores-league.js'
+import { eventFormat } from './event-editor.js'
 
 let ticked = new Set() // option keys ticked on this visit
 let marker = null // who marks the card ({ m } / { g }), for leagues and standard competitions
@@ -34,7 +35,8 @@ async function start(round, options, me) {
   if (!round.id) await api.saveRound(round) // creates the group's card (or joins it)
   for (const o of options.filter(x => ticked.has(key(x)))) {
     // Each player's marker: the one chosen, or me when that player is the marker. Matches need none.
-    const enter = (ids, mk) => (o.kind === 'league' ? api.enterLeague(round.id, o.e.id, ids, mk) : api.enterEventRound(round.id, o.e.id, ids, mk))
+    const enter = (ids, mk) => (o.kind === 'league' ? api.enterLeague(round.id, o.e.id, ids, mk)
+      : o.kind === 'join' ? api.enterEventToday(round.id, o.e.id, mk) : api.enterEventRound(round.id, o.e.id, ids, mk))
     try {
       if (!o.needsMarker) await enter(o.players)
       else for (const id of o.players) await enter([id], same(marker, { m: id }) ? { m: me.id } : marker)
@@ -54,13 +56,17 @@ export function draw({ round, me, choices, options }) {
   const needMarker = options.some(o => o.needsMarker && ticked.has(key(o)))
   header('Scoring round?', '', async () => { ticked = new Set(); marker = null; seen = null; resetRound(); S.sview = 'card'; await render(); top0() }) // back to New round (an unsaved card is dropped)
   const label = () => { const on = options.filter(o => ticked.has(key(o))).map(o => o.e.name); return `Start round · ${on.length ? on.join(' + ') : 'General play'}` }
-  const sub = o => (o.match ? `Match ${o.match}${o.e.days > 1 ? ` · day ${o.day}` : ''} · all four of you are on this card` : o.kind === 'league' ? `Week ${o.week} of ${o.e.weeks} · Stableford` : `${o.e.days > 1 ? `Day ${o.day} of ${o.e.days} · ` : ''}${o.e.club ? 'Club event' : `Event by ${esc(o.e.createdBy?.name ?? 'a member')}`}`)
+  const sub = o => (o.kind === 'join' ? `Club competition${eventFormat(o.e) ? ` · ${eventFormat(o.e)}` : ''}` : o.match ? `Match ${o.match}${o.e.days > 1 ? ` · day ${o.day}` : ''} · all four of you are on this card` : o.kind === 'league' ? `Week ${o.week} of ${o.e.weeks} · Stableford` : `${o.e.days > 1 ? `Day ${o.day} of ${o.e.days} · ` : ''}${o.e.club ? 'Club event' : `Event by ${esc(o.e.createdBy?.name ?? 'a member')}`}`)
+  const entered = options.filter(o => o.kind !== 'join'), joinable = options.filter(o => o.kind === 'join')
+  const tick = o => `<button class="card tick" data-k="${key(o)}" aria-pressed="${ticked.has(key(o))}"><span class="box" aria-hidden="true">${ticked.has(key(o)) ? '✓' : ''}</span>
+      <span><span class="tt">${esc(o.e.name)}</span><span class="sub">${sub(o)}</span></span></button>`
   $('main').innerHTML = `<div class="screen">
-    <p class="sub" style="margin:0">You’re currently entered in these competitions.</p>
+    ${entered.length ? `<p class="sub" style="margin:0">You’re currently entered in these competitions.</p>
     <h3 style="margin:0">Do you want to make this a scoring round?</h3>
     <p class="sub" style="margin:0">Tick the ones this round should count for, or leave them all for a general round.</p>
-    ${options.map(o => `<button class="card tick" data-k="${key(o)}" aria-pressed="${ticked.has(key(o))}"><span class="box" aria-hidden="true">${ticked.has(key(o)) ? '✓' : ''}</span>
-      <span><span class="tt">${esc(o.e.name)}</span><span class="sub">${sub(o)}</span></span></button>`).join('')}
+    ${entered.map(tick).join('')}` : ''}
+    ${joinable.map(o => `<h3 style="margin:${entered.length ? '10px' : '0'} 0 0">${esc(o.e.name)} is on today. Do you want to play in it?</h3>
+      <p class="sub" style="margin:0">Tick it and you’re entered, with this round counting.</p>${tick(o)}`).join('')}
     ${needMarker ? (choices.length === 1 ? `<p class="hint">Marker: <b>${esc(choices[0].name)}</b></p>`
       : `<span class="kicker">Who’s marking your card?</span><div class="chips" role="radiogroup" aria-label="Your marker">${choices.map((c, n) => `<button class="chip" role="radio" data-mk="${n}" aria-checked="${same(marker, c)}" aria-pressed="${same(marker, c)}">${esc(c.name)}</button>`).join('')}</div>`) : ''}
     <button class="primary" id="start" ${needMarker && !marker ? 'disabled' : ''}>${esc(needMarker && !marker ? 'Pick your marker' : label())}</button>
