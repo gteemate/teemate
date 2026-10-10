@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Wind on the map</title>
+<style>
+body{margin:0;background:#141f3b;color:#e8ecf5;font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;padding:16px}
+h1{font:400 26px Georgia,serif;margin:4px 0 4px}
+p.lead{color:#9aa7c4;margin:0 0 18px;font-size:14px}
+.opt{background:#1b2a4b;border:1px solid #2b3c63;border-radius:18px;padding:14px;margin:0 0 16px}
+.opt h2{font-size:17px;margin:0 0 8px;color:#e3c375}
+canvas{width:100%;border-radius:14px;display:block}
+.opt p{color:#c3cbe0;font-size:14px;margin:8px 0 0}
+</style></head><body>
+<h1>Wind on the map</h1>
+<p class="lead">Three ideas, drawn on a stand-in map, using tonight's wind: 17 mph from the west.</p>
+<div class="opt"><h2>A · Lots of small arrows</h2><canvas id="ca" width="680" height="440"></canvas>
+<p>A light grid of arrows across the whole map, all pointing the way the wind blows. Calm, easy to read, never covers the course.</p></div>
+<div class="opt"><h2>B · Moving wind streaks</h2><canvas id="cb" width="680" height="440"></canvas>
+<p>Faint lines drift across the map with the wind, faster when it's stronger. The most alive, but busier.</p></div>
+<div class="opt"><h2>C · Compass in the corner</h2><canvas id="cc" width="680" height="440"></canvas>
+<p>A clean map with a small badge showing speed and direction. Tidiest, but the wind isn't drawn on the course.</p></div>
+<div class="opt"><h2>A + C · Arrows with the badge</h2><canvas id="cd" width="680" height="440"></canvas>
+<p>The small arrows across the map, plus the speed and direction in the corner.</p></div>
+<script>
+const W=680,H=440,DIR=270,SPD=17;
+const ang=(DIR+180)*Math.PI/180, dx=Math.sin(ang), dy=-Math.cos(ang);
+function base(g){
+  g.fillStyle='#cfe3c0';g.fillRect(0,0,W,H);
+  g.fillStyle='#b9d8a6';
+  [[120,120,110,40,-0.3],[330,90,140,38,0.2],[520,150,120,42,-0.5],[220,230,150,40,0.15],[470,260,100,36,0.4]].forEach(([x,y,rx,ry,r])=>{g.beginPath();g.ellipse(x,y,rx,ry,r,0,7);g.fill()});
+  g.fillStyle='#8fc9c2';[[180,150,14],[400,200,12],[560,90,10],[300,300,11]].forEach(([x,y,r])=>{g.beginPath();g.arc(x,y,r,0,7);g.fill()});
+  g.strokeStyle='#e6cfa1';g.lineWidth=16;g.beginPath();g.moveTo(0,300);g.quadraticCurveTo(340,350,W,380);g.stroke();
+  g.fillStyle='#d6d4ce';for(let i=0;i<46;i++){const x=(i*61)%W,y=360+((i*37)%70);g.fillRect(x,y,22,12)}
+  g.fillStyle='#141f3b';g.strokeStyle='#e3c375';g.lineWidth=5;g.beginPath();g.arc(430,170,10,0,7);g.fill();g.stroke();
+}
+function arrow(g,x,y,len,w,col,alpha){
+  g.save();g.globalAlpha=alpha;g.translate(x,y);g.rotate(Math.atan2(dy,dx));g.strokeStyle=col;g.lineWidth=w;g.lineCap='round';g.lineJoin='round';
+  g.beginPath();g.moveTo(-len/2,0);g.lineTo(len/2,0);g.moveTo(len/2-len*0.32,-len*0.26);g.lineTo(len/2,0);g.lineTo(len/2-len*0.32,len*0.26);g.stroke();g.restore();
+}
+function grid(g){for(let y=40;y<H;y+=70)for(let x=40+((y/70)%2)*35;x<W;x+=70)arrow(g,x,y,34,4,'#16233b',0.55)}
+function badge(g){
+  g.fillStyle='rgba(20,31,59,0.92)';g.beginPath();g.roundRect(W-210,18,190,86,16);g.fill();
+  g.strokeStyle='#e3c375';g.lineWidth=3;g.beginPath();g.arc(W-166,61,28,0,7);g.stroke();
+  arrow(g,W-166,61,40,6,'#e3c375',1);
+  g.fillStyle='#fff';g.font='600 28px sans-serif';g.fillText('17 mph',W-126,58);g.fillStyle='#c9d1e3';g.font='20px sans-serif';g.fillText('from the W',W-126,86);
+}
+const a=document.getElementById('ca').getContext('2d');base(a);grid(a);
+const c=document.getElementById('cc').getContext('2d');base(c);badge(c);
+const d=document.getElementById('cd').getContext('2d');base(d);grid(d);badge(d);
+const b=document.getElementById('cb').getContext('2d');
+const P=Array.from({length:70},()=>({x:Math.random()*W,y:Math.random()*H,l:Math.random()*60}));
+function frame(){base(b);b.lineCap='round';
+  P.forEach(p=>{p.x+=dx*SPD*0.25;p.y+=dy*SPD*0.25;p.l+=1;if(p.l>60||p.x>W+20||p.x<-20||p.y<-20||p.y>H+20){p.x=Math.random()*W-60*dx;p.y=Math.random()*H;p.l=0}
+    const al=Math.sin(p.l/60*Math.PI)*0.75;b.strokeStyle='rgba(22,35,59,'+al.toFixed(2)+')';b.lineWidth=3;
+    b.beginPath();b.moveTo(p.x,p.y);b.lineTo(p.x-dx*34,p.y-dy*34);b.stroke()});
+  requestAnimationFrame(frame)}
+frame();
+</script></body></html>

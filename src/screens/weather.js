@@ -28,6 +28,13 @@ async function showMap(loc) {
 // blows, so it turns by the degrees the wind comes from.
 const arrow = (dir, size, cls = '') => `<svg class="${cls}" width="${size}" height="${size}" viewBox="0 0 24 24" style="transform:rotate(${dir}deg)" aria-hidden="true"><path d="M12 2v18M5 13l7 7 7-7"/></svg>`
 
+// Lots of small arrows over the whole map, every one pointing the way the wind blows (the wind is the same across
+// a course). One arrow, repeated as an SVG pattern turned to the wind; staggered rows so it doesn't look like a grid.
+const windField = dir => `<svg class="wxfield" aria-hidden="true"><defs>
+  <pattern id="wxp" width="44" height="44" patternUnits="userSpaceOnUse" patternTransform="rotate(${dir})">
+    <path d="M11 4v14M7 13l4 5 4-5" /><path d="M33 26v14M29 35l4 5 4-5" />
+  </pattern></defs><rect width="100%" height="100%" fill="url(#wxp)" /></svg>`
+
 export function draw({ loc, forecast: f }) {
   header('Weather', loc ? esc(loc.place || 'At the course') : 'Course weather')
   if (!loc || !f) {
@@ -43,9 +50,9 @@ export function draw({ loc, forecast: f }) {
     <span class="kicker">Wind on the course</span>
     <div class="wxmap" role="img" aria-label="Map of the course with the wind blowing from the ${compass(f.now.dir)}">
       <div id="wxleaf" class="wxleaf"></div>
-      ${arrow(f.now.dir, 120, 'wxarrow')}
+      ${windField(f.now.dir)}
     </div>
-    <span class="hint">Drag the map to look around; pinch or use + and − to zoom. The arrow shows which way the wind is blowing.</span>
+    <span class="hint">Drag the map to look around; pinch or use + and − to zoom. The arrows show which way the wind is blowing.</span>
     <span class="kicker">The rest of today</span>
     <div class="card list wxhours">${f.hours.length ? f.hours.map(h => `<div class="wxrow${h.rainMm > 0 ? ' wet' : ''}">
         <span class="num">${h.time}</span><span class="wxw">${arrow(h.dir, 18)}<b class="num">${h.windMph}</b> mph <small>gusts ${h.gustMph}</small></span>
