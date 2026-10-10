@@ -16,7 +16,8 @@
     "db:scenarios": "node scripts/make-seed.mjs && node scripts/db.mjs scenarios",
     "db:test": "node scripts/db.mjs test",
     "db:test:live": "node scripts/db.mjs test --live",
-    "db:race": "node scripts/db.mjs race"
+    "db:race": "node scripts/db.mjs race",
+    "load-test": "node scripts/load-test.mjs"
   },
   "devDependencies": {
     "happy-dom": "^15.11.7",
