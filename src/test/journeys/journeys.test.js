@@ -1,13 +1,21 @@
 // @vitest-environment happy-dom
 // Journey tests: a member taps through whole tasks in the real app (pretend server), and each journey checks they
 // never get stuck (back always reaches Home, no loops), nothing errors, and it takes no more taps than it should.
-import { describe, it, expect, vi, afterEach } from 'vitest'
+import { describe, it, expect, vi, afterEach, afterAll } from 'vitest'
+import { writeFileSync } from 'node:fs'
 import { boot } from './driver.js'
 
 vi.mock('../../api.js', async () => (await import('./fake-api.js')).mockModule())
 
 let app
-afterEach(() => app?.done())
+// The tap count of each journey, for the click report (npm run report:taps).
+const tapLog = []
+afterEach(ctx => {
+  if (app) tapLog.push({ journey: ctx.task.name, taps: app.taps, screens: [...new Set(app.visited)].length, ok: ctx.task.result?.state !== 'fail' })
+  app?.done()
+  app = null
+})
+afterAll(() => { if (process.env.TAP_REPORT) writeFileSync(process.env.TAP_REPORT, JSON.stringify(tapLog, null, 1)) })
 
 const at = (db, time, date = db.today) => db.slotsOn(date).find(s => s.time === time)
 
