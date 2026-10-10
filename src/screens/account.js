@@ -41,6 +41,7 @@ export function draw({ me, clubName, waiting, friendCount, L, points, hutOn }) {
   <div class="agrid">
     <button class="atile row" data-a="buddies"><span class="e">👥</span><span class="rt"><b>Friends</b><span>${friendCount} friend${friendCount === 1 ? '' : 's'}</span></span></button>
     ${hutOn ? '<button class="atile row" data-a="hutorder"><span class="e">🥪</span><span class="rt"><b>Halfway hut</b><span>Order food and drinks; pay when you collect</span></span></button>' : ''}
+    <button class="atile row" data-a="course"><span class="e">⛳</span><span class="rt"><b>Course guide</b><span>Every hole, tees and today's pins</span></span></button>
     <button class="atile row" data-a="mygames"><span class="e">🎯</span><span class="rt"><b>Games</b></span></button>
     <button class="atile row slim" data-a="points"><span class="e">🎟️</span><span class="rt"><b>Guest points</b><span>${left} of ${points.allowance} left · ${guests ? `enough for ${guests} guest${guests > 1 ? 's' : ''}` : 'none left this year'}</span></span></button>
   </div>
@@ -62,6 +63,7 @@ export function draw({ me, clubName, waiting, friendCount, L, points, hutOn }) {
   $('signout').onclick = () => api.signOut()
   $('chpw').onclick = () => passwordSheet(ok => ok && toast('Password changed'))
   document.querySelectorAll('[data-a]').forEach(b => (b.onclick = async () => {
+    if (b.dataset.a === 'course') { S.tab = 'course'; await render(); top0(); return } // the guide outside a round
     if (b.dataset.a === 'office') { Object.assign(S, { office: true, ov: 'today', aview: 'office', navReset: true }); await render(); top0(); return }
     S.aview = b.dataset.a
     if (S.aview === 'buddies') { S.bseg = 'mine'; S.bfrom = null }

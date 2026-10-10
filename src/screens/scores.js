@@ -297,7 +297,6 @@ function startScreen({ course, L, me, teeTimes, events }) {
       : '<div class="empty-state">You’re not on a tee time today. Pick who you’re playing with instead.</div>'}
     <button class="ghost" id="pick">${teeTimes.length ? 'Pick players instead' : 'Pick players'}</button>
     <div class="hint">Cards are for 2 to 4 players. Better-ball games need four.</div>
-    <button class="linkbtn" id="guide" style="align-self:flex-start">Course guide: every hole, tees and today’s pins ›</button>
     ${eventsBottom(events, true)}</div>`
   document.querySelectorAll('[data-slot]').forEach(b => (b.onclick = async () => {
     const s = teeTimes.find(x => x.id === +b.dataset.slot)
@@ -310,5 +309,4 @@ function startScreen({ course, L, me, teeTimes, events }) {
     top0()
   }))
   $('pick').onclick = async () => { S.pickTmp = []; S.sview = 'players'; await render(); top0() }
-  $('guide').onclick = async () => { S.tab = 'course'; await render(); top0() }
 }
