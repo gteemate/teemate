@@ -62,3 +62,29 @@ describe('alertCheckDue: when to look for new alerts', () => {
   it('the same screen redrawn (a score tapped): no', () => expect(alertCheckDue('scores/card', 'scores/card', t, t + 1000)).toBe(false))
   it('the same screen, but over a minute since the last look: yes', () => expect(alertCheckDue('scores/card', 'scores/card', t, t + 61e3)).toBe(true))
 })
+
+describe('pickAlerts: the halfway hut', () => {
+  const done = n => Array.from({ length: 18 }, (_, i) => i < n)
+  const card = { id: 7, done: done(8), game: 'stab', submitted: {} }
+  const hut = (o = {}) => ({ on: true, card, asked: [], orders: [], seen: [], ...o })
+  it('hole 8 saved: "Halfway hut is open", Order or No thanks', () => {
+    const [a] = pickAlerts({ ...base, hut: hut() })
+    expect(a).toMatchObject({ key: 'hut:7', kind: 'hut', title: 'Halfway hut is open', detail: 'Would you like to place an order?', ref: { cardId: 7 } })
+    expect(ids(a)).toEqual(['order', 'nothanks'])
+  })
+  it('not before hole 8, nor when asked already', () => {
+    expect(pickAlerts({ ...base, hut: hut({ card: { ...card, done: done(7) } }) })).toEqual([])
+    expect(pickAlerts({ ...base, hut: hut({ asked: [7] }) })).toEqual([])
+  })
+  it('my order is ready: what to collect, OK', () => {
+    const order = { id: 31, status: 'ready', roundId: 7, items: [{ name: 'Bacon roll', qty: 2 }, { name: 'Tea', qty: 1 }] }
+    const [a] = pickAlerts({ ...base, hut: hut({ asked: [7], orders: [order] }) })
+    expect(a).toMatchObject({ key: 'hutok:31', kind: 'hutready', title: 'Your halfway hut order is ready', detail: '2 × Bacon roll, Tea', ref: { orderId: 31 } })
+    expect(ids(a)).toEqual(['ok'])
+    expect(pickAlerts({ ...base, hut: hut({ asked: [7], orders: [order], seen: [31] }) })).toEqual([])
+  })
+  it('order: challenges, requests, ready orders, then the prompt', () => {
+    const ready = { id: 31, status: 'ready', roundId: 5, items: [{ name: 'Tea', qty: 1 }] }
+    expect(pickAlerts({ ...base, playerEvents: [pe()], requests: [req()], hut: hut({ orders: [ready] }) }).map(x => x.kind)).toEqual(['challenge', 'request', 'hutready', 'hut'])
+  })
+})

@@ -1,5 +1,6 @@
 // UI state only: which tab and screen, selections, and drafts not yet saved. Data lives behind api.js.
 export const S = {
+  hutPicks: {}, hutNote: '', hutQ: '', hutCaret: null, // halfway hut: order being picked; admin staff search
   guestPrefill: null, // booking: a friend from another club's details for the guest form
   friendHash: null, // a friend link being looked at (screens/friend.js)
   loginMode: 'welcome', loginEmail: '', requestName: '', loginNotice: '', // signed out: 'welcome' | 'signin' | 'signup'

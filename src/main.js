@@ -33,12 +33,13 @@ import * as access from './screens/access.js'
 import * as myGames from './screens/my-games.js'
 import * as weather from './screens/weather.js'
 import * as hutAdmin from './screens/hut-admin.js'
+import * as hutOrder from './screens/hut-order.js'
 import * as friend from './screens/friend.js'
 import { pendingFriend, setPendingFriend } from './screens/friend.js'
 import { checkAlerts } from './alert-bar.js'
 
 // Each screen exports an optional async load() and a sync draw(data).
-const ADMIN = { home, account: adminHome, tee: teeTimes, book: booking, booked, mine: bookings, buddies, pins, points, events, event: eventEditor, evboard: eventBoardScreen, access, colours, weather, friend, hutadmin: hutAdmin, rules: bookingRules, comp: competitions, treq: teeRequests, mygames: myGames }
+const ADMIN = { home, account: adminHome, tee: teeTimes, book: booking, booked, mine: bookings, buddies, pins, points, events, event: eventEditor, evboard: eventBoardScreen, access, colours, weather, friend, hutadmin: hutAdmin, hutorder: hutOrder, rules: bookingRules, comp: competitions, treq: teeRequests, mygames: myGames }
 function screenFor() {
   if (S.tab === 'scores') return S.sview === 'players' ? players : S.sview === 'challenge' ? challenge : S.sview === 'pevent' ? eventLive : S.sview === 'counts' ? scoringRound : scores
   if (S.tab === 'lb') return leaderboard

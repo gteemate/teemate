@@ -1,6 +1,7 @@
 // Scores tab: hole-by-hole scorecard for the group, with the game drop-down and pairings.
 import * as api from '../api.js'
 import { S } from '../state.js'
+import { forceAlertCheck } from '../alert-bar.js'
 import { $, esc, ini, sur, header, keepScroll, top0, render, toast, fmtHcp } from '../ui.js'
 import { today, hhmm, isoDate, eventLastDay } from '../dates.js'
 import { banners, bindBanners, pendingInvite, invitePopup } from './player-events.js'
@@ -252,6 +253,7 @@ export function draw({ course, members, guests, L, me, teeTimes, events, leagues
     if (!after.finished && i < 17) S.ch = i + 1
     await render()
     top0()
+    if (i === 7) forceAlertCheck() // hole 8: the halfway hut may ask
     if (after.finished) toast(after.match ? `Match over: ${after.match.text}` : 'Round complete')
   })
   on('submit', async () => {

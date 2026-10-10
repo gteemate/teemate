@@ -1,5 +1,6 @@
 // The alerts drop-down: things that need you (alerts.js picks them) slide down from the top of the screen, one at a
-// time, on every screen. Accept/Decline a match challenge, OK an answered tee time request, or Later (hides it until
+// time, on every screen. Accept/Decline a match challenge, OK an answered tee time request, the halfway hut (order
+// after hole 8; your order is ready), or Later (hides it until
 // the app is next opened; a gold dot by the date, or at the top right, brings it back). Checked after every screen
 // is drawn and when the app comes back to the front. No live pushes.
 import * as api from './api.js'
@@ -12,11 +13,24 @@ const hidden = new Set() // Later, until the app is next opened
 const done = new Set() // answered or OK'd this visit (the server catches up on the next check)
 let shown = [], timer = null, busy = false
 
+// The halfway hut: on? my card, my orders today, and (kept on this phone) which cards I've been asked about and
+// which ready orders I've OK'd. Nothing is fetched beyond whether it's on while the hut is switched off.
+const remembered = k => { try { return JSON.parse(localStorage.getItem(k)) ?? [] } catch { return [] } }
+const remember = (k, id) => { try { localStorage.setItem(k, JSON.stringify([...remembered(k), id].slice(-50))) } catch { /* no storage */ } }
+async function hutNow() {
+  const { on } = await api.getHut()
+  const [card, orders] = await Promise.all([on ? api.getCurrentRound() : null, api.myHutOrders()])
+  return { on, card, orders, asked: remembered('teemate.hutAsked'), seen: remembered('teemate.hutSeen') }
+}
+
 let lastPlace = null, lastAt = 0
 /**
  * Look for alerts and show the first one: on a new screen (`place`), or `force` (the app came back to the front);
  * a redraw of the same screen only looks once a minute. Debounced; a check already running is left to finish.
  */
+/** Look now, on the same screen (e.g. hole 8 has just been saved). */
+export const forceAlertCheck = () => checkAlerts(lastPlace, true)
+
 export function checkAlerts(place, force = false) {
   const now = Date.now()
   if (!force && !alertCheckDue(lastPlace, place, lastAt, now)) return draw() // same screen redrawn: keep what's showing
@@ -29,9 +43,9 @@ async function run() {
   if (busy || !$('alerts')) return
   busy = true
   try {
-    const [me, playerEvents, requests] = await Promise.all([api.getMe(), api.getMyPlayerEvents(), api.getMyTeeTimeRequests()])
+    const [me, playerEvents, requests, hutState] = await Promise.all([api.getMe(), api.getMyPlayerEvents(), api.getMyTeeTimeRequests(), hutNow()])
     if (!me) return clear()
-    const all = pickAlerts({ me, playerEvents, requests, date: isoDate(today()) }).filter(a => !done.has(a.key))
+    const all = pickAlerts({ me, playerEvents, requests, date: isoDate(today()), hut: hutState }).filter(a => !done.has(a.key))
     // The Scores tab asks about a challenge itself, so it doesn't drop down there too.
     showAlerts(all.filter(a => !(a.kind === 'challenge' && S.tab === 'scores')))
   } catch (err) {
@@ -78,6 +92,20 @@ async function act(a, id, btn) {
     hidden.add(a.key)
     S.tab = 'scores'; S.sview = 'pevent'; S.peId = a.ref.peId
     return render()
+  }
+  if (id === 'order' || id === 'nothanks') { // the hut's question: asked either way
+    remember('teemate.hutAsked', a.ref.cardId)
+    done.add(a.key)
+    shown = shown.filter(x => x.key !== a.key)
+    if (id === 'nothanks') return draw()
+    S.tab = 'home'; S.aview = 'hutorder'
+    return render()
+  }
+  if (id === 'ok' && a.kind === 'hutready') {
+    remember('teemate.hutSeen', a.ref.orderId)
+    done.add(a.key)
+    shown = shown.filter(x => x.key !== a.key)
+    return draw()
   }
   if (id === 'ok') {
     done.add(a.key)

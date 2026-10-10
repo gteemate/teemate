@@ -12,20 +12,21 @@ import { friendLink } from '../friend-link.js'
 
 export async function load() {
   const me = await api.getMe()
-  const [theme, bookings, friends, games, events, points, requests, rules, teeReqs, matches] = await Promise.all([
+  const [theme, bookings, friends, games, events, points, requests, rules, teeReqs, matches, hut] = await Promise.all([
     api.getTheme(), api.getMyBookings(), api.getFriends(), api.getGameSettings(), api.getEvents(), api.getGuestPoints(),
     me.admin ? api.getAccessRequests() : [],
     me.admin ? api.getBookingRules() : null,
     me.admin ? api.getTeeTimeRequests() : [],
     api.getMyPlayerEvents(),
+    api.getHut(),
   ])
   const live = events.filter(e => eventLastDay(e) >= isoDate(today()))
   // events set up in advance, plus matches set up on the day from the Scores tab
   const upcoming = live.filter(e => !e.club && e.style !== 'league').length + matches.filter(e => e.status === 'pending' || e.status === 'accepted').length, clubEvents = live.filter(e => e.club || e.style === 'league').length
-  return { me, clubName: theme?.name ?? '', rules, waitingReqs: teeReqs.filter(r => r.status === 'pending').length, bookings, friendCount: friends.buddies.length + friends.contacts.length, L: buildLibrary(games), upcoming, clubEvents, points, requests }
+  return { me, clubName: theme?.name ?? '', rules, waitingReqs: teeReqs.filter(r => r.status === 'pending').length, bookings, friendCount: friends.buddies.length + friends.contacts.length, L: buildLibrary(games), upcoming, clubEvents, points, requests, hutOn: hut.on }
 }
 
-export function draw({ me, clubName, rules, waitingReqs, bookings, friendCount, L, upcoming, clubEvents, points, requests }) {
+export function draw({ me, clubName, rules, waitingReqs, bookings, friendCount, L, upcoming, clubEvents, points, requests, hutOn }) {
   header('Account', `Signed in as <b>${esc(me.name)}</b>`, async () => { S.aview = 'home'; await render(); top0() }, 'Home')
   const link = friendLink(me, clubName, location.origin + import.meta.env.BASE_URL), card = shareText(me, clubName, link)
   const used = points.mine.reduce((t, x) => t + x.points, 0), left = points.allowance - used
@@ -44,6 +45,7 @@ export function draw({ me, clubName, rules, waitingReqs, bookings, friendCount, 
     <button class="atile" data-a="mine"><span class="e">📋</span><b>Bookings</b><span>${bookings.length ? `${bookings.length} upcoming` : 'Nothing booked yet'}</span></button>
     <button class="atile" data-a="buddies"><span class="e">👥</span><b>Friends</b><span>${friendCount} friend${friendCount === 1 ? '' : 's'}</span></button>
     <button class="atile row" data-a="events"><span class="e">🏆</span><span class="rt"><b>Events</b><span>${upcoming ? `${upcoming} coming up · set one up for your group` : 'Set up a match or competition in advance'}</span></span></button>
+    ${hutOn ? '<button class="atile row" data-a="hutorder"><span class="e">🥪</span><span class="rt"><b>Halfway hut</b><span>Order food and drinks; pay when you collect</span></span></button>' : ''}
     <button class="atile row" data-a="course"><span class="e">⛳</span><span class="rt"><b>Course guide</b><span>Every hole, tees and today's pins</span></span></button>
     <button class="atile row" data-a="mygames"><span class="e">🎯</span><span class="rt"><b>Games</b></span></button>
     <button class="atile row slim" data-a="points"><span class="e">🎟️</span><span class="rt"><b>Guest points</b><span>${left} of ${points.allowance} left · ${guests ? `enough for ${guests} guest${guests > 1 ? 's' : ''}` : 'none left this year'}</span></span></button>

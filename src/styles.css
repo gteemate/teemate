@@ -670,3 +670,11 @@ h4,.sheet h4{font-family:var(--display);font-weight:600;letter-spacing:0}
 
 /* Halfway hut */
 .lrow.hutrow{grid-template-columns:1fr auto}
+.hutrow .stepper button{width:40px;height:40px;font-size:20px}
+.hutrow .stepper b{min-width:26px;text-align:center;font-size:18px}
+.hutord{display:grid;gap:4px;padding:12px 14px}
+.hutord-top{display:flex;justify-content:space-between;align-items:baseline}
+.hutord.ready{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset}
+.hutord.ready .hutord-top b{color:var(--gold)}
+.hutord.cancelled,.hutord.collected{opacity:.7}
+.hutord .linkbtn{justify-self:start}
