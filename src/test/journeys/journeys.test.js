@@ -10,10 +10,18 @@ vi.mock('../../api.js', async () => (await import('./fake-api.js')).mockModule()
 let app
 // The tap count of each journey, for the click report (npm run report:taps).
 const tapLog = []
-afterEach(ctx => {
-  if (app) tapLog.push({ journey: ctx.task.name, taps: app.taps, screens: [...new Set(app.visited)].length, ok: ctx.task.result?.state !== 'fail' })
-  app?.done()
-  app = null
+// After every journey: back to Home from wherever it ended (fails if a screen has no way back or goes round in
+// circles), counting the presses; taps, screens and presses go into the click report.
+afterEach(async ctx => {
+  if (!app) return
+  const ok = ctx.task.result?.state !== 'fail'
+  let presses = null
+  try {
+    if (ok && !app.db?.asOffice) { if (app.screen() !== 'Home') await app.homeFromHere(); presses = app.backPresses ?? 0 }
+  } finally {
+    tapLog.push({ journey: ctx.task.name, taps: app.taps, screens: [...new Set(app.visited)].length, back: presses, ok })
+    app.done(); app = null
+  }
 })
 afterAll(() => { if (process.env.TAP_REPORT) writeFileSync(process.env.TAP_REPORT, JSON.stringify(tapLog, null, 1)) })
 

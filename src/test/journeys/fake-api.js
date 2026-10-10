@@ -105,6 +105,24 @@ export function makeWorld(today, setup = () => {}) {
     getSession: async () => ({ user: { id: 'u0', email: 'gary@example.invalid' } }), onAuthChange: () => {},
     myRequestPending: async () => false,
     getTheme: async () => ({ ...db.theme }),
+    setTheme: async (main, accent) => { Object.assign(db.theme, { main: main.toUpperCase(), accent: accent.toUpperCase() }) },
+    setClubName: async name => { db.theme.name = name.trim() },
+    setCourseLocation: async (lat, lon, place) => { Object.assign(db.theme, { courseLat: lat, courseLon: lon, coursePlace: place }) },
+    changePassword: async pw => { if (pw.length < 8) throw new Error('Password should be at least 8 characters.'); db.password = pw },
+    publishPins: async pins => { db.pinSheet = { setAt: '09:00', setBy: 'Gary Cochrane', pins: copy(pins), date: today }; db.pinsToday = true },
+    setGreenWidth: async () => {},
+    saveHutItem: async it => { if (it.id) Object.assign(db.hut.menu.find(x => x.id === it.id), it); else db.hut.menu.push({ ...it, id: id() }) },
+    removeHutItem: async hid => { db.hut.menu = db.hut.menu.filter(x => x.id !== hid) },
+    setGuestHandicap: async (gid, hcp) => { for (const s of Object.values(db.slots).flat()) for (const p of s.players) if (p.id === gid) p.hcp = hcp },
+    proposePlayerEvent: async ({ hostSlot, invited, style, format, teamNames = {}, teams = {} }) => {
+      const slots = [hostSlot, ...invited].map(slotById)
+      const e = { id: id(), date: today, style, format, status: 'pending', proposerSlot: hostSlot, proposedBy: { id: ME, name: member(ME).name }, createdBy: { id: ME, name: member(ME).name },
+        teamNames, players: slots.flatMap(s => s.players.map(p => ({ id: p.id, memberId: p.memberId, name: p.name, slot: s.id, team: teams[p.id] ?? null }))),
+        groups: slots.map(s => ({ slot: s.id, time: s.time, host: s.id === hostSlot, answer: s.id === hostSlot ? 'accepted' : null })) }
+      db.playerEvents.push(e); return e.id
+    },
+    counterPlayerEvent: async (pid, setup) => { Object.assign(db.playerEvents.find(x => x.id === pid), { style: setup.style, format: setup.format }) },
+    cancelPlayerEvent: async pid => { Object.assign(db.playerEvents.find(x => x.id === pid), { status: 'cancelled' }) },
     setFeePayment: async p => { db.theme.feePayment = p },
     getMyBalances: async () => copy(db.balances),
     getHut: async () => copy(db.hut),
@@ -149,7 +167,7 @@ export function makeWorld(today, setup = () => {}) {
     deleteMember: async mid => { db.members = db.members.filter(m => m.id !== mid) },
     resetLogin: async () => {},
     getCourse: async () => ({ ...copy(COURSE), guestPoints: 3 }),
-    getPins: async () => ({ ...copy(PIN_SHEET), date: db.pinsToday ? today : '2026-10-01' }),
+    getPins: async () => (db.pinSheet ? copy(db.pinSheet) : { ...copy(PIN_SHEET), date: db.pinsToday ? today : '2026-10-01' }),
     getGameSettings: async () => ({ ...copy(GAME_SETTINGS), mine: {} }),
     setMyGamePref: async () => {},
     getTeeSheet: async date => copy(sheet(date).map(s => ({ ...s, players: s.players.map(p => ({ ...p, bookedBy: db.bookings.find(b => b.id === p.bookingId)?.bookedBy })) }))),

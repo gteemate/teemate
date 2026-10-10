@@ -44,6 +44,7 @@ export async function boot(setup, { hash = '' } = {}) {
       return norm(document.querySelector('#hdr h2')?.textContent) || '(no title)'
     },
     text: () => norm(document.getElementById('app').textContent),
+    main: () => norm(document.getElementById('main').textContent),
     toast: () => norm(document.getElementById('toast').textContent),
     /** Everything tappable on screen, by its words. */
     tappables() {
@@ -85,8 +86,10 @@ export async function boot(setup, { hash = '' } = {}) {
      *  sidebar), and none comes round twice. */
     async homeFromHere() {
       const seen = []
+      d.backPresses = 0
       for (let i = 0; i < 10 && d.screen() !== 'Home'; i++) {
         seen.push(d.screen())
+        d.backPresses++
         if (!document.getElementById('back') && document.getElementById('o-back')) { await d.tap('#o-back', { count: false }); continue }
         if (!document.getElementById('back')) throw new Error(`Stuck: "${d.screen()}" has no back arrow (came via ${seen.join(' → ')})`)
         await d.tap('#back', { count: false })
