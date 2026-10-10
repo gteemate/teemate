@@ -3,6 +3,7 @@
 // around the course location an admin set (Club admin → Club name & colours).
 import * as api from '../api.js'
 import { $, esc, header } from '../ui.js'
+import { S } from '../state.js'
 import { getForecast, compass } from '../weather.js'
 
 export async function load() {
@@ -11,7 +12,7 @@ export async function load() {
   return { loc, forecast: loc ? await getForecast(loc) : null }
 }
 
-const Z = 15 // map zoom: about a mile across, enough for a course
+const Z = 15, ZMIN = 11, ZMAX = 17 // map zoom: 15 is about a mile across, a course; − zooms out to the area around it
 /** The 3×3 tiles around a point, and where the point sits in that block (0–1). */
 export function tileBlock(lat, lon, z = Z) {
   const n = 2 ** z, rad = lat * Math.PI / 180
@@ -31,7 +32,8 @@ export function draw({ loc, forecast: f }) {
     $('main').innerHTML = `<div class="screen"><div class="empty-state">${loc ? 'The weather isn’t available just now. Try again in a few minutes.' : 'No course location set yet. An admin can set it in Account → Club name &amp; colours.'}</div></div>`
     return
   }
-  const { tiles, px, py } = tileBlock(loc.lat, loc.lon)
+  const z = S.wxZoom ?? Z
+  const { tiles, px, py } = tileBlock(loc.lat, loc.lon, z)
   const wet = f.hours.some(h => h.rainMm > 0)
   $('main').innerHTML = `<div class="screen wxs">
     <div class="card wxnow">
@@ -42,6 +44,7 @@ export function draw({ loc, forecast: f }) {
     <div class="wxmap" role="img" aria-label="Map of the course with the wind blowing from the ${compass(f.now.dir)}">
       <div class="wxtiles" style="left:${50 - px * 300}%;top:${50 - py * 300}%">${tiles.map(t => `<img src="${t.url}" alt="" onerror="this.style.visibility='hidden'">`).join('')}</div>
       ${arrow(f.now.dir, 120, 'wxarrow')}
+      <div class="wxzoom"><button type="button" id="wx-in" aria-label="Zoom in" ${z >= ZMAX ? 'disabled' : ''}>+</button><button type="button" id="wx-out" aria-label="Zoom out" ${z <= ZMIN ? 'disabled' : ''}>−</button></div>
       <span class="wxcredit">© OpenStreetMap contributors</span>
     </div>
     <span class="kicker">The rest of today</span>
@@ -50,4 +53,8 @@ export function draw({ loc, forecast: f }) {
         <span class="wxr"><b class="num">${h.rainMm}</b> mm <small>${h.rainPct}%</small></span></div>`).join('') : '<div class="empty-state">That’s the end of the day.</div>'}</div>
     <span class="hint">${wet ? 'Shaded hours have rain forecast. ' : 'No rain forecast for the rest of today. '}Forecast from Open-Meteo, updated every 30 minutes.</span>
   </div>`
+  // Zoom the map out (the area around the course) or back in; the arrow stays in the middle.
+  const zoom = d => { S.wxZoom = Math.min(ZMAX, Math.max(ZMIN, z + d)); draw({ loc, forecast: f }) }
+  $('wx-in').onclick = () => zoom(1)
+  $('wx-out').onclick = () => zoom(-1)
 }

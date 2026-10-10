@@ -670,3 +670,7 @@ h4,.sheet h4{font-family:var(--display);font-weight:600;letter-spacing:0}
 
 /* Halfway hut */
 .lrow.hutrow{grid-template-columns:1fr auto}
+.wxzoom{position:absolute;left:8px;top:8px;display:flex;flex-direction:column;border-radius:10px;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,.4)}
+.wxzoom button{width:38px;height:38px;border:0;background:rgba(20,31,59,.88);color:var(--ink);font:700 20px var(--sys);cursor:pointer}
+.wxzoom button+button{border-top:1px solid var(--line)}
+.wxzoom button:disabled{opacity:.4;cursor:default}
