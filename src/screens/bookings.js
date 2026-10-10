@@ -69,7 +69,7 @@ export function draw({ bookings, me, requests }) {
   $('main').innerHTML = `<div class="screen">${bookings.length
     ? `<span class="kicker">Coming up</span>
       <div class="bklist">${bookings.map(b => `<div class="swipe"><button class="swdel" data-cancel="${b.id}">${b.mine ? 'Delete' : 'Withdraw'}</button>
-        <div class="card bk swrow" data-swipe data-bk="${b.id}">${day(b)}<span class="bk-m"><span class="bk-t num">${hhmm(b.time)}</span><span class="sub">${esc(who(b))}</span></span>${b.mine ? '' : `<span class="pill">Booked by ${esc((b.bookedBy ?? 'a member').split(' ')[0])}</span>`}</div></div>`).join('')}</div>
+        <div class="card bk swrow" data-swipe data-bk="${b.id}" role="button" tabindex="0" aria-label="${hhmm(b.time)} on ${esc(longDay(fromIso(b.date)))}: who’s playing">${day(b)}<span class="bk-m"><span class="bk-t num">${hhmm(b.time)}</span><span class="sub">${esc(who(b))}</span></span>${b.mine ? '' : `<span class="pill">Booked by ${esc((b.bookedBy ?? 'a member').split(' ')[0])}</span>`}</div></div>`).join('')}</div>
       <div class="hint">Tap a booking to see who’s playing. Swipe it left to delete it${bookings.some(b => !b.mine) ? ', or to withdraw from one someone else made for you' : ''}. Guest points come back when you delete.</div>`
     : '<div class="empty-state">No upcoming rounds.<br>Add a booking and it will show here.</div>'}
     ${requests.length ? `<span class="kicker">Requests</span><div class="bklist">${requests.map(r => {
@@ -93,6 +93,7 @@ export function draw({ bookings, me, requests }) {
   $('rq').onclick = async () => { S.reqMode = true; S.reqDate = null; S.reqReason = ''; S.aview = 'tee'; await render(); top0() }
   bindSwipes()
   document.querySelectorAll('[data-bk]').forEach(r => (r.onclick = () => { if (!swipeSwallowsClick(r)) details(bookings.find(b => b.id === +r.dataset.bk), me) }))
+  document.querySelectorAll('[data-bk]').forEach(r => (r.onkeydown = e => { if ((e.key === 'Enter' || e.key === ' ') && e.target === r) { e.preventDefault(); r.click() } }))
   document.querySelectorAll('[data-cancel]').forEach(btn => (btn.onclick = async () => {
     const b = bookings.find(x => x.id === +btn.dataset.cancel)
     if (scored(b)) return details(b, me) // scores entered: say so first
