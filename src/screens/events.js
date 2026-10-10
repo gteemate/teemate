@@ -5,7 +5,7 @@
 import * as api from '../api.js'
 import { S } from '../state.js'
 import { $, esc, header, top0, render, toast } from '../ui.js'
-import { buildLibrary } from '../games.js'
+import { buildLibrary, gameName } from '../games.js'
 import { resetRound } from './scores.js'
 import { eventDates, eventLastDay, isoDate, today } from '../dates.js'
 import { EVENT_TYPES } from './event-editor.js'
@@ -18,7 +18,7 @@ export async function load() {
   // Today's card: the game and who's on it (me first)
   const todayCard = card && {
     id: card.id, mine: card.createdBy === me.id, holes: card.done.filter(Boolean).length,
-    game: buildLibrary(games).lib[card.game]?.name ?? 'Scorecard',
+    game: gameName(buildLibrary(games), card.game),
     who: card.lineup.map(x => (x.m === me.id ? 'You' : x.m != null ? members.find(m => m.id === x.m)?.name : `${guests.find(g => g.id === x.g)?.name ?? 'Guest'} (guest)`)),
   }
   return { events, me, todayCard, matches: matches.filter(e => e.status === 'pending' || e.status === 'accepted') }

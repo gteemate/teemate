@@ -9,7 +9,7 @@ import { isoDate, today, hhmm } from '../dates.js'
 import { needsMyAnswer } from '../home-today.js'
 import { roundPill } from '../round-pill.js'
 import { getWeather } from '../weather.js'
-import { buildLibrary, resolveGame, gameSpec, teeRating } from '../games.js'
+import { buildLibrary, cardSpec, teeRating } from '../games.js'
 import { courseHandicap, playingHandicaps, shotsOnHole } from '../scoring.js'
 
 const ICON = {
@@ -37,7 +37,7 @@ async function cardPill(card) {
   const [course, members, games, guests] = await Promise.all([api.getCourse(), api.getMembers(), api.getGameSettings(),
     api.getGuests(card.lineup.filter(e => e.g != null).map(e => e.g))])
   const hcps = card.lineup.map(e => (e.m != null ? members.find(m => m.id === e.m)?.hcp : guests.find(g => g.id === e.g)?.hcp) ?? 0)
-  const L = buildLibrary(games), G = gameSpec(L.lib[resolveGame(L, card.game, hcps.length)])
+  const L = buildLibrary(games), G = cardSpec(L, card.game, hcps.length)
   const ph = playingHandicaps(hcps.map(h => courseHandicap(h, teeRating(course))), G.allow, G.offLow)
   return roundPill({
     done: card.done, gross: course.holes.map((_, i) => card.scores[i]?.[0] ?? null), pars: course.holes.map(h => h.par),

@@ -6,7 +6,7 @@ import { S } from '../state.js'
 import { $, esc, ini, sur, header, render, toast, top0, goBack } from '../ui.js'
 import { hhmm, longDay, fromIso, isoDate, today, nextDays } from '../dates.js'
 import { shotsOnHole } from '../scoring.js'
-import { buildLibrary, preferredGame } from '../games.js'
+import { NO_GAME } from '../games.js'
 import { loadBoard, boardResult } from './event-board.js'
 import { newRound, setRound, lineupFromTeeTime } from './scores.js'
 
@@ -57,7 +57,7 @@ export function bindMatchAction(st) {
       const slot = mine.find(s => s.id === st.slot.id)
       if (!slot) { toast('That tee time has changed. Have another look.'); return render() }
       const lineup = lineupFromTeeTime(slot, st.meId)
-      setRound(newRound(course, lineup, preferredGame(buildLibrary(games), lineup.length), slot.id))
+      setRound(newRound(course, lineup, NO_GAME, slot.id)) // the event match is scored from the card; no game needed
       Object.assign(S, { tab: 'scores', sview: 'counts' }) // counts for this match already ticked
     }
     await render(); top0()

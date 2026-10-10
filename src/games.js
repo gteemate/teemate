@@ -98,3 +98,28 @@ export function teeRating(course, key = 'white') {
   const t = course.tees.find(x => x.key === key)
   return { slope: t.slope, rating: t.rating, par: course.holes.reduce((s, h) => s + h.par, 0) }
 }
+
+/* ---------- A card's game: scores only, a game for the group, or a one-on-one within the card ---------- */
+
+/** A new card starts with no game: scores only (everyone's own Stableford and net, at full handicap). */
+export const NO_GAME = 'none'
+export const SCORES_ONLY = { kind: 'stab', allow: 1, offLow: false }
+const token = x => (x.m != null ? `m${x.m}` : `g${x.g}`)
+const fromToken = t => (t[0] === 'm' ? { m: +t.slice(1) } : { g: +t.slice(1) })
+/** A one-on-one match between two players on the card: 'kos:m0:m12' (handicap match play, member 0 v member 12). */
+export const oneOnOneKey = (base, a, b) => `${base}:${token(a)}:${token(b)}`
+/** → { base, pair: [a, b] | null } from a card's game key. */
+export function parseGame(key) {
+  const [base, a, b] = String(key ?? NO_GAME).split(':')
+  return { base, pair: a && b ? [fromToken(a), fromToken(b)] : null }
+}
+/** The games a one-on-one can be: the two-player match play games. */
+export const oneOnOneGames = L => L.sections[2].games.filter(x => x.on && x.play?.kind === 'match1')
+/** How a card's game is scored (for the round pill etc.): scores only, the game, or the one-on-one's game. */
+export function cardSpec(L, key, n) {
+  const { base, pair } = parseGame(key)
+  if (base === NO_GAME) return SCORES_ONLY
+  return gameSpec(L.lib[pair ? base : resolveGame(L, base, n)] ?? L.lib[resolveGame(L, null, n)])
+}
+/** The game's name: 'Scores only', 'Better ball · off the low', or 'Handicap match play'. */
+export const gameName = (L, key) => { const { base } = parseGame(key); return base === NO_GAME ? 'Scores only' : L.lib[base]?.name ?? 'Game' }

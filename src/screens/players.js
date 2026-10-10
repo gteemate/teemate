@@ -3,7 +3,7 @@ import * as api from '../api.js'
 import { S } from '../state.js'
 import { $, esc, ini, header, keepScroll, top0, render, toast, fmtHcp } from '../ui.js'
 import { getRound, setRound, newRound, lineupFromTeeTime } from './scores.js'
-import { buildLibrary, preferredGame } from '../games.js'
+import { buildLibrary, NO_GAME } from '../games.js'
 import { today, hhmm } from '../dates.js'
 
 export async function load() {
@@ -34,9 +34,8 @@ export function draw({ members, buddies, course, L, me, teeTimes }) {
     const cur = getRound()
     const same = cur && JSON.stringify(cur.lineup) === JSON.stringify(lineup)
     if (!same) {
-      setRound(newRound(course, lineup, preferredGame(L, lineup.length), slotId))
+      setRound(newRound(course, lineup, NO_GAME, slotId)) // scores only until someone adds a match
       await api.saveRound(getRound())
-      if (lineup.length === 4 && L.lib[getRound().game]?.play?.pairs) S.gmenu = true
       toast(msg)
     }
     S.pickTmp = null

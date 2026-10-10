@@ -10,7 +10,7 @@ import { roundBoard } from '../round.js'
 import { guestHcpSheet } from './scores-guest.js'
 import { holeGrid } from '../course-art.js'
 import { courseHandicap, playingHandicaps, holeCalc, gameState, upText, toPar } from '../scoring.js'
-import { buildLibrary, playable, gameSpec, resolveGame, preferredGame, teeRating, PAIRINGS } from '../games.js'
+import { buildLibrary, playable, gameSpec, resolveGame, preferredGame, teeRating, PAIRINGS, NO_GAME, SCORES_ONLY, parseGame, oneOnOneKey, oneOnOneGames, gameName } from '../games.js'
 
 // The round is kept here between redraws so unsaved stepper changes survive; api.saveRound() persists it.
 // round.lineup: the card's players in order, each { m: memberId } or { g: guestId }; the first is you
@@ -111,13 +111,23 @@ export function draw({ course, members, guests, L, me, teeTimes, events, leagues
     return { name: gst?.name ?? 'Guest', hcp: gst?.hcp ?? null, guestId: e.g }
   })
   const n = ps.length
-  round.game = resolveGame(L, round.game, n)
+  // The card's game: scores only (a new card), a game for the group, or a one-on-one between two players on it.
+  const { base, pair } = parseGame(round.game)
+  if (base !== NO_GAME && !pair) round.game = resolveGame(L, round.game, n)
+  const same = (x, y) => (x.m != null ? x.m === y.m : x.g === y.g)
+  const duo = pair ? pair.map(x => round.lineup.findIndex(e => same(e, x))) : null
+  const one = !!duo && duo.every(k => k >= 0) // (a one-on-one whose player has left the card is scores only)
+  const LG = base === NO_GAME || (pair && !one) ? null : L.lib[pair ? base : round.game]
   S.ch ??= Math.min(played(round), 17)
-  const o = PAIRINGS[round.pairing], LG = L.lib[round.game], G = gameSpec(LG), g = G.kind
-  const ph = playingHandicaps(ps.map(p => courseHandicap(p.hcp ?? 0, teeRating(course))), G.allow, G.offLow)
+  const o = PAIRINGS[round.pairing], G = LG ? gameSpec(LG) : SCORES_ONLY, g = G.kind
+  const chs = ps.map(p => courseHandicap(p.hcp ?? 0, teeRating(course)))
+  let ph = playingHandicaps(chs, G.allow, G.offLow)
+  if (one) { const two = playingHandicaps(duo.map(k => chs[k]), G.allow, G.offLow); ph = ps.map((_, k) => (duo.includes(k) ? two[duo.indexOf(k)] : chs[k])) } // shots off the lower of the two
+  // The game's state after `upTo` holes: a one-on-one is scored between its two players only.
+  const stateAt = upTo => (one ? gameState(G, course.holes, duo.map(k => ph[k]), round.scores.map(r => duo.map(k => r[k])), upTo) : gameState(G, course.holes, ph, round.scores, upTo, o))
   const noHcp = ps.filter(p => p.guestId && p.hcp == null)
   const i = S.ch, h = course.holes[i], P = played(round)
-  const c = holeCalc(h, round.scores[i], ph, o), gs = gameState(G, course.holes, ph, round.scores, P, o)
+  const c = holeCalc(h, round.scores[i], ph, o), gs = stateAt(P)
   const pts = G.cmp === 'pts' || g === 'stab'
   const pairName = s => (s === 'A' ? [o[0], o[1]] : [o[2], o[3]]).map(k => sur(ps[k].name)).join(' / ')
 
@@ -142,6 +152,7 @@ export function draw({ course, members, guests, L, me, teeTimes, events, leagues
 
   const sideA = k => o.indexOf(k) < 2
   const best = k => {
+    if (one) { if (!duo.includes(k)) return false; const v = duo.map(j => (G.cmp === 'pts' ? c.pts[j] : -c.net[j])); return (G.cmp === 'pts' ? c.pts[k] : -c.net[k]) === Math.max(...v) }
     if (g === 'match') return G.cmp === 'pts' ? c.pts[k] === (sideA(k) ? c.pA : c.pB) : c.net[k] === (sideA(k) ? c.nA : c.nB)
     if (g === 'stab' || pts) return c.pts[k] === Math.max(...c.pts)
     return c.net[k] === Math.min(...c.net)
@@ -160,8 +171,13 @@ export function draw({ course, members, guests, L, me, teeTimes, events, leagues
        <div class="sidehead"><b>${esc(pairName('B')).replace(' / ', ' &amp; ')}</b><span>${sideLbl('B')}</span></div>${card(o[2])}${card(o[3])}`
     : ps.map((_, k) => card(k)).join('')
 
+  const pn = k => (k === 0 ? 'You' : sur(ps[k].name)) // a player on the card, as the status line names them
   let line
   if (!gs.thru) line = 'Not started'
+  else if (one) {
+    const m = gs.match, who = m.lead === 'A' ? pn(duo[0]) : m.lead === 'B' ? pn(duo[1]) : null
+    line = (who ? `${who} ${m.over ? `win${who === 'You' ? '' : 's'} ${m.text}` : m.text}` : m.text) + (m.finished ? '' : ` thru ${m.thru}`)
+  }
   else if (g === 'match') {
     const m = gs.match
     line = (m.lead ? `${pairName(m.lead)} ${m.over ? `win ${m.text}` : m.text}` : m.text) + (m.finished ? '' : ` thru ${m.thru}`)
@@ -184,13 +200,12 @@ export function draw({ course, members, guests, L, me, teeTimes, events, leagues
   }).join('')
   const hcpNote = noHcp.length ? `<div class="hcpnote">${noHcp.map(p => esc(p.name.split(' ')[0])).join(' and ')} ${noHcp.length > 1 ? 'have' : 'has'} no handicap yet, so ${noHcp.length > 1 ? 'they play' : 'plays'} off an index of 0 until you set one. Shots and points update as soon as you do.</div>` : ''
   $('main').innerHTML = `<div class="screen">${eventsTop(events, me)}${grid}${checks}${hcpNote}
-    <div class="rstatus"><b>${esc(line)}</b> · <span class="gpick"><select id="gsel" aria-label="Game">${playable(L, n).map(x => `<option value="${x.k}" ${x.k === round.game ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select>${CHEV}</span>
-      <button class="linkbtn gchip" id="gchip" aria-expanded="${!!S.gmenu}" aria-controls="gmenu">Pairs, players &amp; shots ${S.gmenu ? '▴' : '›'}</button></div>
+    <div class="rstatus">${LG ? `<b>${esc(line)}</b> · <button class="gname" id="gname" aria-haspopup="dialog">${one ? `${esc(pn(duo[0]))} v ${esc(pn(duo[1]))} · ` : ''}${esc(LG.name)} ${CHEV}</button>` : '<button class="addmatch" id="gname" aria-haspopup="dialog">+ Add a match</button>'}
+      <button class="linkbtn gchip" id="gchip" aria-expanded="${!!S.gmenu}" aria-controls="gmenu">${G.pairs ? 'Pairs, players &amp; shots' : 'Players &amp; shots'} ${S.gmenu ? '▴' : '›'}</button></div>
     ${gamebar}
     ${body}
     <span class="hint">${round.done[i] ? 'Saved' : 'Gross scores. Shots applied automatically.'}</span>
     ${!G.pairs && g !== 'match1' && gs.thru ? `<h3>Standings</h3>${standings(ps, gs, g)}` : ''}
-    ${eventsBottom(events)}
     ${round.id ? '<button class="ghost accremove" id="delcard">Delete scorecard</button>' : ''}
   </div>
   <div class="cta">${fin
@@ -199,7 +214,7 @@ export function draw({ course, members, guests, L, me, teeTimes, events, leagues
 
   // Game menu
   $('gchip').onclick = async () => { S.gmenu = !S.gmenu; await keepScroll(render) }
-  $('gsel').onchange = async e => { round.game = e.target.value; await api.saveRound(round); keepScroll(render) }
+  $('gname').onclick = () => matchSheet({ L, n, ps })
   if (S.gmenu) {
     document.querySelectorAll('[data-gm]').forEach(b => (b.onclick = async () => { round.game = b.dataset.gm; await api.saveRound(round); keepScroll(render) }))
     document.querySelectorAll('[data-pr]').forEach(b => (b.onclick = async () => {
@@ -253,7 +268,7 @@ export function draw({ course, members, guests, L, me, teeTimes, events, leagues
   on('save', async () => {
     round.done[i] = true
     await api.saveRound(round)
-    const after = gameState(G, course.holes, ph, round.scores, played(round), o)
+    const after = stateAt(played(round))
     if (!after.finished && i < 17) S.ch = i + 1
     await render()
     top0()
@@ -300,11 +315,49 @@ function startScreen({ course, L, me, teeTimes, events }) {
     const s = teeTimes.find(x => x.id === +b.dataset.slot)
     if (s.players.length < 2) { toast('You’re the only one on that tee time so far'); return }
     const lineup = lineupFromTeeTime(s, me.id)
-    setRound(newRound(course, lineup, preferredGame(L, lineup.length), s.id))
-    if (lineup.length === 4 && L.lib[round.game]?.play?.pairs) S.gmenu = true
+    setRound(newRound(course, lineup, NO_GAME, s.id)) // scores only until someone adds a match
     S.sview = 'counts' // Scoring round? (leagues and events this card could count for)
     await render()
     top0()
   }))
   $('pick').onclick = async () => { S.pickTmp = []; S.sview = 'players'; await render(); top0() }
+}
+
+// + Add a match (or tap the game to change it): a game for the group, one against one with someone on the card,
+// a challenge to another four-ball, or back to scores only.
+function matchSheet({ L, n, ps }) {
+  const now = parseGame(round.game)
+  const group = playable(L, n), ones = oneOnOneGames(L)
+  let mode = null, gk = group.some(x => x.k === now.base) && !now.pair ? now.base : preferredGame(L, n)
+  let ok = ones.some(x => x.k === now.base) ? now.base : ones.find(x => x.k === 'kos')?.k ?? ones[0]?.k, opp = null
+  const close = () => { $('modal').innerHTML = '' }
+  const save = async (game, pairsMenu = false) => { round.game = game; if (pairsMenu) S.gmenu = true; await api.saveRound(round); close(); keepScroll(render) }
+  const choice = (k, t, sub) => `<button class="card pecard" data-am="${k}"><span class="pe-tx"><b>${t}</b><small>${sub}</small></span><span class="chev">›</span></button>`
+  const radio = (attr, x, on) => `<button class="gamecard sm" role="radio" aria-checked="${on}" ${attr}="${x.k}"><span class="radio"></span><span class="who"><strong>${esc(x.name)}</strong><small>${esc(x.desc)}</small></span></button>`
+  const draw = () => {
+    const body = !mode ? `<h4 id="amt">${now.base === NO_GAME ? 'Add a match' : 'Change the match'}</h4>
+        ${n >= 2 ? choice('group', `A game for ${n === 4 ? 'the four-ball' : n === 3 ? 'the three-ball' : 'the two of you'}`, 'Better ball, skins, Stableford and more, everyone on this card') : ''}
+        ${n >= 2 ? choice('one', 'One against one', 'You against one player on your card, match play') : ''}
+        ${choice('challenge', 'Challenge another four-ball', 'A match against a group on today’s tee sheet')}
+        ${now.base !== NO_GAME ? choice('none', 'No match: scores only', 'Everyone’s own score and Stableford points') : ''}`
+      : mode === 'group' ? `<h4 id="amt">A game for the group</h4><div class="games" role="radiogroup" aria-label="Game">${group.map(x => radio('data-gk', x, x.k === gk)).join('')}</div>`
+      : `<h4 id="amt">One against one</h4><span class="kicker">Against</span>
+        <div class="games" role="radiogroup" aria-label="Opponent">${ps.map((p, k) => (k ? `<button class="gamecard sm" role="radio" aria-checked="${opp === k}" data-op="${k}"><span class="radio"></span><span class="who"><strong>${esc(p.name)}</strong></span></button>` : '')).join('')}</div>
+        <span class="kicker">Game</span><div class="games" role="radiogroup" aria-label="Game">${ones.map(x => radio('data-ok', x, x.k === ok)).join('')}</div>`
+    $('modal').innerHTML = `<div class="overlay" id="ovl"><div class="sheet" role="dialog" aria-labelledby="amt">${body}
+      <div class="gm-btns"><button type="button" class="ghost" id="am-no">${mode ? 'Back' : 'Cancel'}</button>${mode ? `<button class="primary" id="am-go" ${mode === 'one' && opp == null ? 'disabled' : ''}>${mode === 'one' && opp == null ? 'Pick who' : 'Play this'}</button>` : ''}</div></div></div>`
+    $('am-no').onclick = () => { if (mode) { mode = null; draw() } else close() }
+    $('ovl').onclick = e => { if (e.target.id === 'ovl') close() }
+    document.querySelectorAll('[data-am]').forEach(b => (b.onclick = async () => {
+      const k = b.dataset.am
+      if (k === 'none') return save(NO_GAME)
+      if (k === 'challenge') { close(); S.sview = 'challenge'; await render(); top0(); return }
+      mode = k; draw()
+    }))
+    document.querySelectorAll('[data-gk]').forEach(b => (b.onclick = () => { gk = b.dataset.gk; draw() }))
+    document.querySelectorAll('[data-ok]').forEach(b => (b.onclick = () => { ok = b.dataset.ok; draw() }))
+    document.querySelectorAll('[data-op]').forEach(b => (b.onclick = () => { opp = +b.dataset.op; draw() }))
+    if ($('am-go')) $('am-go').onclick = () => (mode === 'group' ? save(gk, n === 4 && !!L.lib[gk]?.play?.pairs) : save(oneOnOneKey(ok, round.lineup[0], round.lineup[opp])))
+  }
+  draw()
 }
