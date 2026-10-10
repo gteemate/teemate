@@ -25,7 +25,7 @@ export async function load() {
     api.getGuests(round.lineup.filter(e => e.g != null).map(e => e.g)), api.getTheme(), api.getMyBalances()])
   const name = x => (x.m != null ? members.find(m => m.id === x.m)?.name : guests.find(g => g.id === x.g)?.name) ?? 'Guest'
   const choices = markerChoices(round.lineup, me.id).map(x => ({ ...x, name: name(x) }))
-  return { round, me, choices, fees: { payment: theme?.feePayment ?? 'shop', purse: balances?.competition ?? null, example: !!balances?.example }, options: countsForOptions({ lineup: round.lineup, events, leagueEntries, date, meId: me.id }) }
+  return { round, me, choices, fees: { payment: theme?.feePayment ?? 'shop', purse: balances?.competition ?? null }, options: countsForOptions({ lineup: round.lineup, events, leagueEntries, date, meId: me.id }) }
 }
 
 const key = o => `${o.kind}:${o.e.id}`
@@ -69,7 +69,7 @@ export function draw({ round, me, choices, options, fees = { payment: 'shop', pu
     <p class="sub" style="margin:0">Tick the ones this round should count for, or leave them all for a general round.</p>
     ${entered.map(tick).join('')}` : ''}
     ${joinable.map(o => `<h3 style="margin:${entered.length ? '10px' : '0'} 0 0">${esc(o.e.name)} is on today. Do you want to play in it?</h3>
-      <p class="sub" style="margin:0">Tick it and you’re entered, with this round counting.</p>${feeLine(o.e.entryFee, fees.payment, fees.purse) ? `<span class="feeline">${esc(feeLine(o.e.entryFee, fees.payment, fees.purse))}${fees.example && fees.purse != null ? ' (example balance)' : ''}</span>` : ''}${tick(o)}`).join('')}
+      <p class="sub" style="margin:0">Tick it and you’re entered, with this round counting.</p>${feeLine(o.e.entryFee, fees.payment, fees.purse) ? `<span class="feeline">${esc(feeLine(o.e.entryFee, fees.payment, fees.purse))}</span>` : ''}${tick(o)}`).join('')}
     ${needMarker ? (choices.length === 1 ? `<p class="hint">Marker: <b>${esc(choices[0].name)}</b></p>`
       : `<span class="kicker">Who’s marking your card?</span><div class="chips" role="radiogroup" aria-label="Your marker">${choices.map((c, n) => `<button class="chip" role="radio" data-mk="${n}" aria-checked="${same(marker, c)}" aria-pressed="${same(marker, c)}">${esc(c.name)}</button>`).join('')}</div>`) : ''}
     <button class="primary" id="start" ${needMarker && !marker ? 'disabled' : ''}>${esc(needMarker && !marker ? 'Pick your marker' : label())}</button>

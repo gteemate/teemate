@@ -518,7 +518,7 @@ describe('the pretend server', () => {
     await app.tap('Gary Cochrane')
     expect(app.text()).toContain('Competition purse£42.50')
     expect(app.text()).toContain('Clubhouse£12.10')
-    expect(app.text()).toContain('Example balances')
+    expect(app.text()).not.toContain('xample') // shown as balances, no example label
     await app.tap('‹ Home')
     await app.tap('Competition')
     await app.tap('Events')

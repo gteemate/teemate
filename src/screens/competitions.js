@@ -17,7 +17,7 @@ const FORMAT = { individual: 'Individual', teams: 'Team Stableford', ryder: 'Ryd
 export async function load() {
   const [events, me, playerEvents, signups, members, friends, declinedIds] = await Promise.all([api.getEvents(), api.getMe(), api.getMyPlayerEvents(), api.getSignups(), api.getMembers(), api.getFriends(), api.getSignupDeclines()])
   const [counts, theme, balances] = await Promise.all([api.getSignupCounts(), api.getTheme(), api.getMyBalances()])
-  const fees = { payment: theme?.feePayment ?? 'shop', purse: balances?.competition ?? null, example: !!balances?.example } // how entry fees are paid, and my purse once linked
+  const fees = { payment: theme?.feePayment ?? 'shop', purse: balances?.competition ?? null } // how entry fees are paid, and my purse once linked
   const date = isoDate(today())
   const open = canEnter({ ...signups, me, date })
   return { me, date, members, friends, signups, counts, fees, lists: competitionLists({ me, events, playerEvents, date }),
@@ -116,7 +116,7 @@ function signSheet(c, me, members, friends, entries, fees) {
   const sheet = () => `<div class="overlay" id="ovl"><div class="sheet" role="dialog" aria-labelledby="sgt">
     <h4 id="sgt">Enter ${esc(c.name)}?</h4>
     <span class="hint">${c.kind === 'pairs' ? 'Pairs' : 'Singles'} · Entries close ${eventDates(c.closesOn, 1)}${c.notes ? ` · ${esc(c.notes)}` : ''}. You can withdraw until then.</span>
-    ${fee ? `<span class="feeline">${esc(fee)}${c.kind === 'pairs' ? ' (each)' : ''}${fees.example && fees.purse != null ? ' (example balance)' : ''}</span>` : ''}
+    ${fee ? `<span class="feeline">${esc(fee)}${c.kind === 'pairs' ? ' (each)' : ''}</span>` : ''}
     ${c.kind === 'pairs' ? `<label for="sg-q">Your partner</label><input id="sg-q" type="search" autocomplete="off" placeholder="Type a name" value="${esc(q)}"><div class="pick picklist" id="sg-list">${list()}</div>` : ''}
     <div class="gm-btns"><button type="button" class="ghost" id="sg-no">Not now</button><button class="primary" id="sg-go" ${c.kind === 'pairs' && !partner ? 'disabled' : ''}>${c.kind === 'pairs' ? (partner ? 'Enter as a pair' : 'Pick your partner') : 'Enter'}</button></div>
   </div></div>`
