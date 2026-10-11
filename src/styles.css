@@ -878,3 +878,7 @@ h4,.sheet h4{font-family:var(--display);font-weight:600;letter-spacing:0}
 .balances span{color:var(--muted);font-size:13px}
 .balances b{font-family:var(--display);font-weight:400;font-size:26px}
 .agrid .balances{grid-column:1/-1}
+
+/* Our maker's mark at the foot of sign-in and Account: quiet, one colour */
+.maker{display:flex;justify-content:center;align-items:center;gap:7px;margin:28px 0 6px;font-size:10.5px;letter-spacing:.08em;color:var(--muted);opacity:.75}
+.maker svg{width:16px;height:16px;flex:none}

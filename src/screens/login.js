@@ -4,7 +4,7 @@
 // Also the screen for a login that isn't on the members list.
 import * as api from '../api.js'
 import { S } from '../state.js'
-import { $, esc, header, render, passwordInput } from '../ui.js'
+import { $, esc, header, render, passwordInput, makerMark } from '../ui.js'
 
 const MIN = 8
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
@@ -17,6 +17,7 @@ export function draw() {
     <div class="brand"><div class="logo">⛳</div><h2>TeeMate</h2><p>Tee times, scores and leagues for the club</p></div>
     <button class="primary big" id="to-in">Sign in</button>
     <button class="ghost big" id="to-up">I'm new · Sign up</button>
+    ${makerMark()}
   </div>`
   $('to-in').onclick = () => go('signin')
   $('to-up').onclick = () => go('signup')
@@ -33,7 +34,7 @@ function drawSignIn() {
     <button class="primary" type="submit" id="go">Sign in</button>
     <span class="hint">Forgotten your password? Ask the club admin to reset your login.</span>
   </form>
-  <button type="button" class="linkbtn" id="to-up">New here? Sign up</button></div>`
+  <button type="button" class="linkbtn" id="to-up">New here? Sign up</button>${makerMark()}</div>`
   setTimeout(() => $(S.loginEmail ? 'pw' : 'email')?.focus(), 30)
   $('to-up').onclick = () => { S.loginEmail = $('email').value.trim(); go('signup') }
   $('login').onsubmit = async e => {

@@ -5,6 +5,8 @@ export const ini = n => n.split(' ').map(p => p[0]).join('').slice(0, 2)
 export const sur = n => n.split(' ').slice(-1)[0]
 export const nn = n => String(n).padStart(2, '0')
 export const asset = p => import.meta.env.BASE_URL + p
+/** Our maker's mark (the M-tee seal) for the foot of the sign-in and Account screens. */
+export const makerMark = () => `<div class="maker" aria-label="Made by TeeMate"><svg viewBox="0 0 64 64" aria-hidden="true" fill="currentColor"><circle cx="32" cy="32" r="29" fill="none" stroke="currentColor" stroke-width="2.6"/><circle cx="32" cy="22.5" r="4.9"/><path d="M19 40V20l13 13 13-13v20" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linejoin="round" stroke-linecap="round"/><path d="M30.2 32.8h3.6L32 52z"/></svg>MADE BY TEEMATE</div>`
 
 /** Handicap index typed by a person: "12.4", "12,4", "+2" (a plus handicap, stored as −2).
  *  Returns a number, null for blank, or NaN if it isn't a handicap. */

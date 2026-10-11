@@ -162,6 +162,14 @@ describe('one against one with a player in another group', () => {
   })
 })
 
+describe('our maker’s mark', () => {
+  it('MADE BY TEEMATE at the foot of Account', async () => {
+    app = await boot()
+    await app.tap('#account')
+    expect(document.querySelector('.maker')?.textContent).toBe('MADE BY TEEMATE')
+  })
+})
+
 describe('getting back Home', () => {
   it('Halfway hut opened from Account during a round: back goes back the way you came, not round in a loop', async () => {
     app = await boot(db => db.rounds.push({ id: 77, date: db.today, createdBy: 0, lineup: [{ m: 0 }, { m: 1 }], game: 'st2', pairing: 0, submitted: {},
