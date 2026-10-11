@@ -168,6 +168,16 @@ describe('our maker’s mark', () => {
     await app.tap('#account')
     expect(document.querySelector('.maker')?.textContent).toBe('MADE BY TEEMATE')
   })
+  it('tapping it on Account shows our website and email, and Close goes back to Account', async () => {
+    app = await boot()
+    await app.tap('#account')
+    await app.tap('#maker')
+    expect(document.getElementById('mk-site').getAttribute('href')).toBe('https://www.tee-mate.co.uk')
+    expect(document.getElementById('mk-mail').getAttribute('href')).toMatch(/^mailto:gareth@tee-mate\.co\.uk\?subject=/)
+    await app.tap('#mk-close')
+    expect(document.getElementById('mkt')).toBeNull()
+    expect(app.screen()).toBe('Account')
+  })
 })
 
 describe('getting back Home', () => {

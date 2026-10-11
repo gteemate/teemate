@@ -882,3 +882,9 @@ h4,.sheet h4{font-family:var(--display);font-weight:600;letter-spacing:0}
 /* Our maker's mark at the foot of sign-in and Account: quiet, one colour */
 .maker{display:flex;justify-content:center;align-items:center;gap:7px;margin:28px 0 6px;font-size:10.5px;letter-spacing:.08em;color:var(--muted);opacity:.75}
 .maker svg{width:16px;height:16px;flex:none}
+.maker.tap{background:none;border:0;font-family:inherit;cursor:pointer;min-height:44px;padding:0 14px;margin:20px auto 0;width:max-content;max-width:100%}
+.makersheet{text-align:center;align-items:center}
+.makerseal{width:52px;height:52px;color:var(--muted);margin:4px 0 2px}.makerseal svg{width:100%;height:100%}
+.makersheet .hint{max-width:34ch;margin:0 0 6px}
+.mkask{font-weight:800;margin:8px 0 4px}
+.mklink{display:block;width:100%;text-align:center;text-decoration:none;box-sizing:border-box}

@@ -2,7 +2,7 @@
 // way into the club office, then account buttons.
 import * as api from '../api.js'
 import { S } from '../state.js'
-import { $, esc, header, top0, render, toast, fmtHcp, makerMark } from '../ui.js'
+import { $, esc, header, top0, render, toast, fmtHcp, makerMark, makerSheet } from '../ui.js'
 import { passwordSheet } from './login.js'
 import { shareText, qrSvg, shareCard } from '../share-card.js'
 import { friendLink } from '../friend-link.js'
@@ -54,7 +54,7 @@ export function draw({ me, clubName, waiting, points, hutOn, balances }) {
   </div>` : ''}
   <h3>Sign-in</h3>
   <div class="bk-btns acct"><button class="ghost" id="chpw">Change password</button><button class="ghost" id="signout">Sign out</button></div>
-  ${makerMark()}
+  ${makerMark(true)}
   </div>`
   $('share').onclick = async () => { const r = await shareCard(card, me.name, link); if (r === 'copied') toast('Details copied: paste them into a message') }
   document.querySelectorAll('[data-plays]').forEach(b => (b.onclick = async () => {
@@ -65,6 +65,7 @@ export function draw({ me, clubName, waiting, points, hutOn, balances }) {
     try { await navigator.clipboard.writeText(card); toast('Details copied') } catch { toast('Couldn’t copy on this phone: use Share instead') }
   }
   $('signout').onclick = () => api.signOut()
+  $('maker').onclick = makerSheet
   $('chpw').onclick = () => passwordSheet(ok => ok && toast('Password changed'))
   document.querySelectorAll('[data-a]').forEach(b => (b.onclick = async () => {
     if (b.dataset.a === 'course') { S.tab = 'course'; await render(); top0(); return } // the guide outside a round

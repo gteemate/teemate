@@ -147,6 +147,8 @@ test('every main screen', async ({ page }, testInfo) => {
   await tap(page, '[data-tile="friends"]'); await check(page, '18 friends', testInfo)
   await home(page)
   await tap(page, '#account'); await check(page, '19 account', testInfo)
+  await tap(page, '#maker'); await check(page, '19b about TeeMate (sheet)', testInfo)
+  await page.click('#mk-close')
   await tap(page, '[data-a="course"]'); await check(page, '20 course guide', testInfo)
   await home(page)
   await tap(page, '#account'); await tap(page, '[data-a="hutorder"]'); await check(page, '21 halfway hut order', testInfo)
