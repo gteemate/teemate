@@ -6,12 +6,11 @@ export const sur = n => n.split(' ').slice(-1)[0]
 export const nn = n => String(n).padStart(2, '0')
 export const asset = p => import.meta.env.BASE_URL + p
 /** Our maker's mark (the M-tee seal) for the foot of the sign-in and Account screens. On Account it's a button
- *  (tappable) that opens a sheet about us: the website and an email to ask about TeeMate for their club. */
+ *  (tappable) that opens a sheet about us: an email to ask about TeeMate (the website button comes back once tee-mate.co.uk is working) for their club. */
 const SEAL = '<svg viewBox="0 0 64 64" aria-hidden="true" fill="currentColor"><circle cx="32" cy="32" r="29" fill="none" stroke="currentColor" stroke-width="2.6"/><circle cx="32" cy="22.5" r="4.9"/><path d="M19 40V20l13 13 13-13v20" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linejoin="round" stroke-linecap="round"/><path d="M30.2 32.8h3.6L32 52z"/></svg>'
 export const makerMark = (tappable = false) => (tappable
   ? `<button type="button" class="maker tap" id="maker" aria-label="Made by TeeMate: about us">${SEAL}MADE BY TEEMATE</button>`
   : `<div class="maker" aria-label="Made by TeeMate">${SEAL}MADE BY TEEMATE</div>`)
-export const TEEMATE_SITE = 'https://www.tee-mate.co.uk'
 export const TEEMATE_EMAIL = 'gareth@tee-mate.co.uk'
 export function makerSheet() {
   const mail = `mailto:${TEEMATE_EMAIL}?subject=${encodeURIComponent('TeeMate for our club')}`
@@ -20,8 +19,7 @@ export function makerSheet() {
     <h4 id="mkt">TeeMate: made for golf clubs</h4>
     <p class="hint">Tee times, scoring and matches, competitions and the club office, all in one app built for your club.</p>
     <p class="mkask">Want TeeMate at your club?</p>
-    <a class="primary mklink" id="mk-site" href="${TEEMATE_SITE}" target="_blank" rel="noopener">Visit tee-mate.co.uk</a>
-    <a class="ghost mklink" id="mk-mail" href="${mail}">Email ${TEEMATE_EMAIL}</a>
+    <a class="primary mklink" id="mk-mail" href="${mail}">Email ${TEEMATE_EMAIL}</a>
     <button type="button" class="linkbtn" id="mk-close">Close</button>
   </div></div>`
   const close = () => { $('modal').innerHTML = '' }
