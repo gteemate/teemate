@@ -1071,3 +1071,44 @@ describe('members: leagues and events open for sign-up', () => {
     expect([...document.querySelectorAll('.comp')].find(c => c.textContent.includes('Packed League')).textContent).toContain('Withdraw')
   })
 })
+describe('found in review: sign-ups on club events, templates and repeats', () => {
+  const office = db => { db.asOffice = true }
+  const newEvent = async name => {
+    await app.tap('[data-ov="comps"]'); await app.tap('#o-new'); await app.tap('[data-o-kind="event"]')
+    await app.type('#ev-name', name); await app.tap('[data-style="individual"]'); await app.tap('[data-who="pick"]')
+  }
+  it('a club Stableford open for sign-up saves with nobody entered yet', async () => {
+    app = await boot(office)
+    await newEvent('Christmas Medal'); await app.type('#ev-date', '2026-12-19')
+    await app.tap('#ev-signup'); await app.type('#ev-max', '40')
+    for (let i = 0; i < 3 && !$ev('#ev-next').textContent.startsWith('Save'); i++) await app.tap('#ev-next')
+    await app.tap('#ev-next')
+    expect(app.db.events.find(e => e.name === 'Christmas Medal')).toMatchObject({ signup: true, maxEntries: 40, players: [] })
+  })
+  it('weekly repeats move each week’s sign-up dates with it', async () => {
+    app = await boot(office)
+    await newEvent('Sunday Medal'); await app.type('#ev-date', '2026-12-06')
+    await app.tap('#ev-signup'); await app.type('#ev-adv', '2026-11-29'); await app.type('#ev-close', '2026-12-04')
+    for (let i = 0; i < 3 && !document.getElementById('ev-rep'); i++) await app.tap('#ev-next')
+    await app.type('#ev-rep', '2026-12-13')
+    await app.tap('#ev-next')
+    expect(app.db.events.filter(e => e.name === 'Sunday Medal').map(e => [e.startDate, e.advertiseFrom, e.entriesClose]))
+      .toEqual([['2026-12-06', '2026-11-29', '2026-12-04'], ['2026-12-13', '2026-12-06', '2026-12-11']])
+  })
+  it('a template keeps sign-up and places, not the dates', async () => {
+    app = await boot(office)
+    await newEvent('Turkey Medal'); await app.type('#ev-date', '2026-12-06')
+    await app.tap('#ev-signup'); await app.type('#ev-close', '2026-12-04'); await app.type('#ev-max', '24')
+    for (let i = 0; i < 3 && !document.getElementById('ev-tpl'); i++) await app.tap('#ev-next')
+    await app.tap('#ev-tpl')
+    expect(app.db.eventTemplates[0].setup).toMatchObject({ signup: true, maxEntries: 24 })
+    expect(app.db.eventTemplates[0].setup).not.toHaveProperty('entriesClose')
+  })
+  it('switching to “Anyone playing that day” turns sign-up off', async () => {
+    app = await boot(office)
+    await newEvent('Day Medal'); await app.type('#ev-date', '2026-12-06')
+    await app.tap('#ev-signup'); await app.tap('[data-who="all"]')
+    await app.tap('#ev-next'); await app.tap('#ev-next')
+    expect(app.db.events.find(e => e.name === 'Day Medal').signup).toBe(false)
+  })
+})

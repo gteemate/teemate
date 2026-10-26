@@ -88,7 +88,7 @@ const signupCard = ev => `<div class="card evsec"><div class="actrow"><span clas
       <span class="hint">${signupLine(ev)}</span>` : ''}</div>`
 
 // Club event templates (the club office): an event's settings without its date or players, run again on any day.
-const NOT_KEPT = ['id', 'startDate', 'endDate', 'start0', 'team0', 'players', 'team', 'matches', 'captainPool', 'leaguePairs', 'createdBy', 'koComp', 'koFinish', 'entryRequired']
+const NOT_KEPT = ['id', 'startDate', 'endDate', 'start0', 'team0', 'players', 'team', 'matches', 'captainPool', 'leaguePairs', 'createdBy', 'koComp', 'koFinish', 'entryRequired', 'advertiseFrom', 'entriesClose'] // sign-up dates go with the day it's run
 export function templateOf(ev) {
   const setup = structuredClone(ev)
   NOT_KEPT.forEach(k => delete setup[k])
@@ -116,7 +116,9 @@ function clubExtras(ev) {
 export const stepsAfterDetails = ev => stepsFor(ev)[1] ?? 1
 const repeatDates = ev => (S.evRepeatUntil && !(ev.style === 'league' || ev.season) ? weeklyDates(ev.startDate, S.evRepeatUntil) : [ev.startDate])
 
-const stepsFor = ev => S.evTemplate ? [1, 5] : (ev.style === 'ryder' ? [1, 2, 3, 4, 5] : ev.style === 'teams' ? [1, 2, 3, 5] : pairsLeague(ev) ? [1, 7, 5] : teamLeague(ev) ? [1, 6, 5]
+// A club event open for sign-up with nobody in yet: players come from the sign-ups (teams and draw are set later by Edit).
+const fromSignups = ev => ev.club && ev.signup && ev.style !== 'league' && !ev.players.length
+const stepsFor = ev => S.evTemplate || fromSignups(ev) ? [1, 5] : (ev.style === 'ryder' ? [1, 2, 3, 4, 5] : ev.style === 'teams' ? [1, 2, 3, 5] : pairsLeague(ev) ? [1, 7, 5] : teamLeague(ev) ? [1, 6, 5]
   : ev.style === 'league' ? [1, 2, 5] : openToAll(ev) ? [1, 5] : [1, 2, 5])
 
 // Members and events are loaded once when the wizard opens, so each tap redraws instantly
@@ -565,10 +567,14 @@ export function draw({ members, me }) {
     $('ev-next').disabled = true
     if (!ev.season) ev.endDate = null
     if (!ev.season && ev.dayRules) for (const d of Object.keys(ev.dayRules)) if (+d > holeUnits(ev)) delete ev.dayRules[d] // days (weeks) no longer in it
+    if (ev.season || openToAll(ev)) ev.signup = false // no sign-up card shown for these: nothing hidden left switched on
+    const p1 = !S.evTemplate && problem(ev, 1) // the details again (a run template opens past them)
+    if (p1) { $('ev-err').textContent = p1; $('ev-next').disabled = false; return }
     const dates = repeatDates(ev)
     try {
       if (S.evTemplate) await api.saveEventTemplate({ id: S.evTemplate, name: ev.name.trim(), setup: templateOf(ev) })
-      else if (dates.length > 1) await api.saveEvents(dates.map(d => ({ ...ev, startDate: d })))
+      else if (dates.length > 1) await api.saveEvents(dates.map((d, i) => ({ ...ev, startDate: d, // each week's sign-up dates move with it
+        advertiseFrom: ev.advertiseFrom && addDaysIso(ev.advertiseFrom, 7 * i), entriesClose: ev.entriesClose && addDaysIso(ev.entriesClose, 7 * i) })))
       else await (viaSeason(ev, me) ? api.saveSeason(ev) : api.saveEvent(ev))
     } catch (e) { $('ev-err').textContent = e.message; $('ev-next').disabled = false; return }
     const saved = ev.name
