@@ -6,11 +6,12 @@
 --   clean@test.com           a brand-new member: nothing booked, entered or played
 --   admin@test.com           the club office: the back-office login that runs the club and doesn't play
 --   hut@test.com             halfway hut staff: sees orders and marks them ready
+--   live@test.com            "Live Tester", a playing admin for setting up events and filling them with made-up rounds
 --   newjoiner@test.com       approved but no login yet: taps "create your password" on the sign-in screen
 
 -- ---------------------------------------------------------------- start clean
 delete from auth.users where email like '%@test.com';          -- members.user_id goes null with them
-update public.members set email = null where email like '%@test.com' and name not in ('New Member', 'Club Office', 'Halfway Hut', 'New Joiner');
+update public.members set email = null where email like '%@test.com' and name not in ('New Member', 'Club Office', 'Halfway Hut', 'Live Tester', 'New Joiner');
 
 -- ---------------------------------------------------------------- existing members: the Winter League ones
 with wl as (select team, league_teams from public.events where name = 'Winter League' and style = 'league' order by id limit 1),
@@ -26,11 +27,12 @@ update public.members set email = 'winter.league@test.com'
 
 -- ---------------------------------------------------------------- new members (made once, kept after)
 insert into public.members (id, name, hcp_index, admin, office, hut_staff, email, plays_in)
-select (select max(id) from public.members) + row_number() over (), v.name, v.hcp, v.admin, v.admin, v.hut, v.email, v.plays_in
-  from (values ('New Member', 18.0, false, false, 'clean@test.com', 'men'),
-               ('Club Office', 54.0, true, false, 'admin@test.com', null),
-               ('Halfway Hut', 54.0, false, true, 'hut@test.com', null),
-               ('New Joiner', 24.0, false, false, 'newjoiner@test.com', 'ladies')) v(name, hcp, admin, hut, email, plays_in)
+select (select max(id) from public.members) + row_number() over (), v.name, v.hcp, v.admin, v.office, v.hut, v.email, v.plays_in
+  from (values ('New Member', 18.0, false, false, false, 'clean@test.com', 'men'),
+               ('Club Office', 54.0, true, true, false, 'admin@test.com', null),
+               ('Halfway Hut', 54.0, false, false, true, 'hut@test.com', null),
+               ('Live Tester', 15.0, true, false, false, 'live@test.com', 'men'),
+               ('New Joiner', 24.0, false, false, false, 'newjoiner@test.com', 'ladies')) v(name, hcp, admin, office, hut, email, plays_in)
  where not exists (select 1 from public.members m where m.email = v.email);
 
 update public.members set admin = true, office = true where email = 'admin@test.com';
@@ -41,7 +43,7 @@ with u as (
                           created_at, updated_at, confirmation_token, email_change, email_change_token_new, recovery_token)
   select '00000000-0000-0000-0000-000000000000', gen_random_uuid(), 'authenticated', 'authenticated', e, extensions.crypt('password', extensions.gen_salt('bf')), now(),
          '{"provider":"email","providers":["email"]}', '{}', now(), now(), '', '', '', ''
-    from unnest(array['winter.league@test.com', 'captain@test.com', 'clean@test.com', 'admin@test.com', 'hut@test.com']) e
+    from unnest(array['winter.league@test.com', 'captain@test.com', 'clean@test.com', 'admin@test.com', 'hut@test.com', 'live@test.com']) e
   returning id, email)
 insert into auth.identities (id, user_id, provider_id, identity_data, provider, created_at, updated_at, last_sign_in_at)
 select gen_random_uuid(), id, id::text, jsonb_build_object('sub', id::text, 'email', email, 'email_verified', true), 'email', now(), now(), now() from u;
