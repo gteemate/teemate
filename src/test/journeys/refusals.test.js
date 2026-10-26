@@ -9,6 +9,7 @@ import { runSteps, fillMessage } from './steps.js'
 import { whereSeen } from './seen.js'
 
 vi.mock('../../api.js', async () => (await import('./fake-api.js')).mockModule())
+export const TABLE_WRITE_FAILED = 'new row violates row-level security policy'
 const INDEX = JSON.parse(readFileSync(`${process.cwd()}/src/test/journeys/refusal-index.json`, 'utf8'))
 
 /** The refusal messages a journey is checked against. */
@@ -16,7 +17,9 @@ export function refusalsOf(j) {
   if (j.refusals?.none) return []
   if (Array.isArray(j.refusals)) return j.refusals
   const fns = INDEX.api[j.action]?.rpc ?? []
-  return [...new Set(fns.flatMap(f => INDEX.db[f] ?? []))].filter(m => !(m in (j.unreachable ?? {})))
+  const msgs = [...new Set(fns.flatMap(f => INDEX.db[f] ?? []))].filter(m => !(m in (j.unreachable ?? {})))
+  // A plain table write has no messages of its own, but can still fail (rules, a dropped signal): it must say so too.
+  return msgs.length || !INDEX.api[j.action]?.tables.length ? msgs : [TABLE_WRITE_FAILED]
 }
 // The pretend database, without the call log and the refusal switch (for "nothing half-saved").
 const snapshot = db => JSON.stringify(Object.fromEntries(Object.entries(db).filter(([k, v]) => !['calls', 'refuse'].includes(k) && typeof v !== 'function')))
@@ -26,14 +29,14 @@ afterEach(() => { app?.done(); app = null })
 
 describe.each(JOURNEYS.map(j => [j.id, j]))('%s', (_, j) => {
   it(`${j.title} (as ${j.who})`, async () => {
-    app = await boot(j.setup ?? (() => {}), { as: j.who })
+    app = await boot(j.setup ?? (() => {}), { as: j.who, hash: j.hash ?? '' })
     await runSteps(app, j.steps)
     expect(app.db.calls, `the journey should end in ${j.action}`).toContain(j.action)
     expect(j.expect(app.db, app)).toBeTruthy()
   })
   const msgs = refusalsOf(j)
   if (msgs.length) it.each(msgs)('refused: “%s” is seen, not stuck, nothing half-saved', async msg => {
-    app = await boot(j.setup ?? (() => {}), { as: j.who })
+    app = await boot(j.setup ?? (() => {}), { as: j.who, hash: j.hash ?? '' })
     await runSteps(app, j.steps.slice(0, -1))
     const before = snapshot(app.db), text = fillMessage(msg)
     app.db.refuse = { [j.action]: text }

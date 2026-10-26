@@ -42,15 +42,17 @@ export function draw({ members, buddies, friends }) {
   document.querySelectorAll('[data-s]').forEach(b => (b.onclick = () => { S.bseg = b.dataset.s; render() }))
   document.querySelectorAll('[data-b]').forEach(b => (b.onclick = async () => {
     const id = +b.dataset.b, m = members.find(x => x.id === id)
-    if (buddies.includes(id)) {
-      await api.removeBuddy(id)
-      S.picked = S.picked.filter(x => x !== id)
-      if (S.pickTmp) S.pickTmp = S.pickTmp.filter(x => x !== id)
-      toast(`Removed ${m.name}`)
-    } else {
-      await api.addBuddy(id)
-      toast(`${m.name} added to buddies`)
-    }
+    try { // a refusal is said, not lost
+      if (buddies.includes(id)) {
+        await api.removeBuddy(id)
+        S.picked = S.picked.filter(x => x !== id)
+        if (S.pickTmp) S.pickTmp = S.pickTmp.filter(x => x !== id)
+        toast(`Removed ${m.name}`)
+      } else {
+        await api.addBuddy(id)
+        toast(`${m.name} added to buddies`)
+      }
+    } catch (err) { toast(err.message); return }
     keepScroll(render)
   }))
   document.querySelectorAll('[data-fm],[data-fc]').forEach(b => (b.onclick = async e => {

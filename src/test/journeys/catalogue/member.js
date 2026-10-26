@@ -50,4 +50,40 @@ export default [
     steps: [{ tap: 'Competition' }, { tap: 'Events' }, { tap: '[data-nothanks="1"]' }],
     action: 'declineSignup', expect: db => db.declines.includes(1), refusals: 'all',
   },
+  {
+    id: 'add-buddy', who: 'member', title: 'Add a member to my friends',
+    steps: [{ tap: 'Friends' }, { tap: '[data-s="find"]' }, { type: ['#q', 'Eoin'] }, { tap: '[data-b="9"]' }],
+    action: 'addBuddy', expect: db => db.buddies.some(b => b.id === 9), refusals: 'all',
+  },
+  {
+    id: 'remove-buddy', who: 'member', title: 'Take a member out of my friends',
+    steps: [{ tap: 'Friends' }, { tap: '[data-s="find"]' }, { type: ['#q', 'Ciar'] }, { tap: '[data-b="3"]' }],
+    action: 'removeBuddy', expect: db => !db.buddies.some(b => b.id === 3), refusals: 'all',
+  },
+  {
+    id: 'favourite-friend', who: 'member', title: 'Make a friend a favourite',
+    steps: [{ tap: 'Friends' }, { tap: '[data-fm="5"]' }],
+    action: 'setFriendFavourite', expect: db => db.buddies.find(b => b.id === 5).favourite, refusals: 'all',
+  },
+  {
+    id: 'save-contact', who: 'member', title: 'Save a friend from another club from their shared card',
+    hash: '#friend?n=Pat+Visitor&c=Royal+Portrush&h=8.4&m=55&d=2026-10-10',
+    steps: [{ tap: 'Save contact' }],
+    action: 'saveContact', expect: db => db.contacts.some(c => c.name === 'Pat Visitor'), refusals: 'all',
+  },
+  {
+    id: 'remove-contact', who: 'member', title: 'Remove a saved contact',
+    steps: [{ tap: 'Friends' }, { tap: '[data-c="1"]' }, { tap: '#ct-rm' }, { tap: '#ct-rm' }],
+    action: 'removeContact', expect: db => !db.contacts.some(c => c.id === 1), refusals: 'all',
+  },
+  {
+    id: 'plays-in', who: 'member', title: 'Say I play in the ladies’ competitions',
+    steps: [{ tap: '#account' }, { tap: '[data-plays="ladies"]' }],
+    action: 'setMyPlaysIn', expect: db => db.members.find(m => m.id === 1).playsIn === 'ladies', refusals: 'all',
+  },
+  {
+    id: 'game-pref', who: 'member', title: 'Choose my usual game for a two-ball',
+    steps: [{ tap: '#account' }, { tap: '[data-a="mygames"]' }, { tap: '[data-n="2"][data-k="sc2"]' }],
+    action: 'setMyGamePref', expect: db => db.calls.includes('setMyGamePref'), refusals: 'all',
+  },
 ]

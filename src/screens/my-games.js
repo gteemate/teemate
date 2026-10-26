@@ -23,7 +23,7 @@ export function draw({ L }) {
     <div class="hint">A new scorecard starts on your preferred game for the number of players. You can still switch game on the card.</div>
     ${sec(4)}${sec(3)}${sec(2)}</div>`
   document.querySelectorAll('[data-k]').forEach(b => (b.onclick = async () => {
-    await api.setMyGamePref(+b.dataset.n, b.dataset.k)
+    try { await api.setMyGamePref(+b.dataset.n, b.dataset.k) } catch (err) { toast(err.message); return } // a refusal is said, not lost
     await keepScroll(render)
     toast(`${L.lib[b.dataset.k].name} is your ${b.dataset.n}-player game`)
   }))
