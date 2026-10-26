@@ -16,9 +16,9 @@ const FORECAST = { current: { time: '2026-10-10T09:00', wind_speed_10m: 12, wind
     wind_gusts_10m: Array(24).fill(20), wind_direction_10m: Array(24).fill(250), precipitation: Array(24).fill(0), precipitation_probability: Array(24).fill(10) } }
 
 /** Start the app on a fresh club. setup(db, helpers) changes the club before the app starts. → the driver. */
-export async function boot(setup, { hash = '' } = {}) {
+export async function boot(setup, { hash = '', as = 'admin' } = {}) {
   vi.useFakeTimers({ now: new Date(2026, 9, 10, 9, 0), toFake: ['Date', 'setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'requestAnimationFrame', 'cancelAnimationFrame'] })
-  const world = makeWorld(TODAY, setup)
+  const world = makeWorld(TODAY, setup, as)
   globalThis.__world = world
   document.documentElement.innerHTML = INDEX.replace(/<script[\s\S]*?<\/script>/g, '').replace(/^[\s\S]*?<html[^>]*>/, '').replace(/<\/html>[\s\S]*$/, '')
   try { localStorage.clear() } catch { /* none */ }

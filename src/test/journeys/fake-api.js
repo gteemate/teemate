@@ -46,9 +46,18 @@ const slotTimes = Array.from({ length: 31 }, (_, i) => 480 + i * 10) // 08:00 �
  * A fresh club. today: 'YYYY-MM-DD' (the fixed test day). setup(db) can change anything before the app starts.
  * db: { slots: { [date]: [slot] }, bookings, rounds, events, entries, leagueEntries, requests, playerEvents, hut, orders, … }
  */
-export function makeWorld(today, setup = () => {}) {
+// Who the app is signed in as (journeys run as the person they belong to). Default: Gary, the admin.
+export const PEOPLE = {
+  admin: { id: 0 }, member: { id: 1 }, organiser: { id: 7 }, captain: { id: 12 }, hut: { id: 10 },
+  office: { id: 0, office: true }, newjoiner: { id: 0, signedOut: true }, visitor: { id: 0, signedOut: true },
+}
+export const NEW_JOINER_EMAIL = 'new.joiner@example.invalid'
+
+export function makeWorld(today, setup = () => {}, as = 'admin') {
+  const who = PEOPLE[as] ?? PEOPLE.admin, ME = who.id // the signed-in member (this world's "me")
   let nextId = 5000
   const id = () => nextId++
+  const me = () => db.members.find(m => m.id === ME)
   const db = {
     me: ME, today, calls: [],
     stamps: Object.fromEntries(['members', 'course', 'pins', 'games', 'events', 'club', 'comps', 'requests', 'friends'].map(k => [k, '1'])),
@@ -107,10 +116,30 @@ export function makeWorld(today, setup = () => {}) {
 
   const api = {
     // Signed in as Gary Cochrane (member 0, an admin).
-    getMe: async () => (db.asOffice ? { id: 9000, name: 'Club office', admin: true, office: true, hutStaff: false, playsIn: null }
-      : { ...member(ME), admin: !!db.members[0].admin, hutStaff: db.members[0].hutStaff, playsIn: db.members[0].playsIn, office: false }), forgetMe: () => {},
-    getSession: async () => ({ user: { id: db.session ?? 'u0', email: 'gary@example.invalid' } }), onAuthChange: () => {},
+    getMe: async () => (db.signedOut ? null : db.asOffice ? { id: 9000, name: 'Club office', admin: true, office: true, hutStaff: false, playsIn: null }
+      : (m => ({ ...member(ME), admin: !!m.admin, hutStaff: !!m.hutStaff, playsIn: m.playsIn, office: false }))(me())), forgetMe: () => {},
+    getSession: async () => (db.signedOut ? null : { user: { id: db.session ?? `u${ME}`, email: 'gary@example.invalid' } }), onAuthChange: () => {},
+    // Signing in, a first sign-in (an approved email makes its password) and asking to join, as the real auth.js.
+    signIn: async (email, password) => {
+      const l = db.logins[email.trim().toLowerCase()]
+      if (!l || l.password !== password) throw new Error('Wrong email or password. First time here? Create your account instead.')
+      db.signedOut = false
+    },
+    needsAccount: async email => db.approved.includes(email.trim().toLowerCase()) && !db.logins[email.trim().toLowerCase()],
+    createAccount: async (email, password) => {
+      const e = email.trim().toLowerCase()
+      if (db.logins[e]) throw new Error("There's already an account for that email. Sign in instead, or ask the admin to reset your login.")
+      if (!db.approved.includes(e)) throw new Error("That email hasn't been given access to TeeMate. Ask the club admin to add you.")
+      db.logins[e] = { password, id: null }; db.signedOut = false
+    },
     myRequestPending: async () => false,
+    requestAccess: async (email, name) => {
+      const e = email.trim().toLowerCase()
+      if (!e) throw new Error('Enter your email address.')
+      if (!name?.trim()) throw new Error('Enter your name.')
+      if (db.approved.includes(e)) throw new Error('That email is already approved. Create your account instead.')
+      db.joins.push({ id: id(), name: name.trim(), email: e, createdAt: new Date().toISOString() })
+    },
     getTheme: async () => ({ ...db.theme }),
     setTheme: async (main, accent) => { Object.assign(db.theme, { main: main.toUpperCase(), accent: accent.toUpperCase() }) },
     setClubName: async name => { db.theme.name = name.trim() },
@@ -283,7 +312,7 @@ export function makeWorld(today, setup = () => {}) {
     enterLeague: async (rid, eid, ids, marker = null) => { ids.forEach(m => db.leagueEntries.push({ eventId: eid, week: 1, memberId: m, roundId: rid, marker })); return 1 },
     enterEventRound: async (rid, eid, ids, marker = null) => { ids.forEach(m => db.entries.push({ eventId: eid, day: 1, memberId: m, roundId: rid, marker })); return 1 },
     // As the database's rules: a member sees their own entries; admins see everyone's.
-    getSignups: async () => copy({ comps: db.signups, entries: db.members[0].admin ? db.signupEntries : db.signupEntries.filter(e => e.memberId === ME || e.partnerId === ME) }),
+    getSignups: async () => copy({ comps: db.signups, entries: me().admin ? db.signupEntries : db.signupEntries.filter(e => e.memberId === ME || e.partnerId === ME) }),
     saveSignup: async c => { if (c.id) Object.assign(db.signups.find(x => x.id === c.id), c); else db.signups.push({ ...c, id: id(), drawPublished: false, roundDeadlines: [] }) },
     deleteSignup: async cid => { db.signups = db.signups.filter(c => c.id !== cid) },
     getSignupCounts: async () => Object.fromEntries(db.signups.map(c => [c.id, db.signupEntries.filter(e => e.compId === c.id).length])),
@@ -296,7 +325,7 @@ export function makeWorld(today, setup = () => {}) {
       db.signupEntries.push({ compId: cid, memberId: ME, partnerId })
     },
     withdrawSignup: async cid => { db.signupEntries = db.signupEntries.filter(e => !(e.compId === cid && (e.memberId === ME || e.partnerId === ME))) },
-    setMyPlaysIn: async p => { db.members[0].playsIn = p },
+    setMyPlaysIn: async p => { me().playsIn = p },
     createMemberKnockout: async (name, kind, entries, deadlines) => {
       const cid = id(); db.signups.push({ id: cid, name, category: 'open', kind, closesOn: db.today, notes: null, open: false, drawPublished: true, roundDeadlines: deadlines, maxEntries: null, createdBy: ME })
       const es = entries.map(e => ({ id: id(), compId: cid, memberId: e[0], partnerId: e[1] ?? null })); db.signupEntries.push(...es)
@@ -338,6 +367,13 @@ export function makeWorld(today, setup = () => {}) {
   for (const [k, f] of Object.entries(api)) api[k] = (...a) => { db.calls.push(k); return f(...a) }
   db.slotsOn = sheet
   db.koAdvance = m => { const n = db.koMatches.find(x => x.compId === m.compId && x.round === m.round + 1 && x.slot === Math.floor(m.slot / 2)); if (n) n[m.slot % 2 ? 'bEntry' : 'aEntry'] = m.winnerEntry }
+  // The person: hut staff, a league captain, the office, or signed out (a new joiner has an approved email).
+  if (as === 'hut') db.members.find(m => m.id === ME).hutStaff = true
+  if (as === 'captain') db.events.find(e => e.name === 'Winter League').teams[0].captain = ME
+  if (who.office) db.asOffice = true
+  db.signedOut = !!who.signedOut
+  db.logins = { 'gary@example.invalid': { password: 'correct horse', id: 0 } } // email → { password, member id }
+  db.approved = as === 'newjoiner' ? [NEW_JOINER_EMAIL] : []
   setup(db, { sheet, slotById, id })
   // The real device cache in front of the pretend server, with a pretend storage that lives as long as the world.
   const kept = new Map(), storage = { getItem: k => kept.get(k) ?? null, setItem: (k, v) => kept.set(k, v), removeItem: k => kept.delete(k) }
