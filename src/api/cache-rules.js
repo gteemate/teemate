@@ -17,6 +17,7 @@ export const RULES = {
 
   // Changes: what each one makes out of date.
   setTheme: changes('club'), setClubName: changes('club'), setFeePayment: changes('club'), setHutOn: changes('club'), setBookingRules: changes('club'),
+  setDayBoardDays: changes('club'), setDayBoardToday: changes('club'),
   setCourseLocation: changes('club'), setGreenWidth: changes('course', 'pins'), publishPins: changes('pins'),
   saveEvent: changes('events'), saveSeason: changes('events'), deleteEvent: changes('events'), enterEventToday: changes('events'),
   startLeagueKnockout: changes('events', 'comps'),

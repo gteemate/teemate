@@ -13,7 +13,7 @@ const ME = 0
 
 /** Every name src/api.js exports (kept in step with it by a test). */
 export const API_NAMES = ['getMe', 'forgetMe', 'getSession', 'signIn', 'needsAccount', 'createAccount', 'myRequestPending', 'changePassword', 'signOut',
-  'onAuthChange', 'requestAccess', 'getTheme', 'setTheme', 'setFeePayment', 'getMyBalances', 'setClubName', 'setCourseLocation', 'getHut', 'setHutOn', 'saveHutItem', 'removeHutItem',
+  'onAuthChange', 'requestAccess', 'getTheme', 'setTheme', 'setDayBoardDays', 'setDayBoardToday', 'setFeePayment', 'getMyBalances', 'setClubName', 'setCourseLocation', 'getHut', 'setHutOn', 'saveHutItem', 'removeHutItem',
   'getHutStaff', 'setHutStaff', 'placeHutOrder', 'cancelMyHutOrder', 'myHutOrders', 'hutOrdersToday', 'setHutOrderStatus', 'getMembers', 'getBuddies',
   'addBuddy', 'removeBuddy', 'getFriends', 'saveContact', 'removeContact', 'setFriendFavourite', 'getAccessList', 'saveMember', 'getFavourites',
   'setFavourite', 'setOfficeLogin', 'getAccessRequests', 'declineRequest', 'deleteMember', 'resetLogin', 'getCourse', 'getPins', 'setGreenWidth', 'publishPins',
@@ -63,7 +63,7 @@ export function makeWorld(today, setup = () => {}) {
     contacts: [{ id: 1, name: 'Sam Visitor', club: 'Royal Portrush GC', hcp: '12.0', gui: '1234567', sharedOn: today, favourite: false, updatedAt: `${today}T08:00:00Z` }],
     slots: {}, bookings: [], guestVisits: [], rounds: [], requests: [], playerEvents: [],
     rules: { time: '20:00', days: 8, weekendsOnly: false },
-    theme: { main: '#19335A', accent: '#762A43', name: 'Royal Teemate Golf Club', courseLat: 55.2, courseLon: -6.65, coursePlace: 'Portrush', feePayment: 'shop' },
+    theme: { main: '#19335A', accent: '#762A43', name: 'Royal Teemate Golf Club', courseLat: 55.2, courseLon: -6.65, coursePlace: 'Portrush', feePayment: 'shop', dayBoardDays: [0, 1, 2, 3, 4, 5, 6], dayBoardToday: null },
     balances: null, // the club's system once linked: { competition, clubhouse } in pence
     hut: { on: true, menu: [
       { id: 1, section: 'Food', name: 'Bacon roll', pricePence: 450, soldOut: false, sort: 1 },
@@ -112,6 +112,8 @@ export function makeWorld(today, setup = () => {}) {
     getSession: async () => ({ user: { id: db.session ?? 'u0', email: 'gary@example.invalid' } }), onAuthChange: () => {},
     myRequestPending: async () => false,
     getTheme: async () => ({ ...db.theme }),
+    setDayBoardDays: async days => { if (!me().admin && !db.asOffice) throw new Error('Only admins can change the club settings.'); db.theme.dayBoardDays = [...new Set(days)].sort() },
+    setDayBoardToday: async on => { if (!me().admin && !db.asOffice) throw new Error('Only admins can change the club settings.'); db.theme.dayBoardToday = on == null ? null : { date: today, on } },
     setTheme: async (main, accent) => { Object.assign(db.theme, { main: main.toUpperCase(), accent: accent.toUpperCase() }) },
     setClubName: async name => { db.theme.name = name.trim() },
     setCourseLocation: async (lat, lon, place) => { Object.assign(db.theme, { courseLat: lat, courseLon: lon, coursePlace: place }) },
