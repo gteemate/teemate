@@ -6,14 +6,17 @@ Agreed with the user 26 Oct 2026. First use: **Ballymena V Coleraine** (event 24
 
 The existing four-ball team match play (style `ryder`: two teams, pairs play better-ball matches, 1 point each),
 spread over a **season** instead of 1–3 days in a row. The season has a start date and an end date. On any day in
-between, the organiser can put on a **match day** with **any number of matches** (1, 2, 3 …). Points add up across
+between, the organiser can put on a **match day** with **any number of matches** (1, 2, 3 …), each one either a
+**four-ball** (a pair v a pair, better ball) or a **singles** (one v one). Every match is worth 1 point (½ each if
+halved), as in a Ryder Cup. Points add up across
 every match day into one season score. Example: all 12 play on day 1 and day 4 (3 matches each, so 6 points are
-decided), and day 9 has a single match for whichever four are free.
+decided), day 9 has one four-ball for whichever four are free, and day 12 has two singles.
 
 ## Decisions (from the user)
 
 - Same format as today's four-ball team match play, just over many days.
 - A match day can have any number of matches, not always everyone.
+- A match can be a four-ball or a **singles**; a match day can mix them.
 - The organiser (an ordinary player, e.g. Live Tester) adds the match days.
 - New players can be **added to a team part-way through** the season.
 - **Nobody ever switches teams during a season.**
@@ -23,11 +26,22 @@ decided), and day 9 has a single match for whichever four are free.
 - A new choice under When: **One-off** (1–3 days in a row, exactly as now) or **Season** (start date and end date;
   the end date is after the start date and at most a year later).
 - Players and teams are chosen as now: two named, coloured teams. Teams don't have to be the same size.
+- The season's **format** is chosen once, as now, and sets how both kinds of match are played:
+
+  | Season format | Four-ball | Singles |
+  |---|---|---|
+  | Better ball · off the low (`bbl`) | as now | Handicap match play, full difference off the low (`kos`) |
+  | Better ball · Stableford (`bbstab`) | as now | Stableford match play, off the low (`sm2`) |
+  | Better ball · scratch (`bbscr`) | as now | Scratch match play (`sc2`) |
+
+  Each uses its own game's handicap allowance from the club's games, as the event board does now.
 - A season has no "Day 1 / Day 2 / Day 3" draw. Its last step is **Match days**: a list, empty at first, with
-  **+ Add a match day**. Adding one asks for a date (inside the season and not already used) and then the matches:
-  each match is a pair from team A v a pair from team B. **Draw** fills as many matches as there are full pairs on
-  both sides; the organiser can then remove matches or swap players, as the existing editor allows. A player can be
-  in only one match per match day. Pairs can change from one match day to the next.
+  **+ Add a match day**. Adding one asks for a date (inside the season and not already used) and then the matches,
+  each added with **+ Four-ball** (a pair from team A v a pair from team B) or **+ Singles** (one from each team).
+  **Draw** fills four-balls from whoever's picked to play that day, and makes a singles from a player left over on
+  each side; the organiser can then remove matches, change a match between four-ball and singles, or swap players,
+  as the existing editor allows. A player can be in only one match per match day. Pairs can change from one match
+  day to the next.
 - Saving a season with no match days is allowed (they're added later).
 
 ## Changing it during the season
@@ -53,7 +67,9 @@ the app can't break them (e.g. an old screen open on another phone).
 As today's four-ball team match play, on the match day only:
 
 - Players with a match that day see it on Home (Today) and when they start a round ("Counts for"), tick it, and
-  their card counts for their match. It's scored live from their cards, as now.
+  their card counts for their match. It's scored live from their cards, as now. The two players in a singles don't
+  have to be on the same card (each one's own card counts), so a singles can be played inside a four-ball with
+  friends.
 - Players **without** a match that day aren't asked, and the event doesn't show as "on today" for them.
 - "Book this match" and the other match helpers work per match day, as they do per day now.
 
@@ -69,8 +85,12 @@ As today's four-ball team match play, on the match day only:
 
 - **Data:** keep the `events` row. A season is a ryder event whose `days` is the season length (start to end date,
   inclusive), with matches stored only on match days (`matches` keyed by day number = date − start + 1, as today).
+  A singles is a match with one player a side: `{ a: [x], b: [y] }` (a four-ball stays `{ a: [x, y], b: [z, w] }`).
   The `days between 1 and 3` check is relaxed to allow up to 366 for ryder events. A new `season boolean` column
   marks it (a one-off is unchanged).
+- **Scoring:** `scoreAdvanceEvent` scores each match on a day with `ryderMatches` (four-balls) or `singlesMatch`
+  (singles, with the format from the table above); both give the same match result shape, so the season total
+  (`teamEventScore`) adds them together.
 - **Day numbers** already come from dates everywhere (`event_entries.day`, the board, the round's "Counts for"), so
   they keep working; places that loop over every day (`scoreAdvanceEvent`, the board's day tabs, `round.js`,
   `dayOf`) loop over **match days** (days with matches) instead for a season.
@@ -79,14 +99,16 @@ As today's four-ball team match play, on the match day only:
 - **`save_season(p_event, p_end, p_team, p_matches)`**: organiser or admin, before the end date; rejects a team
   switch, a removed player who has played, or a change to a started or past match day.
 - **Screens:** the event editor (One-off/Season, end date, Match days step), the event board (season header, match
-  days list, organiser buttons), event cards on Events/Competitions/club office ("Season · ends 31 Mar"), and the
+  days list with four-balls and singles, organiser buttons), event cards on Events/Competitions/club office ("Season · ends 31 Mar"), and the
   match page heading ("Match 2 · 14 Nov").
 
 ## Testing
 
 - Unit tests (vitest): season scoring over sparse match days (points add up; days without matches are ignored; a
-  live match counts as in progress), the "has this match day started" rule, and the season helpers for the board.
-- Database tests (supabase/tests): `save_season` allows adding a day / adding a player and refuses a team switch, a
+  live match counts as in progress), singles alongside four-balls on one day (each format, players on different
+  cards), the draw's leftover singles, the "has this match day started" rule, and the season helpers for the board.
+- Database tests (supabase/tests): `save_season` allows adding a day / adding a player / a singles and refuses a match that isn't 2 v 2 or
+  1 v 1, a player in two matches on a day, a team switch, a
   change to a started day, a removed player who has played, and a non-organiser; entering a card on a day where the
   player has no match is refused.
 - Scenario data (supabase/scenarios.sql) gets a season with past, today's and future match days.
@@ -95,11 +117,11 @@ As today's four-ball team match play, on the match day only:
 ## Then the demo data (live)
 
 Ballymena V Coleraine becomes a season: start 10 weeks ago, end 31 Mar 2027, the same 12 players and teams
-(Blues/Reds). **10 past match days with 1–3 matches each** (some with all 12 out), each with believable cards and
+(Blues/Reds). **10 past match days with 1–3 matches each** (some with all 12 out, some with singles), each with believable cards and
 the result worked out by the app; tomorrow's 3 matches (as set up now) stay as the next match day.
 
 ## Not in this
 
-- Singles matches inside a season (only four-ball better-ball, as the one-off).
+- Singles in a one-off (1–3 day) event: it stays four-balls only, as now.
 - Moving a match day after it has started, or editing results by hand.
 - A season for the other event styles (teams Stableford, individual).
