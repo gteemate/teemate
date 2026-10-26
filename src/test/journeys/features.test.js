@@ -584,3 +584,25 @@ describe('the smaller jobs', () => {
     expect(app.db.password).toBe('a-new-password-1')
   })
 })
+
+describe('club office: deleting a competition', () => {
+  it('a sign-up competition: Delete, tap again, gone', async () => {
+    app = await boot(db => { db.asOffice = true })
+    await app.tap('[data-ov="comps"]')
+    await app.tap('[data-o-comp="s:2"]')
+    await app.tap('#o-del')
+    expect(app.db.signups.some(c => c.id === 2)).toBe(true) // asks first
+    await app.tap('#o-del')
+    expect(app.db.signups.some(c => c.id === 2)).toBe(false)
+    expect(app.main()).not.toContain('Men’s Fourball')
+  })
+  it('a club event: Delete, tap again, gone', async () => {
+    app = await boot(db => { db.asOffice = true })
+    await app.tap('[data-ov="comps"]')
+    const e = app.db.events.find(x => x.club)
+    await app.tap(`[data-o-comp="e:${e.id}"]`)
+    await app.tap('#o-del')
+    await app.tap('#o-del')
+    expect(app.db.events.some(x => x.id === e.id)).toBe(false)
+  })
+})

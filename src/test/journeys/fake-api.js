@@ -274,6 +274,7 @@ export function makeWorld(today, setup = () => {}) {
     },
     getStamps: async () => ({ ...db.stamps }),
     // As the real api/events.js: team colours visible on navy and never the same.
+    deleteEvent: async eid => { db.events = db.events.filter(e => e.id !== eid) },
     getEvents: async () => copy(db.events).map(e => { const [a, b] = visiblePair(e.A?.col, e.B?.col); return { ...e, A: e.A && { ...e.A, col: a }, B: e.B && { ...e.B, col: b } } }),
     getCardsOn: async dates => copy(db.rounds.filter(r => dates.includes(r.date))),
     getCardsById: async ids => Object.fromEntries(db.rounds.filter(r => ids.includes(r.id)).map(r => [r.id, copy(r)])),

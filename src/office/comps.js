@@ -81,6 +81,15 @@ export function draw({ evs, comps, kos, members, t }) {
     try { await api.runSignup(x.c.id, { closesOn, finalBy, maxEntries, notes, fee }) } catch (er) { $('o-rerr').textContent = er.message; b.disabled = false; return }
     await keepScroll(render); toast(`${x.c.name} is open: members see it under Competitions → Events`)
   }
+  // Delete the selected competition (a club event or league, or a sign-up competition and its draw): tap twice.
+  if ($('o-del')) $('o-del').onclick = async () => {
+    const b = $('o-del'), x = sel, name = x.c?.name ?? x.e.name
+    if (b.dataset.armed !== '1') { b.dataset.armed = '1'; b.textContent = x.c ? 'Tap again: entries and draw go too' : 'Tap again to delete'; return }
+    b.disabled = true
+    try { await (x.c ? api.deleteSignup(x.c.id) : api.deleteEvent(x.e.id)) } catch (er) { toast(er.message); b.disabled = false; return }
+    S.oComp = null
+    await keepScroll(render); toast(`${name} deleted`)
+  }
   $('o-new').onclick = () => {
     panel(`<h4>New competition</h4><p class="hint">What kind?</p>
       <div class="card olist">
@@ -100,7 +109,7 @@ const rounds = ko => Math.max(0, ...ko.matches.map(m => m.round))
 // A template: run it with new dates (entries close, the final played by, a limit, notes), opened to members.
 function runForm(x, ko, champ, members, t) {
   const c = x.c
-  return `<div class="ohead"><div><h4>${esc(c.name)}</h4><p class="hint">${CAT[c.category]} ${c.kind === 'pairs' ? 'pairs' : 'singles'}${champ != null ? ` · last won by ${esc(entryName(champ, ko.entries, members))}` : ''}</p></div></div>
+  return `<div class="ohead"><div><h4>${esc(c.name)}</h4><p class="hint">${CAT[c.category]} ${c.kind === 'pairs' ? 'pairs' : 'singles'}${champ != null ? ` · last won by ${esc(entryName(champ, ko.entries, members))}` : ''}</p></div><span class="oacts"><button class="ghost sm accremove" id="o-del">Delete</button></span></div>
     <div class="opad orun">
       <p class="hint">Set this year’s dates and release it: members see it under Competitions → Events and answer Enter or No thanks.${x.n || ko?.matches.length ? ' Last time’s entries and draw are cleared.' : ''}</p>
       <div class="orunrow"><label>Entries close<input type="date" class="plainsel" id="o-rclose" min="${t}" value="${addDaysIso(t, 21)}"></label>
@@ -116,7 +125,7 @@ function runForm(x, ko, champ, members, t) {
 function detail(x, ko, members, t) {
   if (x.e) {
     const e = x.e, wk = e.style === 'league' ? leagueWeek(e, t) : 0
-    return `<div class="ohead"><div><h4>${esc(e.name)}</h4><p class="hint">${e.style === 'league' ? `${e.weeks}-week league from ${eventDates(e.startDate, 1)}${wk > 0 && wk <= e.weeks ? ` · week ${wk}` : ''}` : eventWhen(e)}</p></div></div>
+    return `<div class="ohead"><div><h4>${esc(e.name)}</h4><p class="hint">${e.style === 'league' ? `${e.weeks}-week league from ${eventDates(e.startDate, 1)}${wk > 0 && wk <= e.weeks ? ` · week ${wk}` : ''}` : eventWhen(e)}</p></div><span class="oacts"><button class="ghost sm accremove" id="o-del">Delete</button></span></div>
       <div class="olist">
         <div class="orow"><span class="ot"><b>${e.style === 'league' ? 'Table and results' : 'Leaderboard'}</b><span>${e.players.length} player${e.players.length === 1 ? '' : 's'}${e.everyone ? ' · everyone can play' : ''}${e.entryFee ? ` · entry ${money(e.entryFee)}` : ''}</span></span><span class="oacts"><button class="ghost sm" data-o-go="board:${e.id}">Open</button></span></div>
         <div class="orow"><span class="ot"><b>Settings</b><span>Dates, format, who plays</span></span><span class="oacts"><button class="ghost sm" data-o-go="edit:${e.id}">Edit</button></span></div>
@@ -125,7 +134,7 @@ function detail(x, ko, members, t) {
   }
   const c = x.c
   const head = `<div class="ohead"><div><h4>${esc(c.name)}</h4><p class="hint">${CAT[c.category]} ${c.kind === 'pairs' ? 'pairs' : 'singles'} · ${x.n}${c.maxEntries ? ` of ${c.maxEntries}` : ''} entered${c.closesOn ? ` · entries ${c.closesOn >= t ? 'close' : 'closed'} ${eventDates(c.closesOn, 1)}` : ''}</p>${c.entryFee ? `<p class="hint">Entry ${money(c.entryFee)}${c.kind === 'pairs' ? ' each' : ''} · ${feeTotal(c.kind === 'pairs' ? c.entryFee * 2 : c.entryFee, x.n).split(' · ')[1]}</p>` : ''}</div>
-    <span class="oacts"><button class="ghost sm" data-o-go="signups">Entries and settings</button>${ko?.matches.length ? `<button class="primary sm" data-o-go="draw:${c.id}">${c.drawPublished ? 'Set results' : 'Make the draw'}</button>` : x.n > 1 ? `<button class="primary sm" data-o-go="draw:${c.id}">Make the draw</button>` : ''}</span></div>`
+    <span class="oacts"><button class="ghost sm accremove" id="o-del">Delete</button><button class="ghost sm" data-o-go="signups">Entries and settings</button>${ko?.matches.length ? `<button class="primary sm" data-o-go="draw:${c.id}">${c.drawPublished ? 'Set results' : 'Make the draw'}</button>` : x.n > 1 ? `<button class="primary sm" data-o-go="draw:${c.id}">Make the draw</button>` : ''}</span></div>`
   if (!ko?.matches.length) return `${head}<div class="empty-state">${x.n ? 'No draw yet. Make it once entries close.' : 'Nobody has entered yet.'}</div>`
   const n = rounds(ko), name = id => entryName(id, ko.entries, members)
   const champ = champion(ko.matches, n)
