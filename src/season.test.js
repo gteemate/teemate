@@ -59,3 +59,18 @@ describe('drawing a match day', () => {
     for (const m of ms) { expect(m.a.every(id => A.includes(id))).toBe(true); expect(m.b.every(id => B.includes(id))).toBe(true) }
   })
 })
+
+import { canChange } from './season.js'
+describe('who can change an event', () => {
+  const me = { id: 1, admin: false }, mine = over => ({ createdBy: { id: 1 }, startDate: '2026-10-01', days: 100, ...over })
+  it('a one-off: its organiser until the first day; admins any time', () => {
+    expect(canChange(mine({ days: 1, startDate: '2026-10-11' }), me, '2026-10-10')).toBe(true)
+    expect(canChange(mine({ days: 1, startDate: '2026-10-10' }), me, '2026-10-10')).toBe(false)
+    expect(canChange(mine({ days: 1 }), { id: 9, admin: true }, '2026-12-01')).toBe(true)
+  })
+  it('a season: its organiser until the end date, not after; nobody else', () => {
+    expect(canChange(mine({ season: true }), me, '2027-01-08')).toBe(true)
+    expect(canChange(mine({ season: true }), me, '2027-01-09')).toBe(false)
+    expect(canChange(mine({ season: true }), { id: 2, admin: false }, '2026-10-10')).toBe(false)
+  })
+})

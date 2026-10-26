@@ -50,3 +50,6 @@ export function drawDay(aIds, bIds, rand = Math.random) {
   if (a.length && b.length) out.push({ a: a.splice(0, 1), b: b.splice(0, 1) })
   return out
 }
+
+/** Who can change an event: admins any time; its organiser before a one-off's first day, or until a season ends. */
+export const canChange = (e, me, todayIso) => !!me.admin || (e.createdBy?.id === me.id && (e.season ? seasonEnd(e) >= todayIso : e.startDate > todayIso))

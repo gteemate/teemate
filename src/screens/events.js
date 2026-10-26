@@ -9,6 +9,7 @@ import { buildLibrary, gameName } from '../games.js'
 import { resetRound } from './scores.js'
 import { eventDates, eventLastDay, isoDate, today } from '../dates.js'
 import { EVENT_TYPES } from './event-editor.js'
+import { canChange } from '../season.js'
 import { toAdmin } from './nav.js'
 import { eventTitle, eventSubtitle, stateLine, bindCancel } from './player-events.js'
 
@@ -24,7 +25,7 @@ export async function load() {
   return { events, me, todayCard, matches: matches.filter(e => e.status === 'pending' || e.status === 'accepted') }
 }
 
-export const canEdit = (e, me) => me.admin || (e.createdBy?.id === me.id && e.startDate > isoDate(today()))
+export const canEdit = (e, me) => canChange(e, me, isoDate(today()))
 
 export function draw({ events: all, me, matches, todayCard: tc }) {
   const club = S.evScope === 'club' && me.admin

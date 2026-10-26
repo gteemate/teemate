@@ -102,6 +102,71 @@ describe('events: make each kind, play it, see the leaderboard', () => {
   })
 })
 
+// A season Gary runs: started 3 days ago (day 1 played: a four-ball), Blues 0, 9, 11 v Reds 10, 12, 1, ends 31 Mar.
+const pals = db => db.events.push({ id: 900, name: 'Pals Season', A: { name: 'Blues', col: '#19335A' }, B: { name: 'Reds', col: '#762A43' },
+  club: false, everyone: false, startDate: '2026-10-07', days: 176, season: true, style: 'ryder', fmt: 'bbl', entryRequired: true,
+  players: [0, 9, 11, 10, 12, 1], team: { 0: 'A', 9: 'A', 11: 'A', 10: 'B', 12: 'B', 1: 'B' },
+  matches: { 1: [{ a: [0, 9], b: [10, 12] }] }, createdBy: { id: 0, name: 'Gary Cochrane' } })
+async function openSeasonEditor() {
+  await app.tap('Competition')
+  await app.tap('[data-tab="entered"]')
+  await app.tap('[data-edit="900"]')
+}
+
+describe('four-ball team match play over a season', () => {
+  it('set up a season with an end date and no match days yet', async () => {
+    app = await boot(() => {})
+    await app.tap('Competition')
+    await app.tap('Events')
+    await app.tap('+ Create your own event')
+    await app.tap('#cr-ev')
+    await app.type('#ev-name', 'Ballymena v Coleraine')
+    await app.type('#ev-date', app.db.today)
+    await app.tap('[data-style="ryder"]')
+    await app.tap('[data-when="season"]')
+    await app.type('#ev-end', '2027-03-31')
+    await app.tap('#ev-next')
+    for (const id of [10, 12, 9]) await app.tap(`[data-pick="${id}"]`)
+    await app.tap('#ev-next')
+    await app.tap('#ev-bal')
+    await app.tap('#ev-next') // Teams → Match days
+    expect(app.main()).toContain('+ Add a match day')
+    await app.tap('#ev-next') // Match days → Review
+    expect(app.main()).toContain('Season')
+    await app.tap('#ev-next') // Save event
+    const e = app.db.events.find(x => x.name === 'Ballymena v Coleraine')
+    expect(e).toMatchObject({ season: true, days: 173, matches: {} })
+  })
+  it('the organiser adds a match day with a four-ball and a singles', async () => {
+    app = await boot(pals)
+    await openSeasonEditor()
+    for (let i = 0; i < 3; i++) await app.tap('#ev-next') // Details → Players → Teams → Match days
+    await app.type('#ev-md', '2026-10-17')
+    await app.tap('#ev-mdadd')
+    await app.tap('[data-add4="11"]')
+    await app.tap('[data-add1="11"]')
+    await app.tap('#ev-next') // Review
+    await app.tap('#ev-next') // Save changes
+    const e = app.db.events.find(x => x.id === 900)
+    expect(e.matches[11]).toHaveLength(2)
+    expect(e.matches[11].filter(m => m.a.length === 1)).toHaveLength(1)
+    expect(e.matches[1]).toEqual([{ a: [0, 9], b: [10, 12] }]) // the played day as it was
+  })
+  it('a played match day can’t be changed, and nobody switches teams', async () => {
+    app = await boot(pals)
+    await openSeasonEditor()
+    await app.tap('#ev-next')
+    await app.tap('#ev-next') // Teams
+    expect(document.querySelector('[data-tm="0"]').disabled).toBe(true)
+    await app.tap('#ev-next') // Match days
+    expect(document.querySelector('[data-add4="1"]')).toBeNull()
+    expect(document.querySelector('[data-rmday="1"]')).toBeNull()
+    await app.tap('#ev-next') // Review
+    await app.tap('#ev-next') // Save changes (nothing changed)
+    expect(app.db.events.find(x => x.id === 900).team).toEqual({ 0: 'A', 9: 'A', 11: 'A', 10: 'B', 12: 'B', 1: 'B' })
+  })
+})
+
 describe('challenges with other four-balls', () => {
   const twoGroups = db => { db.book(0, at(db, 570).id, [10]); db.book(7, at(db, 580).id, [11]) }
   it('send a challenge to another group on the tee sheet', async () => {
