@@ -8,35 +8,35 @@ import { $, esc, header, keepScroll, render, redraw, toast, top0 } from '../ui.j
 import { addDaysIso, eventDates, eventLastDay, isoDate, leagueWeek, today } from '../dates.js'
 import { eventWhen } from '../season.js'
 import { entryName, roundName, champion } from '../knockout.js'
-import { EVENT_TYPES } from '../screens/event-editor.js'
+import { EVENT_TYPES, fromTemplate, stepsAfterDetails } from '../screens/event-editor.js'
 import { clubComp, clubEvent, panel } from './shell.js'
 import { money, feeTotal } from '../fees.js'
 
 const CAT = { men: 'Men’s', ladies: 'Ladies’', mixed: 'Mixed', open: 'Open' }
 
 export async function load() {
-  const [events, signups, members] = await Promise.all([api.getEvents(), api.getSignups(), api.getMembers()])
+  const [events, signups, members, tpls] = await Promise.all([api.getEvents(), api.getSignups(), api.getMembers(), api.getEventTemplates()])
   const t = isoDate(today())
   const evs = events.filter(clubEvent).map(e => ({ key: `e:${e.id}`, e, done: eventLastDay(e) < t && !(e.koTop && !e.koComp) }))
   const comps = signups.comps.filter(clubComp).map(c => ({ key: `s:${c.id}`, c, n: signups.entries.filter(x => x.compId === c.id).length }))
   const kos = Object.fromEntries(await Promise.all(comps.filter(x => x.c.drawPublished || x.n).map(async x => [x.key, await api.getKnockout(x.c.id)])))
-  return { evs, comps, kos, members, t }
+  return { evs, comps, kos, members, t, tpls: tpls.map(x => ({ key: `t:${x.id}`, t: x })) }
 }
 
-export function draw({ evs, comps, kos, members, t }) {
-  const all = [...comps, ...evs]
+export function draw({ evs, comps, kos, members, t, tpls = [] }) {
+  const all = [...comps, ...evs, ...tpls]
   const disputed = k => (kos[k]?.matches ?? []).filter(m => m.status === 'disputed').length
   // A club sign-up competition is a template between runs: hidden, or its knockout finished. Run it again from there.
   const champ = x => (x.c?.drawPublished && kos[x.key]?.matches.length ? champion(kos[x.key].matches, rounds(kos[x.key])) : null)
-  const isTemplate = x => !!x.c && (!x.c.open || champ(x) != null)
+  const isTemplate = x => !!x.t || (!!x.c && (!x.c.open || champ(x) != null)) // x.t: a club event template
   const live = all.filter(x => !x.done && !isTemplate(x))
-  const templates = comps.filter(isTemplate)
+  const templates = [...comps.filter(isTemplate), ...tpls]
   const finished = evs.filter(x => x.done)
   const sel = all.find(x => x.key === S.oComp) ?? all.find(x => disputed(x.key)) ?? live[0] ?? all[0]
   header('Competitions', `<b>${live.length}</b> running or coming up`)
 
   const tag = x => {
-    if (x.c && isTemplate(x)) return '<span class="pill ghosty">Ready to run</span>'
+    if (x.t || (x.c && isTemplate(x))) return '<span class="pill ghosty">Ready to run</span>'
     if (x.c) {
       const d = disputed(x.key)
       return d ? `<span class="pill warn">${d} disputed</span>` : x.c.drawPublished ? '<span class="pill live">Draw out</span>'
@@ -44,10 +44,11 @@ export function draw({ evs, comps, kos, members, t }) {
     }
     return x.e.startDate <= t && !x.done ? '<span class="pill live">On now</span>' : x.done ? '<span class="pill ghosty">Finished</span>' : '<span class="pill">Coming up</span>'
   }
-  const line = x => x.c && isTemplate(x) ? `${CAT[x.c.category]} · ${x.c.kind === 'pairs' ? 'pairs' : 'singles'}${champ(x) != null ? ` · last won by ${esc(entryName(champ(x), kos[x.key].entries, members))}` : ''}`
+  const line = x => x.t ? `${EVENT_TYPES[x.t.setup.style]?.name ?? 'Event'}${x.t.setup.style === 'league' ? ` · ${x.t.setup.weeks} weeks` : ''}${holesText(x.t.setup.holes) ? ` · ${holesText(x.t.setup.holes)}` : ''}`
+    : x.c && isTemplate(x) ? `${CAT[x.c.category]} · ${x.c.kind === 'pairs' ? 'pairs' : 'singles'}${champ(x) != null ? ` · last won by ${esc(entryName(champ(x), kos[x.key].entries, members))}` : ''}`
     : x.c ? `${CAT[x.c.category]} · ${x.c.kind === 'pairs' ? 'pairs' : 'singles'} · ${x.n}${x.c.maxEntries ? ` of ${x.c.maxEntries}` : ''} entered`
     : `${x.e.style === 'league' ? `League · ${x.e.weeks} weeks${x.e.koTop ? ` · top ${x.e.koTop} to a knockout` : ''}` : `${EVENT_TYPES[x.e.style]?.name ?? 'Event'} · ${eventWhen(x.e)}`}${holesText(x.e.holes) ? ` · ${holesText(x.e.holes)}` : ''}`
-  const row = x => `<button class="orow obtn ocomp" data-o-comp="${x.key}" aria-pressed="${x === sel}"><span class="ot"><b>${esc(x.c?.name ?? x.e.name)}</b><span>${line(x)}</span></span>${tag(x)}</button>`
+  const row = x => `<button class="orow obtn ocomp" data-o-comp="${x.key}" aria-pressed="${x === sel}"><span class="ot"><b>${esc(x.t?.name ?? x.c?.name ?? x.e.name)}</b><span>${line(x)}</span></span>${tag(x)}</button>`
 
   $('main').innerHTML = `<div class="screen office">
     <div class="osplit">
@@ -57,7 +58,7 @@ export function draw({ evs, comps, kos, members, t }) {
         ${templates.length ? `<h3>Templates</h3><span class="hint">The club’s standard competitions. Pick one to run it with new dates.</span><div class="card olist">${templates.map(row).join('')}</div>` : ''}
         ${finished.length ? `<h3>Finished</h3><div class="card olist">${finished.map(row).join('')}</div>` : ''}
       </div>
-      <div class="card odetail">${sel && isTemplate(sel) ? runForm(sel, kos[sel.key], champ(sel), members, t) : sel ? detail(sel, kos[sel.key], members, t) : '<div class="empty-state">No club competitions yet. Start one with New competition.</div>'}</div>
+      <div class="card odetail">${sel?.t ? tplForm(sel.t, t) : sel && isTemplate(sel) ? runForm(sel, kos[sel.key], champ(sel), members, t) : sel ? detail(sel, kos[sel.key], members, t) : '<div class="empty-state">No club competitions yet. Start one with New competition.</div>'}</div>
     </div>
   </div>`
 
@@ -81,6 +82,20 @@ export function draw({ evs, comps, kos, members, t }) {
     b.disabled = true
     try { await api.runSignup(x.c.id, { closesOn, finalBy, maxEntries, notes, fee }) } catch (er) { $('o-rerr').textContent = er.message; b.disabled = false; return }
     await keepScroll(render); toast(`${x.c.name} is open: members see it under Competitions → Events`)
+  }
+  // A club event template: run it on a day (the editor opens with its settings and that date), change it, or delete it.
+  if ($('o-trun')) $('o-trun').onclick = () => {
+    const date = $('o-tdate').value
+    if (!date || date < t) { $('o-terr').textContent = 'Pick a day, today or later.'; return }
+    go(() => { const ev = fromTemplate(sel.t.setup, date); Object.assign(S, { ev, evId: null, evTemplate: null, evRepeatUntil: null, evScope: 'club', aview: 'event' }); S.evStep = stepsAfterDetails(ev) })
+  }
+  if ($('o-tedit')) $('o-tedit').onclick = () => go(() => Object.assign(S, { ev: fromTemplate(sel.t.setup, null), evId: null, evTemplate: sel.t.id, evStep: 1, evScope: 'club', aview: 'event' }))
+  if ($('o-tdel')) $('o-tdel').onclick = async () => {
+    const b = $('o-tdel')
+    if (b.dataset.armed !== '1') { b.dataset.armed = '1'; b.textContent = 'Tap again to delete the template'; return }
+    try { await api.deleteEventTemplate(sel.t.id) } catch (er) { toast(er.message); return }
+    S.oComp = null
+    await keepScroll(render); toast(`${sel.t.name} template deleted`)
   }
   // Delete the selected competition (a club event or league, or a sign-up competition and its draw): tap twice.
   if ($('o-del')) $('o-del').onclick = async () => {
@@ -106,6 +121,16 @@ export function draw({ evs, comps, kos, members, t }) {
 }
 
 const rounds = ko => Math.max(0, ...ko.matches.map(m => m.round))
+
+// A club event template: what it keeps, and Run on a day.
+function tplForm(tp, t) {
+  const st = tp.setup
+  return `<div class="ohead"><div><h4>${esc(tp.name)}</h4><p class="hint">Template · ${EVENT_TYPES[st.style]?.name ?? 'Event'}${holesText(st.holes) ? ` · ${holesText(st.holes)}` : ''}</p></div>
+      <span class="oacts"><button class="ghost sm" id="o-tedit">Change</button><button class="ghost sm accremove" id="o-tdel">Delete</button></span></div>
+    <div class="opad orun"><label for="o-tdate">Run on a day</label><input id="o-tdate" type="date" class="plainsel" min="${t}">
+      <span class="hint">Opens it with the template’s settings on that day: pick the players (if it isn’t open to all) and save. The template stays for next time.</span>
+      <p class="gerr" id="o-terr" role="alert"></p><button class="primary" id="o-trun">Run on this day</button></div>`
+}
 
 // A template: run it with new dates (entries close, the final played by, a limit, notes), opened to members.
 function runForm(x, ko, champ, members, t) {

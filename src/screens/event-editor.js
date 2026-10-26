@@ -3,7 +3,7 @@
 import * as api from '../api.js'
 import { S } from '../state.js'
 import { $, esc, ini, sur, header, keepScroll, top0, render, toast, fmtHcp, goBack } from '../ui.js'
-import { addDaysIso, eventDates, isoDate, today } from '../dates.js'
+import { addDaysIso, eventDates, isoDate, today, weeklyDates } from '../dates.js'
 import { drawTeams, drawCaptains } from '../event-scoring.js'
 import { PALETTE } from '../palette.js'
 import { DEFAULT_POINTS, dayRules } from '../match-scoring.js'
@@ -77,7 +77,36 @@ export function holesSummary(ev) {
   return [holesText(ev.holes) || 'All 18', ...own].join(' · ')
 }
 
-const stepsFor = ev => (ev.style === 'ryder' ? [1, 2, 3, 4, 5] : ev.style === 'teams' ? [1, 2, 3, 5] : pairsLeague(ev) ? [1, 7, 5] : teamLeague(ev) ? [1, 6, 5]
+// Club event templates (the club office): an event's settings without its date or players, run again on any day.
+const NOT_KEPT = ['id', 'startDate', 'endDate', 'start0', 'team0', 'players', 'team', 'matches', 'captainPool', 'leaguePairs', 'createdBy', 'koComp', 'entryRequired']
+export function templateOf(ev) {
+  const setup = structuredClone(ev)
+  NOT_KEPT.forEach(k => delete setup[k])
+  if (setup.teams) setup.teams = setup.teams.map(t => ({ name: t.name, col: t.col })) // no captains: they're players
+  if (setup.dayRules) for (const r of Object.values(setup.dayRules)) delete r.matches
+  if (ev.leaguePairs) setup.pairs = true
+  return setup
+}
+/** A new event from a template, on a day (null when changing the template itself). */
+export function fromTemplate(setup, date) {
+  const { pairs, ...rest } = structuredClone(setup)
+  return { days: 1, A: { name: 'Blues', col: '#6CB6FF' }, B: { name: 'Reds', col: '#E5484D' }, points: { ...DEFAULT_POINTS }, ...rest,
+    startDate: date ?? addDaysIso(isoDate(today()), 1), players: [], team: {}, matches: {}, captainPool: [], leaguePairs: pairs ? [] : null, club: true }
+}
+// The review step's extras for a new club event: save it as a template instead, or repeat it weekly.
+function clubExtras(ev) {
+  const dates = S.evRepeatUntil ? weeklyDates(ev.startDate, S.evRepeatUntil) : []
+  const repeat = ev.style === 'league' || ev.season ? '' : `<div class="card evsec"><label for="ev-rep">Repeat weekly until <span class="opt">blank: just this day</span></label>
+      <input id="ev-rep" type="date" class="plainsel" value="${S.evRepeatUntil ?? ''}" min="${addDaysIso(ev.startDate, 7)}">
+      <span class="hint">${dates.length > 1 ? `<b>Makes ${dates.length} events: ${eventDates(dates[0], 1)} … ${eventDates(dates.at(-1), 1)}</b>. Each can be changed or deleted on its own.` : 'The same day each week, each its own event.'}</span></div>`
+  return `${repeat}<div class="card evsec"><button type="button" class="ghost" id="ev-tpl">Save as a template</button>
+    <span class="hint">Keeps everything but the date and the players, under Competitions → Templates, to run on any day.</span></div>`
+}
+/** Where a run template opens: the step after the details (players, or the review for an event open to all). */
+export const stepsAfterDetails = ev => stepsFor(ev)[1] ?? 1
+const repeatDates = ev => (S.evRepeatUntil && !(ev.style === 'league' || ev.season) ? weeklyDates(ev.startDate, S.evRepeatUntil) : [ev.startDate])
+
+const stepsFor = ev => S.evTemplate ? [1, 5] : (ev.style === 'ryder' ? [1, 2, 3, 4, 5] : ev.style === 'teams' ? [1, 2, 3, 5] : pairsLeague(ev) ? [1, 7, 5] : teamLeague(ev) ? [1, 6, 5]
   : ev.style === 'league' ? [1, 2, 5] : openToAll(ev) ? [1, 5] : [1, 2, 5])
 
 // Members and events are loaded once when the wizard opens, so each tap redraws instantly
@@ -100,7 +129,7 @@ export async function load() {
 
 // Done (saved or cancelled): back the way you came. Deleted: to Competitions (its leaderboard has gone).
 const leave = async (deleted = false) => {
-  S.ev = null; S.evQ = ''; S.evSwap = null; S.evTeam = null; S.mdFlow = null; cache = null
+  S.ev = null; S.evQ = ''; S.evSwap = null; S.evTeam = null; S.mdFlow = null; S.evTemplate = null; S.evRepeatUntil = null; cache = null
   if (deleted) { S.aview = 'comp'; await render(); top0(); return }
   await goBack(async () => { S.aview = 'comp'; await render(); top0() })
 }
@@ -168,7 +197,7 @@ export function draw({ members, me }) {
     body = `<div class="card evsec"><h4>Event</h4>
         <label for="ev-name">Name</label><input id="ev-name" value="${esc(ev.name)}" maxlength="60" placeholder="e.g. Saturday Fourball Cup"${viaSeason(ev, me) ? ' disabled' : ''}>
         ${ev.style === 'ryder' && !begun(ev) ? `<div class="seg" role="group" aria-label="When"><button data-when="once" aria-pressed="${!ev.season}">One-off</button><button data-when="season" aria-pressed="${!!ev.season}">Season</button></div>` : ''}
-        <div class="tnames"><div><label for="ev-date">First day</label><input id="ev-date" type="date" value="${ev.startDate}" min="${isoDate(today())}"${begun(ev) ? ' disabled' : ''}></div>
+        <div class="tnames"><div${S.evTemplate ? ' hidden' : ''}><label for="ev-date">First day</label><input id="ev-date" type="date" value="${ev.startDate}" min="${isoDate(today())}"${begun(ev) ? ' disabled' : ''}></div>
           ${ev.season ? `<div><label for="ev-end">Season ends</label><input id="ev-end" type="date" value="${ev.endDate ?? ''}" min="${ev.startDate > isoDate(today()) ? ev.startDate : isoDate(today())}" max="${addDaysIso(ev.startDate, 365)}"></div>`
             : ev.style === 'league' ? '' : `<div><label>Days</label><div class="daychips">${[1, 2, 3].map(n => `<button data-days="${n}" aria-pressed="${ev.days === n}">${n}</button>`).join('')}</div></div>`}</div>
         ${ev.style === 'league' ? '<span class="hint">Week 1 starts on this day; each week runs seven days.</span>'
@@ -315,8 +344,10 @@ export function draw({ members, me }) {
   }
 
   const last = idx === steps.length - 1
+  const extras = last && !flow && !ev.id && !S.evTemplate && ev.club && me.admin && S.evScope === 'club'
+  if (extras) body += clubExtras(ev)
   $('main').innerHTML = `<div class="screen">${wiz}${body}<p class="gerr" id="ev-err" role="alert"></p></div>
-    <div class="cta"><button class="primary" id="ev-next"${step === 1 && holesEmpty(ev) ? ' disabled>Open at least one hole' : `>${flow ? flowCta(flow) : last ? (ev.id ? 'Save changes' : 'Save event') : `Next: ${stepName(ev, steps[idx + 1]).toLowerCase()}`}`}</button></div>`
+    <div class="cta"><button class="primary" id="ev-next"${step === 1 && holesEmpty(ev) ? ' disabled>Open at least one hole' : `>${flow ? flowCta(flow) : last ? (S.evTemplate ? 'Save template' : ev.id ? 'Save changes' : repeatDates(ev).length > 1 ? `Save ${repeatDates(ev).length} events` : 'Save event') : `Next: ${stepName(ev, steps[idx + 1]).toLowerCase()}`}`}</button></div>`
 
   const redraw = () => keepScroll(render)
   const read = () => {
@@ -449,6 +480,15 @@ export function draw({ members, me }) {
     redraw()
   }))
   if ($('ev-date')) $('ev-date').onchange = () => { read(); redraw() }
+  if ($('ev-rep')) $('ev-rep').onchange = () => { S.evRepeatUntil = $('ev-rep').value || null; redraw() }
+  on('ev-tpl', async () => {
+    read()
+    if (!ev.name.trim()) { $('ev-err').textContent = 'Give it a name.'; return }
+    try { await api.saveEventTemplate({ name: ev.name.trim(), setup: templateOf(ev) }) } catch (e) { $('ev-err').textContent = e.message; return }
+    const saved = ev.name.trim()
+    await leave()
+    toast(`${saved} saved as a template`)
+  })
   if ($('ev-self')) $('ev-self').onclick = () => { read(); ev.selfEntry = !ev.selfEntry; redraw() }
   document.querySelectorAll('[data-who]').forEach(b => (b.onclick = () => { read(); ev.selfEntry = b.dataset.who === 'all'; if (ev.selfEntry) ev.everyone = true; redraw() }))
   document.querySelectorAll('[data-vis]').forEach(b => (b.onclick = () => { read(); ev.everyone = b.dataset.vis === 'all'; redraw() }))
@@ -504,9 +544,14 @@ export function draw({ members, me }) {
     $('ev-next').disabled = true
     if (!ev.season) ev.endDate = null
     if (!ev.season && ev.dayRules) for (const d of Object.keys(ev.dayRules)) if (+d > holeUnits(ev)) delete ev.dayRules[d] // days (weeks) no longer in it
-    try { await (viaSeason(ev, me) ? api.saveSeason(ev) : api.saveEvent(ev)) } catch (e) { $('ev-err').textContent = e.message; $('ev-next').disabled = false; return }
+    const dates = repeatDates(ev)
+    try {
+      if (S.evTemplate) await api.saveEventTemplate({ id: S.evTemplate, name: ev.name.trim(), setup: templateOf(ev) })
+      else if (dates.length > 1) await api.saveEvents(dates.map(d => ({ ...ev, startDate: d })))
+      else await (viaSeason(ev, me) ? api.saveSeason(ev) : api.saveEvent(ev))
+    } catch (e) { $('ev-err').textContent = e.message; $('ev-next').disabled = false; return }
     const saved = ev.name
     await leave()
-    toast(`${saved} saved`)
+    toast(dates.length > 1 ? `${dates.length} events saved: ${saved}` : `${saved} saved`)
   }
 }

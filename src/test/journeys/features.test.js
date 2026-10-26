@@ -860,3 +860,86 @@ describe('open holes: the scorecard plays only the open holes', () => {
     expect(holesNow()).toHaveLength(18)
   })
 })
+describe('club office: event templates and weekly repeats', () => {
+  const office = db => { db.asOffice = true }
+  const newClubEvent = async name => {
+    await app.tap('[data-ov="comps"]'); await app.tap('#o-new'); await app.tap('[data-o-kind="event"]')
+    await app.type('#ev-name', name)
+    await app.tap('[data-style="individual"]')
+    await app.tap('[data-who="all"]') // anyone playing that day: straight to the review
+  }
+  it('Save as a template: kept under Ready to run, and no event is made', async () => {
+    app = await boot(office)
+    await newClubEvent('Turkey Trot')
+    await app.tap('[data-hpq="ev:front"]')
+    await app.tap('#ev-next') // Review
+    await app.tap('#ev-tpl')
+    expect(app.db.eventTemplates).toHaveLength(1)
+    expect(app.db.eventTemplates[0]).toMatchObject({ name: 'Turkey Trot', setup: { style: 'individual', holes: [1, 2, 3, 4, 5, 6, 7, 8, 9], selfEntry: true } })
+    expect(app.db.eventTemplates[0].setup).not.toHaveProperty('startDate')
+    expect(app.db.events.some(e => e.name === 'Turkey Trot')).toBe(false)
+    if (app.screen() !== 'Competitions') await app.tap('[data-ov="comps"]')
+    const row = [...document.querySelectorAll('[data-o-comp]')].find(b => b.textContent.includes('Turkey Trot'))
+    expect(row.textContent).toContain('Ready to run')
+  })
+  const turkey = db => { office(db); db.eventTemplates.push({ id: 77, name: 'Turkey Trot', setup: { name: 'Turkey Trot', style: 'individual', fmt: 'stab', days: 1, club: true, everyone: true, selfEntry: true, holes: [1, 2, 3, 4, 5, 6, 7, 8, 9] } }) }
+  it('Run on a day: an event on that date with the template’s settings; the template stays', async () => {
+    app = await boot(turkey)
+    await app.tap('[data-ov="comps"]')
+    await app.tap('[data-o-comp="t:77"]')
+    await app.type('#o-tdate', '2026-12-20')
+    await app.tap('#o-trun')
+    expect(app.main()).toContain('Turkey Trot')
+    expect(app.main()).toContain('Holes 1–9')
+    await app.tap('#ev-next') // Save event
+    expect(app.db.events.find(e => e.name === 'Turkey Trot')).toMatchObject({ startDate: '2026-12-20', style: 'individual', holes: [1, 2, 3, 4, 5, 6, 7, 8, 9], selfEntry: true })
+    expect(app.db.eventTemplates).toHaveLength(1)
+  })
+  it('Change a template: its settings without a date; saving changes the template, not an event', async () => {
+    app = await boot(turkey)
+    await app.tap('[data-ov="comps"]')
+    await app.tap('[data-o-comp="t:77"]')
+    await app.tap('#o-tedit')
+    expect(document.getElementById('ev-date').closest('[hidden]')).not.toBe(null)
+    await app.type('#ev-name', 'Turkey Trot Plus')
+    await app.tap('[data-hpq="ev:all"]')
+    await app.tap('#ev-next') // Review
+    expect($ev('#ev-next').textContent).toBe('Save template')
+    await app.tap('#ev-next')
+    expect(app.db.eventTemplates).toEqual([expect.objectContaining({ id: 77, name: 'Turkey Trot Plus', setup: expect.objectContaining({ holes: null }) })])
+    expect(app.db.events.some(e => e.name.startsWith('Turkey Trot'))).toBe(false)
+  })
+  it('Delete a template: tap twice', async () => {
+    app = await boot(turkey)
+    await app.tap('[data-ov="comps"]')
+    await app.tap('[data-o-comp="t:77"]')
+    await app.tap('#o-tdel'); await app.tap('#o-tdel')
+    expect(app.db.eventTemplates).toHaveLength(0)
+  })
+  it('Repeat weekly until a date: one event a week, each its own', async () => {
+    app = await boot(office)
+    await newClubEvent('Sunday Stableford')
+    await app.type('#ev-date', '2026-12-06')
+    await app.tap('#ev-next') // Review
+    await app.type('#ev-rep', '2027-01-10')
+    expect(app.main()).toContain('Makes 6 events')
+    await app.tap('#ev-next') // Save
+    const made = app.db.events.filter(e => e.name === 'Sunday Stableford')
+    expect(made.map(e => e.startDate)).toEqual(['2026-12-06', '2026-12-13', '2026-12-20', '2026-12-27', '2027-01-03', '2027-01-10'])
+    expect(new Set(made.map(e => e.id)).size).toBe(6)
+  })
+  it('a league has no weekly repeat; a member’s own event has neither option', async () => {
+    app = await boot(office)
+    await app.tap('[data-ov="comps"]'); await app.tap('#o-new'); await app.tap('[data-o-kind="league"]')
+    await app.type('#ev-name', 'Winter League')
+    for (let i = 0; i < 3 && !document.getElementById('ev-tpl'); i++) { if (document.querySelector('#ev-next')?.textContent.startsWith('Save')) break; await app.tap('#ev-next') }
+    expect(document.getElementById('ev-rep')).toBe(null)
+    app.done(); app = await boot()
+    await app.tap('Competition'); await app.tap('Events'); await app.tap('+ Create your own event'); await app.tap('#cr-ev')
+    await app.type('#ev-name', 'Pals Cup'); await app.tap('[data-style="individual"]')
+    await app.tap('#ev-next'); await app.tap('[data-pick="10"]'); await app.tap('[data-pick="12"]'); await app.tap('#ev-next')
+    expect(document.getElementById('ev-tpl')).toBe(null)
+    expect(document.getElementById('ev-rep')).toBe(null)
+    await app.tap('#ev-next') // save it, so the journey ends back on Competitions
+  })
+})
