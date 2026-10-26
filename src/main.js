@@ -232,3 +232,6 @@ api.onAuthChange((event, session) => {
 addEventListener('unhandledrejection', e => { console.error(e.reason); toast(e.reason?.message || 'Something went wrong') })
 
 render()
+
+// Keep the app and its pictures on the device (public/sw.js); not while developing, so changes show at once.
+if (import.meta.env.PROD && 'serviceWorker' in navigator) navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => {})
