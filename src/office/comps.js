@@ -2,6 +2,7 @@
 // competitions and their knockouts). Pick one to see it beside the list: a knockout shows its whole bracket.
 // Members' own events, leagues and knockouts stay with them.
 import { holesText } from '../open-holes.js'
+import { signupLine } from '../event-signups.js'
 import * as api from '../api.js'
 import { S } from '../state.js'
 import { $, esc, header, keepScroll, render, redraw, toast, top0 } from '../ui.js'
@@ -47,6 +48,7 @@ export function draw({ evs, comps, kos, members, t, tpls = [] }) {
   const line = x => x.t ? `${EVENT_TYPES[x.t.setup.style]?.name ?? 'Event'}${x.t.setup.style === 'league' ? ` · ${x.t.setup.weeks} weeks` : ''}${holesText(x.t.setup.holes) ? ` · ${holesText(x.t.setup.holes)}` : ''}`
     : x.c && isTemplate(x) ? `${CAT[x.c.category]} · ${x.c.kind === 'pairs' ? 'pairs' : 'singles'}${champ(x) != null ? ` · last won by ${esc(entryName(champ(x), kos[x.key].entries, members))}` : ''}`
     : x.c ? `${CAT[x.c.category]} · ${x.c.kind === 'pairs' ? 'pairs' : 'singles'} · ${x.n}${x.c.maxEntries ? ` of ${x.c.maxEntries}` : ''} entered`
+    : x.e.signup && x.e.startDate > t ? `Sign-up · ${x.e.players.length}${x.e.maxEntries ? ` of ${x.e.maxEntries}` : ' entered'}`
     : `${x.e.style === 'league' ? `League · ${x.e.weeks} weeks${x.e.koTop ? ` · top ${x.e.koTop} to a knockout` : ''}` : `${EVENT_TYPES[x.e.style]?.name ?? 'Event'} · ${eventWhen(x.e)}`}${holesText(x.e.holes) ? ` · ${holesText(x.e.holes)}` : ''}`
   const row = x => `<button class="orow obtn ocomp" data-o-comp="${x.key}" aria-pressed="${x === sel}"><span class="ot"><b>${esc(x.t?.name ?? x.c?.name ?? x.e.name)}</b><span>${line(x)}</span></span>${tag(x)}</button>`
 
@@ -97,6 +99,13 @@ export function draw({ evs, comps, kos, members, t, tpls = [] }) {
     S.oComp = null
     await keepScroll(render); toast(`${sel.t.name} template deleted`)
   }
+  // Take someone off an event open for sign-up: tap twice.
+  document.querySelectorAll('[data-o-rment]').forEach(b => (b.onclick = async () => {
+    if (b.dataset.armed !== '1') { b.dataset.armed = '1'; b.textContent = 'Tap again'; return }
+    const mid = +b.dataset.oRment, who = members.find(m => m.id === mid)?.name ?? 'They'
+    try { await api.removeEventEntrant(sel.e.id, mid) } catch (er) { toast(er.message); return }
+    await keepScroll(render); toast(`${who} taken off ${sel.e.name}`)
+  }))
   // Delete the selected competition (a club event or league, or a sign-up competition and its draw): tap twice.
   if ($('o-del')) $('o-del').onclick = async () => {
     const b = $('o-del'), x = sel, name = x.c?.name ?? x.e.name
@@ -155,6 +164,8 @@ function detail(x, ko, members, t) {
       <div class="olist">
         <div class="orow"><span class="ot"><b>${e.style === 'league' ? 'Table and results' : 'Leaderboard'}</b><span>${e.players.length} player${e.players.length === 1 ? '' : 's'}${e.everyone ? ' · everyone can play' : ''}${e.entryFee ? ` · entry ${money(e.entryFee)}` : ''}</span></span><span class="oacts"><button class="ghost sm" data-o-go="board:${e.id}">Open</button></span></div>
         <div class="orow"><span class="ot"><b>Settings</b><span>Dates, format, who plays</span></span><span class="oacts"><button class="ghost sm" data-o-go="edit:${e.id}">Edit</button></span></div>
+        ${e.signup ? `<div class="orow"><span class="ot"><b>Sign-up · ${e.players.length}${e.maxEntries ? ` of ${e.maxEntries} places` : ' entered'}</b><span>${signupLine(e)}</span></span></div>
+          ${e.players.map(id => `<div class="orow"><span class="ot"><b>${esc(members.find(m => m.id === id)?.name ?? 'Former member')}</b></span><span class="oacts"><button class="ghost sm accremove" data-o-rment="${id}">Remove</button></span></div>`).join('')}` : ''}
         ${e.koComp ? `<div class="orow"><span class="ot"><b>The knockout finish</b><span>The top ${e.koTop} from the table</span></span><span class="oacts"><button class="ghost sm" data-o-go="draw:${e.koComp}">Open the draw</button></span></div>` : ''}
       </div>`
   }

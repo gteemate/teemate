@@ -980,3 +980,44 @@ describe('found in review: the event editor’s holes', () => {
     expect(app.db.events.find(e => e.name === 'Season Switch')).toMatchObject({ season: true, holes: null })
   })
 })
+describe('club office: leagues and events open for sign-up', () => {
+  it('the Winter League advertised from a date, entries closing, 4 places', async () => {
+    app = await boot(db => { db.asOffice = true })
+    await app.tap('[data-ov="comps"]'); await app.tap('#o-new'); await app.tap('[data-o-kind="league"]')
+    await app.type('#ev-name', 'Frosty League')
+    await app.type('#ev-date', '2026-12-07')
+    await app.tap('#ev-signup')
+    expect(+$ev('#ev-max').value).toBe(120) // 10 teams × 12: the league's team places to start with
+    await app.type('#ev-adv', '2026-11-01')
+    await app.type('#ev-close', '2026-11-30')
+    await app.type('#ev-max', '4')
+    expect(app.main()).toContain('Members see it from Sun 1 Nov · entries close Mon 30 Nov · 4 places')
+    for (let i = 0; i < 4 && !$ev('#ev-next').textContent.startsWith('Save'); i++) await app.tap('#ev-next')
+    expect(app.main()).toContain('Sign-up')
+    await app.tap('#ev-next')
+    expect(app.db.events.find(e => e.name === 'Frosty League')).toMatchObject({ signup: true, advertiseFrom: '2026-11-01', entriesClose: '2026-11-30', maxEntries: 4 })
+  })
+  it('entries can’t close on or after the first day', async () => {
+    app = await boot(db => { db.asOffice = true })
+    await app.tap('[data-ov="comps"]'); await app.tap('#o-new'); await app.tap('[data-o-kind="league"]')
+    await app.type('#ev-name', 'Late League'); await app.type('#ev-date', '2026-12-07')
+    await app.tap('#ev-signup'); await app.type('#ev-close', '2026-12-07')
+    await app.tap('#ev-next')
+    expect(app.text()).toContain('Entries have to close before the first day.')
+  })
+  const signupLeague = db => {
+    db.asOffice = true
+    db.events.push({ id: 880, name: 'Frosty League', style: 'league', fmt: 'beststab', club: true, everyone: false, startDate: '2026-12-07', days: 1, weeks: 10, bestOf: 4,
+      teams: [], team: {}, players: [10], matches: {}, captainPool: [], signup: true, advertiseFrom: '2026-10-01', entriesClose: '2026-11-30', maxEntries: 4, createdBy: { id: 0, name: 'Gary Cochrane' } })
+  }
+  it('the office sees who’s entered, “1 of 4 places”, and can take someone off', async () => {
+    app = await boot(signupLeague)
+    await app.tap('[data-ov="comps"]')
+    const row = document.querySelector('[data-o-comp="e:880"]')
+    expect(row.textContent).toContain('Sign-up · 1 of 4')
+    await app.tap('[data-o-comp="e:880"]')
+    expect(document.querySelector('.odetail').textContent).toContain('1 of 4 places')
+    await app.tap('[data-o-rment="10"]'); await app.tap('[data-o-rment="10"]')
+    expect(app.db.events.find(e => e.id === 880).players).toEqual([])
+  })
+})

@@ -10,6 +10,7 @@ import { DEFAULT_POINTS, dayRules } from '../match-scoring.js'
 import { openFlow, currentFlow, flowHtml, bindFlow, flowNext, flowBack, flowCta, flowTitle, typeName } from './match-day-flow.js'
 import { drawDay, dayDate, dayOfDate, playedIds } from '../season.js'
 import { holesText } from '../open-holes.js'
+import { signupLine } from '../event-signups.js'
 import { holePickerHtml, bindHolePicker, noneOpen } from './hole-picker.js'
 
 export const EVENT_TYPES = {
@@ -76,6 +77,15 @@ export function holesSummary(ev) {
   const own = Object.entries(ev.dayRules ?? {}).filter(([, r]) => r && 'holes' in r).map(([d, r]) => `${unit} ${d}: ${holesText(r.holes).replace(/^H/, 'h') || 'all 18'}`)
   return [holesText(ev.holes) || 'All 18', ...own].join(' · ')
 }
+
+// Sign-up in advance (club office): advertised from a date, entries until a closing date, a number of places.
+const leaguePlaces = ev => (ev.teams ?? []).reduce((n, t) => n + (t.size ?? 12), 0)
+const signupCard = ev => `<div class="card evsec"><div class="actrow"><span class="who"><strong>Members sign up in advance</strong><small>Advertise it with a closing date and a number of places; members see the spaces left.</small></span>
+    <button type="button" class="switch" role="switch" id="ev-signup" aria-checked="${!!ev.signup}" aria-label="Members sign up in advance"><span></span></button></div>
+    ${ev.signup ? `<div class="tnames"><div><label for="ev-adv">Advertise from</label><input id="ev-adv" type="date" value="${ev.advertiseFrom ?? ''}"></div>
+      <div><label for="ev-close">Entries close</label><input id="ev-close" type="date" value="${ev.entriesClose ?? ''}"></div></div>
+      <label for="ev-max">Places <span class="opt">blank: no limit</span></label><input id="ev-max" type="number" class="plainsel" min="1" inputmode="numeric" value="${ev.maxEntries ?? ''}">
+      <span class="hint">${signupLine(ev)}</span>` : ''}</div>`
 
 // Club event templates (the club office): an event's settings without its date or players, run again on any day.
 const NOT_KEPT = ['id', 'startDate', 'endDate', 'start0', 'team0', 'players', 'team', 'matches', 'captainPool', 'leaguePairs', 'createdBy', 'koComp', 'koFinish', 'entryRequired']
@@ -149,6 +159,10 @@ function problem(ev, step) {
       const late = days.find(d => d > ev.days)
       if (late) return `There’s a match day on ${eventDates(dayDate(ev, late), 1)}, after the end date.`
     }
+  }
+  if (step === 1 && ev.signup) {
+    if (ev.entriesClose && ev.entriesClose >= ev.startDate) return 'Entries have to close before the first day.'
+    if (ev.advertiseFrom && ev.advertiseFrom > (ev.entriesClose ?? addDaysIso(ev.startDate, -1))) return 'Advertise it before entries close.'
   }
   if (step === 2) {
     if (ev.players.length < 2) return 'Pick at least two players.'
@@ -225,7 +239,8 @@ export function draw({ members, me }) {
         <div class="seg" role="group" aria-label="Who plays"><button data-who="all" aria-pressed="${!!ev.selfEntry}">Anyone playing that day</button><button data-who="pick" aria-pressed="${!ev.selfEntry}">Players I pick</button></div>
         <span class="hint">${ev.selfEntry ? 'Everyone starting a round that day is asked if they want to play in it. No list of players needed.' : 'Only the players you pick next can play in it.'}</span></div>`
       : `<div class="card evsec"><div class="actrow"><span class="who"><strong>Members can enter themselves</strong><small>${ev.selfEntry ? 'On the day, members starting a round are asked if they want to play in it (not for events with a draw).' : 'Only admins add entrants.'}</small></span>
-        <button type="button" class="switch" role="switch" id="ev-self" aria-checked="${!!ev.selfEntry}" aria-label="Members can enter themselves"><span></span></button></div></div>`}`
+        <button type="button" class="switch" role="switch" id="ev-self" aria-checked="${!!ev.selfEntry}" aria-label="Members can enter themselves"><span></span></button></div></div>`}
+      ${ev.season || openToAll(ev) ? '' : signupCard(ev)}`
       : '<div class="hint">Only the players you pick will see this event.</div>'}`
   } else if (step === 2) {
     const q = (S.evQ || '').trim().toLowerCase()
@@ -325,7 +340,8 @@ export function draw({ members, me }) {
         ${ev.koTop ? `<span>Finish</span><b>Top ${ev.koTop} into a knockout${ev.koFinish ? `, final by ${eventDates(ev.koFinish, 1)}` : ''}</b>` : ''}
         <span>Entering</span><b>Players choose before they play; one round a week</b>
         <span>Who sees it</span><b>${ev.everyone ? 'All members' : 'Only the league’s players (and admins)'}</b>
-        <span>Holes</span><b>${esc(holesSummary(ev))}</b></div></div>
+        <span>Holes</span><b>${esc(holesSummary(ev))}</b>
+        ${ev.signup ? `<span>Sign-up</span><b>${signupLine(ev)}</b>` : ''}</div></div>
       <div class="hint">Players see it on their Leaderboard tab while it runs: a team table and an individual table.</div>
       ${ev.id ? '<button class="ghost accremove" id="ev-del">Delete league</button>' : ''}`
   } else {
@@ -338,6 +354,7 @@ export function draw({ members, me }) {
         ${ev.style === 'ryder' ? `<span>Matches</span><b>${Object.values(ev.matches).flat().length}${ev.season ? ` on ${seasonDays(ev).filter(d => ev.matches[d].length).length} match days so far` : ''} · points as set for each day</b>` : ''}
         <span>Who sees it</span><b>${ev.everyone ? 'All members' : 'Only the players in it'}</b>
         ${ev.season ? '' : `<span>Holes</span><b>${esc(holesSummary(ev))}</b>`}
+        ${ev.signup ? `<span>Sign-up</span><b>${signupLine(ev)}</b>` : ''}
         <span>Scoring</span><b>Live from each player’s own card</b></div></div>
       <div class="hint">${ev.season ? `Players see it on their Leaderboard tab on their match days. You can add match days and players until the season ends.` : `Players see it on their Leaderboard tab on the day${ev.days > 1 ? 's' : ''}. ${me.admin ? 'As an admin you can change it any time.' : 'You can change it until the first day.'}`}</div>
       ${ev.id && (!begun(ev) || me.admin) ? '<button class="ghost accremove" id="ev-del">Delete event</button>' : ''}`
@@ -352,6 +369,7 @@ export function draw({ members, me }) {
   const redraw = () => keepScroll(render)
   const read = () => {
     if ($('ev-name')) { ev.name = $('ev-name').value; ev.startDate = $('ev-date').value; if ($('ev-fmt')) ev.fmt = $('ev-fmt').value }
+    if ($('ev-adv')) { ev.advertiseFrom = $('ev-adv').value || null; ev.entriesClose = $('ev-close').value || null; ev.maxEntries = +$('ev-max').value || null }
     if ($('ev-end')) ev.endDate = $('ev-end').value
     if (ev.season && ev.endDate && ev.startDate) ev.days = dayOfDate(ev, ev.endDate)
     if ($('ev-fee')) { const f = $('ev-fee').value.trim(); ev.entryFee = f && +f > 0 ? Math.min(100000, Math.round(+f * 100)) : null }
@@ -491,6 +509,8 @@ export function draw({ members, me }) {
     toast(`${saved} saved as a template`)
   })
   if ($('ev-self')) $('ev-self').onclick = () => { read(); ev.selfEntry = !ev.selfEntry; redraw() }
+  if ($('ev-signup')) $('ev-signup').onclick = () => { read(); ev.signup = !ev.signup; if (ev.signup && ev.maxEntries == null && ev.style === 'league' && leaguePlaces(ev)) ev.maxEntries = leaguePlaces(ev); redraw() }
+  ;['ev-adv', 'ev-close', 'ev-max'].forEach(id => { if ($(id)) $(id).onchange = () => { read(); redraw() } })
   document.querySelectorAll('[data-who]').forEach(b => (b.onclick = () => { read(); ev.selfEntry = b.dataset.who === 'all'; if (ev.selfEntry) ev.everyone = true; redraw() }))
   document.querySelectorAll('[data-vis]').forEach(b => (b.onclick = () => { read(); ev.everyone = b.dataset.vis === 'all'; redraw() }))
   const qi = $('ev-q')
