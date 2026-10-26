@@ -247,16 +247,29 @@ describe('four-ball team match play over a season', () => {
     const t = app.main()
     expect(t).toContain('Season ends')
     expect(t).toContain('1 match played · 1 to come')
-    expect(t).toMatch(/Blues \d&\d/) // the played four-ball, won by the Blues
+    // The drop-down opens on the next match day (none today): the singles on 12 Oct.
+    expect(document.getElementById('ev-mday').value).toBe('6')
     expect(t).toContain('Quinn')
     expect(t).toContain('Murphy')
+    expect(t).not.toMatch(/Blues \d&\d/)
     expect(document.querySelector('[data-mday="6"] .mside').textContent).not.toContain('&')
     expect(t).toContain('+ Add a match day')
+    // Choosing the played day shows its result, with no trip to the server.
+    const before = app.db.calls.length
+    const sel = document.getElementById('ev-mday'); sel.value = '1'; sel.dispatchEvent(new Event('change')); await app.settle()
+    expect(app.main()).toMatch(/Blues \d&\d/)
+    expect(app.db.calls.slice(before).filter(c => !['getSession', 'getMe'].includes(c))).toEqual([])
     await app.tap('+ Add a match day')
     expect(document.getElementById('ev-md')).not.toBeNull() // the editor, in the add-a-match-day flow
     await app.tap('#back') // out of the flow, back on Match days
     await app.tap('#ev-next')
     await app.tap('#ev-next')
+  })
+  it('a 3-ball’s card says what each side gets for a win', async () => {
+    app = await boot(db => { palsPlayed(db); db.events.at(-1).matches[6].push({ a: [0, 9], b: [10] }) })
+    await openSeasonBoard()
+    expect(app.main()).toContain('3-ball · 1 / 2 pts')
+    expect(app.main()).toContain('Singles · 1 pt')
   })
   it('cards say it’s a season, and a match page says which day', async () => {
     app = await boot(palsPlayed)
@@ -306,6 +319,7 @@ describe('four-ball team match play over a season', () => {
   it('a past match: no booking advice on its page', async () => {
     app = await boot(palsPlayed)
     await openSeasonBoard()
+    const sel = document.getElementById('ev-mday'); sel.value = '1'; sel.dispatchEvent(new Event('change')); await app.settle()
     await app.tap('[data-mday="1"]')
     expect(app.main()).not.toContain('Book this match')
     expect(app.main()).not.toContain('Booked')

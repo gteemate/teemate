@@ -73,7 +73,6 @@ export function boardHtml(data, top = '') {
   const thruText = n => (n === 18 ? 'Finished' : n ? `thru ${n}` : 'not started')
   const notYet = e.startDate > isoDate(today())
   const head = `<div class="matchline"><b style="color:var(--ink)">${EVENT_TYPES[e.style].name}${e.style !== 'teams' ? ` · ${eventFormat(e)}` : ''}</b><span>${e.season ? `Season · ${eventDates(e.startDate, 1)} – ${eventDates(seasonEnd(e), 1)}` : eventDates(e.startDate, e.days)}${e.club ? ' · club event' : ''}</span></div>`
-  const dayTabs = e.days > 1 ? `<div class="tabs-pill" role="group" aria-label="Day">${Array.from({ length: e.days }, (_, i) => `<button data-evday="${i + 1}" aria-pressed="${day === i + 1}">Day ${i + 1} · ${longDay(fromIso(addDaysIso(e.startDate, i))).split(' ').slice(0, 2).join(' ')}</button>`).join('')}</div>` : ''
   const A = e.A, B = e.B
   let body = ''
 
@@ -85,17 +84,9 @@ export function boardHtml(data, top = '') {
         <div class="tug"><i class="ta" style="width:${wA}%;background:${A.col}"></i><i class="tb" style="width:${wB}%;background:${B.col}"></i><span class="mid"></span></div>
         <div class="evteams"><div><span class="tn" style="color:${A.col}">${esc(A.name)}</span><span class="tp" style="color:${A.col}">${fmtPts(sc.pA)} <small>projected</small></span><small>${fmtPts(sc.cA)} confirmed</small></div>
           <div class="r"><span class="tn" style="color:${B.col}">${esc(B.name)}</span><span class="tp" style="color:${B.col}">${fmtPts(sc.pB)} <small>projected</small></span><small>${fmtPts(sc.cB)} confirmed</small></div></div>
-        <div class="evfoot">${fmtPts(sc.toWin)} to win · ${sc.tot} point${sc.tot === 1 ? '' : 's'} available</div></div>
-      ${dayTabs}
-      ${matches.map((mt, k) => {
-        const res = mt.res, who = res.d > 0 ? A : res.d < 0 ? B : null, col = who ? who.col : 'var(--muted)'
-        const stat = res.st === 'ns' ? `<b class="ms-big">Not started</b>`
-          : res.st === 'done' ? `<b class="ms-big" style="color:${col}">${who ? `${esc(who.name)} ${esc(res.txt)}` : 'Halved'}</b><small>${who ? 'Final' : '½ point each'}</small>`
-          : `<b class="ms-big" style="color:${col}">${res.d ? `${Math.abs(res.d)} up` : 'AS'}</b><small>thru ${res.thru} <span class="livedot">● live</span></small>`
-        const pair = (names, c) => `<span class="pairav">${names.map(n => `<span class="av" style="border-color:${c}">${ini(n)}</span>`).join('')}</span><span>${names.map(n => esc(sur(n))).join('<br>')}</span>`
-        const mineHere = data.mine?.no === k + 1
-        return `<div class="card mcard tap${mineHere ? ' minem' : ''}" data-match="${k + 1}" role="button" tabindex="0" aria-label="Match ${k + 1}: open its scorecard"><div class="mtitle">${mineHere ? 'Your match · ' : ''}Match ${k + 1}</div><div class="mgrid"><div class="mside">${pair(mt.a, A.col)}</div><div class="mstat">${stat}</div><div class="mside r">${pair(mt.b, B.col)}</div></div>${mineHere ? `<div class="mact">${matchActionHtml(data.action)}</div>` : ''}</div>`
-      }).join('') || '<div class="empty-state">No matches drawn for this day.</div>'}`
+        <div class="evfoot">${fmtPts(sc.toWin)} to win · ${fmtPts(sc.tot)} point${sc.tot === 1 ? '' : 's'} available</div></div>
+      ${e.days > 1 ? daySelect(e, r, day) : ''}
+      ${matches.map((mt, k) => matchCard(data, mt, k, day)).join('') || '<div class="empty-state">No matches drawn for this day.</div>'}`
   } else if (r.kind === 'teams') {
     const lead = r.totals.A === r.totals.B ? null : r.totals.A > r.totals.B ? A : B
     body = `<div class="card evscore"><div class="evteams">
@@ -112,36 +103,63 @@ export function boardHtml(data, top = '') {
 }
 
 const pairHtml = (names, c) => `<span class="pairav">${names.map(n => `<span class="av" style="border-color:${c}">${ini(n)}</span>`).join('')}</span><span>${names.map(n => esc(sur(n))).join('<br>')}</span>`
+const TYPE_LABEL = { four: 'Four-ball', singles: 'Singles', three: '3-ball' }
+const typeLabel = mt => TYPE_LABEL[mt.type] ?? 'Four-ball'
+// What a win is worth: "1 pt", "2 pts"; a 3-ball "pair / single".
+function ptsLabel(mt) {
+  const w = mt.win ?? { A: 1, B: 1 }, n = x => fmtPts(x)
+  if (mt.type !== 'three') return `${n(w.A)} pt${w.A === 1 ? '' : 's'}`
+  const pairA = mt.a.length === 2
+  return `${n(pairA ? w.A : w.B)} / ${n(pairA ? w.B : w.A)} pts`
+}
+// The match day to show: the one picked from the drop-down, else today's, else the next, else the latest.
+function shownDay(e) {
+  const days = matchDays(e), now = isoDate(today())
+  if (S.evPick?.id === e.id && days.includes(S.evPick.day)) return S.evPick.day
+  return days.find(d => dayDate(e, d) === now) ?? days.find(d => dayDate(e, d) > now) ?? days.at(-1) ?? 1
+}
+// The match days, to choose from: "Sat 24 Oct · 3 matches · 12 holes (next)".
+function daySelect(e, r, shown) {
+  const now = isoDate(today()), days = matchDays(e), next = days.find(d => dayDate(e, d) > now)
+  return `<label class="hint" for="ev-mday">Match day</label><select id="ev-mday" class="plainsel">${days.map(d => {
+    const n = (r.byDay[d] ?? []).length, holes = r.byDay[d]?.[0]?.holes ?? 18, iso = dayDate(e, d)
+    return `<option value="${d}" ${d === shown ? 'selected' : ''}>${longDay(fromIso(iso))} · ${n} match${n === 1 ? '' : 'es'} · ${holes} holes${iso === now ? ' (today)' : d === next ? ' (next)' : ''}</option>` }).join('')}</select>`
+}
+
 function matchCard(data, mt, k, d) {
   const { A, B } = data.e, res = mt.res, who = res.d > 0 ? A : res.d < 0 ? B : null, col = who ? who.col : 'var(--muted)'
   const stat = res.st === 'ns' ? `<b class="ms-big">Not started</b>`
     : res.st === 'done' ? `<b class="ms-big" style="color:${col}">${who ? `${esc(who.name)} ${esc(res.txt)}` : 'Halved'}</b><small>${who ? 'Final' : '½ point each'}</small>`
     : `<b class="ms-big" style="color:${col}">${res.d ? `${Math.abs(res.d)} up` : 'AS'}</b><small>thru ${res.thru} <span class="livedot">● live</span></small>`
   const mineHere = data.mine?.no === k + 1 && data.day === d
-  return `<div class="card mcard tap${mineHere ? ' minem' : ''}" data-match="${k + 1}" data-mday="${d}" role="button" tabindex="0" aria-label="${mt.singles ? 'Singles' : `Match ${k + 1}`}: open its scorecard"><div class="mtitle">${mineHere ? 'Your match · ' : ''}${mt.singles ? 'Singles' : 'Four-ball'}</div><div class="mgrid"><div class="mside">${pairHtml(mt.a, A.col)}</div><div class="mstat">${stat}</div><div class="mside r">${pairHtml(mt.b, B.col)}</div></div>${mineHere ? `<div class="mact">${matchActionHtml(data.action)}</div>` : ''}</div>`
+  return `<div class="card mcard tap${mineHere ? ' minem' : ''}" data-match="${k + 1}" data-mday="${d}" role="button" tabindex="0" aria-label="${typeLabel(mt)}: open its scorecard"><div class="mtitle">${mineHere ? 'Your match · ' : ''}${typeLabel(mt)} · ${ptsLabel(mt)}</div><div class="mgrid"><div class="mside">${pairHtml(mt.a, A.col)}</div><div class="mstat">${stat}</div><div class="mside r">${pairHtml(mt.b, B.col)}</div></div>${mineHere ? `<div class="mact">${matchActionHtml(data.action)}</div>` : ''}</div>`
 }
 
-// A season: the score so far, the organiser's buttons, match days played (newest first), then the ones to come.
+// A season: the score so far, the organiser's buttons, then one match day at a time from a drop-down.
 function seasonHtml(data, r) {
   const { e, me } = data, { A, B } = e, sc = r.score, now = isoDate(today()), end = seasonEnd(e)
   const all = Object.values(r.byDay).flat(), played = all.filter(m => m.res.st === 'done').length
   const wA = sc.tot ? (sc.pA / sc.tot) * 100 : 0, wB = sc.tot ? (sc.pB / sc.tot) * 100 : 0
-  const days = matchDays(e), past = days.filter(d => dayDate(e, d) <= now).reverse(), ahead = days.filter(d => dayDate(e, d) > now)
-  const dayHtml = d => `<h3>${longDay(fromIso(dayDate(e, d)))}</h3>${(r.byDay[d] ?? []).map((mt, k) => matchCard(data, mt, k, d)).join('')}`
+  const days = matchDays(e), d = shownDay(e)
   return `<div class="card evscore">
       <div class="tug"><i class="ta" style="width:${wA}%;background:${A.col}"></i><i class="tb" style="width:${wB}%;background:${B.col}"></i><span class="mid"></span></div>
       <div class="evteams"><div><span class="tn" style="color:${A.col}">${esc(A.name)}</span><span class="tp" style="color:${A.col}">${fmtPts(sc.pA)}</span><small>${fmtPts(sc.cA)} confirmed</small></div>
         <div class="r"><span class="tn" style="color:${B.col}">${esc(B.name)}</span><span class="tp" style="color:${B.col}">${fmtPts(sc.pB)}</span><small>${fmtPts(sc.cB)} confirmed</small></div></div>
       <div class="evfoot">${played} match${played === 1 ? '' : 'es'} played · ${all.length - played} to come · ${end < now ? `Final · season ended ${eventDates(end, 1)}` : `Season ends ${eventDates(end, 1)}`}</div></div>
     ${canChange(e, me, now) && end >= now ? '<div class="bk-btns"><button class="ghost" id="sn-add">+ Add a match day</button><button class="ghost" id="sn-players">Add a player</button></div>' : ''}
-    ${past.map(dayHtml).join('') || (ahead.length ? '' : '<div class="empty-state">No match days yet.</div>')}
-    ${ahead.length ? `<h3>Coming up</h3>${ahead.map(dayHtml).join('')}` : ''}`
+    ${days.length ? `${daySelect(e, r, d)}${(r.byDay[d] ?? []).map((mt, k) => matchCard(data, mt, k, d)).join('')}` : '<div class="empty-state">No match days yet.</div>'}`
 }
 
 export function bindBoard(data = {}) {
   const edit = step => async () => { Object.assign(S, { ev: null, evId: data.e.id, evStep: step, evScope: data.e.club ? 'club' : 'player', aview: 'event' }); await render(); top0() }
   if (document.getElementById('sn-add')) document.getElementById('sn-add').onclick = () => { S.mdFlowNew = true; return edit(4)() }
   if (document.getElementById('sn-players')) document.getElementById('sn-players').onclick = edit(2)
+  // Choosing a match day: a season redraws what it has; a one-off loads that day's booking advice for your match.
+  if (document.getElementById('ev-mday')) document.getElementById('ev-mday').onchange = ev => {
+    const day = +ev.target.value
+    S.evPick = { id: data.e.id, day }
+    if (data.e.season) keepScroll(redraw); else { S.evDay = day; keepScroll(render) }
+  }
   document.querySelectorAll('[data-lgko]').forEach(b => (b.onclick = async () => { Object.assign(S, { koComp: +b.dataset.lgko, koRound: null, koFrom: S.tab === 'home' ? S.aview : null, tab: 'home', aview: 'ko' }); await render(); top0() }))
   if (document.getElementById('lg-kostart')) document.getElementById('lg-kostart').onclick = async ev => {
     const b = ev.currentTarget, e = data.e, seeds = koSeeds
@@ -159,7 +177,6 @@ export function bindBoard(data = {}) {
     c.onkeydown = ev => { if ((ev.key === 'Enter' || ev.key === ' ') && ev.target === c) { ev.preventDefault(); c.click() } }
   })
   if (data.action) bindMatchAction(data.action)
-  document.querySelectorAll('[data-evday]').forEach(b => (b.onclick = () => { S.evDay = +b.dataset.evday; keepScroll(render) }))
   document.querySelectorAll('[data-lgview]').forEach(b => (b.onclick = () => { S.lgView = b.dataset.lgview; keepScroll(redraw) }))
   document.querySelectorAll('[data-lgweek]').forEach(b => (b.onclick = () => { S.lgWeek = b.dataset.lgweek === 'season' ? 'season' : +b.dataset.lgweek; keepScroll(redraw) }))
   // Remember which teams are open between redraws.
