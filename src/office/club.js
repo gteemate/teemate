@@ -21,6 +21,8 @@ export function draw({ theme, pinsToday, pinsBy, hut, staff, office, allowance, 
       ${row('hutadmin', 'Halfway hut', `${hut.on ? 'Taking orders' : 'Off'} · ${hut.menu.length} on the menu · ${staff} staff`, 'Edit')}
       <div class="orow"><span class="ot"><b>Entry fees</b><span>How members pay for competitions with a fee</span></span>
         <span class="seg" role="group" aria-label="Entry fees"><button data-o-fee="purse" aria-pressed="${theme?.feePayment === 'purse'}">Competition purse</button><button data-o-fee="shop" aria-pressed="${theme?.feePayment !== 'purse'}">Pro shop</button></span></div>
+      <div class="orow"><span class="ot"><b>Leaderboard of the day</b><span>The days members see everyone’s scores today (off, they see only competitions). Switch just today from Leaderboard.</span></span>
+        <span class="seg" role="group" aria-label="Leaderboard of the day">${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d, i) => `<button data-o-dbday="${i}" aria-pressed="${(theme?.dayBoardDays ?? [0, 1, 2, 3, 4, 5, 6]).includes(i)}">${d}</button>`).join('')}</span></div>
       ${row('points', 'Guest points', `${allowance} a year for each member · see everyone’s balance`, 'Open')}
     </div>
     <h3>The office login</h3>
@@ -31,6 +33,12 @@ export function draw({ theme, pinsToday, pinsBy, hut, staff, office, allowance, 
   document.querySelectorAll('[data-o-fee]').forEach(b => (b.onclick = async () => {
     try { await api.setFeePayment(b.dataset.oFee) } catch (err) { toast(err.message); return }
     await keepScroll(render); toast(b.dataset.oFee === 'purse' ? 'Members are told fees come from their competition purse' : 'Members are told to pay fees in the pro shop')
+  }))
+  document.querySelectorAll('[data-o-dbday]').forEach(b => (b.onclick = async () => {
+    const d = +b.dataset.oDbday, days = theme?.dayBoardDays ?? [0, 1, 2, 3, 4, 5, 6]
+    const next = days.includes(d) ? days.filter(x => x !== d) : [...days, d].sort()
+    try { await api.setDayBoardDays(next) } catch (err) { toast(err.message); return }
+    await keepScroll(render)
   }))
   document.querySelectorAll('[data-o-open]').forEach(b => (b.onclick = async () => { S.aview = b.dataset.oOpen; await render(); top0() }))
   if ($('o-office')) $('o-office').onclick = () => {

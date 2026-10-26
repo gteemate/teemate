@@ -53,8 +53,15 @@ export function bindLbSeg() {
 }
 
 function todayBoard({ events, course, rounds, me }) {
-  const m = S.lbm
   header('Leaderboard', `${esc(course.name)} · ${longDay(today())} · White tees`)
+  $('main').innerHTML = `<div class="screen">${lbSeg(events, true)}${fieldHtml({ course, rounds, me })}</div>`
+  bindField()
+  bindLbSeg()
+}
+
+/** Today's scores (gross, net, Stableford, birdies): the members' Leaderboard tab and the club office. */
+export function fieldHtml({ course, rounds, me }) {
+  const m = S.lbm
   const rows = rounds.map(r => ({ ...r, ...roundSummary(course.holes, r.gross, courseHandicap(r.member.hcp, teeRating(course))), ch: courseHandicap(r.member.hcp, teeRating(course)) }))
   const played = rows.filter(r => r.thru), waiting = rows.filter(r => !r.thru)
   const key = { gross: r => r.g, net: r => r.n, stab: r => -r.pts, birdies: r => -r.bd }[m]
@@ -71,11 +78,11 @@ function todayBoard({ events, course, rounds, me }) {
     return `<div class="lbrow${isMe(r) ? ' me' : ''}"><span class="lpos">${tie ? 'T' : ''}${pos}</span><span class="av">${ini(r.member.name)}</span><span class="who"><strong>${esc(r.member.name)}${isMe(r) ? ' (you)' : ''}${r.member.guest ? ' <span class="pill tag">Guest</span>' : ''}</strong><small>${sub(r)}${r.live && r.thru < 18 ? ' <span class="livedot">● live</span>' : ''}</small></span><span class="lval${neg ? ' under' : ''}">${val(r)}</span></div>`
   }).join('') + waiting.map(r => `<div class="lbrow wait"><span class="lpos">–</span><span class="av">${ini(r.member.name)}</span><span class="who"><strong>${esc(r.member.name)}</strong><small>yet to play${r.teeTime ? ` · tees ${r.teeTime}` : ''}</small></span><span class="lval">–</span></div>`).join('')
   const note = { gross: 'Strokes to par, no handicap.', net: 'Strokes to par after full course-handicap shots.', stab: 'Stableford points with full course-handicap shots.', birdies: "Gross birdies or better on today's round." }[m]
-  $('main').innerHTML = `<div class="screen">${lbSeg(events, true)}
-    <div class="tabs-pill" role="group" aria-label="Leaderboard type">${[['gross', 'Gross'], ['net', 'Net'], ['stab', 'Stableford'], ['birdies', 'Birdies']].map(([k, l]) => `<button data-m="${k}" aria-pressed="${m === k}">${l}</button>`).join('')}</div>
+  return `<div class="tabs-pill" role="group" aria-label="Leaderboard type">${[['gross', 'Gross'], ['net', 'Net'], ['stab', 'Stableford'], ['birdies', 'Birdies']].map(([k, l]) => `<button data-m="${k}" aria-pressed="${m === k}">${l}</button>`).join('')}</div>
     <div class="hint">${note}</div>
     <div class="lblist">${html}</div>
-  </div>`
+`
+}
+export function bindField() {
   document.querySelectorAll('[data-m]').forEach(b => (b.onclick = () => { S.lbm = b.dataset.m; keepScroll(redraw) }))
-  bindLbSeg()
 }

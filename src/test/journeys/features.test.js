@@ -642,3 +642,27 @@ describe('the leaderboard of the day', () => {
     expect(document.getElementById('field')).toBeNull()
   })
 })
+
+describe('club office: the leaderboard', () => {
+  it('today’s competitions live, and today’s scores while the leaderboard of the day is on', async () => {
+    app = await boot(db => { db.asOffice = true })
+    await app.tap('[data-ov="board"]')
+    expect(app.screen()).toBe('Leaderboard')
+    expect(app.main()).toContain('Saturday Medal') // today's club competition
+    expect(app.main()).toContain('Today’s scores')
+  })
+  it('switch it off for today: today’s scores go, the competition stays', async () => {
+    app = await boot(db => { db.asOffice = true })
+    await app.tap('[data-ov="board"]')
+    await app.tap('[data-o-db="off"]')
+    expect(app.db.theme.dayBoardToday).toEqual({ date: app.db.today, on: false })
+    expect(app.main()).not.toContain('Today’s scores')
+    expect(app.main()).toContain('Saturday Medal')
+  })
+  it('Club: untick Saturday for the leaderboard of the day', async () => {
+    app = await boot(db => { db.asOffice = true })
+    await app.tap('[data-ov="club"]')
+    await app.tap('[data-o-dbday="6"]')
+    expect(app.db.theme.dayBoardDays).toEqual([0, 1, 2, 3, 4, 5])
+  })
+})
