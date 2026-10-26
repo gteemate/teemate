@@ -380,3 +380,45 @@ describe('one against one with a player in another group', () => {
     expect(scorePlayerEvent({ style: 'singles', format: 'sm2' }, FLAT, [g('1', P('Ann', 'A', 0, 4)), g('2', P('Bob', 'B', 0, 4))], 0.85).kind).toBe('match')
   })
 })
+
+describe('four-ball team match play over a season', () => {
+  const names = { 1: 'Declan', 2: 'Aoife', 3: 'Ciarán', 4: 'Siobhán', 5: 'Mark', 6: 'Niall', 99: 'New' }
+  const player = id => ({ name: names[id] ?? 'Nobody', courseHcp: id === 6 ? 54 : 0 })
+  const card = (id, ids, rows) => ({ id, lineup: ids.map(m => ({ m })), scores: FLAT.map((_, i) => rows[i] ?? ids.map(() => 4)), done: FLAT.map((_, i) => i < rows.length) })
+  const all = (n, row) => Array.from({ length: n }, () => row)
+  const ev = { style: 'ryder', fmt: 'bbscr', season: true, days: 120, players: [1, 2, 3, 4, 5, 6], team: { 1: 'A', 2: 'A', 5: 'A', 3: 'B', 4: 'B', 6: 'B' },
+    matches: { 1: [{ a: [1, 2], b: [3, 4] }], 4: [{ a: [5], b: [6] }] } }
+  // Day 1: A wins every hole for 10 holes (10&8). Day 4: Mark beats Niall on the first 3 holes, halves the rest (2&1 … simplified: 3 up thru 18).
+  const dayCards = { 1: [card(1, [1, 2, 3, 4], all(10, [3, 4, 4, 4]))], 4: [card(2, [5, 6], all(18, [4, 4]).map((r, i) => (i < 3 ? [3, 4] : r)))] }
+
+  it('adds up four-balls and singles across match days only', () => {
+    const r = scoreAdvanceEvent(ev, FLAT, dayCards, player, 0)
+    expect(Object.keys(r.byDay)).toEqual(['1', '4'])
+    expect(r.byDay[4][0]).toMatchObject({ singles: true, a: ['Mark'], b: ['Niall'] })
+    expect(r.byDay[4][0].res).toMatchObject({ st: 'done', d: 3 })
+    expect(r.score).toMatchObject({ cA: 2, cB: 0, tot: 2 })
+  })
+
+  it('a singles plays the season format: scratch gives a 54-handicapper no shots', () => {
+    const r = scoreAdvanceEvent(ev, FLAT, dayCards, player, 0, [], 1)
+    expect(r.byDay[4][0].res.d).toBe(3)
+  })
+
+  it('a singles off the low (bbl → kos) gives the shots', () => {
+    const r = scoreAdvanceEvent({ ...ev, fmt: 'bbl' }, FLAT, dayCards, player, 1, [], 1)
+    expect(r.byDay[4][0].res.d).toBeLessThan(0) // Niall gets 3 shots a hole: he wins every hole
+  })
+
+  it('a singles on two different cards counts only holes both have played', () => {
+    const cards = { 4: [card(3, [5, 9], all(5, [4, 4])), card(4, [6, 8], [])] }
+    expect(scoreAdvanceEvent(ev, FLAT, cards, player, 0).byDay[4][0].res.st).toBe('ns')
+    const both = { 4: [card(3, [5, 9], all(5, [4, 4])), card(4, [6, 8], all(5, [4, 4]))] }
+    expect(scoreAdvanceEvent(ev, FLAT, both, player, 0).byDay[4][0].res).toMatchObject({ st: 'live', thru: 5 })
+  })
+
+  it('a player added mid-season to a later match day leaves the score as it was', () => {
+    const later = { ...ev, players: [...ev.players, 99], team: { ...ev.team, 99: 'A' }, matches: { ...ev.matches, 9: [{ a: [99], b: [3] }] } }
+    const r = scoreAdvanceEvent(later, FLAT, dayCards, player, 0)
+    expect(r.score).toMatchObject({ cA: 2, cB: 0, pA: 2, pB: 0 })
+  })
+})

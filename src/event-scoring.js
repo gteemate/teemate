@@ -6,6 +6,7 @@
 //
 // A hole counts for a group once everyone in that group has a score for it (cards save whole holes).
 import { stablefordPoints, shotsOnHole, playingHandicaps, holeCalc, betterBallWinner, matchProgress, teamEventScore, courseHandicap } from './scoring.js'
+import { matchDays, isSingles, SINGLES_FMT } from './season.js'
 
 /**
  * Build the scoring input from an event and each group's card.
@@ -154,16 +155,28 @@ export function grossOnDay(rounds, memberId, holes) {
   return holes.map((_, i) => (r.done[i] ? r.scores[i][k] : null))
 }
 
+// A singles in a season, shaped like a four-ball's result (ryderMatches) so the board and the season total treat
+// both the same. The two players can be on different cards: only holes both have played count.
+function seasonSingles(holes, g, format, allow) {
+  const [a, b] = g.players
+  const m = singlesMatch(holes, [{ players: [a] }, { players: [b] }], format, allow)
+  const res = { st: m.thru === 0 ? 'ns' : m.finished ? 'done' : 'live', d: m.diff, txt: m.text, thru: m.thru }
+  const ph = playingHandicaps([a.courseHcp, b.courseHcp], format === 'sc2' ? 0 : allow, true)
+  return { key: g.key, name: g.name, a: [a.name], b: [b.name], res, match: m, singles: true,
+    players: [a, b].map((p, k) => ({ id: p.id, name: p.name, team: p.team, gross: p.gross, ph: ph[k] })) }
+}
+
 /**
  * Score an event set up in advance.
  *   event:    { style: 'ryder'|'teams'|'individual', fmt, days, players: [ids], team: { id: 'A'|'B' }, matches: { day: [{ a, b }] } }
+ *             a season (ryder only) plays just its match days, and a match with one a side is a singles
  *   dayCards: { [day]: rounds on that day }       player(id) → { name, courseHcp }
- *   allow:    handicap allowance (fraction)
+ *   allow:    handicap allowance (fraction); allowSingles: the allowance for a season's singles (its own game)
  *   entries:  [{ day, memberId, roundId }] — for an event with entryRequired, only these cards count
  *             (ticked on "Scoring round?"); other events count every card, as they always have.
  */
-export function scoreAdvanceEvent(event, holes, dayCards, player, allow, entries = []) {
-  const days = Array.from({ length: event.days }, (_, i) => i + 1)
+export function scoreAdvanceEvent(event, holes, dayCards, player, allow, entries = [], allowSingles = allow) {
+  const days = matchDays(event)
   const cardsFor = (id, d) => (event.entryRequired
     ? (dayCards[d] ?? []).filter(c => entries.some(x => x.day === d && x.memberId === id && x.roundId === c.id))
     : dayCards[d] ?? [])
@@ -172,11 +185,10 @@ export function scoreAdvanceEvent(event, holes, dayCards, player, allow, entries
   if (event.style === 'ryder') {
     const byDay = {}
     for (const d of days) {
-      const groups = (event.matches[d] ?? []).map((m, i) => ({
-        key: `${d}-${i}`, name: `Match ${i + 1}`,
-        players: [...m.a.map(id => P(id, 'A', d)), ...m.b.map(id => P(id, 'B', d))],
-      }))
-      byDay[d] = ryderMatches(holes, groups, event.fmt, allow).matches
+      byDay[d] = (event.matches[d] ?? []).map((m, i) => {
+        const g = { key: `${d}-${i}`, name: `Match ${i + 1}`, players: [...m.a.map(id => P(id, 'A', d)), ...m.b.map(id => P(id, 'B', d))] }
+        return isSingles(m) ? seasonSingles(holes, g, SINGLES_FMT[event.fmt], allowSingles) : ryderMatches(holes, [g], event.fmt, allow).matches[0]
+      })
     }
     return { kind: 'ryder', byDay, score: teamEventScore(Object.values(byDay).flat()) }
   }
