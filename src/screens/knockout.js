@@ -8,6 +8,8 @@ import { $, esc, header, keepScroll, render, toast, top0, goBack } from '../ui.j
 import { eventDates, isoDate, today } from '../dates.js'
 import { roundName, myNextMatch, matchState, entryName, champion, spreadDates } from '../knockout.js'
 import { koStates, koStateText } from './ko-card.js'
+import { holesText } from '../open-holes.js'
+import { holePickerHtml, bindHolePicker, noneOpen } from './hole-picker.js'
 import { newRound, setRound, getRound, resetRound } from './scores.js'
 
 export async function load() {
@@ -17,7 +19,7 @@ export async function load() {
   const [ko, course, games] = await Promise.all([api.getKnockout(comp.id), api.getCourse(), api.getGameSettings()])
   const mine = signups.entries.find(e => e.compId === comp.id && (e.memberId === me.id || e.partnerId === me.id)) ?? null
   const cards = await api.getCardsById(ko.matches.filter(m => m.roundId).map(m => m.roundId))
-  return { comp, me, members, ...ko, mine, course, games, states: koStates({ ...ko, members, course, games, cards }) }
+  return { comp, me, members, ...ko, mine, course, games, states: koStates({ ...ko, members, course, games, cards, roundHoles: comp?.roundHoles }) }
 }
 
 const RESULTS = ['1 up', '2&1', '3&2', '4&3', '5&4', 'At the 19th', 'Conceded']
@@ -68,12 +70,18 @@ export function draw({ comp, me, members, matches = [], entries = [], mine, cour
       <div class="kodates">${Array.from({ length: rounds }, (_, i) => `<label>${roundName(i + 1, rounds)}<input type="date" class="plainsel" data-kd="${i}" value="${comp.roundDeadlines[i] ?? ''}"></label>`).join('')}</div>` : ''}
       <div class="bk-btns"><button class="${matches.length ? 'ghost' : 'primary'}" id="ko-make">${matches.length ? 'Draw again' : 'Make the draw'}</button>${matches.length ? '<button class="primary" id="ko-pub">Publish the draw</button>' : ''}</div></div>` : ''
 
+  // Each round's open holes: the club office or the knockout's organiser can change them.
+  const canHoles = me.admin || comp.createdBy === me.id, rh = comp.roundHoles?.[round] ?? null
+  const roundHolesHtml = `<div class="actrow krh"><span class="who"><strong>${holesText(rh) || 'All 18 holes'}</strong><small>${roundName(round, rounds || 1)}: the holes played</small></span>
+    ${canHoles ? `<button type="button" class="ghost sm" data-krh="${round}">${S.koHoles === round ? 'Done' : 'Change'}</button>` : ''}</div>
+    ${canHoles && S.koHoles === round ? holePickerHtml(rh, `kr${round}`) : ''}`
   const view = S.koView === 'all' ? 'all' : 'round'
   const body = !rounds ? '' : view === 'all'
     // The whole draw as a bracket: round names along the top; each match sits level with the two it comes from.
     ? `<div class="kobracket" style="--rounds:${rounds};--rows:${matches.filter(m => m.round === 1).length}">${Array.from({ length: rounds }, (_, i) => `<span class="kicker kohead" style="grid-column:${i + 1}">${roundName(i + 1, rounds)}</span>`).join('')}
        ${matches.map(m => `<div class="koslot" style="grid-column:${m.round};grid-row:${m.slot * 2 ** (m.round - 1) + 2} / span ${2 ** (m.round - 1)}">${card(m)}</div>`).join('')}</div>`
     : `<div class="tabs-pill" role="group" aria-label="Round">${Array.from({ length: rounds }, (_, i) => `<button data-kr="${i + 1}" aria-pressed="${round === i + 1}">${roundName(i + 1, rounds)}</button>`).join('')}</div>
+       ${roundHolesHtml}
        ${matches.filter(m => m.round === round).map(card).join('')}`
   $('main').innerHTML = `<div class="screen">${top}${admin}
     ${rounds ? `<div class="seg" role="group" aria-label="Show"><button data-kv="round" aria-pressed="${view === 'round'}">By round</button><button data-kv="all" aria-pressed="${view === 'all'}">Whole draw</button></div>` : ''}
@@ -85,6 +93,8 @@ export function draw({ comp, me, members, matches = [], entries = [], mine, cour
   const act = async (f, ok) => { try { await f() } catch (err) { toast(err.message); return } ; await again(); if (ok) toast(ok) }
   document.querySelectorAll('[data-kr]').forEach(b => (b.onclick = () => { S.koRound = +b.dataset.kr; again() }))
   document.querySelectorAll('[data-kv]').forEach(b => (b.onclick = () => { S.koView = b.dataset.kv; again() }))
+  document.querySelectorAll('[data-krh]').forEach(b => (b.onclick = () => { S.koHoles = S.koHoles === round ? null : round; again() }))
+  if (canHoles && S.koHoles === round) bindHolePicker(`kr${round}`, () => rh, v => (noneOpen(v) ? toast('Open at least one hole.') : act(() => api.setKoRoundHoles(comp.id, round, v))))
   if ($('ko-del')) $('ko-del').onclick = async () => {
     const b = $('ko-del')
     if (b.dataset.armed !== '1') { b.dataset.armed = '1'; b.textContent = 'Tap again: delete it for everyone in it'; return }

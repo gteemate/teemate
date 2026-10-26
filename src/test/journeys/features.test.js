@@ -792,3 +792,33 @@ describe('open holes: shown wherever the event is described', () => {
     expect(document.querySelector('.odetail .ohead').textContent).toContain('Holes 1–6, 10–12')
   })
 })
+describe('open holes: a knockout round’s holes', () => {
+  const draw = db => {
+    Object.assign(db.signups[0], { closesOn: '2026-10-01', drawPublished: true, roundDeadlines: ['2026-11-15', '2026-12-06'] })
+    db.signupEntries.push(...[0, 1, 3, 5].map((m, i) => ({ id: 100 + i, compId: 1, memberId: m, partnerId: null })))
+    db.koMatches.push({ id: 1, compId: 1, round: 1, slot: 0, aEntry: 100, bEntry: 101, winnerEntry: null, result: null, status: 'open', reportedEntry: null },
+      { id: 2, compId: 1, round: 1, slot: 1, aEntry: 102, bEntry: 103, winnerEntry: null, result: null, status: 'open', reportedEntry: null },
+      { id: 3, compId: 1, round: 2, slot: 0, aEntry: null, bEntry: null, winnerEntry: null, result: null, status: 'open', reportedEntry: null })
+  }
+  it('the club office sets round 1 to the front 9; the match is decided over those holes', async () => {
+    app = await boot(draw)
+    await app.tap('Competition')
+    await app.tap('Men’s Match Play')
+    expect(app.main()).toContain('All 18 holes')
+    await app.tap('[data-krh="1"]')
+    await app.tap('[data-hpq="kr1:front"]')
+    expect(app.db.signups[0].roundHoles).toEqual({ 1: [1, 2, 3, 4, 5, 6, 7, 8, 9] })
+    expect(app.main()).toContain('Holes 1–9')
+    await app.tap('Score this match')
+    const card = app.db.rounds.at(-1)
+    card.scores = card.scores.map(() => [3, 5]); card.done = card.done.map((_, i) => i < 9)
+    await app.back()
+    expect(app.text()).toContain('From the scorecard: Gary Cochrane won 5&4')
+  })
+  it('a member who isn’t the organiser doesn’t get the Change button', async () => {
+    app = await boot(db => { draw(db); db.members[0].admin = false })
+    await app.tap('Competition')
+    await app.tap('Men’s Match Play')
+    expect(document.querySelector('[data-krh]')).toBe(null)
+  })
+})
