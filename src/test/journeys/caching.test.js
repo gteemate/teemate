@@ -156,3 +156,14 @@ describe('team colours', () => {
     expect(app.db.events.find(x => x.name === 'Colour Cup')).toMatchObject({ A: { col: '#E8C547' }, B: { col: '#E5484D' } })
   })
 })
+
+describe('tidy: the pretend server behaves like the real one', () => {
+  it('saved team colours come back visible and different', async () => {
+    app = await boot(db => { db.events.push({ id: 950, name: 'Old Colours', A: { name: 'Navy', col: '#19335a' }, B: { name: 'Royal', col: '#2a4a8a' }, club: false, everyone: false,
+      startDate: db.today, days: 1, style: 'ryder', fmt: 'bbl', entryRequired: true, players: [0, 9], team: { 0: 'A', 9: 'B' }, matches: { 1: [{ a: [0], b: [9] }] }, createdBy: { id: 0, name: 'Gary Cochrane' } }) })
+    await app.tap('Competition'); await app.tap('[data-tab="entered"]'); await app.tap('Old Colours')
+    const tug = [...document.querySelectorAll('.tug i')].map(i => i.style.background)
+    expect(tug[0]).not.toBe(tug[1])
+    expect(tug.join(' ')).not.toMatch(/25, 51, 90|19335a/i)
+  })
+})
