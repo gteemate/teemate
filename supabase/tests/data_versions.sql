@@ -32,10 +32,10 @@ begin
   insert into public.events (name, start_date, style, fmt) values ('Stamp test', current_date + 3, 'individual', 'stab');
   select jsonb_object_agg(kind, changed_at) into after from public.data_versions;
   perform t.ok('Updates and inserts move stamps too', after->'members' is distinct from before->'members' and after->'events' is distinct from before->'events');
-  perform t.ok('There is a stamp for every kind', (select count(*) from public.data_versions) = 9);
+  perform t.ok('There is a stamp for every kind', (select count(*) from public.data_versions) = 10);
   perform set_config('request.jwt.claims', json_build_object('sub', (select user_id from public.members where id = 0), 'role', 'authenticated')::text, true);
   execute 'set local role authenticated';
-  perform t.ok('A member reads all the stamps', (select count(*) from jsonb_object_keys(public.data_versions())) = 9);
+  perform t.ok('A member reads all the stamps', (select count(*) from jsonb_object_keys(public.data_versions())) = 10);
   reset role;
   execute 'set local role anon';
   e := t.err('select public.data_versions()');

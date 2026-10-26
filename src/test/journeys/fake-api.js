@@ -22,10 +22,10 @@ export const API_NAMES = ['getMe', 'forgetMe', 'getSession', 'signIn', 'needsAcc
   'getGuestPoints', 'getBookingRules', 'setBookingRules', 'requestTeeTime', 'cancelTeeTimeRequest', 'getMyTeeTimeRequests', 'getTeeTimeRequests',
   'decideTeeTimeRequest', 'markTeeTimeRequestsSeen', 'dismissTeeTimeRequest', 'getGameSettings', 'setMyGamePref', 'getCurrentRound', 'getRound', 'deleteRound', 'saveRound',
   'getTodayRounds', 'getCardsForTeeTimes', 'getMyPlayerEvents', 'proposePlayerEvent', 'proposeSingles', 'counterPlayerEvent', 'answerPlayerEvent', 'cancelPlayerEvent',
-  'getStamps', 'getEvents', 'saveEvent', 'saveSeason', 'deleteEvent', 'getCardsOn', 'getLeagueEntries', 'getCardsById', 'enterLeague', 'leaveLeague', 'enterEventToday',
+  'getStamps', 'getEvents', 'saveEvent', 'saveEvents', 'getEventTemplates', 'saveEventTemplate', 'deleteEventTemplate', 'saveSeason', 'deleteEvent', 'getCardsOn', 'getLeagueEntries', 'getCardsById', 'enterLeague', 'leaveLeague', 'enterEventToday',
   'getEventEntries', 'enterEventRound', 'leaveEventRound', 'startLeagueKnockout',
   'getSignups', 'getSignupCounts', 'getSignupDeclines', 'declineSignup', 'undeclineSignup', 'runSignup', 'enterSignup', 'withdrawSignup', 'setMyPlaysIn', 'adminSetPlaysIn', 'saveSignup', 'deleteSignup',
-  'getKnockout', 'createMemberKnockout', 'deleteMemberKnockout', 'makeDraw', 'swapDraw', 'setRoundDeadlines', 'publishDraw', 'linkKoCard', 'reportKoResult', 'confirmKoResult', 'disputeKoResult', 'adminSetKoResult']
+  'getKnockout', 'createMemberKnockout', 'deleteMemberKnockout', 'makeDraw', 'swapDraw', 'setRoundDeadlines', 'setKoRoundHoles', 'publishDraw', 'linkKoCard', 'reportKoResult', 'confirmKoResult', 'disputeKoResult', 'adminSetKoResult']
 
 /** For vi.mock('…/api.js'): every export, each calling the current world's version (globalThis.__world). */
 export function mockModule() {
@@ -40,6 +40,15 @@ export function mockModule() {
 }
 
 const member = id => MEMBERS.find(m => m.id === id)
+
+// As the database's holes_problem: null (all 18), an older match day's number, or a list of holes 1–18, each once.
+const holesProblem = h => (h == null || (typeof h === 'number' && [18, 14, 12, 9, 6].includes(h))
+  || (Array.isArray(h) && h.length >= 1 && h.every(n => Number.isInteger(n) && n >= 1 && n <= 18) && new Set(h).size === h.length)
+  ? null : 'Pick at least one hole, from 1 to 18.')
+const holesRefusal = e => {
+  const bad = [e.holes, ...Object.values(e.dayRules ?? {}).map(d => d?.holes)].map(holesProblem).find(Boolean)
+  if (bad) throw new Error(bad)
+}
 const slotTimes = Array.from({ length: 31 }, (_, i) => 480 + i * 10) // 08:00 … 13:00
 
 /**
@@ -58,6 +67,7 @@ export function makeWorld(today, setup = () => {}) {
       { id: 2, name: 'Men’s Fourball', category: 'men', kind: 'pairs', closesOn: '2026-10-31', notes: '£5 a pair', open: true },
       { id: 3, name: 'Ladies Singles', category: 'ladies', kind: 'singles', closesOn: '2026-10-31', notes: null, open: true },
       { id: 4, name: 'Mixed Foursome', category: 'mixed', kind: 'pairs', closesOn: '2026-10-31', notes: null, open: true }],
+    eventTemplates: [], // club event templates: { id, name, setup }
     signupEntries: [], koMatches: [], declines: [], // declines: compIds I've said No thanks to
     buddies: [{ id: 1, favourite: false }, { id: 3, favourite: true }, { id: 5, favourite: false }, { id: 7, favourite: false }, { id: 11, favourite: false }],
     contacts: [{ id: 1, name: 'Sam Visitor', club: 'Royal Portrush GC', hcp: '12.0', gui: '1234567', sharedOn: today, favourite: false, updatedAt: `${today}T08:00:00Z` }],
@@ -323,8 +333,24 @@ export function makeWorld(today, setup = () => {}) {
     disputeKoResult: async mid => { db.koMatches.find(m => m.id === mid).status = 'disputed' },
     adminSetKoResult: async (mid, w, r) => { const m = db.koMatches.find(x => x.id === mid); Object.assign(m, { status: 'confirmed', winnerEntry: w, result: r }); db.koAdvance(m) },
     saveSeason: async e => { const x = db.events.find(y => y.id === e.id); Object.assign(x, copy({ days: e.days, team: e.team, players: Object.keys(e.team).map(Number), matches: e.matches, dayRules: e.dayRules ?? x.dayRules ?? null })) },
-    // As the real saveEvent: points and day settings only for four-ball team match play.
-    saveEvent: async e => { if (e.style !== 'ryder') e = { ...e, points: null, dayRules: null }; if (e.id) Object.assign(db.events.find(x => x.id === e.id), copy(e)); else db.events.push({ ...copy(e), id: id(), createdBy: { id: ME, name: 'Gary Cochrane' } }); return e.id ?? db.events.at(-1).id },
+    // As the real saveEvent: points only for four-ball team match play; holes checked as the database does.
+    saveEvent: async e => { holesRefusal(e); if (e.style !== 'ryder') e = { ...e, points: null }; if (e.dayRules && !Object.keys(e.dayRules).length) e = { ...e, dayRules: null }; if (e.id) Object.assign(db.events.find(x => x.id === e.id), copy(e)); else db.events.push({ ...copy(e), id: id(), createdBy: { id: ME, name: 'Gary Cochrane' } }); return e.id ?? db.events.at(-1).id },
+    saveEvents: async list => { list.forEach(holesRefusal); return list.map(e => { const n = { ...copy(e), id: id(), createdBy: { id: ME, name: 'Gary Cochrane' } }; db.events.push(n); return n.id }) },
+    getEventTemplates: async () => { if (!db.members.find(m => m.id === ME)?.admin) return []; return copy(db.eventTemplates).sort((a, b) => a.name.localeCompare(b.name)) },
+    saveEventTemplate: async ({ id: tid, name, setup }) => {
+      if (!db.members.find(m => m.id === ME)?.admin) throw new Error('new row violates row-level security policy for table "event_templates"')
+      if (tid) { Object.assign(db.eventTemplates.find(t => t.id === tid), copy({ name, setup })); return tid }
+      const n = { id: id(), name, setup: copy(setup) }; db.eventTemplates.push(n); return n.id
+    },
+    deleteEventTemplate: async tid => { db.eventTemplates = db.eventTemplates.filter(t => t.id !== tid) },
+    setKoRoundHoles: async (cid, round, holes) => {
+      const c = db.signups.find(x => x.id === cid)
+      if (!db.members.find(m => m.id === ME)?.admin && c.createdBy !== ME) throw new Error('Only the knockout’s organiser (or an admin) sets its holes.')
+      if (holesProblem(holes)) throw new Error(holesProblem(holes))
+      const rh = { ...(c.roundHoles ?? {}) }
+      if (holes == null) delete rh[round]; else rh[round] = [...holes]
+      c.roundHoles = rh
+    },
     startLeagueKnockout: async (eid, seeds, deadlines) => {
       const ev = db.events.find(x => x.id === eid)
       const cid = await api.createMemberKnockout(`${ev.name} knockout`, seeds[0].length === 2 ? 'pairs' : 'singles', seeds, deadlines)

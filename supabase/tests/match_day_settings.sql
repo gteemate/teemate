@@ -42,7 +42,7 @@ begin
   e := t.err(format(s, v, current_date + 100, team0, jsonb_build_object('1', past, '10', '[{"a":[1,2,3],"b":[4]}]'::jsonb), null));
   perform t.ok('Refuse: 3 v 1', e is not null, e);
   e := t.err(format(s, v, current_date + 100, team0, jsonb_build_object('1', past), '{"10":{"holes":11}}'));
-  perform t.ok('Refuse: 11 holes', e like '%holes%', e);
+  perform t.ok('Refuse: 11 holes', e like '%hole%', e);
   e := t.err(format(s, v, current_date + 100, team0, jsonb_build_object('1', past), '{"10":{"points":{"four":15}}}'));
   perform t.ok('Refuse: 15 points', e like '%points%', e);
   e := t.err(format(s, v, current_date + 100, team0, jsonb_build_object('1', past), '{"10":{"points":{"four":0.3}}}'));
