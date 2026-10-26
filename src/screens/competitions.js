@@ -13,6 +13,7 @@ import { canEdit } from './events.js'
 import { canEnter, myEntries, partnerChoices, needsSection, placesLeft, splitDeclined } from '../signups.js'
 import { feeLine, money } from '../fees.js'
 import { dayBoardOn } from '../day-board.js'
+import { signupOpen, closesOn, spacesLeft, spacesText } from '../event-signups.js'
 
 const TABS = [['entered', 'Entered'], ['events', 'Events'], ['history', 'History']]
 const FORMAT = { individual: 'Individual', teams: 'Team Stableford', ryder: 'Four-ball team match play', league: 'League' }
@@ -24,11 +25,12 @@ export async function load() {
   const date = isoDate(today())
   const dayBoard = dayBoardOn(theme, date) // today's scores shown at all today?
   const open = canEnter({ ...signups, me, date })
-  return { dayBoard, me, date, members, friends, signups, counts, fees, lists: competitionLists({ me, events, playerEvents, date }),
+  const evOpen = events.filter(e => signupOpen(e, date) && !e.players.includes(me.id)) // leagues and club events to sign up for
+  return { dayBoard, me, date, members, friends, signups, counts, fees, evOpen, lists: competitionLists({ me, events, playerEvents, date }),
     open, ...splitDeclined(open, declinedIds), entered: myEntries({ ...signups, me }) }
 }
 
-export function draw({ dayBoard = true, me, date, members, friends, signups, counts = {}, fees = { payment: 'shop', purse: null }, lists, open, offer = open, declined = [], entered }) {
+export function draw({ dayBoard = true, me, date, members, friends, signups, counts = {}, fees = { payment: 'shop', purse: null }, evOpen = [], lists, open, offer = open, declined = [], entered }) {
   header('Competitions', '')
   const tab = TABS.some(([k]) => k === S.compTab) ? S.compTab : 'entered' // (Open is gone: a remembered 'open' falls back)
   const teamOf = e => e.teams?.[e.team?.[me.id]]?.name
@@ -42,7 +44,8 @@ export function draw({ dayBoard = true, me, date, members, friends, signups, cou
     const what = x.kind === 'league' ? `${e.weeks} weeks · best ${e.bestOf} count${teamOf(e) ? ` · ${esc(teamOf(e))}` : ''}` : `${eventWhen(e)} · ${FORMAT[e.style] ?? ''}${e.club ? ' · club' : ''}${holesText(e.holes) ? ` · ${holesText(e.holes)}` : ''}`
     const bars = x.kind === 'league' ? `<span class="cprog">${Array.from({ length: x.weeks }, (_, i) => `<i class="${i + 1 < x.week ? 'wk-done' : i + 1 === x.week && x.running ? 'wk-now' : ''}"></i>`).join('')}</span>` : ''
     const action = `<span class="link">${tab === 'history' ? 'Results' : 'Leaderboard'} ›</span>`
-    const edit = tab === 'entered' && canEdit(e, me) ? `<button class="linkbtn" data-edit="${e.id}">Edit</button>` : '<span></span>'
+    const edit = tab === 'entered' && e.signup && e.players.includes(me.id) && date <= closesOn(e) ? `<button class="linkbtn" data-ewd="${e.id}">Withdraw</button>` // signed up: until entries close
+      : tab === 'entered' && canEdit(e, me) ? `<button class="linkbtn" data-edit="${e.id}">Edit</button>` : '<span></span>'
     return `<div class="card comp${x.running && tab === 'entered' ? ' gold' : ''}" data-n="${n}" role="button" tabindex="0">
       <span class="ct">${esc(e.name)}</span><span class="sub">${what}</span>${bars}
       <span class="row"><span class="sub">${tab === 'history' ? 'Finished' : when}</span><span class="row">${edit}${action}</span></span></div>`
@@ -59,6 +62,12 @@ export function draw({ dayBoard = true, me, date, members, friends, signups, cou
     return left === 0 ? `<div class="card comp"><span class="row"><span class="ct">${esc(c.name)}</span><span class="pill">Full</span></span><span class="sub">${kindText(c)} · all ${c.maxEntries} places taken</span></div>`
       : `<div class="card comp"><span class="ct">${esc(c.name)}</span><span class="sub">${line.charAt(0).toUpperCase() + line.slice(1)}</span>
       <div class="bk-btns">${wasDeclined ? '' : `<button class="ghost" data-nothanks="${c.id}">No thanks</button>`}<button class="primary" data-sign="${c.id}">Enter</button></div></div>` }
+  // A league or club event open for sign-up: what it is, when entries close, the spaces left; Full once they've gone.
+  const evRow = e => { const left = spacesLeft(e)
+    const what = `${e.style === 'league' ? `League · ${e.weeks} weeks from ${eventDates(e.startDate, 1)}` : `${FORMAT[e.style] ?? 'Event'} · ${eventWhen(e)}`}${e.entryFee ? ` · ${money(e.entryFee)} entry` : ''}`
+    return left === 0 ? `<div class="card comp"><span class="row"><span class="ct">${esc(e.name)}</span><span class="pill">Full</span></span><span class="sub">${what} · all ${e.maxEntries} places taken</span></div>`
+      : `<div class="card comp"><span class="ct">${esc(e.name)}</span><span class="sub">${what} · entries close ${eventDates(closesOn(e), 1)}</span>
+        ${left != null ? `<span class="sub"><b>${spacesText(left)}</b></span>` : ''}<div class="bk-btns"><button class="primary" data-esign="${e.id}">Enter</button></div></div>` }
   const mineRow = x => `<div class="card comp${x.comp.drawPublished ? ' gold' : ''}"${x.comp.drawPublished ? ` data-ko="${x.comp.id}" role="button" tabindex="0"` : ''}><span class="row"><span class="ct">${esc(x.comp.name)}</span><span class="pill${x.comp.drawPublished ? ' gold' : ''}">${x.comp.drawPublished ? 'Draw ›' : 'Entered'}</span></span>
       <span class="sub">${x.partnerId ? `With ${esc(nameOf(x.partnerId))}` : 'Singles'} · ${x.comp.drawPublished ? 'The draw is out: see your match' : x.comp.closesOn && date > x.comp.closesOn ? 'Entries closed: the draw is coming' : closes(x.comp)}</span>
       ${x.comp.drawPublished || (x.comp.closesOn && date > x.comp.closesOn) ? '' : `<span class="row"><span></span><button class="linkbtn" data-wd="${x.comp.id}">Withdraw${x.partnerId ? ' (both of you)' : ''}</button></span>`}</div>`
@@ -68,12 +77,13 @@ export function draw({ dayBoard = true, me, date, members, friends, signups, cou
     <div class="seg seg4" role="tablist" aria-label="Competitions">${TABS.map(([k, n]) => `<button role="tab" data-tab="${k}" aria-pressed="${tab === k}">${n}</button>`).join('')}</div>
     ${tab === 'entered' && dayBoard ? '<button class="card comp" id="field"><span class="row"><span class="ct">Today at the club</span><span class="link">Scores ›</span></span><span class="sub">Everyone’s round today: gross, net, Stableford</span></button>' : ''}
     ${tab === 'events' && needsSection(signups.comps, me, date) ? '<button class="card comp gold" id="setsec"><span class="ct">Men’s or Ladies’?</span><span class="sub">Set which you play in on your Account to see the competitions you can enter.</span><span class="row"><span></span><span class="link">Account ›</span></span></button>' : ''}
+    ${tab === 'events' ? evOpen.map(evRow).join('') : ''}
     ${tab === 'events' ? offer.map(c => signRow(c)).join('') : ''}
     ${tab === 'events' && declined.length ? `<button class="linkbtn" id="declined" aria-expanded="${!!S.showDeclined}" style="align-self:flex-start">${S.showDeclined ? 'Hide declined' : `Declined (${declined.length})`}</button>
       ${S.showDeclined ? `<span class="hint">You said no thanks to these. You can still enter until entries close.</span>${declined.map(c => signRow(c, true)).join('')}` : ''}` : ''}
     ${tab === 'entered' ? entered.map(mineRow).join('') : ''}
     ${tab === 'entered' ? signups.comps.filter(c => c.createdBy === me.id && !entered.some(x => x.comp.id === c.id)).map(c => `<div class="card comp gold" data-ko="${c.id}" role="button" tabindex="0"><span class="row"><span class="ct">${esc(c.name)}</span><span class="pill gold">Draw ›</span></span><span class="sub">Your knockout · you’re organising it</span></div>`).join('') : ''}
-    ${list.length ? list.map(row).join('') : (tab === 'events' && (offer.length || declined.length)) || (tab === 'entered' && entered.length) || !empty[tab] ? '' : `<div class="empty-state">${empty[tab]}</div>`}
+    ${list.length ? list.map(row).join('') : (tab === 'events' && (offer.length || declined.length || evOpen.length)) || (tab === 'entered' && entered.length) || !empty[tab] ? '' : `<div class="empty-state">${empty[tab]}</div>`}
     ${tab === 'events' ? '<button class="ghost dashed" id="create">+ Create your own event</button>' : ''}
   </div>`
   const go = async f => { f(); await render(); top0() }
@@ -91,6 +101,20 @@ export function draw({ dayBoard = true, me, date, members, friends, signups, cou
   }))
   if ($('declined')) $('declined').onclick = () => { S.showDeclined = !S.showDeclined; keepScroll(redraw) }
   document.querySelectorAll('[data-ko]').forEach(c => (c.onclick = () => go(() => { S.koComp = +c.dataset.ko; S.koRound = null; S.koFrom = 'comp'; S.aview = 'ko' })))
+  // Leagues and club events open for sign-up: Enter (refused when the last place has just gone), and Withdraw.
+  document.querySelectorAll('[data-esign]').forEach(b => (b.onclick = async () => {
+    const e = evOpen.find(x => x.id === +b.dataset.esign)
+    b.disabled = true
+    try { await api.enterEvent(e.id) } catch (err) { await keepScroll(render); toast(err.message); return }
+    await keepScroll(render); toast(`You’re in ${e.name}: it’s under Entered`)
+  }))
+  document.querySelectorAll('[data-ewd]').forEach(b => (b.onclick = async ev => {
+    ev.stopPropagation()
+    if (b.dataset.armed !== '1') { b.dataset.armed = '1'; b.textContent = 'Tap again to withdraw'; return }
+    b.disabled = true
+    try { await api.withdrawEvent(+b.dataset.ewd) } catch (err) { toast(err.message); b.disabled = false; return }
+    await keepScroll(render); toast('Withdrawn: your place is free for someone else')
+  }))
   document.querySelectorAll('[data-wd]').forEach(b => (b.onclick = async () => {
     if (b.dataset.armed !== '1') { b.dataset.armed = '1'; b.textContent = 'Tap again to withdraw'; return }
     b.disabled = true

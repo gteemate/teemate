@@ -1021,3 +1021,53 @@ describe('club office: leagues and events open for sign-up', () => {
     expect(app.db.events.find(e => e.id === 880).players).toEqual([])
   })
 })
+describe('members: leagues and events open for sign-up', () => {
+  const league = (o = {}) => db => {
+    db.members[0].admin = false
+    db.events.push({ id: 881, name: 'Frosty League', style: 'league', fmt: 'beststab', club: true, everyone: false, startDate: '2026-12-07', days: 1, weeks: 10, bestOf: 4,
+      teams: [], team: {}, players: [10, 12], matches: {}, captainPool: [], signup: true, advertiseFrom: '2026-10-01', entriesClose: '2026-11-30', maxEntries: 4, createdBy: { id: 1, name: 'Club' }, ...o })
+  }
+  const card = () => [...document.querySelectorAll('.comp')].find(c => c.textContent.includes('Frosty League'))
+  const events = async () => { await app.tap('Competition'); await app.tap('[data-tab="events"]') }
+  it('“2 spaces remaining”; Enter puts me in, under Entered with Withdraw', async () => {
+    app = await boot(league())
+    await events()
+    expect(card().textContent).toContain('2 spaces remaining')
+    expect(card().textContent).toContain('entries close Mon 30 Nov')
+    await app.tap('[data-esign="881"]')
+    expect(app.db.events.find(e => e.id === 881).players).toContain(0)
+    expect(app.toast()).toContain('You’re in Frosty League')
+    await app.tap('[data-tab="entered"]')
+    expect(card().textContent).toContain('Withdraw')
+  })
+  it('full: a Full pill and no Enter', async () => {
+    app = await boot(league({ maxEntries: 2 }))
+    await events()
+    expect(card().textContent).toContain('Full')
+    expect(card().textContent).toContain('all 2 places taken')
+    expect(document.querySelector('[data-esign="881"]')).toBe(null)
+  })
+  it('the last place goes while I’m looking: told in a notice I can see, and it shows Full', async () => {
+    app = await boot(league({ maxEntries: 3 }))
+    await events()
+    app.db.events.find(e => e.id === 881).players.push(9) // someone else takes it
+    await app.tap('[data-esign="881"]')
+    expect(app.toast()).toContain('Sorry, it’s full')
+    expect(card().textContent).toContain('Full')
+  })
+  it('withdrawing opens the place again', async () => {
+    app = await boot(league({ players: [10, 12, 0], maxEntries: 3 }))
+    await app.tap('Competition')
+    await app.tap('[data-ewd="881"]'); await app.tap('[data-ewd="881"]')
+    expect(app.db.events.find(e => e.id === 881).players).toEqual([10, 12])
+  })
+  it('not listed before it’s advertised, nor once sign-up is off; entered and full shows under Entered, not Full', async () => {
+    app = await boot(db => { league({ advertiseFrom: '2026-11-20' })(db); league({ id: 882, name: 'Quiet League', signup: false })(db); league({ id: 883, name: 'Packed League', players: [10, 0], maxEntries: 2 })(db) })
+    await events()
+    expect(app.main()).not.toContain('Frosty League')
+    expect(app.main()).not.toContain('Quiet League')
+    expect(app.main()).not.toContain('Packed League')
+    await app.tap('[data-tab="entered"]')
+    expect([...document.querySelectorAll('.comp')].find(c => c.textContent.includes('Packed League')).textContent).toContain('Withdraw')
+  })
+})
