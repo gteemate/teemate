@@ -1,6 +1,6 @@
 // What the journey list doesn't cover yet: app actions that change something with no journey, database refusals
 // with no journey checking them (and no reason they can't happen), and people with no journeys.
-const READS = /^(get|my|needs|forget|onAuth|myId|todayIso)/ // data functions that only read
+const READS = /^(get|my|needs|forget|onAuth|myId|todayIso|hutOrdersToday)/ // data functions that only read
 
 const messagesOf = (j, index) => {
   if (j.refusals?.none) return []
