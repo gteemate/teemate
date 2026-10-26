@@ -1,10 +1,12 @@
 import { must, sb } from './client.js'
+import { eventLastDay } from '../dates.js'
 
 /* ---------- Events set up in advance ---------- */
 
-const EVENT_COLS = 'id, name, team_a, team_b, club, everyone, start_date, days, style, fmt, players, team, matches, weeks, best_of, league_teams, captain_pool, self_entry, entry_required, league_pairs, ko_top, ko_finish, ko_comp, entry_fee_pence, creator:created_by(id, name)'
+const EVENT_COLS = 'id, name, team_a, team_b, club, everyone, start_date, days, season, style, fmt, players, team, matches, weeks, best_of, league_teams, captain_pool, self_entry, entry_required, league_pairs, ko_top, ko_finish, ko_comp, entry_fee_pence, creator:created_by(id, name)'
 const toEvent = e => ({
   id: e.id, name: e.name, A: e.team_a, B: e.team_b, club: e.club, everyone: e.everyone, startDate: e.start_date, days: e.days,
+  season: !!e.season, // four-ball team match play over a season: matches only on its match days
   style: e.style, fmt: e.fmt, players: e.players, team: e.team, matches: e.matches, createdBy: e.creator,
   weeks: e.weeks, bestOf: e.best_of, teams: e.league_teams, captainPool: e.captain_pool ?? [], // leagues
   selfEntry: !!e.self_entry, // members can enter themselves (club competitions)
@@ -22,6 +24,7 @@ export async function getEvents() {
 export async function saveEvent(e) {
   const row = {
     name: e.name, team_a: e.A, team_b: e.B, club: !!e.club, everyone: !!e.everyone, start_date: e.startDate, days: e.days,
+    season: e.style === 'ryder' && !!e.season,
     style: e.style, fmt: e.fmt, players: e.players, team: e.team, matches: e.matches,
     weeks: e.weeks ?? null, best_of: e.bestOf ?? null, league_teams: e.teams ?? null, captain_pool: e.captainPool ?? [], self_entry: !!e.club && !!e.selfEntry,
     entry_required: e.id ? !!e.entryRequired : e.style !== 'league', // new events: only ticked cards count
@@ -34,6 +37,11 @@ export async function saveEvent(e) {
     return e.id
   }
   return must(await sb.from('events').insert(row).select('id').single()).id
+}
+
+/** Change a season while it runs (its organiser or an admin): end date, teams and match days, checked by the server. */
+export async function saveSeason(e) {
+  must(await sb.rpc('save_season', { p_event: e.id, p_end: eventLastDay(e), p_team: e.team, p_matches: e.matches }))
 }
 
 export async function deleteEvent(id) {

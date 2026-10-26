@@ -1,6 +1,7 @@
 // A round: what "Scoring round?" offers when a card starts, and (Task 10) whether the round has a leaderboard.
 import { eventLastDay, leagueWeek, addDaysIso } from './dates.js'
 import { myMatch } from './match.js'
+import { dayOfDate, isSingles } from './season.js'
 
 /**
  * Competitions this card could count for today:
@@ -30,10 +31,12 @@ export function countsForOptions({ lineup, events, leagueEntries, date, meId }) 
       const players = inIt.filter(m => !leagueEntries.some(x => x.eventId === e.id && x.week === week && x.memberId === m))
       if (players.length && marked) out.push({ kind: 'league', e, players, week, needsMarker: true })
     } else if (e.entryRequired) {
-      const day = Array.from({ length: e.days }, (_, i) => addDaysIso(e.startDate, i)).indexOf(date) + 1
+      const day = dayOfDate(e, date)
       if (Object.keys(e.matches ?? {}).length) {
         const mine = myMatch(e, day, meId), four = mine ? [...mine.a, ...mine.b] : []
         if (mine && four.every(m => onCard.includes(m))) out.push({ kind: 'event', e, players: four, day, match: mine.no, auto: true })
+        // A season's singles can be played on different cards: count mine, marked by someone else on my card.
+        else if (mine && e.season && isSingles(mine) && marked) out.push({ kind: 'event', e, players: [meId], day, match: mine.no, needsMarker: true })
       } else if (marked) out.push({ kind: 'event', e, players: inIt, day, needsMarker: true })
     }
   }

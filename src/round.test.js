@@ -81,3 +81,23 @@ describe('roundBoard: the Leaderboard tab in a round (null = general round, no t
     expect(roundBoard({ ...base, events: [event({ id: 4, entryRequired: true, players: [2] })] })).toBeNull() // needs a tick
   })
 })
+
+describe('countsForOptions: a season only on my match day', () => {
+  // Starts 1 Oct; day 9 is D (9 Oct). My four-ball is on day 9; a singles for me (1 v 3) on day 12.
+  const season = over => ({ id: 31, name: 'Pals Season', style: 'ryder', season: true, startDate: '2026-10-01', days: 120, players: [1, 2, 3, 4], entryRequired: true,
+    team: { 1: 'A', 2: 'A', 3: 'B', 4: 'B' }, matches: { 9: [{ a: [1, 2], b: [3, 4] }], 12: [{ a: [1], b: [3] }] }, ...over })
+  const four = [{ m: 1 }, { m: 2 }, { m: 3 }, { m: 4 }]
+  it('my four-ball on a match day, all four on the card: offered, ticked already', () =>
+    expect(countsForOptions({ lineup: four, events: [season()], leagueEntries: [], date: D, meId: 1 }))
+      .toEqual([{ kind: 'event', e: season(), players: [1, 2, 3, 4], day: 9, match: 1, auto: true }]))
+  it('not on a day with no matches for me', () =>
+    expect(countsForOptions({ lineup: four, events: [season()], leagueEntries: [], date: '2026-10-08', meId: 1 })).toEqual([]))
+  it('a singles, my opponent on another card, a friend on mine: offered for me, needs a marker', () =>
+    expect(countsForOptions({ lineup: [{ m: 1 }, { m: 9 }], events: [season()], leagueEntries: [], date: '2026-10-12', meId: 1 }))
+      .toEqual([{ kind: 'event', e: season(), players: [1], day: 12, match: 1, needsMarker: true }]))
+  it('a singles with my opponent on my card: offered for us both, ticked already', () =>
+    expect(countsForOptions({ lineup: [{ m: 1 }, { m: 3 }], events: [season()], leagueEntries: [], date: '2026-10-12', meId: 1 }))
+      .toEqual([{ kind: 'event', e: season(), players: [1, 3], day: 12, match: 1, auto: true }]))
+  it('a singles on my own card with nobody to mark it: not offered', () =>
+    expect(countsForOptions({ lineup: [{ m: 1 }], events: [season()], leagueEntries: [], date: '2026-10-12', meId: 1 })).toEqual([]))
+})
