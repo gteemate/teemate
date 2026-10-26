@@ -26,6 +26,8 @@ const teamLeague = ev => ev.style === 'league' && !pairsLeague(ev) && (ev.teams?
 const stepName = (ev, s) => (s === 4 && ev.season ? 'Match days' : STEPS[s])
 // A season that has begun: changes go through save_season (teams fixed, played match days locked).
 const begun = ev => !!ev.id && !!ev.season && ev.startDate <= isoDate(today())
+// …and the organiser (not an admin) changes it only through save_season: end date, teams and match days.
+const viaSeason = (ev, me) => begun(ev) && !me.admin
 const lockedDay = (ev, d) => dayDate(ev, d) < isoDate(today())
 const seasonDays = ev => Object.keys(ev.matches).map(Number).sort((x, y) => x - y)
 const freeOn = (ev, d, t) => sideIds(ev, t).filter(id => !(ev.matches[d] ?? []).some(m => m.a.includes(id) || m.b.includes(id)))
@@ -45,7 +47,7 @@ export async function load() {
   const [events, members, me] = cache
   if (!S.ev) {
     const e = S.evId && events.find(x => x.id === S.evId)
-    S.ev = e ? { ...structuredClone(e), team0: { ...e.team }, endDate: e.season ? addDaysIso(e.startDate, e.days - 1) : null } : {
+    S.ev = e ? { ...structuredClone(e), team0: { ...e.team }, start0: e.startDate, endDate: e.season ? addDaysIso(e.startDate, e.days - 1) : null } : {
       name: '', startDate: addDaysIso(isoDate(today()), 1), days: 1, style: 'ryder', fmt: 'bbl', club: S.evScope === 'club', everyone: S.evScope === 'club',
       players: S.evScope === 'club' ? [] : [me.id], team: {}, matches: {}, A: { name: 'Blues', col: '#19335A' }, B: { name: 'Reds', col: '#762A43' },
     }
@@ -71,6 +73,10 @@ function problem(ev, step) {
     if (ev.season) {
       if (!ev.endDate || ev.endDate < ev.startDate || ev.endDate < isoDate(today())) return 'Pick an end date after the first day, from today on.'
       if (ev.days > 366) return 'A season can run for up to a year.'
+      const days = seasonDays(ev).filter(d => ev.matches[d].length)
+      if (ev.id && ev.start0 && ev.startDate !== ev.start0 && days.length) return 'Remove the match days before moving the first day (they’d move with it).'
+      const late = days.find(d => d > ev.days)
+      if (late) return `There’s a match day on ${eventDates(dayDate(ev, late), 1)}, after the end date.`
     }
   }
   if (step === 2) {
@@ -117,7 +123,7 @@ export function draw({ members, me }) {
 
   if (step === 1) {
     body = `<div class="card evsec"><h4>Event</h4>
-        <label for="ev-name">Name</label><input id="ev-name" value="${esc(ev.name)}" maxlength="60" placeholder="e.g. Saturday Fourball Cup"${begun(ev) ? ' disabled' : ''}>
+        <label for="ev-name">Name</label><input id="ev-name" value="${esc(ev.name)}" maxlength="60" placeholder="e.g. Saturday Fourball Cup"${viaSeason(ev, me) ? ' disabled' : ''}>
         ${ev.style === 'ryder' && !begun(ev) ? `<div class="seg" role="group" aria-label="When"><button data-when="once" aria-pressed="${!ev.season}">One-off</button><button data-when="season" aria-pressed="${!!ev.season}">Season</button></div>` : ''}
         <div class="tnames"><div><label for="ev-date">First day</label><input id="ev-date" type="date" value="${ev.startDate}" min="${isoDate(today())}"${begun(ev) ? ' disabled' : ''}></div>
           ${ev.season ? `<div><label for="ev-end">Season ends</label><input id="ev-end" type="date" value="${ev.endDate ?? ''}" min="${ev.startDate > isoDate(today()) ? ev.startDate : isoDate(today())}" max="${addDaysIso(ev.startDate, 365)}"></div>`
@@ -133,7 +139,7 @@ export function draw({ members, me }) {
         <label for="ev-ko">Knockout finish</label><select id="ev-ko" class="plainsel"><option value="">None: the table decides it</option>${[4, 8, 16].map(n => `<option value="${n}" ${ev.koTop === n ? 'selected' : ''}>Top ${n} ${pairsLeague(ev) ? 'pairs' : 'players'} go into a knockout</option>`).join('')}</select>
         ${ev.koTop ? `<label for="ev-kof">Knockout final played by</label><input id="ev-kof" type="date" class="plainsel" value="${ev.koFinish ?? ''}"><span class="hint">After the last week, the organiser starts the knockout: seeded from the table (1st plays the lowest qualifier).</span>` : ''}</div>` : ''}
       <h3>Format</h3>
-      ${begun(ev) ? `<div class="hint">${EVENT_TYPES.ryder.name} over a season. The name, first day and format stay as they are once it has started.</div>` : `<div class="games">${Object.entries(EVENT_TYPES).filter(([, t]) => !t.adminOnly || (me.admin && S.evScope === 'club')).map(([k, t]) => `<button class="gamecard" role="radio" aria-checked="${ev.style === k}" data-style="${k}"><span class="radio"></span><span class="who"><strong>${t.name}</strong><small>${t.desc}</small></span></button>`).join('')}</div>`}
+      ${begun(ev) ? `<div class="hint">${EVENT_TYPES.ryder.name} over a season. The first day and format stay as they are once it has started${me.admin ? '' : ', and the name and team names can be changed by the club office'}.</div>` : `<div class="games">${Object.entries(EVENT_TYPES).filter(([, t]) => !t.adminOnly || (me.admin && S.evScope === 'club')).map(([k, t]) => `<button class="gamecard" role="radio" aria-checked="${ev.style === k}" data-style="${k}"><span class="radio"></span><span class="who"><strong>${t.name}</strong><small>${t.desc}</small></span></button>`).join('')}</div>`}
       ${EVENT_TYPES[ev.style].formats.length > 1 ? `<div class="card evsec"><label for="ev-fmt">${ev.style === 'ryder' ? 'Match format' : 'Scoring'}</label><select id="ev-fmt" class="plainsel"${begun(ev) ? ' disabled' : ''}>${EVENT_TYPES[ev.style].formats.map(([k, n]) => `<option value="${k}" ${ev.fmt === k ? 'selected' : ''}>${n}</option>`).join('')}</select></div>` : ''}
       ${ev.club && me.admin && ev.style !== 'league' ? `<div class="card evsec"><label for="ev-fee">Entry fee £ <span class="opt">blank: free</span></label><input id="ev-fee" type="number" class="plainsel" min="0" step="0.5" inputmode="decimal" value="${ev.entryFee ? ev.entryFee / 100 : ''}">
         <span class="hint">Shown to members when they enter, with how the club takes it (Club office → Club).</span></div>` : ''}
@@ -165,8 +171,8 @@ export function draw({ members, me }) {
     const avg = ids => (ids.length ? (ids.reduce((t, id) => t + (byId(id)?.hcp ?? 0), 0) / ids.length).toFixed(1) : '–')
     const A = sideIds(ev, 'A'), B = sideIds(ev, 'B')
     body = `<div class="card evsec"><div class="tnames">
-        <div><label for="ev-an">Team name</label><div class="trowin"><input id="ev-an" value="${esc(ev.A.name)}" maxlength="24"><input type="color" id="ev-ac" value="${ev.A.col}" aria-label="Colour"></div></div>
-        <div><label for="ev-bn">Team name</label><div class="trowin"><input id="ev-bn" value="${esc(ev.B.name)}" maxlength="24"><input type="color" id="ev-bc" value="${ev.B.col}" aria-label="Colour"></div></div></div></div>
+        <div><label for="ev-an">Team name</label><div class="trowin"><input id="ev-an" value="${esc(ev.A.name)}" maxlength="24"${viaSeason(ev, me) ? ' disabled' : ''}><input type="color" id="ev-ac" value="${ev.A.col}" aria-label="Colour"${viaSeason(ev, me) ? ' disabled' : ''}></div></div>
+        <div><label for="ev-bn">Team name</label><div class="trowin"><input id="ev-bn" value="${esc(ev.B.name)}" maxlength="24"${viaSeason(ev, me) ? ' disabled' : ''}><input type="color" id="ev-bc" value="${ev.B.col}" aria-label="Colour"${viaSeason(ev, me) ? ' disabled' : ''}></div></div></div></div>
       <div class="tcards"><div style="background:${ev.A.col}"><small>${esc(ev.A.name)}</small><b>${A.length}</b><small>avg index ${avg(A)}</small></div><div style="background:${ev.B.col}"><small>${esc(ev.B.name)}</small><b>${B.length}</b><small>avg index ${avg(B)}</small></div></div>
       ${begun(ev) ? '<div class="hint">Players stay on their team for the whole season. Put anyone new on a team.</div>' : '<div class="bk-btns"><button class="ghost" id="ev-bal">Auto-balance by handicap</button><button class="ghost" id="ev-shuf">Shuffle</button></div>'}
       <div class="card evsec"><div class="tlist">${ev.players.map(id => `<div class="trow"><span class="who"><strong>${esc(name(id))}</strong><small>Index ${fmtHcp(byId(id)?.hcp)}</small></span><span class="tseg">${['A', 'B'].map(t => `<button data-tm="${id}" data-t="${t}" aria-pressed="${teamOf(ev, id) === t}" style="--tc:${ev[t].col}"${begun(ev) && ev.team0?.[id] ? ' disabled' : ''}>${esc(ev[t].name)}</button>`).join('')}</span></div>`).join('')}</div></div>`
@@ -268,7 +274,7 @@ export function draw({ members, me }) {
         <span>Who sees it</span><b>${ev.everyone ? 'All members' : 'Only the players in it'}</b>
         <span>Scoring</span><b>Live from each player’s own card</b></div></div>
       <div class="hint">${ev.season ? `Players see it on their Leaderboard tab on their match days. You can add match days and players until the season ends.` : `Players see it on their Leaderboard tab on the day${ev.days > 1 ? 's' : ''}. ${me.admin ? 'As an admin you can change it any time.' : 'You can change it until the first day.'}`}</div>
-      ${ev.id && !begun(ev) ? '<button class="ghost accremove" id="ev-del">Delete event</button>' : ''}`
+      ${ev.id && (!begun(ev) || me.admin) ? '<button class="ghost accremove" id="ev-del">Delete event</button>' : ''}`
   }
 
   const last = idx === steps.length - 1
@@ -448,7 +454,7 @@ export function draw({ members, me }) {
     if (pairsLeague(ev)) { ev.players = [...new Set(ev.leaguePairs.flat())]; ev.team = {}; ev.teams = [] } // a pairs league: no teams
     $('ev-next').disabled = true
     if (!ev.season) ev.endDate = null
-    try { await (begun(ev) ? api.saveSeason(ev) : api.saveEvent(ev)) } catch (e) { $('ev-err').textContent = e.message; $('ev-next').disabled = false; return }
+    try { await (viaSeason(ev, me) ? api.saveSeason(ev) : api.saveEvent(ev)) } catch (e) { $('ev-err').textContent = e.message; $('ev-next').disabled = false; return }
     const saved = ev.name
     await leave()
     toast(`${saved} saved`)

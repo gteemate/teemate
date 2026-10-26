@@ -32,7 +32,7 @@ export function countsForOptions({ lineup, events, leagueEntries, date, meId }) 
       if (players.length && marked) out.push({ kind: 'league', e, players, week, needsMarker: true })
     } else if (e.entryRequired) {
       const day = dayOfDate(e, date)
-      if (Object.keys(e.matches ?? {}).length) {
+      if (e.season || Object.keys(e.matches ?? {}).length) { // a season counts only on a match day of mine
         const mine = myMatch(e, day, meId), four = mine ? [...mine.a, ...mine.b] : []
         if (mine && four.every(m => onCard.includes(m))) out.push({ kind: 'event', e, players: four, day, match: mine.no, auto: true })
         // A season's singles can be played on different cards: count mine, marked by someone else on my card.

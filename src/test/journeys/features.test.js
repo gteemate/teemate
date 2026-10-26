@@ -197,8 +197,54 @@ describe('four-ball team match play over a season', () => {
     expect(app.main()).toContain('Season ends')
     expect(app.main()).not.toContain('+ Add a match day')
   })
-  it('a played match day can’t be changed, and nobody switches teams', async () => {
+  it('an admin can rename a season that has started', async () => {
     app = await boot(pals)
+    await openSeasonEditor()
+    expect(document.getElementById('ev-name').disabled).toBe(false)
+    await app.type('#ev-name', 'Pals Season 2026')
+    for (let i = 0; i < 5; i++) await app.tap('#ev-next') // through to Save changes
+    expect(app.db.events.find(x => x.id === 900).name).toBe('Pals Season 2026')
+  })
+  it('the organiser of a started season can’t change things only an admin can (team names)', async () => {
+    app = await boot(db => { pals(db); db.members[0].admin = false })
+    await openSeasonEditor()
+    expect(document.getElementById('ev-name').disabled).toBe(true)
+    await app.tap('#ev-next')
+    await app.tap('#ev-next') // Teams
+    expect(document.getElementById('ev-an').disabled).toBe(true)
+    for (let i = 0; i < 3; i++) await app.tap('#ev-next')
+  })
+  it('before it starts: the end date can’t cut off a match day, and the first day can’t move under match days', async () => {
+    app = await boot(db => { pals(db); Object.assign(db.events.at(-1), { startDate: '2026-10-20', days: 60, matches: { 30: [{ a: [0], b: [10] }] } }) })
+    await openSeasonEditor()
+    await app.type('#ev-end', '2026-11-10')
+    await app.tap('#ev-next')
+    expect(app.text()).toContain('after the end date')
+    await app.type('#ev-end', '2026-12-18')
+    await app.type('#ev-date', '2026-10-25')
+    await app.tap('#ev-next')
+    expect(app.text()).toContain('Remove the match days')
+    await app.type('#ev-date', '2026-10-20')
+    for (let i = 0; i < 5; i++) await app.tap('#ev-next')
+  })
+  it('a past match: no booking advice on its page', async () => {
+    app = await boot(palsPlayed)
+    await openSeasonBoard()
+    await app.tap('[data-mday="1"]')
+    expect(app.main()).not.toContain('Book this match')
+    expect(app.main()).not.toContain('Booked')
+  })
+  it('a singles with each of us booked with our own friends: no four-ball booking advice', async () => {
+    app = await boot(db => {
+      pals(db); db.events.at(-1).matches[4] = [{ a: [0], b: [10] }]
+      db.book(0, at(db, 570).id, [12, 9]); db.book(10, at(db, 600).id, [11])
+    })
+    await openSeasonBoard()
+    expect(app.main()).not.toContain('Book your match')
+    expect(app.main()).not.toContain('needs all four')
+  })
+  it('a played match day can’t be changed, and nobody switches teams', async () => {
+    app = await boot(db => { pals(db); db.members[0].admin = false })
     await openSeasonEditor()
     await app.tap('#ev-next')
     await app.tap('#ev-next') // Teams

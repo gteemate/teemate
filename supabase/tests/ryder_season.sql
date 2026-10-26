@@ -59,7 +59,7 @@ begin
   e := t.err(format(s, v, current_date + 116, '{"1":"A","2":"B","3":"B","4":"A"}', jsonb_build_object('1', past, '4', today)));
   perform t.ok('Refuse: a player switching teams', e like '%change teams%', e);
   e := t.err(format(s, v, current_date + 116, '{"1":"A","3":"B","4":"B"}', jsonb_build_object('1', '[{"a":[1,2],"b":[3,4]}]'::jsonb, '4', today)));
-  perform t.ok('Refuse: taking out a player who has played', e is not null, e);
+  perform t.ok('Refuse: taking out a player who has played', e like '%has played%', e);
   e := t.err(format(s, v, current_date + 5, team0, jsonb_build_object('1', past, '4', today, '10', '[{"a":[2],"b":[4]}]'::jsonb)));
   perform t.ok('Refuse: an end date before a match day', e like '%end date%', e);
 

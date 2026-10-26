@@ -29,14 +29,16 @@ export async function loadBoard(id, dayWanted = null) {
   // My match on the day shown (a season: my next match day), and where its players are booked that day (for Book this match / Start scoring).
   const day = e.season ? dayWanted ?? myNextDay(e, me.id) : Math.min(dayWanted ?? (S.evDay || dayOf(e)), e.days), mine = myMatch(e, day, me.id)
   let action = null
-  if (mine) {
+  if (mine && !(e.season && dayDate(e, day) < isoDate(today()))) { // nothing to book for a match day that's gone
     const ids = [...mine.a, ...mine.b], date = dayDate(e, day)
     const sheet = await api.getTeeSheet(date).catch(() => [])
     const name = mid => members.find(x => x.id === mid)?.name ?? 'A player'
     action = { ...matchBooking(ids, sheet, me.id), date, ids, meId: me.id, names: name, eventName: e.name,
       started: (dayCards[day] ?? []).some(c => ids.every(mid => c.lineup.some(x => x.m === mid))) }
+    // A season's singles can be played in each player's own tee time: no "all four together" advice.
+    if (e.season && mine.a.length === 1 && ['apart', 'split'].includes(action.kind)) action = null
     // Rearrange: only when the four are one booking with nobody else on it (so moving it bumps no one).
-    if (action.kind === 'together' && !action.started) {
+    if (action?.kind === 'together' && !action.started) {
       const b = (await api.getMyBookings()).find(x => x.date === date && x.time === action.slot.time)
       const inIt = b?.people.filter(p => p.inBooking) ?? []
       if (b && inIt.length === ids.length && inIt.every(p => p.memberId != null && ids.includes(p.memberId))) action.moveBooking = b.id

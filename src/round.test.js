@@ -98,6 +98,8 @@ describe('countsForOptions: a season only on my match day', () => {
   it('a singles with my opponent on my card: offered for us both, ticked already', () =>
     expect(countsForOptions({ lineup: [{ m: 1 }, { m: 3 }], events: [season()], leagueEntries: [], date: '2026-10-12', meId: 1 }))
       .toEqual([{ kind: 'event', e: season(), players: [1, 3], day: 12, match: 1, auto: true }]))
+  it('a season with no match days yet: not offered', () =>
+    expect(countsForOptions({ lineup: four, events: [season({ matches: {} })], leagueEntries: [], date: D, meId: 1 })).toEqual([]))
   it('a singles on my own card with nobody to mark it: not offered', () =>
     expect(countsForOptions({ lineup: [{ m: 1 }], events: [season()], leagueEntries: [], date: '2026-10-12', meId: 1 })).toEqual([]))
 })
