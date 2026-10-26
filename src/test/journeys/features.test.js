@@ -170,7 +170,7 @@ describe('four-ball team match play over a season', () => {
     expect(e.matches[11].filter(m => m.a.length === 1)).toHaveLength(1)
     expect(e.matches[1]).toEqual([{ a: [0, 9], b: [10, 12] }]) // the played day as it was
   })
-  it('the guided flow: who’s playing, a 3-ball, 12 holes, the day’s points', async () => {
+  it('the guided flow: who’s playing, a 3-ball, the front 9, the day’s points', async () => {
     app = await boot(pals)
     await openSeasonBoard()
     await app.tap('+ Add a match day')
@@ -180,13 +180,13 @@ describe('four-ball team match play over a season', () => {
     await app.tap('#ev-next') // Matches
     await app.tap('[data-add3="B"]') // a Reds pair against a Blue
     await app.tap('#ev-next') // Holes
-    await app.tap('[data-holes="12"]')
+    await app.tap('[data-hpq="md:front"]')
     await app.tap('#ev-next') // Points
     await app.tap('[data-mdpt="threeSingle"][data-d="1"]')
     await app.tap('[data-mdpt="threeSingle"][data-d="1"]') // the single's win worth 3 (up in halves)
     expect(app.main()).toContain('1 match · 3 points available')
     await app.tap('#ev-next') // Confirm
-    expect(app.main()).toContain('12 holes')
+    expect(app.main()).toContain('Holes 1–9')
     await app.tap('#ev-next') // Add match day
     await app.tap('#ev-next') // Review
     await app.tap('#ev-next') // Save changes
@@ -195,7 +195,7 @@ describe('four-ball team match play over a season', () => {
     expect(e.matches[11][0].b).toEqual(expect.arrayContaining([10, 12]))
     expect(e.matches[11][0].a).toHaveLength(1)
     expect(e.matches[11][0].a).not.toContain(11)
-    expect(e.dayRules[11]).toEqual({ holes: 12, points: { four: 1, singles: 1, threePair: 1, threeSingle: 3 } })
+    expect(e.dayRules[11]).toEqual({ holes: [1, 2, 3, 4, 5, 6, 7, 8, 9], points: { four: 1, singles: 1, threePair: 1, threeSingle: 3 } })
   })
   it('points for each match type are set when the event is made', async () => {
     app = await boot(() => {})
@@ -730,5 +730,65 @@ describe('club office: finding a member and adding one', () => {
     await app.tap('#opx')
     await app.tap('[data-o-m]')
     expect(document.querySelector('#modal .opanelwrap').classList.contains('small')).toBe(false)
+  })
+})
+
+describe('open holes: tap each hole that’s open', () => {
+  const start = async name => {
+    await app.tap('Competition'); await app.tap('Events'); await app.tap('+ Create your own event'); await app.tap('#cr-ev')
+    await app.type('#ev-name', name)
+    await app.tap('[data-style="individual"]')
+  }
+  const finish = async () => { await app.tap('#ev-next'); await app.tap('[data-pick="10"]'); await app.tap('[data-pick="12"]'); await app.tap('#ev-next') }
+  it('closing holes 7–9 and 13–18 leaves 1–6 and 10–12, shown on the review and saved', async () => {
+    app = await boot()
+    await start('Short Course Cup')
+    for (const n of [7, 8, 9, 13, 14, 15, 16, 17, 18]) await app.tap(`[data-hp="ev:${n}"]`)
+    expect(document.querySelector('[data-hpick="ev"] .hpcount').textContent).toBe('9 holes open: 1–6, 10–12')
+    await finish()
+    expect(app.main()).toContain('Holes 1–6, 10–12')
+    await app.tap('#ev-next') // Save event
+    expect(app.db.events.find(e => e.name === 'Short Course Cup').holes).toEqual([1, 2, 3, 4, 5, 6, 10, 11, 12])
+  })
+  it('Back 9, then All 18: saved as all 18', async () => {
+    app = await boot()
+    await start('All Holes Cup')
+    await app.tap('[data-hpq="ev:back"]')
+    expect(document.querySelector('[data-hpick="ev"] .hpcount').textContent).toBe('9 holes open: 10–18')
+    await app.tap('[data-hpq="ev:all"]')
+    await finish(); await app.tap('#ev-next')
+    expect(app.db.events.find(e => e.name === 'All Holes Cup').holes).toBe(null)
+  })
+  it('with every hole closed you can’t go on', async () => {
+    app = await boot()
+    await start('No Holes Cup')
+    await app.tap('[data-hpq="ev:front"]')
+    for (let n = 1; n <= 9; n++) await app.tap(`[data-hp="ev:${n}"]`)
+    expect($ev('#ev-next').disabled).toBe(true)
+    expect($ev('#ev-next').textContent).toBe('Open at least one hole')
+  })
+  it('a two-day event: day 2 on its own holes', async () => {
+    app = await boot()
+    await start('Two Day Cup')
+    await app.tap('[data-days="2"]')
+    await app.tap('[data-evhd="2"]')
+    await app.tap('[data-hpq="d2:front"]')
+    for (let n = 4; n <= 9; n++) await app.tap(`[data-hp="d2:${n}"]`)
+    expect(app.main()).toContain('Holes 1–3')
+    await finish()
+    expect(app.main()).toContain('All 18 · day 2: holes 1–3')
+    await app.tap('#ev-next')
+    expect(app.db.events.find(e => e.name === 'Two Day Cup').dayRules).toEqual({ 2: { holes: [1, 2, 3] } })
+  })
+})
+const $ev = sel => document.querySelector(sel)
+describe('open holes: shown wherever the event is described', () => {
+  it('the club office’s list and detail say which holes', async () => {
+    app = await boot(db => { db.asOffice = true; const e = db.events.find(x => x.club && x.style !== 'league'); e.holes = [1, 2, 3, 4, 5, 6, 10, 11, 12]; db.holesEv = e.name })
+    await app.tap('[data-ov="comps"]')
+    const row = [...document.querySelectorAll('[data-o-comp]')].find(b => b.textContent.includes(app.db.holesEv))
+    expect(row.textContent).toContain('Holes 1–6, 10–12')
+    await app.tap(`[data-o-comp="${row.dataset.oComp}"]`)
+    expect(document.querySelector('.odetail .ohead').textContent).toContain('Holes 1–6, 10–12')
   })
 })

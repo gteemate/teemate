@@ -1,6 +1,7 @@
 // Club office → Competitions: everything the club runs in one list (club events and leagues, sign-up
 // competitions and their knockouts). Pick one to see it beside the list: a knockout shows its whole bracket.
 // Members' own events, leagues and knockouts stay with them.
+import { holesText } from '../open-holes.js'
 import * as api from '../api.js'
 import { S } from '../state.js'
 import { $, esc, header, keepScroll, render, redraw, toast, top0 } from '../ui.js'
@@ -45,7 +46,7 @@ export function draw({ evs, comps, kos, members, t }) {
   }
   const line = x => x.c && isTemplate(x) ? `${CAT[x.c.category]} · ${x.c.kind === 'pairs' ? 'pairs' : 'singles'}${champ(x) != null ? ` · last won by ${esc(entryName(champ(x), kos[x.key].entries, members))}` : ''}`
     : x.c ? `${CAT[x.c.category]} · ${x.c.kind === 'pairs' ? 'pairs' : 'singles'} · ${x.n}${x.c.maxEntries ? ` of ${x.c.maxEntries}` : ''} entered`
-    : x.e.style === 'league' ? `League · ${x.e.weeks} weeks${x.e.koTop ? ` · top ${x.e.koTop} to a knockout` : ''}` : `${EVENT_TYPES[x.e.style]?.name ?? 'Event'} · ${eventWhen(x.e)}`
+    : `${x.e.style === 'league' ? `League · ${x.e.weeks} weeks${x.e.koTop ? ` · top ${x.e.koTop} to a knockout` : ''}` : `${EVENT_TYPES[x.e.style]?.name ?? 'Event'} · ${eventWhen(x.e)}`}${holesText(x.e.holes) ? ` · ${holesText(x.e.holes)}` : ''}`
   const row = x => `<button class="orow obtn ocomp" data-o-comp="${x.key}" aria-pressed="${x === sel}"><span class="ot"><b>${esc(x.c?.name ?? x.e.name)}</b><span>${line(x)}</span></span>${tag(x)}</button>`
 
   $('main').innerHTML = `<div class="screen office">
@@ -125,7 +126,7 @@ function runForm(x, ko, champ, members, t) {
 function detail(x, ko, members, t) {
   if (x.e) {
     const e = x.e, wk = e.style === 'league' ? leagueWeek(e, t) : 0
-    return `<div class="ohead"><div><h4>${esc(e.name)}</h4><p class="hint">${e.style === 'league' ? `${e.weeks}-week league from ${eventDates(e.startDate, 1)}${wk > 0 && wk <= e.weeks ? ` · week ${wk}` : ''}` : eventWhen(e)}</p></div><span class="oacts"><button class="ghost sm accremove" id="o-del">Delete</button></span></div>
+    return `<div class="ohead"><div><h4>${esc(e.name)}</h4><p class="hint">${e.style === 'league' ? `${e.weeks}-week league from ${eventDates(e.startDate, 1)}${wk > 0 && wk <= e.weeks ? ` · week ${wk}` : ''}` : eventWhen(e)}${holesText(e.holes) ? ` · ${holesText(e.holes)}` : ''}</p></div><span class="oacts"><button class="ghost sm accremove" id="o-del">Delete</button></span></div>
       <div class="olist">
         <div class="orow"><span class="ot"><b>${e.style === 'league' ? 'Table and results' : 'Leaderboard'}</b><span>${e.players.length} player${e.players.length === 1 ? '' : 's'}${e.everyone ? ' · everyone can play' : ''}${e.entryFee ? ` · entry ${money(e.entryFee)}` : ''}</span></span><span class="oacts"><button class="ghost sm" data-o-go="board:${e.id}">Open</button></span></div>
         <div class="orow"><span class="ot"><b>Settings</b><span>Dates, format, who plays</span></span><span class="oacts"><button class="ghost sm" data-o-go="edit:${e.id}">Edit</button></span></div>

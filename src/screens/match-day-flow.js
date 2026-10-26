@@ -6,7 +6,8 @@ import { esc, sur } from '../ui.js'
 import { eventDates, isoDate, today } from '../dates.js'
 import { dayDate, dayOfDate, drawDay } from '../season.js'
 import { DEFAULT_POINTS, dayRules, matchType } from '../match-scoring.js'
-const HOLE_CHOICES = [18, 14, 12, 9, 6] // replaced by the hole picker
+import { holesText } from '../open-holes.js'
+import { holePickerHtml, bindHolePicker, noneOpen } from './hole-picker.js'
 
 const STEPS = ['date', 'players', 'matches', 'holes', 'points', 'confirm']
 const TYPE = { four: 'Four-ball', singles: 'Singles', three: '3-ball' }
@@ -18,7 +19,7 @@ const fmtPts = n => (Number.isInteger(n) ? String(n) : `${Math.floor(n) || ''}½
 export function openFlow(ev, d = null) {
   const sides = ['A', 'B'].flatMap(t => ev.players.filter(id => ev.team[id] === t))
   const eventId = ev.id ?? 'new'
-  if (d == null) { S.mdFlow = { eventId, d: null, step: 'date', first: 'date', isNew: true, playing: sides, matches: [], points: { ...DEFAULT_POINTS, ...(ev.points ?? {}) }, holes: 18 }; return }
+  if (d == null) { S.mdFlow = { eventId, d: null, step: 'date', first: 'date', isNew: true, playing: sides, matches: [], points: { ...DEFAULT_POINTS, ...(ev.points ?? {}) }, holes: null }; return }
   const r = dayRules(ev, d), inDay = (ev.matches[d] ?? []).flatMap(m => [...m.a, ...m.b])
   S.mdFlow = { eventId, d, step: 'players', first: 'players', isNew: !(ev.matches[d] ?? []).length, playing: inDay.length ? sides.filter(id => inDay.includes(id)) : sides,
     matches: structuredClone(ev.matches[d] ?? []), holes: r.holes, points: r.points }
@@ -68,8 +69,8 @@ export function flowHtml(ev, f, name) {
       <div class="bk-btns"><button class="ghost" data-drawday="${d}">Draw</button></div>`
   }
   if (f.step === 'holes') {
-    return `${when}<div class="hint">Handicaps are scaled to the holes played (from hole 1): 18 shots become 12 over 12 holes.</div>
-      <div class="daychips">${HOLE_CHOICES.map(n => `<button data-holes="${n}" aria-pressed="${f.holes === n}">${n}</button>`).join('')}</div>`
+    return `${when}<div class="hint">Tap a hole to open or close it. Handicaps are scaled to the holes played: 18 shots become 9 over 9 holes, on the hardest of them.</div>
+      ${holePickerHtml(f.holes, 'md')}`
   }
   const types = new Set(f.matches.map(matchType))
   const used = POINTS.filter(([k]) => (k === 'four' ? types.has('four') : k === 'singles' ? types.has('singles') : types.has('three')))
@@ -83,7 +84,7 @@ export function flowHtml(ev, f, name) {
       <span>Date</span><b>${d ? eventDates(dayDate(ev, d), 1) : ''}</b>
       <span>Playing</span><b>${f.playing.length} players</b>
       <span>Matches</span><b>${f.matches.map(m => `${typeName(m)}: ${m.a.map(id => esc(sur(name(id)))).join(' & ')} v ${m.b.map(id => esc(sur(name(id)))).join(' & ')}`).join('<br>')}</b>
-      <span>Holes</span><b>${f.holes} holes</b>
+      <span>Holes</span><b>${holesText(f.holes) || 'All 18 holes'}</b>
       <span>Points</span><b>${used.map(([k, label]) => `${label} ${fmtPts(f.points[k])}`).join('<br>')}</b></div></div>
     <div class="hint"><b>${total}</b></div>`
 }
@@ -102,7 +103,7 @@ export function bindFlow(ev, f, redraw, setError) {
   on('[data-add4],[data-add1]', b => { const n = b.dataset.add4 ? 2 : 1; f.matches.push({ a: freeOf(ev, f, 'A').slice(0, n), b: freeOf(ev, f, 'B').slice(0, n) }); redraw() })
   on('[data-add3]', b => { const pairA = b.dataset.add3 === 'A'; f.matches.push({ a: freeOf(ev, f, 'A').slice(0, pairA ? 2 : 1), b: freeOf(ev, f, 'B').slice(0, pairA ? 1 : 2) }); redraw() })
   on('[data-drawday]', () => { f.matches = drawDay(f.playing.filter(id => ev.team[id] === 'A'), f.playing.filter(id => ev.team[id] === 'B')); S.evSwap = null; redraw() })
-  on('[data-holes]', b => { f.holes = +b.dataset.holes; redraw() })
+  bindHolePicker('md', () => f.holes, v => { f.holes = v; redraw() })
   on('[data-mdpt]', b => { const k = b.dataset.mdpt; f.points = { ...f.points, [k]: Math.max(0, Math.min(10, f.points[k] + +b.dataset.d / 2)) }; redraw() })
 }
 
@@ -119,6 +120,7 @@ export function flowNext(ev, f) {
   if (f.step === 'date') return dateProblem(ev, f) || ((f.step = 'players'), '')
   if (f.step === 'players' && (!f.playing.some(id => ev.team[id] === 'A') || !f.playing.some(id => ev.team[id] === 'B'))) return 'Pick at least one player from each team.'
   if (f.step === 'matches' && !f.matches.length) return 'Add at least one match.'
+  if (f.step === 'holes' && noneOpen(f.holes)) return 'Open at least one hole.'
   if (f.step !== 'confirm') { f.step = STEPS[STEPS.indexOf(f.step) + 1]; return '' }
   ev.matches = { ...ev.matches, [f.d]: f.matches }
   ev.dayRules = { ...(ev.dayRules ?? {}), [f.d]: { holes: f.holes, points: f.points } }

@@ -907,3 +907,12 @@ details.oboard[open] > summary::before{transform:rotate(90deg)}
 .oaz button{min-width:26px;height:30px;padding:0 5px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:600 13px var(--sys);cursor:pointer}
 .oaz button[aria-pressed="true"]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
 .oaz button:disabled{opacity:.3;cursor:default}
+
+/* Hole picker: tap each open hole (hole-picker.js) */
+.hpick{display:flex;flex-direction:column;gap:8px;margin:6px 0}
+.hpgrid{display:grid;grid-template-columns:repeat(9,1fr);gap:5px}
+.hpgrid .hp{height:38px;min-width:0;border-radius:9px;border:1px solid var(--line);background:var(--surface);color:var(--muted);font:700 14px var(--sys);cursor:pointer;opacity:.55}
+.hpgrid .hp.on{background:var(--accent,var(--gold));border-color:transparent;color:var(--bg);opacity:1}
+.hpquick{display:flex;gap:6px;flex-wrap:wrap}
+.hpquick button[aria-pressed="true"]{border-color:var(--ink)}
+.hpdays{display:flex;flex-direction:column;gap:4px;margin-top:6px;border-top:1px solid var(--line);padding-top:6px}

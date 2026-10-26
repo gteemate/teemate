@@ -1,6 +1,7 @@
 // Competitions (the Competition tile on Home): Entered (everything I'm in, match invitations to answer first, and
 // the season competitions I've signed up for), Events (season competitions I can still sign up for) and History,
 // plus today's field and Create your own event. Lists from competitions.js and signups.js (tested).
+import { holesText } from '../open-holes.js'
 import * as api from '../api.js'
 import { S } from '../state.js'
 import { $, esc, ini, header, keepScroll, render, redraw, top0, toast } from '../ui.js'
@@ -38,7 +39,7 @@ export function draw({ dayBoard = true, me, date, members, friends, signups, cou
     if (x.kind === 'match') return `<button class="card comp" data-n="${n}"><span class="row"><span class="ct">${esc(eventFormatName(e.format))} match</span><span class="pill live">● Live</span></span>
       <span class="sub">Today · ${e.groups.map(g => hhmm(g.time)).join(' v ')}</span><span class="row"><span></span><span class="link">Leaderboard ›</span></span></button>`
     const when = x.running ? (x.kind === 'league' ? (x.week > x.weeks ? 'Season over: knockout next' : `Week ${x.week} of ${x.weeks}`) : 'On now') : `Starts ${eventDates(e.startDate, 1)}`
-    const what = x.kind === 'league' ? `${e.weeks} weeks · best ${e.bestOf} count${teamOf(e) ? ` · ${esc(teamOf(e))}` : ''}` : `${eventWhen(e)} · ${FORMAT[e.style] ?? ''}${e.club ? ' · club' : ''}`
+    const what = x.kind === 'league' ? `${e.weeks} weeks · best ${e.bestOf} count${teamOf(e) ? ` · ${esc(teamOf(e))}` : ''}` : `${eventWhen(e)} · ${FORMAT[e.style] ?? ''}${e.club ? ' · club' : ''}${holesText(e.holes) ? ` · ${holesText(e.holes)}` : ''}`
     const bars = x.kind === 'league' ? `<span class="cprog">${Array.from({ length: x.weeks }, (_, i) => `<i class="${i + 1 < x.week ? 'wk-done' : i + 1 === x.week && x.running ? 'wk-now' : ''}"></i>`).join('')}</span>` : ''
     const action = `<span class="link">${tab === 'history' ? 'Results' : 'Leaderboard'} ›</span>`
     const edit = tab === 'entered' && canEdit(e, me) ? `<button class="linkbtn" data-edit="${e.id}">Edit</button>` : '<span></span>'
