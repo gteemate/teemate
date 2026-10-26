@@ -5,7 +5,8 @@ import { S } from '../state.js'
 import { esc, sur } from '../ui.js'
 import { eventDates, isoDate, today } from '../dates.js'
 import { dayDate, dayOfDate, drawDay } from '../season.js'
-import { DEFAULT_POINTS, HOLE_CHOICES, dayRules, matchType } from '../match-scoring.js'
+import { DEFAULT_POINTS, dayRules, matchType } from '../match-scoring.js'
+const HOLE_CHOICES = [18, 14, 12, 9, 6] // replaced by the hole picker
 
 const STEPS = ['date', 'players', 'matches', 'holes', 'points', 'confirm']
 const TYPE = { four: 'Four-ball', singles: 'Singles', three: '3-ball' }

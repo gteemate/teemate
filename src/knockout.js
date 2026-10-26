@@ -1,6 +1,7 @@
 // Knockout draws: round names, my next match, what I can do on a match, names for entries, the champion, and a
 // match's state from its scorecard.
 // Plain functions of what the api returns, tested in knockout.test.js. The server does the draw and moves winners on.
+import { scaleHcp } from './open-holes.js'
 import { addDaysIso } from './dates.js'
 import { gameState, playingHandicaps } from './scoring.js'
 
@@ -53,7 +54,7 @@ export function koSpec(spec, pairs) {
 }
 
 /**
- * A knockout match from its scorecard. card = { lineup, scores, done } (holes saved in order); sides = [side A's member
+ * A knockout match from its scorecard. card = { lineup, scores, done } (holes saved in order); holes: the round's open holes; sides = [side A's member
  * ids, side B's]; ch(memberId) = course handicap; spec from koSpec. Side A plays side B whatever order the card is in.
  * → { run (side A's lead after each hole), thru, finished, text ('3&2', '1 up', 'Halved', 'All square'), lead: 0 | 1 | null,
  *     players: [{ id, side, gross: [per hole], ph }] } — or null when the card doesn't have both sides on it.
@@ -62,9 +63,10 @@ export function koCardState(card, holes, sides, ch, spec) {
   const ids = sides.flat(), idx = ids.map(id => card.lineup.findIndex(x => x.m === id))
   if (!ids.length || idx.includes(-1) || sides.some(s => !s.length)) return null
   const pairs = sides[0].length === 2 && sides[1].length === 2
-  const phs = playingHandicaps(ids.map(ch), spec.allow, spec.offLow)
-  const scores = card.scores.map(row => idx.map(k => row[k]))
-  const first = card.done.findIndex(d => !d), played = first === -1 ? card.done.length : first
+  const phs = playingHandicaps(ids.map(ch), spec.allow, spec.offLow).map(x => scaleHcp(x, holes.length))
+  const at = holes.map((h, i) => h.i ?? i) // the round's holes on the card (open-holes.js)
+  const scores = at.map(c => idx.map(k => card.scores[c][k]))
+  const first = at.findIndex(c => !card.done[c]), played = first === -1 ? at.length : first
   const g = gameState({ kind: pairs ? 'match' : 'match1', cmp: spec.cmp }, holes, phs, scores, played, [0, 1, 2, 3]).match
   return {
     run: g.running, thru: g.thru, finished: g.finished, text: g.text, lead: g.lead === 'A' ? 0 : g.lead === 'B' ? 1 : null,

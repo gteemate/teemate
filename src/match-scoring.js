@@ -2,26 +2,18 @@
 // (1 v 1) or a 3-ball (2 v 1, the pair's better ball against the single), over the day's holes (from hole 1, with
 // handicaps scaled to them), hole by hole (better ball off the low, Stableford points, scratch) or by Stableford
 // points totalled over the holes. Each team's points for a win come from the day's points; a halve is half of each.
+import { holesFor, scaleHcp } from './open-holes.js'
 import { playingHandicaps, stablefordPoints, matchProgress } from './scoring.js'
 
 export const DEFAULT_POINTS = { four: 1, singles: 1, threePair: 1, threeSingle: 2 }
-export const HOLE_CHOICES = [18, 14, 12, 9, 6]
 
 /** 'four' (2 v 2), 'singles' (1 v 1) or 'three' (2 v 1, either way round). */
 export const matchType = m => (m.a.length + m.b.length === 4 ? 'four' : m.a.length + m.b.length === 2 ? 'singles' : 'three')
 
-/** A match day's holes and points: the day's own, over the event's points, over the defaults. */
+/** A match day's holes (open-holes.js: null = all 18) and points: the day's own, over the event's, over the defaults. */
 export function dayRules(e, d) {
   const day = e.dayRules?.[d] ?? {}
-  return { holes: day.holes ?? 18, points: { ...DEFAULT_POINTS, ...(e.points ?? {}), ...(day.points ?? {}) } }
-}
-
-/** Each of the first n holes' rank by stroke index among them (1 = hardest), for giving shots on a short day. */
-export function holeRanks(holes, n) {
-  const order = holes.slice(0, n).map((h, i) => [h.si, i]).sort((x, y) => x[0] - y[0])
-  const rank = Array(n)
-  order.forEach(([, i], k) => (rank[i] = k + 1))
-  return rank
+  return { holes: holesFor(e, d), points: { ...DEFAULT_POINTS, ...(e.points ?? {}), ...(day.points ?? {}) } }
 }
 
 /** Shots on a hole of rank `rank` over n holes. Plus handicaps give shots back from the easiest holes. */
@@ -33,25 +25,25 @@ export function shotsOn(ph, rank, n = 18) {
 
 /**
  * Score a match. a, b: [{ id, courseHcp, gross: [18] }] (team A's side, team B's side). fmt: 'bbl' | 'bbstab' | 'bbscr'
- * | 'stabtot'. allow: { four, singles, stab } as fractions. holesPlayed: the day's holes. points: the day's points.
+ * | 'stabtot'. allow: { four, singles, stab } as fractions. holes: the day's open holes (openCourse). points: the day's points.
  * → { res: { st: 'ns'|'live'|'done', d, txt, thru }, match (as matchProgress), win: { A, B }, ph: { [id]: shots } }
  */
-export function scoreMatch({ holes, a, b, fmt, allow, holesPlayed = 18, points = DEFAULT_POINTS }) {
-  const n = Math.min(holesPlayed, holes.length), rank = holeRanks(holes, n), all = [...a, ...b]
+export function scoreMatch({ holes, a, b, fmt, allow, points = DEFAULT_POINTS }) {
+  const n = holes.length, all = [...a, ...b]
   const type = matchType({ a, b })
   // Handicaps: Stableford total at each player's own (no off the low); a singles always off the low (as the club
   // knockout); a four-ball or 3-ball off the low only for 'bbl'. Scratch gives none. Then scaled to the holes.
   const total = fmt === 'stabtot'
   const pct = total ? allow.stab : fmt === 'bbscr' ? 0 : type === 'singles' ? allow.singles : allow.four
   const offLow = !total && (type === 'singles' || fmt === 'bbl')
-  const ph = playingHandicaps(all.map(p => p.courseHcp), pct, offLow).map(x => Math.round((x * n) / 18))
+  const ph = playingHandicaps(all.map(p => p.courseHcp), pct, offLow).map(x => scaleHcp(x, n))
   const cmpPts = total || fmt === 'bbstab'
   let thru = 0
   while (thru < n && all.every(p => p.gross[thru] != null)) thru++
   // Each side's best on each hole played: lowest net, or most Stableford points.
   const best = (side, from, i) => {
     const vals = side.map((p, k) => {
-      const sh = shotsOn(ph[from + k], rank[i], n)
+      const sh = shotsOn(ph[from + k], holes[i].si, n)
       return cmpPts ? stablefordPoints(p.gross[i], holes[i].par, sh) : p.gross[i] - sh
     })
     return cmpPts ? Math.max(...vals) : Math.min(...vals)

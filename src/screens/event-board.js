@@ -226,7 +226,7 @@ function leagueHtml({ e, members, course, L, entries, cards, me }, top) {
           return { p, v: p.total, has: p.rounds > 0, counts: false, note: p.rounds ? `${p.rounds} round${p.rounds === 1 ? '' : 's'} · counted ${counted}×` : 'no rounds yet' }
         }
         const pw = p.perWeek[wk]
-        return { p, v: pw ? pw.pts : null, has: !!pw, counts: w.counting.includes(p.id), note: pw ? (pw.thru === 18 ? 'Finished' : `thru ${pw.thru} <span class="livedot">● live</span>`) : 'not entered' }
+        return { p, v: pw ? pw.pts : null, has: !!pw, counts: w.counting.includes(p.id), note: pw ? (pw.done ? 'Finished' : `thru ${pw.thru} <span class="livedot">● live</span>`) : 'not entered' }
       }).sort((a, b) => b.has - a.has || (b.v ?? 0) - (a.v ?? 0) || a.p.name.localeCompare(b.p.name))
       return `<details class="lgteam${t.idx === myTeam ? ' me' : ''}" data-lgteam="${t.idx}" ${S.lgOpen.has(t.idx) ? 'open' : ''}>
         <summary class="lbrow"><span class="lpos">${pos}</span><span class="av" style="border-color:${t.col}">${ini(t.name)}</span><span class="who"><strong>${esc(t.name)}${t.idx === myTeam ? ' (your team)' : ''}</strong><small>${sub}</small></span><span class="lval">${v}</span></summary>
@@ -236,13 +236,13 @@ function leagueHtml({ e, members, course, L, entries, cards, me }, top) {
     <div class="hint">${wk === 'season' ? 'Tap a team to see its players’ season points.' : `Tap a team to see its players. Highlighted scores are the best ${e.bestOf} that count this week.`} <button class="linkbtn" id="lg-all">${S.lgOpen.size === r.teams.length ? 'Close all' : 'Open all'}</button></div>`
   } else {
     const rows = r.players.filter(p => (wk === 'season' ? p.rounds : p.perWeek[wk]))
-      .map(p => ({ ...p, v: wk === 'season' ? p.total : p.perWeek[wk].pts, thru: wk === 'season' ? null : p.perWeek[wk].thru }))
+      .map(p => ({ ...p, v: wk === 'season' ? p.total : p.perWeek[wk].pts, thru: wk === 'season' ? null : p.perWeek[wk].thru, done: wk !== 'season' && p.perWeek[wk].done }))
       .sort((a, b) => b.v - a.v)
     let pos = 0, prev = null
     body = rows.length ? `<div class="lblist">${rows.map((p, i) => {
       if (p.v !== prev) { pos = i + 1; prev = p.v }
       const t = e.teams[p.team]
-      return `<div class="lbrow${p.id === me.id ? ' me' : ''}"><span class="lpos">${pos}</span><span class="av" style="border-color:${t?.col}">${ini(p.name)}</span><span class="who"><strong>${esc(p.name)}${p.id === me.id ? ' (you)' : ''}</strong><small>${esc(t?.name ?? '')} · ${wk === 'season' ? `${p.rounds} round${p.rounds === 1 ? '' : 's'}` : p.thru === 18 ? 'Finished' : `thru ${p.thru} <span class="livedot">● live</span>`}</small></span><span class="lval">${p.v}</span></div>`
+      return `<div class="lbrow${p.id === me.id ? ' me' : ''}"><span class="lpos">${pos}</span><span class="av" style="border-color:${t?.col}">${ini(p.name)}</span><span class="who"><strong>${esc(p.name)}${p.id === me.id ? ' (you)' : ''}</strong><small>${esc(t?.name ?? '')} · ${wk === 'season' ? `${p.rounds} round${p.rounds === 1 ? '' : 's'}` : p.done ? 'Finished' : `thru ${p.thru} <span class="livedot">● live</span>`}</small></span><span class="lval">${p.v}</span></div>`
     }).join('')}</div>` : '<div class="empty-state">No rounds entered yet.</div>'
   }
   const notYet = now === 0
@@ -272,7 +272,7 @@ function pairsLeagueHtml(e, rows, me, top) {
   const list = wk === 'season' ? rows : rows.filter(p => p.perWeek[wk]).map(p => ({ ...p, v: p.perWeek[wk].pts })).sort((a, b) => b.v - a.v)
   const sur = n => n.split(' ').slice(-1)[0]
   const body = list.length ? `<div class="lblist">${list.map((p, i) => `<div class="lbrow${p.pair.includes(me.id) ? ' me' : ''}"><span class="lpos">${wk === 'season' ? `${p.tied ? 'T' : ''}${p.pos}` : i + 1}</span>
-      <span class="who"><strong>${esc(sur(p.names[0]))} & ${esc(sur(p.names[1]))}</strong><small>${wk === 'season' ? `${p.rounds} of ${e.weeks} weeks together` : p.perWeek[wk].thru === 18 ? 'Finished' : `thru ${p.perWeek[wk].thru}`}</small></span>
+      <span class="who"><strong>${esc(sur(p.names[0]))} & ${esc(sur(p.names[1]))}</strong><small>${wk === 'season' ? `${p.rounds} of ${e.weeks} weeks together` : p.perWeek[wk].done ? 'Finished' : `thru ${p.perWeek[wk].thru}`}</small></span>
       <span class="hcp">${wk === 'season' ? p.total : p.v}<small>pts</small></span></div>`).join('')}</div>` : '<div class="empty-state">No pairs have played together yet.</div>'
   return `<div class="screen">${top}
     <div class="matchline"><b style="color:var(--ink)">Pairs league · better-ball Stableford</b><span>${e.weeks} weeks · week ${Math.max(1, now)}</span></div>

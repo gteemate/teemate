@@ -43,7 +43,7 @@ export function stablefordPoints(gross, par, shots) {
 
 /** Everything about one hole for one group: shots, nets, points, and the best of each side. */
 export function holeCalc(hole, gross, phs, order = [0, 1, 2, 3]) {
-  const sh = phs.map(ph => shotsOnHole(ph, hole.si))
+  const sh = phs.map(ph => shotsOnHole(ph, hole.si, hole.of))
   const net = gross.map((g, k) => g - sh[k])
   const pts = gross.map((g, k) => stablefordPoints(g, hole.par, sh[k]))
   const [a1, a2, b1, b2] = order
@@ -138,13 +138,13 @@ export function gameState(game, holes, phs, scores, played, order = [0, 1, 2, 3]
   const calcs = holes.slice(0, played).map((h, i) => holeCalc(h, scores[i], phs, order))
 
   if (game.kind === 'match') {
-    const m = matchProgress(calcs.map(c => betterBallWinner(c, game.cmp)))
+    const m = matchProgress(calcs.map(c => betterBallWinner(c, game.cmp)), holes.length)
     m.running.forEach(diff => perHole.push({ diff }))
     return { holes: perHole, totals, thru: m.thru, finished: m.finished, match: m }
   }
   if (game.kind === 'match1') {
     // Head to head (two players): player 0 against player 1, on points or net.
-    const m = matchProgress(calcs.map(c => (game.cmp === 'pts' ? Math.sign(c.pts[0] - c.pts[1]) : Math.sign(c.net[1] - c.net[0]))))
+    const m = matchProgress(calcs.map(c => (game.cmp === 'pts' ? Math.sign(c.pts[0] - c.pts[1]) : Math.sign(c.net[1] - c.net[0]))), holes.length)
     m.running.forEach(diff => perHole.push({ diff }))
     return { holes: perHole, totals, thru: m.thru, finished: m.finished, match: m }
   }
@@ -154,12 +154,12 @@ export function gameState(game, holes, phs, scores, played, order = [0, 1, 2, 3]
       share.forEach((p, k) => (totals[k] += p))
       perHole.push({ pts: share[0], share })
     })
-    return { holes: perHole, totals, thru: played, finished: played === HOLES_IN_ROUND }
+    return { holes: perHole, totals, thru: played, finished: played === holes.length }
   }
   if (game.kind === 'skins') {
     const s = skins(calcs.map(c => c.net), n)
     s.winners.forEach(winner => perHole.push({ winner }))
-    return { holes: perHole, totals: s.totals, carry: s.carry, thru: played, finished: played === HOLES_IN_ROUND }
+    return { holes: perHole, totals: s.totals, carry: s.carry, thru: played, finished: played === holes.length }
   }
   calcs.forEach((c, i) => {
     if (game.kind === 'stab') {
@@ -170,14 +170,14 @@ export function gameState(game, holes, phs, scores, played, order = [0, 1, 2, 3]
       perHole.push({ toPar: c.net[0] - holes[i].par })
     }
   })
-  return { holes: perHole, totals, thru: played, finished: played === HOLES_IN_ROUND }
+  return { holes: perHole, totals, thru: played, finished: played === holes.length }
 }
 
 /** One player's round so far for the leaderboard: gross and net to par, Stableford, birdies, eagles. */
 export function roundSummary(holes, gross, ch) {
   let g = 0, n = 0, pts = 0, bd = 0, eag = 0
   gross.forEach((sc, i) => {
-    const { par, si } = holes[i], sh = shotsOnHole(ch, si)
+    const { par, si, of } = holes[i], sh = shotsOnHole(ch, si, of)
     g += sc - par
     n += sc - sh - par
     pts += stablefordPoints(sc, par, sh)
