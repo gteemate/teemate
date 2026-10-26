@@ -606,3 +606,20 @@ describe('club office: deleting a competition', () => {
     expect(app.db.events.some(x => x.id === e.id)).toBe(false)
   })
 })
+
+describe('club office: one competition’s entries and settings', () => {
+  it('opens a page for that competition only, and Back returns to Competitions', async () => {
+    app = await boot(db => { db.asOffice = true; db.signupEntries.push({ id: 80, compId: 1, memberId: 3, partnerId: null }) })
+    await app.tap('[data-ov="comps"]')
+    await app.tap('[data-o-comp="s:1"]')
+    await app.tap('Entries and settings')
+    expect(app.screen()).toBe('Men’s Match Play')
+    expect(document.getElementById('sc-name').value).toBe('Men’s Match Play')
+    expect(app.main()).toContain('Entered (1)')
+    expect(app.main()).toContain("Ciarán O'Neill")
+    expect(app.main()).not.toContain('Ladies Singles') // no list of every competition
+    expect(document.getElementById('ovl')).toBeNull() // a page, not a pop-up over the list
+    await app.back()
+    expect(app.screen()).toBe('Competitions')
+  })
+})

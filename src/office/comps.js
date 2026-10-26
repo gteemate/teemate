@@ -67,7 +67,7 @@ export function draw({ evs, comps, kos, members, t }) {
     if (what === 'board') Object.assign(S, { evId: +id, evDay: 1, lgWeek: null, aview: 'evboard' })
     if (what === 'edit') Object.assign(S, { ev: null, evId: +id, evStep: 1, evScope: 'club', aview: 'event' })
     if (what === 'draw') Object.assign(S, { koComp: +id, koRound: null, koFrom: 'office', aview: 'ko' })
-    if (what === 'signups') S.aview = 'signups'
+    if (what === 'signups') Object.assign(S, { aview: 'signups', signupOnly: id ? +id : null }) // one competition's page
   })))
   document.querySelectorAll('[data-o-card]').forEach(b => (b.onclick = () => go(() => { const [mid, cid] = b.dataset.oCard.split(':'); Object.assign(S, { koCard: +mid, koComp: +cid, kcFrom: 'office', aview: 'kocard' }) })))
   if ($('o-run')) $('o-run').onclick = async () => {
@@ -134,7 +134,7 @@ function detail(x, ko, members, t) {
   }
   const c = x.c
   const head = `<div class="ohead"><div><h4>${esc(c.name)}</h4><p class="hint">${CAT[c.category]} ${c.kind === 'pairs' ? 'pairs' : 'singles'} · ${x.n}${c.maxEntries ? ` of ${c.maxEntries}` : ''} entered${c.closesOn ? ` · entries ${c.closesOn >= t ? 'close' : 'closed'} ${eventDates(c.closesOn, 1)}` : ''}</p>${c.entryFee ? `<p class="hint">Entry ${money(c.entryFee)}${c.kind === 'pairs' ? ' each' : ''} · ${feeTotal(c.kind === 'pairs' ? c.entryFee * 2 : c.entryFee, x.n).split(' · ')[1]}</p>` : ''}</div>
-    <span class="oacts"><button class="ghost sm accremove" id="o-del">Delete</button><button class="ghost sm" data-o-go="signups">Entries and settings</button>${ko?.matches.length ? `<button class="primary sm" data-o-go="draw:${c.id}">${c.drawPublished ? 'Set results' : 'Make the draw'}</button>` : x.n > 1 ? `<button class="primary sm" data-o-go="draw:${c.id}">Make the draw</button>` : ''}</span></div>`
+    <span class="oacts"><button class="ghost sm accremove" id="o-del">Delete</button><button class="ghost sm" data-o-go="signups:${c.id}">Entries and settings</button>${ko?.matches.length ? `<button class="primary sm" data-o-go="draw:${c.id}">${c.drawPublished ? 'Set results' : 'Make the draw'}</button>` : x.n > 1 ? `<button class="primary sm" data-o-go="draw:${c.id}">Make the draw</button>` : ''}</span></div>`
   if (!ko?.matches.length) return `${head}<div class="empty-state">${x.n ? 'No draw yet. Make it once entries close.' : 'Nobody has entered yet.'}</div>`
   const n = rounds(ko), name = id => entryName(id, ko.entries, members)
   const champ = champion(ko.matches, n)
