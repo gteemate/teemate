@@ -888,3 +888,9 @@ h4,.sheet h4{font-family:var(--display);font-weight:600;letter-spacing:0}
 .makersheet .hint{max-width:34ch;margin:0 0 6px}
 .mkask{font-weight:800;margin:8px 0 4px}
 .mklink{display:block;width:100%;text-align:center;text-decoration:none;box-sizing:border-box}
+
+/* Team colour swatches (palette.js): only colours that show up on navy. */
+.swatches{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.swatches button{width:30px;height:30px;border-radius:50%;border:2px solid transparent;cursor:pointer;padding:0}
+.swatches button[aria-pressed="true"]{border-color:var(--ink);box-shadow:0 0 0 2px var(--bg) inset}
+.swatches button:disabled{opacity:.5;cursor:default}

@@ -5,6 +5,7 @@ import { S } from '../state.js'
 import { $, esc, ini, sur, header, keepScroll, top0, render, toast, fmtHcp, goBack } from '../ui.js'
 import { addDaysIso, eventDates, isoDate, today } from '../dates.js'
 import { drawTeams, drawCaptains } from '../event-scoring.js'
+import { PALETTE } from '../palette.js'
 import { drawDay, dayDate, dayOfDate, playedIds, isSingles } from '../season.js'
 
 export const EVENT_TYPES = {
@@ -13,7 +14,9 @@ export const EVENT_TYPES = {
   individual: { name: 'Individual', desc: 'A leaderboard of everyone: Stableford or net.', formats: [['stab', 'Stableford'], ['net', 'Net strokeplay']] },
   league: { name: 'League', desc: 'Over several weeks: singles or pairs Stableford, with teams for club leagues and an optional knockout finish.', formats: [['beststab', 'Best Stableford rounds']] },
 }
-const TEAM_COLOURS = ['#19335A', '#762A43', '#0B6E4F', '#C9A227', '#5B3E96', '#D2691E', '#2A7AB0', '#8B1E3F', '#3D7A2E', '#555B6E', '#B5446E', '#1F8A8A']
+const TEAM_COLOURS = PALETTE.map(p => p.hex) // only colours you can see on navy (palette.js)
+// A row of colour swatches; who = 'A', 'B' or a league team's index.
+const swatches = (who, col, off = false) => `<div class="swatches" role="group" aria-label="Team colour">${PALETTE.map(p => `<button type="button" data-col="${who}:${p.hex}" aria-pressed="${col === p.hex}" aria-label="${p.name}" style="background:${p.hex}"${off ? ' disabled' : ''}></button>`).join('')}</div>`
 export const leagueTeams = (n, existing = []) => Array.from({ length: n }, (_, i) => existing[i] ?? { name: `Team ${i + 1}`, col: TEAM_COLOURS[i % TEAM_COLOURS.length], size: 12 })
 export const eventFormat = e => EVENT_TYPES[e.style].formats.find(f => f[0] === e.fmt)?.[1] ?? ''
 
@@ -49,7 +52,7 @@ export async function load() {
     const e = S.evId && events.find(x => x.id === S.evId)
     S.ev = e ? { ...structuredClone(e), team0: { ...e.team }, start0: e.startDate, endDate: e.season ? addDaysIso(e.startDate, e.days - 1) : null } : {
       name: '', startDate: addDaysIso(isoDate(today()), 1), days: 1, style: 'ryder', fmt: 'bbl', club: S.evScope === 'club', everyone: S.evScope === 'club',
-      players: S.evScope === 'club' ? [] : [me.id], team: {}, matches: {}, A: { name: 'Blues', col: '#19335A' }, B: { name: 'Reds', col: '#762A43' },
+      players: S.evScope === 'club' ? [] : [me.id], team: {}, matches: {}, A: { name: 'Blues', col: '#6CB6FF' }, B: { name: 'Reds', col: '#E5484D' },
     }
     if (!e && S.evNew === 'league') Object.assign(S.ev, { style: 'league', fmt: 'beststab', weeks: 6, bestOf: 7, teams: leagueTeams(10), captainPool: [], club: true, everyone: false })
   }
@@ -171,8 +174,8 @@ export function draw({ members, me }) {
     const avg = ids => (ids.length ? (ids.reduce((t, id) => t + (byId(id)?.hcp ?? 0), 0) / ids.length).toFixed(1) : '–')
     const A = sideIds(ev, 'A'), B = sideIds(ev, 'B')
     body = `<div class="card evsec"><div class="tnames">
-        <div><label for="ev-an">Team name</label><div class="trowin"><input id="ev-an" value="${esc(ev.A.name)}" maxlength="24"${viaSeason(ev, me) ? ' disabled' : ''}><input type="color" id="ev-ac" value="${ev.A.col}" aria-label="Colour"${viaSeason(ev, me) ? ' disabled' : ''}></div></div>
-        <div><label for="ev-bn">Team name</label><div class="trowin"><input id="ev-bn" value="${esc(ev.B.name)}" maxlength="24"${viaSeason(ev, me) ? ' disabled' : ''}><input type="color" id="ev-bc" value="${ev.B.col}" aria-label="Colour"${viaSeason(ev, me) ? ' disabled' : ''}></div></div></div></div>
+        <div><label for="ev-an">Team name</label><div class="trowin"><input id="ev-an" value="${esc(ev.A.name)}" maxlength="24"${viaSeason(ev, me) ? ' disabled' : ''}></div>${swatches('A', ev.A.col, viaSeason(ev, me))}</div>
+        <div><label for="ev-bn">Team name</label><div class="trowin"><input id="ev-bn" value="${esc(ev.B.name)}" maxlength="24"${viaSeason(ev, me) ? ' disabled' : ''}></div>${swatches('B', ev.B.col, viaSeason(ev, me))}</div></div></div>
       <div class="tcards"><div style="background:${ev.A.col}"><small>${esc(ev.A.name)}</small><b>${A.length}</b><small>avg index ${avg(A)}</small></div><div style="background:${ev.B.col}"><small>${esc(ev.B.name)}</small><b>${B.length}</b><small>avg index ${avg(B)}</small></div></div>
       ${begun(ev) ? '<div class="hint">Players stay on their team for the whole season. Put anyone new on a team.</div>' : '<div class="bk-btns"><button class="ghost" id="ev-bal">Auto-balance by handicap</button><button class="ghost" id="ev-shuf">Shuffle</button></div>'}
       <div class="card evsec"><div class="tlist">${ev.players.map(id => `<div class="trow"><span class="who"><strong>${esc(name(id))}</strong><small>Index ${fmtHcp(byId(id)?.hcp)}</small></span><span class="tseg">${['A', 'B'].map(t => `<button data-tm="${id}" data-t="${t}" aria-pressed="${teamOf(ev, id) === t}" style="--tc:${ev[t].col}"${begun(ev) && ev.team0?.[id] ? ' disabled' : ''}>${esc(ev[t].name)}</button>`).join('')}</span></div>`).join('')}</div></div>`
@@ -243,7 +246,7 @@ export function draw({ members, me }) {
     } else {
       const others = pool.filter(id => capOf(id) < 0 && ev.players.includes(id)) // candidates not already captaining a team
       body = `${summary}${tabs}
-        <div class="card evsec"><div class="trowin"><input id="lg-tn" value="${esc(team.name)}" maxlength="24" aria-label="Team name"><input type="color" id="lg-tc" value="${team.col}" aria-label="Team colour"></div>
+        <div class="card evsec"><div class="trowin"><input id="lg-tn" value="${esc(team.name)}" maxlength="24" aria-label="Team name"></div>${swatches(t, team.col)}
           <span class="hint">${inTeam(t).length ? `${inTeam(t).length} player${inTeam(t).length === 1 ? '' : 's'} · average index ${avg(inTeam(t))}: ${inTeam(t).map(id => esc(name(id)) + (team.captain === id ? ' (captain)' : '')).join(', ')}` : 'No players yet. Pick members below, or draw captains and balance the teams from Entrants.'}</span>
           <b>Captain: ${team.captain != null ? esc(name(team.captain)) : 'none'}</b>
           ${others.length ? `<span class="hint">Tap a candidate to make them this team’s captain instead:</span><div class="capchips">${others.map(id => `<button class="pill tag" data-setcap="${id}">${esc(name(id))}</button>`).join('')}</div>` : ''}</div>
@@ -287,8 +290,8 @@ export function draw({ members, me }) {
     if ($('ev-end')) ev.endDate = $('ev-end').value
     if (ev.season && ev.endDate && ev.startDate) ev.days = dayOfDate(ev, ev.endDate)
     if ($('ev-fee')) { const f = $('ev-fee').value.trim(); ev.entryFee = f && +f > 0 ? Math.min(100000, Math.round(+f * 100)) : null }
-    if ($('ev-an')) { ev.A = { name: $('ev-an').value, col: $('ev-ac').value }; ev.B = { name: $('ev-bn').value, col: $('ev-bc').value } }
-    if ($('lg-tn')) { const t = S.evTeam ?? 0; ev.teams[t] = { ...ev.teams[t], name: $('lg-tn').value || ev.teams[t].name, col: $('lg-tc').value } }
+    if ($('ev-an')) { ev.A = { ...ev.A, name: $('ev-an').value }; ev.B = { ...ev.B, name: $('ev-bn').value } }
+    if ($('lg-tn')) { const t = S.evTeam ?? 0; ev.teams[t] = { ...ev.teams[t], name: $('lg-tn').value || ev.teams[t].name } }
   }
   const on = (id, f) => { const el = $(id); if (el) el.onclick = f }
   // A captain who leaves their team (or the league) stops being captain.
@@ -422,7 +425,14 @@ export function draw({ members, me }) {
     redraw()
   }))
   document.querySelectorAll('[data-tm]').forEach(b => (b.onclick = () => { read(); const id = +b.dataset.tm; ev.team[id] = b.dataset.t; dropFromMatches(ev, id); redraw() }))
-  ;['ev-an', 'ev-bn', 'ev-ac', 'ev-bc', 'lg-tn', 'lg-tc'].forEach(id => { if ($(id)) $(id).onchange = () => { read(); redraw() } })
+  ;document.querySelectorAll('[data-col]').forEach(b => (b.onclick = () => {
+    read()
+    const [who, hex] = b.dataset.col.split(':')
+    if (who === 'A' || who === 'B') ev[who] = { ...ev[who], col: hex }
+    else ev.teams[+who] = { ...ev.teams[+who], col: hex }
+    redraw()
+  }))
+  ;['ev-an', 'ev-bn', 'lg-tn'].forEach(id => { if ($(id)) $(id).onchange = () => { read(); redraw() } })
   on('ev-bal', () => { read(); autoBalance(ev, members); redraw() })
   on('ev-shuf', () => { read(); ev.team = {}; shuffle(ev.players).forEach((id, n) => (ev.team[id] = n % 2 ? 'B' : 'A')); ev.matches = {}; redraw() })
   document.querySelectorAll('[data-draw]').forEach(b => (b.onclick = () => { draw1(ev, +b.dataset.draw); S.evSwap = null; redraw() }))

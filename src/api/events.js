@@ -1,15 +1,16 @@
 import { must, sb } from './client.js'
 import { eventLastDay } from '../dates.js'
+import { visible } from '../palette.js'
 
 /* ---------- Events set up in advance ---------- */
 
 const EVENT_COLS = 'id, name, team_a, team_b, club, everyone, start_date, days, season, points, day_rules, style, fmt, players, team, matches, weeks, best_of, league_teams, captain_pool, self_entry, entry_required, league_pairs, ko_top, ko_finish, ko_comp, entry_fee_pence, creator:created_by(id, name)'
 const toEvent = e => ({
-  id: e.id, name: e.name, A: e.team_a, B: e.team_b, club: e.club, everyone: e.everyone, startDate: e.start_date, days: e.days,
+  id: e.id, name: e.name, A: e.team_a && { ...e.team_a, col: visible(e.team_a.col) }, B: e.team_b && { ...e.team_b, col: visible(e.team_b.col) }, club: e.club, everyone: e.everyone, startDate: e.start_date, days: e.days,
   season: !!e.season, // four-ball team match play over a season: matches only on its match days
   points: e.points ?? null, dayRules: e.day_rules ?? null, // points per match type; each day's holes and points
   style: e.style, fmt: e.fmt, players: e.players, team: e.team, matches: e.matches, createdBy: e.creator,
-  weeks: e.weeks, bestOf: e.best_of, teams: e.league_teams, captainPool: e.captain_pool ?? [], // leagues
+  weeks: e.weeks, bestOf: e.best_of, teams: e.league_teams?.map(t => ({ ...t, col: visible(t.col) })) ?? e.league_teams, captainPool: e.captain_pool ?? [], // leagues
   selfEntry: !!e.self_entry, // members can enter themselves (club competitions)
   entryRequired: !!e.entry_required, // only cards ticked for it count (events made from now on)
   leaguePairs: e.league_pairs ?? null, koTop: e.ko_top ?? null, koFinish: e.ko_finish ?? null, koComp: e.ko_comp ?? null, // pairs leagues; a knockout finish
