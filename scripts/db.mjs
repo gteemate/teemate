@@ -3,8 +3,9 @@
 //   node scripts/db.mjs migrate        apply supabase/migrations/*.sql not yet applied (recorded in ops.migrations)
 //   node scripts/db.mjs seed           load supabase/seed.sql (wipes and reloads sample data)
 //   node scripts/db.mjs test           run supabase/tests/*.sql (each rolls back) and print results
+//   node scripts/db.mjs demo           load supabase/demo-logins.sql (demo sign-ins, password: password)
 //   node scripts/db.mjs sql "<sql>"    run one statement and print the rows
-//   add --live to use the live database (migrate, test and sql only); without it, the test database
+//   add --live to use the live database (migrate, test, demo and sql only); without it, the test database
 //
 // Needs SUPABASE_ACCESS_TOKEN and VITE_SUPABASE_URL in .env (live) and .env.test (test; see .env.example).
 import { readFileSync, readdirSync, existsSync } from 'node:fs'
@@ -92,6 +93,14 @@ export async function scenarios() {
   const r = await query(readFileSync(join(root, 'supabase/scenarios.sql'), 'utf8'))
   console.log('done')
   console.log(r.at?.(-1) ?? r)
+}
+
+// Demo sign-ins for showing the app to different kinds of member (test or live; puts them back to where they start).
+async function demo() {
+  process.stdout.write('Loading supabase/demo-logins.sql … ')
+  const r = await query(readFileSync(join(root, 'supabase/demo-logins.sql'), 'utf8'))
+  console.log('done')
+  console.table(r)
 }
 
 // End-to-end test sign-ins (test database only): Gary (0, admin) and Declan (1) with this password. The scenarios
@@ -215,9 +224,9 @@ async function race() {
 // Run as a command (node scripts/db.mjs …); when imported (the end-to-end tests) just export query and friends.
 const asCommand = import.meta.url === pathToFileURL(process.argv[1] ?? '').href
 const [cmd, arg] = asCommand ? process.argv.slice(2).filter(a => a !== '--live') : []
-const run = { migrate, seed, scenarios, test, race: async () => process.exit((await race()) ? 0 : 1), sql: async () => console.log(JSON.stringify(await query(arg), null, 2)) }[cmd]
+const run = { migrate, seed, scenarios, test, demo, race: async () => process.exit((await race()) ? 0 : 1), sql: async () => console.log(JSON.stringify(await query(arg), null, 2)) }[cmd]
 if (asCommand && !run) {
-  console.error('Usage: node scripts/db.mjs migrate | seed | scenarios | test | race | sql "<sql>"  [--live]')
+  console.error('Usage: node scripts/db.mjs migrate | seed | scenarios | test | race | demo | sql "<sql>"  [--live]')
   process.exit(1)
 }
 if (asCommand && LIVE && TEST_ONLY.has(cmd)) {
