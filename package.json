@@ -21,7 +21,8 @@
     "db:demo": "node scripts/db.mjs demo",
     "db:demo:live": "node scripts/db.mjs demo --live",
     "db:race": "node scripts/db.mjs race",
-    "load-test": "node scripts/load-test.mjs"
+    "load-test": "node scripts/load-test.mjs",
+    "journeys:index": "node scripts/refusal-index.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.0",

@@ -1,0 +1,1208 @@
+{
+ "db": {
+  "admin_cancel_booking": [
+   "Only the club office can change members' bookings.",
+   "That booking no longer exists.",
+   "That tee time has passed.",
+   "This group has already started scoring, so the booking can't change."
+  ],
+  "admin_decide_tee_time_request": [
+   "Only admins can answer tee time requests.",
+   "This request is no longer waiting.",
+   "Add a note for the member saying why.",
+   "Only members can book tee times.",
+   "That tee time no longer exists.",
+   "That tee time has passed.",
+   "%",
+   "A player is listed twice.",
+   "One of those players isn't a member.",
+   "One of your group is already booked on this time.",
+   "Every guest needs a name.",
+   "GUI numbers are 6–10 digits.",
+   "Handicap index must be between +10 and 54.",
+   "Sorry, those spaces have just been taken. Pick another time.",
+   "You don't have enough guest points for this booking."
+  ],
+  "admin_decline_request": [
+   "Only admins can manage access."
+  ],
+  "admin_delete_member": [
+   "Only admins can delete members.",
+   "You can't delete yourself.",
+   "You can't delete the last admin."
+  ],
+  "admin_list_members": [
+   "Only admins can manage access."
+  ],
+  "admin_make_draw": [
+   "Only admins can make the draw.",
+   "That competition no longer exists.",
+   "The draw is already published.",
+   "A draw needs at least two entries."
+  ],
+  "admin_move_booking": [
+   "Pick a different tee time.",
+   "Only the club office can change members' bookings.",
+   "That booking no longer exists.",
+   "That tee time has passed.",
+   "This group has already started scoring, so the booking can't change.",
+   "Only members can book tee times.",
+   "That tee time no longer exists.",
+   "%",
+   "A player is listed twice.",
+   "One of those players isn't a member.",
+   "One of your group is already booked on this time.",
+   "Every guest needs a name.",
+   "GUI numbers are 6–10 digits.",
+   "Handicap index must be between +10 and 54.",
+   "Sorry, those spaces have just been taken. Pick another time.",
+   "You don't have enough guest points for this booking."
+  ],
+  "admin_publish_draw": [
+   "Only admins can publish the draw.",
+   "Make the draw first."
+  ],
+  "admin_reset_login": [
+   "Only admins can manage access.",
+   "You can't reset your own login here. Use Change password instead."
+  ],
+  "admin_run_signup": [
+   "Only the club office can run club competitions.",
+   "That isn't a club competition.",
+   "Entries have to close today or later.",
+   "The final has to be after entries close.",
+   "A limit needs at least 2 places.",
+   "That entry fee doesn't look right."
+  ],
+  "admin_save_member": [
+   "Only admins can manage access.",
+   "Enter a name.",
+   "That doesn't look like an email address.",
+   "GUI numbers are 6–10 digits.",
+   "Handicap index must be between +10 and 54.",
+   "Another member already has that email.",
+   "You can't remove your own admin rights or access. Ask another admin.",
+   "That member no longer exists."
+  ],
+  "admin_set_booking_rules": [
+   "Only admins can change the booking rules.",
+   "Days ahead must be between 1 and 13."
+  ],
+  "admin_set_club_name": [
+   "Only admins can change the club name.",
+   "Club name must be 60 characters or fewer."
+  ],
+  "admin_set_course_location": [
+   "Only admins can set the course location.",
+   "That location isn't valid."
+  ],
+  "admin_set_fee_payment": [
+   "Only the club office can change this.",
+   "Pick the pro shop or the competition purse."
+  ],
+  "admin_set_green_width": [
+   "Only admins can change green sizes.",
+   "Green width must be between 8 and 80 yards."
+  ],
+  "admin_set_hut_on": [
+   "Only admins can switch the halfway hut on or off."
+  ],
+  "admin_set_hut_staff": [
+   "Only admins can choose the hut staff."
+  ],
+  "admin_set_ko_result": [
+   "Only the organiser (or an admin) can set results.",
+   "Pick who won.",
+   "The next round's match has been played: correct that one first."
+  ],
+  "admin_set_office_login": [
+   "Only admins can manage access.",
+   "That doesn't look like an email address.",
+   "A member already uses that email. The office needs its own.",
+   "Change the office login from a member’s admin account."
+  ],
+  "admin_set_plays_in": [
+   "Only admins can change another member's section.",
+   "Choose Men's or Ladies'."
+  ],
+  "admin_set_round_deadlines": [
+   "Only admins can set the dates."
+  ],
+  "admin_set_theme": [
+   "Only admins can change the club colours.",
+   "Colours must be 6-digit hex codes like #19335A."
+  ],
+  "admin_swap_draw": [
+   "Only admins can change the draw.",
+   "The draw is published."
+  ],
+  "book_as": [
+   "Only members can book tee times.",
+   "That tee time no longer exists.",
+   "That tee time has passed.",
+   "%",
+   "A player is listed twice.",
+   "One of those players isn't a member.",
+   "One of your group is already booked on this time.",
+   "Every guest needs a name.",
+   "GUI numbers are 6–10 digits.",
+   "Handicap index must be between +10 and 54.",
+   "Sorry, those spaces have just been taken. Pick another time.",
+   "You don't have enough guest points for this booking."
+  ],
+  "book_tee_time": [
+   "Only members can book tee times.",
+   "That tee time no longer exists.",
+   "That tee time has passed.",
+   "%",
+   "A player is listed twice.",
+   "One of those players isn't a member.",
+   "One of your group is already booked on this time.",
+   "Every guest needs a name.",
+   "GUI numbers are 6–10 digits.",
+   "Handicap index must be between +10 and 54.",
+   "Sorry, those spaces have just been taken. Pick another time.",
+   "You don't have enough guest points for this booking."
+  ],
+  "bump_version": [],
+  "cancel_booking": [
+   "That booking no longer exists.",
+   "That isn't your booking."
+  ],
+  "cancel_my_hut_order": [
+   "That order isn't yours.",
+   "The hut has already started on that order. Have a word with them."
+  ],
+  "cancel_player_event": [
+   "Only someone playing in it can call it off."
+  ],
+  "cancel_tee_time_request": [
+   "You can only cancel your own requests.",
+   "This request is no longer waiting."
+  ],
+  "check_guest_balance": [
+   "You don't have enough guest points for this booking."
+  ],
+  "confirm_ko_result": [
+   "There's no result waiting to confirm.",
+   "The other side confirms the result."
+  ],
+  "counter_player_event": [
+   "That event no longer exists.",
+   "A one-on-one can't be changed: decline it and ask for a new one.",
+   "Only a group that's been asked can suggest changes.",
+   "That event has already been agreed, declined or cancelled.",
+   "The groups have changed since this was proposed. Ask for a new invitation.",
+   "Every group needs at least two players.",
+   "Ryder Cup needs full four-balls.",
+   "Match play needs exactly two groups.",
+   "Give both teams a name.",
+   "Put every player on a team.",
+   "Each four-ball needs two players on each team.",
+   "The two teams need the same number of players.",
+   "Pick a team style."
+  ],
+  "create_member_knockout": [
+   "Only members can set up a knockout.",
+   "Give the knockout a name.",
+   "Singles or pairs?",
+   "A knockout needs at least two entries.",
+   "At most 64 entries.",
+   "Each entry in a % knockout is %.",
+   "Someone is in it twice.",
+   "One of those players isn't a member.",
+   "That competition no longer exists.",
+   "The draw is already published.",
+   "A draw needs at least two entries."
+  ],
+  "create_player_event": [
+   "You can only start an event from your own tee time.",
+   "Pick at least one other group.",
+   "A group is listed twice.",
+   "All the groups must be on the same day.",
+   "That day has passed.",
+   "Every invited group needs a member to accept.",
+   "One of those groups is already in an event.",
+   "Every group needs at least two players.",
+   "Ryder Cup needs full four-balls.",
+   "Match play needs exactly two groups.",
+   "Give both teams a name.",
+   "Put every player on a team.",
+   "Each four-ball needs two players on each team.",
+   "The two teams need the same number of players.",
+   "Pick a team style."
+  ],
+  "create_singles_match": [
+   "You can only challenge someone from your own tee time.",
+   "Pick a member to play against.",
+   "They're on your card: add the one-on-one there instead.",
+   "Pick a match play game.",
+   "You're not playing on the same day.",
+   "That day has passed.",
+   "You already have a one-on-one with them today."
+  ],
+  "current_member_id": [],
+  "data_versions": [],
+  "decline_signup": [],
+  "delete_member_knockout": [
+   "Only the organiser can delete it."
+  ],
+  "dismiss_tee_time_request": [
+   "That request isn't yours.",
+   "It's still waiting for an admin: cancel it instead."
+  ],
+  "dispute_ko_result": [
+   "Only the other side can question a reported result."
+  ],
+  "enter_event": [
+   "Only members can enter competitions.",
+   "This competition isn't open for entry. Ask an admin to add you.",
+   "This competition has started, so entries are closed."
+  ],
+  "enter_event_round": [
+   "You can only count rounds from a card you're on.",
+   "That event no longer exists.",
+   "Rounds have to be counted before the first hole is saved.",
+   "The event isn't on today.",
+   "Your marker has to be someone else on this card.",
+   "% isn't in this event.",
+   "% has no match on this day.",
+   "One of those players isn't on this card.",
+   "% is already counting another card for this event today."
+  ],
+  "enter_event_today": [
+   "Only members can enter competitions.",
+   "Pick who's marking your card first.",
+   "This competition isn't open for entry. Ask an admin to add you.",
+   "This competition isn't on today.",
+   "This competition has a draw, so an admin adds its players.",
+   "You can only count rounds from a card you're on.",
+   "That event no longer exists.",
+   "Rounds have to be counted before the first hole is saved.",
+   "The event isn't on today.",
+   "Your marker has to be someone else on this card.",
+   "% isn't in this event.",
+   "% has no match on this day.",
+   "One of those players isn't on this card.",
+   "% is already counting another card for this event today."
+  ],
+  "enter_league": [
+   "You can only enter rounds from a card you're on.",
+   "That league no longer exists.",
+   "Rounds have to be entered before the first hole is saved.",
+   "The league isn't running this week.",
+   "Your marker has to be someone else on this card.",
+   "One of those players isn't in the league.",
+   "One of those players isn't on this card.",
+   "% has already entered a round this week."
+  ],
+  "enter_signup": [
+   "Only members can enter.",
+   "That competition isn't open for entries.",
+   "Entries have closed for %.",
+   "% is a singles competition.",
+   "Pick your partner for %.",
+   "That partner isn't a member.",
+   "Set Men's or Ladies' in your Account first.",
+   "That entry isn't eligible for %.",
+   "A mixed pair is one man and one lady.",
+   "You're already entered in %.",
+   "% is already entered in %. Pick another partner.",
+   "Sorry, % is full (% places)."
+  ],
+  "event_is_league_ok": [],
+  "get_booking_rules": [],
+  "get_guests": [
+   "Only members can see this."
+  ],
+  "get_hut": [],
+  "get_my_bookings": [],
+  "get_tee_sheet": [
+   "Only members can see the tee sheet."
+  ],
+  "get_theme": [],
+  "hhmm": [],
+  "hook_before_user_created": [],
+  "hut_orders_today": [
+   "Only hut staff can see the orders."
+  ],
+  "hut_set_order_status": [
+   "Only hut staff can update orders.",
+   "That order has gone.",
+   "That order is already %.",
+   "Give a reason for cancelling, so the player knows."
+  ],
+  "in_player_event": [],
+  "is_admin": [],
+  "is_committee": [],
+  "is_hut_staff": [],
+  "ko_advance": [],
+  "ko_entries": [],
+  "ko_league_player": [],
+  "ko_link_card": [
+   "That match no longer exists.",
+   "You can only score your own match.",
+   "That match already has a result.",
+   "That scorecard isn't yours."
+  ],
+  "ko_make_draw": [
+   "That competition no longer exists.",
+   "The draw is already published.",
+   "A draw needs at least two entries."
+  ],
+  "ko_make_seeded_draw": [],
+  "ko_organiser": [],
+  "leave_event_round": [
+   "You can only change rounds from a card you're on.",
+   "Rounds can only be changed before the first hole is saved."
+  ],
+  "leave_league": [
+   "You can only change entries on a card you're on.",
+   "Entries are locked once the first hole is saved."
+  ],
+  "link_member_to_user": [],
+  "mark_tee_time_requests_seen": [],
+  "match_rules_problem": [],
+  "move_match_booking": [
+   "That booking no longer exists.",
+   "You can only move a booking you're on.",
+   "A booking with guests can't be moved. Cancel it and book again.",
+   "A match can only move to another time on the same day.",
+   "This match has already started, so it can't move.",
+   "Only members can book tee times.",
+   "That tee time no longer exists.",
+   "That tee time has passed.",
+   "%",
+   "A player is listed twice.",
+   "One of those players isn't a member.",
+   "One of your group is already booked on this time.",
+   "Every guest needs a name.",
+   "GUI numbers are 6–10 digits.",
+   "Handicap index must be between +10 and 54.",
+   "Sorry, those spaces have just been taken. Pick another time.",
+   "You don't have enough guest points for this booking."
+  ],
+  "my_booking_ids": [],
+  "my_hut_orders": [],
+  "my_ko_entry": [],
+  "my_request_pending": [],
+  "needs_account": [],
+  "not_open_message": [],
+  "office_take_off": [
+   "Only the club office can change members' bookings.",
+   "That booking no longer exists.",
+   "That tee time has passed.",
+   "This group has already started scoring, so the booking can't change."
+  ],
+  "on_card": [],
+  "place_hut_order": [
+   "Sign in to order.",
+   "The halfway hut isn't taking orders just now.",
+   "Pick something from the menu first.",
+   "Order between 1 and 20 of each item.",
+   "Only hot food can be ordered ahead. Drinks and snacks are at the hut.",
+   "Something you picked has sold out or come off the menu. Have another look.",
+   "You already have 3 orders waiting at the hut.",
+   "You can only order for a card you're on."
+  ],
+  "player_event_setup": [
+   "Every group needs at least two players.",
+   "Ryder Cup needs full four-balls.",
+   "Match play needs exactly two groups.",
+   "Give both teams a name.",
+   "Put every player on a team.",
+   "Each four-ball needs two players on each team.",
+   "The two teams need the same number of players.",
+   "Pick a team style."
+  ],
+  "points_problem": [],
+  "release_time_label": [],
+  "report_ko_result": [
+   "That match no longer exists.",
+   "You can only report your match.",
+   "That match already has a result.",
+   "Both sides aren't known yet.",
+   "Pick who won."
+  ],
+  "request_access": [
+   "Enter your email address.",
+   "Enter your name.",
+   "That email is already approved. Create your account instead.",
+   "Too many requests are waiting. Please contact the club."
+  ],
+  "request_tee_time": [
+   "Only members can request tee times.",
+   "That tee time no longer exists.",
+   "That tee time has passed.",
+   "This day is open, so book it instead.",
+   "Give a reason for the request (up to 500 characters).",
+   "One of those players isn't a member.",
+   "Every guest needs a name.",
+   "You can have at most 3 requests waiting. Cancel one or wait for an answer."
+  ],
+  "respond_player_event": [
+   "That event no longer exists.",
+   "Only a group that's been asked can answer.",
+   "That invitation has already been answered or cancelled.",
+   "One of you has moved tee time since this was sent. Ask for a new one.",
+   "The groups have changed since this was proposed. Ask for a new invitation."
+  ],
+  "rounds_stamp_save": [],
+  "save_season": [
+   "That season no longer exists.",
+   "Only the organiser can change this season.",
+   "This season has finished.",
+   "Pick an end date from today, within a year of the start.",
+   "Players can't change teams during a season.",
+   "Every player needs a team.",
+   "That match day has started; its matches can't change.",
+   "A player who has played can't be taken out.",
+   "A match day is after the end date.",
+   "A match day is before the start.",
+   "A match is a four-ball (2 v 2), a singles (1 v 1) or a 3-ball (2 v 1).",
+   "Each side of a match is from one team.",
+   "A player can't be in two matches on one day.",
+   "%"
+  ],
+  "season_day_started": [],
+  "seen_booking_notice": [],
+  "set_active_event": [],
+  "set_guest_handicap": [
+   "That guest is no longer on the tee time.",
+   "Only players on that tee time can set their guest's handicap.",
+   "Handicap index must be between +10 and 54."
+  ],
+  "set_my_plays_in": [
+   "Only members can set this.",
+   "Choose Men's or Ladies'."
+  ],
+  "signup_counts": [],
+  "slot_players": [],
+  "start_league_knockout": [
+   "That league no longer exists.",
+   "Only the league's organiser (or an admin) starts its knockout.",
+   "The knockout has already started.",
+   "A knockout needs at least two qualifiers."
+  ],
+  "start_tee_time_card": [
+   "A tee time is needed to start this card."
+  ],
+  "tee_time_opens_at": [],
+  "too_close": [],
+  "undecline_signup": [],
+  "withdraw_event": [
+   "Only members can withdraw from competitions.",
+   "This competition isn't open for entry, so ask an admin to take you off.",
+   "This competition has started. Ask an admin to take you off."
+  ],
+  "withdraw_signup": [
+   "That competition no longer exists.",
+   "Entries have closed. Speak to the competition secretary."
+  ]
+ },
+ "api": {
+  "MEMBER_COLS": {
+   "rpc": [],
+   "tables": []
+  },
+  "addBuddy": {
+   "rpc": [],
+   "tables": [
+    "buddies"
+   ]
+  },
+  "adminCancelBooking": {
+   "rpc": [
+    "admin_cancel_booking"
+   ],
+   "tables": []
+  },
+  "adminMoveBooking": {
+   "rpc": [
+    "admin_move_booking"
+   ],
+   "tables": []
+  },
+  "adminSetKoResult": {
+   "rpc": [
+    "admin_set_ko_result"
+   ],
+   "tables": []
+  },
+  "adminSetPlaysIn": {
+   "rpc": [
+    "admin_set_plays_in"
+   ],
+   "tables": []
+  },
+  "answerPlayerEvent": {
+   "rpc": [
+    "respond_player_event"
+   ],
+   "tables": []
+  },
+  "bookTeeTime": {
+   "rpc": [
+    "book_tee_time"
+   ],
+   "tables": []
+  },
+  "cancelBooking": {
+   "rpc": [
+    "cancel_booking"
+   ],
+   "tables": []
+  },
+  "cancelMyHutOrder": {
+   "rpc": [
+    "cancel_my_hut_order"
+   ],
+   "tables": []
+  },
+  "cancelPlayerEvent": {
+   "rpc": [
+    "cancel_player_event"
+   ],
+   "tables": []
+  },
+  "cancelTeeTimeRequest": {
+   "rpc": [
+    "cancel_tee_time_request"
+   ],
+   "tables": []
+  },
+  "changePassword": {
+   "rpc": [],
+   "tables": []
+  },
+  "confirmKoResult": {
+   "rpc": [
+    "confirm_ko_result"
+   ],
+   "tables": []
+  },
+  "counterPlayerEvent": {
+   "rpc": [
+    "counter_player_event"
+   ],
+   "tables": []
+  },
+  "createAccount": {
+   "rpc": [],
+   "tables": []
+  },
+  "createMemberKnockout": {
+   "rpc": [
+    "create_member_knockout"
+   ],
+   "tables": []
+  },
+  "decideTeeTimeRequest": {
+   "rpc": [
+    "admin_decide_tee_time_request"
+   ],
+   "tables": []
+  },
+  "declineRequest": {
+   "rpc": [
+    "admin_decline_request"
+   ],
+   "tables": []
+  },
+  "declineSignup": {
+   "rpc": [
+    "decline_signup"
+   ],
+   "tables": []
+  },
+  "deleteEvent": {
+   "rpc": [],
+   "tables": [
+    "events"
+   ]
+  },
+  "deleteMember": {
+   "rpc": [
+    "admin_delete_member"
+   ],
+   "tables": []
+  },
+  "deleteMemberKnockout": {
+   "rpc": [
+    "delete_member_knockout"
+   ],
+   "tables": []
+  },
+  "deleteRound": {
+   "rpc": [],
+   "tables": [
+    "rounds"
+   ]
+  },
+  "deleteSignup": {
+   "rpc": [],
+   "tables": [
+    "signup_comps"
+   ]
+  },
+  "dismissTeeTimeRequest": {
+   "rpc": [
+    "dismiss_tee_time_request"
+   ],
+   "tables": []
+  },
+  "disputeKoResult": {
+   "rpc": [
+    "dispute_ko_result"
+   ],
+   "tables": []
+  },
+  "enterEventRound": {
+   "rpc": [
+    "enter_event_round"
+   ],
+   "tables": []
+  },
+  "enterEventToday": {
+   "rpc": [
+    "enter_event_today"
+   ],
+   "tables": []
+  },
+  "enterLeague": {
+   "rpc": [
+    "enter_league"
+   ],
+   "tables": []
+  },
+  "enterSignup": {
+   "rpc": [
+    "enter_signup"
+   ],
+   "tables": []
+  },
+  "forgetMe": {
+   "rpc": [],
+   "tables": []
+  },
+  "getAccessList": {
+   "rpc": [
+    "admin_list_members"
+   ],
+   "tables": []
+  },
+  "getAccessRequests": {
+   "rpc": [],
+   "tables": []
+  },
+  "getBookingNotices": {
+   "rpc": [],
+   "tables": []
+  },
+  "getBookingRules": {
+   "rpc": [
+    "get_booking_rules"
+   ],
+   "tables": []
+  },
+  "getBuddies": {
+   "rpc": [],
+   "tables": []
+  },
+  "getCardsById": {
+   "rpc": [],
+   "tables": []
+  },
+  "getCardsForTeeTimes": {
+   "rpc": [],
+   "tables": []
+  },
+  "getCardsOn": {
+   "rpc": [],
+   "tables": []
+  },
+  "getCourse": {
+   "rpc": [],
+   "tables": []
+  },
+  "getCurrentRound": {
+   "rpc": [],
+   "tables": []
+  },
+  "getEventEntries": {
+   "rpc": [],
+   "tables": []
+  },
+  "getEvents": {
+   "rpc": [],
+   "tables": []
+  },
+  "getFavourites": {
+   "rpc": [],
+   "tables": []
+  },
+  "getFriends": {
+   "rpc": [],
+   "tables": []
+  },
+  "getGameSettings": {
+   "rpc": [],
+   "tables": []
+  },
+  "getGuestPoints": {
+   "rpc": [],
+   "tables": []
+  },
+  "getGuests": {
+   "rpc": [
+    "get_guests"
+   ],
+   "tables": []
+  },
+  "getHut": {
+   "rpc": [
+    "get_hut"
+   ],
+   "tables": []
+  },
+  "getHutStaff": {
+   "rpc": [],
+   "tables": []
+  },
+  "getKnockout": {
+   "rpc": [
+    "ko_entries"
+   ],
+   "tables": []
+  },
+  "getLeagueEntries": {
+   "rpc": [],
+   "tables": []
+  },
+  "getMe": {
+   "rpc": [
+    "current_member_id"
+   ],
+   "tables": []
+  },
+  "getMembers": {
+   "rpc": [],
+   "tables": []
+  },
+  "getMyBalances": {
+   "rpc": [],
+   "tables": []
+  },
+  "getMyBookings": {
+   "rpc": [
+    "get_my_bookings"
+   ],
+   "tables": []
+  },
+  "getMyPlayerEvents": {
+   "rpc": [],
+   "tables": []
+  },
+  "getMyTeeTimeRequests": {
+   "rpc": [],
+   "tables": []
+  },
+  "getMyTeeTimes": {
+   "rpc": [],
+   "tables": []
+  },
+  "getPins": {
+   "rpc": [],
+   "tables": []
+  },
+  "getRound": {
+   "rpc": [],
+   "tables": []
+  },
+  "getSession": {
+   "rpc": [],
+   "tables": []
+  },
+  "getSignupCounts": {
+   "rpc": [
+    "signup_counts"
+   ],
+   "tables": []
+  },
+  "getSignupDeclines": {
+   "rpc": [],
+   "tables": []
+  },
+  "getSignups": {
+   "rpc": [],
+   "tables": []
+  },
+  "getStamps": {
+   "rpc": [
+    "data_versions"
+   ],
+   "tables": []
+  },
+  "getTeeSheet": {
+   "rpc": [
+    "get_tee_sheet"
+   ],
+   "tables": []
+  },
+  "getTeeTimeRequests": {
+   "rpc": [],
+   "tables": []
+  },
+  "getTheme": {
+   "rpc": [
+    "get_theme"
+   ],
+   "tables": []
+  },
+  "getTodayRounds": {
+   "rpc": [],
+   "tables": []
+  },
+  "hutOrdersToday": {
+   "rpc": [
+    "hut_orders_today"
+   ],
+   "tables": []
+  },
+  "leaveEventRound": {
+   "rpc": [
+    "leave_event_round"
+   ],
+   "tables": []
+  },
+  "leaveLeague": {
+   "rpc": [
+    "leave_league"
+   ],
+   "tables": []
+  },
+  "linkKoCard": {
+   "rpc": [
+    "ko_link_card"
+   ],
+   "tables": []
+  },
+  "makeDraw": {
+   "rpc": [
+    "admin_make_draw"
+   ],
+   "tables": []
+  },
+  "markTeeTimeRequestsSeen": {
+   "rpc": [
+    "mark_tee_time_requests_seen"
+   ],
+   "tables": []
+  },
+  "moveMatchBooking": {
+   "rpc": [
+    "move_match_booking"
+   ],
+   "tables": []
+  },
+  "must": {
+   "rpc": [],
+   "tables": []
+  },
+  "myHutOrders": {
+   "rpc": [
+    "my_hut_orders"
+   ],
+   "tables": []
+  },
+  "myId": {
+   "rpc": [],
+   "tables": []
+  },
+  "myRequestPending": {
+   "rpc": [
+    "my_request_pending"
+   ],
+   "tables": []
+  },
+  "needsAccount": {
+   "rpc": [
+    "needs_account"
+   ],
+   "tables": []
+  },
+  "onAuthChange": {
+   "rpc": [],
+   "tables": []
+  },
+  "placeHutOrder": {
+   "rpc": [
+    "place_hut_order"
+   ],
+   "tables": []
+  },
+  "proposePlayerEvent": {
+   "rpc": [
+    "create_player_event"
+   ],
+   "tables": []
+  },
+  "proposeSingles": {
+   "rpc": [
+    "create_singles_match"
+   ],
+   "tables": []
+  },
+  "publishDraw": {
+   "rpc": [
+    "admin_publish_draw"
+   ],
+   "tables": []
+  },
+  "publishPins": {
+   "rpc": [],
+   "tables": [
+    "pin_sheets"
+   ]
+  },
+  "removeBuddy": {
+   "rpc": [],
+   "tables": [
+    "buddies"
+   ]
+  },
+  "removeContact": {
+   "rpc": [],
+   "tables": [
+    "friend_contacts"
+   ]
+  },
+  "removeHutItem": {
+   "rpc": [],
+   "tables": [
+    "hut_menu"
+   ]
+  },
+  "reportKoResult": {
+   "rpc": [
+    "report_ko_result"
+   ],
+   "tables": []
+  },
+  "requestAccess": {
+   "rpc": [
+    "request_access"
+   ],
+   "tables": []
+  },
+  "requestTeeTime": {
+   "rpc": [
+    "request_tee_time"
+   ],
+   "tables": []
+  },
+  "resetLogin": {
+   "rpc": [
+    "admin_reset_login"
+   ],
+   "tables": []
+  },
+  "runSignup": {
+   "rpc": [
+    "admin_run_signup"
+   ],
+   "tables": []
+  },
+  "saveContact": {
+   "rpc": [],
+   "tables": [
+    "friend_contacts"
+   ]
+  },
+  "saveEvent": {
+   "rpc": [],
+   "tables": [
+    "events"
+   ]
+  },
+  "saveHutItem": {
+   "rpc": [],
+   "tables": [
+    "hut_menu"
+   ]
+  },
+  "saveMember": {
+   "rpc": [
+    "admin_save_member"
+   ],
+   "tables": []
+  },
+  "saveRound": {
+   "rpc": [
+    "start_tee_time_card"
+   ],
+   "tables": [
+    "rounds"
+   ]
+  },
+  "saveSeason": {
+   "rpc": [
+    "save_season"
+   ],
+   "tables": []
+  },
+  "saveSignup": {
+   "rpc": [],
+   "tables": [
+    "signup_comps"
+   ]
+  },
+  "sb": {
+   "rpc": [],
+   "tables": []
+  },
+  "seenBookingNotice": {
+   "rpc": [
+    "seen_booking_notice"
+   ],
+   "tables": []
+  },
+  "setBookingRules": {
+   "rpc": [
+    "admin_set_booking_rules"
+   ],
+   "tables": []
+  },
+  "setClubName": {
+   "rpc": [
+    "admin_set_club_name"
+   ],
+   "tables": []
+  },
+  "setCourseLocation": {
+   "rpc": [
+    "admin_set_course_location"
+   ],
+   "tables": []
+  },
+  "setFavourite": {
+   "rpc": [],
+   "tables": [
+    "member_favourites"
+   ]
+  },
+  "setFeePayment": {
+   "rpc": [
+    "admin_set_fee_payment"
+   ],
+   "tables": []
+  },
+  "setFriendFavourite": {
+   "rpc": [],
+   "tables": [
+    "buddies",
+    "friend_contacts"
+   ]
+  },
+  "setGreenWidth": {
+   "rpc": [
+    "admin_set_green_width"
+   ],
+   "tables": []
+  },
+  "setGuestHandicap": {
+   "rpc": [
+    "set_guest_handicap"
+   ],
+   "tables": []
+  },
+  "setHutOn": {
+   "rpc": [
+    "admin_set_hut_on"
+   ],
+   "tables": []
+  },
+  "setHutOrderStatus": {
+   "rpc": [
+    "hut_set_order_status"
+   ],
+   "tables": []
+  },
+  "setHutStaff": {
+   "rpc": [
+    "admin_set_hut_staff"
+   ],
+   "tables": []
+  },
+  "setMyGamePref": {
+   "rpc": [],
+   "tables": [
+    "member_game_prefs"
+   ]
+  },
+  "setMyPlaysIn": {
+   "rpc": [
+    "set_my_plays_in"
+   ],
+   "tables": []
+  },
+  "setOfficeLogin": {
+   "rpc": [
+    "admin_set_office_login"
+   ],
+   "tables": []
+  },
+  "setRoundDeadlines": {
+   "rpc": [
+    "admin_set_round_deadlines"
+   ],
+   "tables": []
+  },
+  "setTheme": {
+   "rpc": [
+    "admin_set_theme"
+   ],
+   "tables": []
+  },
+  "signIn": {
+   "rpc": [],
+   "tables": []
+  },
+  "signOut": {
+   "rpc": [],
+   "tables": []
+  },
+  "startLeagueKnockout": {
+   "rpc": [
+    "start_league_knockout"
+   ],
+   "tables": []
+  },
+  "swapDraw": {
+   "rpc": [
+    "admin_swap_draw"
+   ],
+   "tables": []
+  },
+  "toMember": {
+   "rpc": [],
+   "tables": []
+  },
+  "todayIso": {
+   "rpc": [],
+   "tables": []
+  },
+  "undeclineSignup": {
+   "rpc": [
+    "undecline_signup"
+   ],
+   "tables": []
+  },
+  "withdrawSignup": {
+   "rpc": [
+    "withdraw_signup"
+   ],
+   "tables": []
+  }
+ }
+}
