@@ -24,6 +24,18 @@ describe('season match days', () => {
   })
 })
 
+describe('drawing 3-balls', () => {
+  it('five against three: a four-ball and a 3-ball, one sitting out', () => {
+    expect(drawDay([1, 2, 3, 4, 5], [6, 7, 8]).map(m => `${m.a.length}v${m.b.length}`)).toEqual(['2v2', '2v1'])
+  })
+  it('three against three: a four-ball and a singles', () => {
+    expect(drawDay([1, 2, 3], [4, 5, 6]).map(m => `${m.a.length}v${m.b.length}`)).toEqual(['2v2', '1v1'])
+  })
+  it('one against two: the pair on team B', () => {
+    expect(drawDay([1], [4, 5]).map(m => `${m.a.length}v${m.b.length}`)).toEqual(['1v2'])
+  })
+})
+
 describe('has a match day started', () => {
   const card = (id, ids, saved) => ({ id, lineup: ids.map(m => ({ m })), scores: [], done: Array.from({ length: 18 }, (_, i) => i < saved) })
   it('not until a counted card has a hole saved', () => {
@@ -50,12 +62,11 @@ describe('drawing a match day', () => {
     expect(ms.filter(isSingles)).toHaveLength(1)
     expect(ids(ms).sort((x, y) => x - y)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
   })
-  it('drawDay leaves the odd player out', () => {
+  it('drawDay: four-balls, then a 3-ball from two on one team and one on the other; the odd player sits out', () => {
     const A = [1, 2, 3, 4, 5, 6, 7], B = [8, 9, 10, 11, 12]
     const ms = drawDay(A, B)
-    expect(ms.filter(m => !isSingles(m))).toHaveLength(2)
-    expect(ms.filter(isSingles)).toHaveLength(1)
-    expect(ids(ms).filter(id => A.includes(id))).toHaveLength(5)
+    expect(ms.map(m => `${m.a.length}v${m.b.length}`)).toEqual(['2v2', '2v2', '2v1'])
+    expect(ids(ms).filter(id => A.includes(id))).toHaveLength(6)
     for (const m of ms) { expect(m.a.every(id => A.includes(id))).toBe(true); expect(m.b.every(id => B.includes(id))).toBe(true) }
   })
 })

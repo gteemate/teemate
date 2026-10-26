@@ -155,16 +155,91 @@ describe('four-ball team match play over a season', () => {
     app = await boot(pals)
     await openSeasonEditor()
     for (let i = 0; i < 3; i++) await app.tap('#ev-next') // Details → Players → Teams → Match days
+    await app.tap('#md-new')
     await app.type('#ev-md', '2026-10-17')
-    await app.tap('#ev-mdadd')
+    await app.tap('#ev-mdadd') // Date → Players
+    await app.tap('#ev-next') // Players → Matches
     await app.tap('[data-add4="11"]')
     await app.tap('[data-add1="11"]')
+    for (let i = 0; i < 3; i++) await app.tap('#ev-next') // Matches → Holes → Points → Confirm
+    await app.tap('#ev-next') // Add match day
     await app.tap('#ev-next') // Review
     await app.tap('#ev-next') // Save changes
     const e = app.db.events.find(x => x.id === 900)
     expect(e.matches[11]).toHaveLength(2)
     expect(e.matches[11].filter(m => m.a.length === 1)).toHaveLength(1)
     expect(e.matches[1]).toEqual([{ a: [0, 9], b: [10, 12] }]) // the played day as it was
+  })
+  it('the guided flow: who’s playing, a 3-ball, 12 holes, the day’s points', async () => {
+    app = await boot(pals)
+    await openSeasonBoard()
+    await app.tap('+ Add a match day')
+    await app.type('#ev-md', '2026-10-17')
+    await app.tap('#ev-mdadd') // Players
+    await app.tap('[data-mdp="11"]') // Liam's out
+    await app.tap('#ev-next') // Matches
+    await app.tap('[data-add3="B"]') // a Reds pair against a Blue
+    await app.tap('#ev-next') // Holes
+    await app.tap('[data-holes="12"]')
+    await app.tap('#ev-next') // Points
+    await app.tap('[data-mdpt="threeSingle"][data-d="1"]')
+    await app.tap('[data-mdpt="threeSingle"][data-d="1"]') // the single's win worth 3 (up in halves)
+    expect(app.main()).toContain('1 match · 3 points available')
+    await app.tap('#ev-next') // Confirm
+    expect(app.main()).toContain('12 holes')
+    await app.tap('#ev-next') // Add match day
+    await app.tap('#ev-next') // Review
+    await app.tap('#ev-next') // Save changes
+    const e = app.db.events.find(x => x.id === 900)
+    expect(e.matches[11]).toHaveLength(1)
+    expect(e.matches[11][0].b).toEqual(expect.arrayContaining([10, 12]))
+    expect(e.matches[11][0].a).toHaveLength(1)
+    expect(e.matches[11][0].a).not.toContain(11)
+    expect(e.dayRules[11]).toEqual({ holes: 12, points: { four: 1, singles: 1, threePair: 1, threeSingle: 3 } })
+  })
+  it('points for each match type are set when the event is made', async () => {
+    app = await boot(() => {})
+    await app.tap('Competition')
+    await app.tap('Events')
+    await app.tap('+ Create your own event')
+    await app.tap('#cr-ev')
+    await app.type('#ev-name', 'Points Cup')
+    await app.type('#ev-date', app.db.today)
+    await app.tap('[data-style="ryder"]')
+    await app.tap('[data-pt="four"][data-d="1"]')
+    await app.tap('[data-pt="four"][data-d="1"]')
+    await app.tap('#ev-next')
+    for (const id of [10, 12, 9]) await app.tap(`[data-pick="${id}"]`)
+    await app.tap('#ev-next')
+    await app.tap('#ev-bal')
+    await app.tap('#ev-next')
+    await app.tap('#ev-next')
+    await app.tap('#ev-next')
+    expect(app.db.events.find(x => x.name === 'Points Cup').points).toEqual({ four: 2, singles: 1, threePair: 1, threeSingle: 2 })
+  })
+  it('a one-off event’s day is set up with the same flow (two singles)', async () => {
+    app = await boot(() => {})
+    await app.tap('Competition')
+    await app.tap('Events')
+    await app.tap('+ Create your own event')
+    await app.tap('#cr-ev')
+    await app.type('#ev-name', 'Singles Day')
+    await app.type('#ev-date', app.db.today)
+    await app.tap('[data-style="ryder"]')
+    await app.tap('#ev-next')
+    for (const id of [10, 12, 9]) await app.tap(`[data-pick="${id}"]`)
+    await app.tap('#ev-next')
+    await app.tap('#ev-bal')
+    await app.tap('#ev-next') // Draw (day 1 drawn already)
+    await app.tap('[data-mdset="1"]')
+    await app.tap('#ev-next') // Players → Matches
+    await app.tap('[data-rmm="1:0"]') // take out the drawn four-ball
+    await app.tap('[data-add1="1"]')
+    await app.tap('[data-add1="1"]')
+    for (let i = 0; i < 4; i++) await app.tap('#ev-next') // Holes, Points, Confirm, Save match day
+    await app.tap('#ev-next') // Review
+    await app.tap('#ev-next') // Save event
+    expect(app.db.events.find(x => x.name === 'Singles Day').matches[1].map(m => m.a.length + m.b.length)).toEqual([2, 2])
   })
   it('the board: season score, match days newest first, a singles one a side, the organiser’s buttons', async () => {
     app = await boot(palsPlayed)
@@ -178,7 +253,8 @@ describe('four-ball team match play over a season', () => {
     expect(document.querySelector('[data-mday="6"] .mside').textContent).not.toContain('&')
     expect(t).toContain('+ Add a match day')
     await app.tap('+ Add a match day')
-    expect(document.getElementById('ev-md')).not.toBeNull() // the editor, at Match days
+    expect(document.getElementById('ev-md')).not.toBeNull() // the editor, in the add-a-match-day flow
+    await app.tap('#back') // out of the flow, back on Match days
     await app.tap('#ev-next')
     await app.tap('#ev-next')
   })
@@ -250,7 +326,7 @@ describe('four-ball team match play over a season', () => {
     await app.tap('#ev-next') // Teams
     expect(document.querySelector('[data-tm="0"]').disabled).toBe(true)
     await app.tap('#ev-next') // Match days
-    expect(document.querySelector('[data-add4="1"]')).toBeNull()
+    expect(document.querySelector('[data-mdset="1"]')).toBeNull()
     expect(document.querySelector('[data-rmday="1"]')).toBeNull()
     await app.tap('#ev-next') // Review
     await app.tap('#ev-next') // Save changes (nothing changed)

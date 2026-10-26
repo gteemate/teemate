@@ -43,10 +43,15 @@ export function playedIds(e, dayCards, entries, todayIso) {
 
 const shuffle = (list, rand) => list.map(x => [rand(), x]).sort((p, q) => p[0] - q[0]).map(p => p[1])
 
-/** Draw a match day: four-balls while both sides have two to spare, then a singles from one left on each side. */
+/**
+ * Draw a match day: four-balls while both sides have two to spare, then a 3-ball (two from one side against one from
+ * the other) if that's possible, then a singles from one left on each side. Anyone left over sits out.
+ */
 export function drawDay(aIds, bIds, rand = Math.random) {
   const a = shuffle(aIds, rand), b = shuffle(bIds, rand), out = []
   while (a.length >= 2 && b.length >= 2) out.push({ a: a.splice(0, 2), b: b.splice(0, 2) })
+  if (a.length >= 2 && b.length) out.push({ a: a.splice(0, 2), b: b.splice(0, 1) })
+  else if (b.length >= 2 && a.length) out.push({ a: a.splice(0, 1), b: b.splice(0, 2) })
   if (a.length && b.length) out.push({ a: a.splice(0, 1), b: b.splice(0, 1) })
   return out
 }

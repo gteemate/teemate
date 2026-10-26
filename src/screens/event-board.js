@@ -140,7 +140,7 @@ function seasonHtml(data, r) {
 
 export function bindBoard(data = {}) {
   const edit = step => async () => { Object.assign(S, { ev: null, evId: data.e.id, evStep: step, evScope: data.e.club ? 'club' : 'player', aview: 'event' }); await render(); top0() }
-  if (document.getElementById('sn-add')) document.getElementById('sn-add').onclick = edit(4)
+  if (document.getElementById('sn-add')) document.getElementById('sn-add').onclick = () => { S.mdFlowNew = true; return edit(4)() }
   if (document.getElementById('sn-players')) document.getElementById('sn-players').onclick = edit(2)
   document.querySelectorAll('[data-lgko]').forEach(b => (b.onclick = async () => { Object.assign(S, { koComp: +b.dataset.lgko, koRound: null, koFrom: S.tab === 'home' ? S.aview : null, tab: 'home', aview: 'ko' }); await render(); top0() }))
   if (document.getElementById('lg-kostart')) document.getElementById('lg-kostart').onclick = async ev => {
