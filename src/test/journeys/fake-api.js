@@ -309,7 +309,7 @@ export function makeWorld(today, setup = () => {}) {
     confirmKoResult: async mid => { const m = db.koMatches.find(x => x.id === mid); m.status = 'confirmed'; db.koAdvance(m) },
     disputeKoResult: async mid => { db.koMatches.find(m => m.id === mid).status = 'disputed' },
     adminSetKoResult: async (mid, w, r) => { const m = db.koMatches.find(x => x.id === mid); Object.assign(m, { status: 'confirmed', winnerEntry: w, result: r }); db.koAdvance(m) },
-    saveSeason: async e => { Object.assign(db.events.find(x => x.id === e.id), copy({ days: e.days, team: e.team, players: Object.keys(e.team).map(Number), matches: e.matches })) },
+    saveSeason: async e => { Object.assign(db.events.find(x => x.id === e.id), copy({ days: e.days, team: e.team, players: Object.keys(e.team).map(Number), matches: e.matches, dayRules: e.dayRules ?? null })) },
     saveEvent: async e => { if (e.id) Object.assign(db.events.find(x => x.id === e.id), copy(e)); else db.events.push({ ...copy(e), id: id(), createdBy: { id: ME, name: 'Gary Cochrane' } }); return e.id ?? db.events.at(-1).id },
     startLeagueKnockout: async (eid, seeds, deadlines) => {
       const ev = db.events.find(x => x.id === eid)
