@@ -55,20 +55,21 @@ export function draw({ date, slot: s, me, members, friends, points }) {
   document.querySelectorAll('[data-rm]').forEach(b => (b.onclick = () => { S.picked = S.picked.filter(x => x !== +b.dataset.rm); keepScroll(render) }))
   document.querySelectorAll('[data-rg]').forEach(b => (b.onclick = () => { S.guests.splice(+b.dataset.rg, 1); keepScroll(render) }))
   if ($('rq-why')) $('rq-why').oninput = e => { S.reqReason = e.target.value } // kept while players are added
-  $('confirm').onclick = async e => {
+  $('confirm').onclick = async () => {
+    const btn = $('confirm') // kept: re-enabled after a refusal (don't rely on the click event once the server has answered)
     if (S.reqMode) {
       if (!S.reqReason.trim()) { toast('Say why you need this time'); $('rq-why').focus(); return }
-      e.target.disabled = true
+      btn.disabled = true
       try {
         await api.requestTeeTime({ slotId: s.id, memberIds: S.picked, guests: S.guests, reason: S.reqReason })
-      } catch (err) { toast(err.message); e.target.disabled = false; return }
+      } catch (err) { toast(err.message); btn.disabled = false; return }
       Object.assign(S, { guests: [], picked: [], reqMode: false, reqReason: '', aview: 'mine', navReset: true }) // done: back goes Home
       await render()
       top0()
       toast('Request sent. The answer will show in Booking.')
       return
     }
-    e.target.disabled = true
+    btn.disabled = true
     try {
       S.lastBooking = await api.bookTeeTime({ slotId: s.id, memberIds: S.picked, guests: S.guests })
     } catch (err) {
