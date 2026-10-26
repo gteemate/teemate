@@ -46,5 +46,11 @@ export function holesCount(spec) {
   return l.length === 18 ? 'All 18 holes open' : !l.length ? 'No holes open' : `${l.length} hole${l.length > 1 ? 's' : ''} open: ${runs(l)}`
 }
 
+/** Every hole a player (lineup place k) has saved, in course order: { holes: course indexes, gross }. */
+export function savedHoles(card, k) {
+  const holes = card.done.map((d, i) => (d ? i : -1)).filter(i => i >= 0)
+  return { holes, gross: holes.map(i => card.scores[i][k]) }
+}
+
 /** A day's (or league week's) holes: its own, else the event's. */
 export const holesFor = (e, d) => e.dayRules?.[d]?.holes ?? e.holes ?? null

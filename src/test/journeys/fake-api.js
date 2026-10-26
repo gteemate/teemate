@@ -25,7 +25,7 @@ export const API_NAMES = ['getMe', 'forgetMe', 'getSession', 'signIn', 'needsAcc
   'getStamps', 'getEvents', 'saveEvent', 'saveEvents', 'getEventTemplates', 'saveEventTemplate', 'deleteEventTemplate', 'saveSeason', 'deleteEvent', 'getCardsOn', 'getLeagueEntries', 'getCardsById', 'enterLeague', 'leaveLeague', 'enterEventToday',
   'getEventEntries', 'enterEventRound', 'leaveEventRound', 'startLeagueKnockout',
   'getSignups', 'getSignupCounts', 'getSignupDeclines', 'declineSignup', 'undeclineSignup', 'runSignup', 'enterSignup', 'withdrawSignup', 'setMyPlaysIn', 'adminSetPlaysIn', 'saveSignup', 'deleteSignup',
-  'getKnockout', 'createMemberKnockout', 'deleteMemberKnockout', 'makeDraw', 'swapDraw', 'setRoundDeadlines', 'setKoRoundHoles', 'publishDraw', 'linkKoCard', 'reportKoResult', 'confirmKoResult', 'disputeKoResult', 'adminSetKoResult']
+  'getKnockout', 'createMemberKnockout', 'deleteMemberKnockout', 'makeDraw', 'swapDraw', 'setRoundDeadlines', 'setKoRoundHoles', 'publishDraw', 'getKoMatchOfCard', 'linkKoCard', 'reportKoResult', 'confirmKoResult', 'disputeKoResult', 'adminSetKoResult']
 
 /** For vi.mock('…/api.js'): every export, each calling the current world's version (globalThis.__world). */
 export function mockModule() {
@@ -327,6 +327,7 @@ export function makeWorld(today, setup = () => {}) {
       db.koMatches = db.koMatches.filter(m => m.compId !== cid); db.signupEntries = db.signupEntries.filter(e => e.compId !== cid); db.declines = db.declines.filter(x => x !== cid)
       Object.assign(db.signups.find(c => c.id === cid), { open: true, closesOn, finalBy, maxEntries: maxEntries ? +maxEntries : null, notes: notes || null, drawPublished: false, roundDeadlines: [], entryFee: fee || null })
     },
+    getKoMatchOfCard: async rid => { const m = db.koMatches.find(x => x.roundId === rid); return m ? { compId: m.compId, round: m.round } : null },
     linkKoCard: async (mid, rid) => { db.koMatches.find(m => m.id === mid).roundId = rid },
     reportKoResult: async (mid, w, r) => Object.assign(db.koMatches.find(m => m.id === mid), { status: 'reported', winnerEntry: w, result: r, reportedEntry: db.signupEntries.find(e => e.memberId === ME || e.partnerId === ME)?.id }),
     confirmKoResult: async mid => { const m = db.koMatches.find(x => x.id === mid); m.status = 'confirmed'; db.koAdvance(m) },

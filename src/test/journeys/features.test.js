@@ -815,6 +815,15 @@ describe('open holes: a knockout round’s holes', () => {
     await app.back()
     expect(app.text()).toContain('From the scorecard: Gary Cochrane won 5&4')
   })
+  it('found in review: the match’s own scorecard plays the round’s holes', async () => {
+    app = await boot(db => { draw(db); db.signups[0].roundHoles = { 1: [10, 11, 12, 13, 14, 15, 16, 17, 18] } })
+    await app.tap('Competition')
+    await app.tap('Men’s Match Play')
+    await app.tap('Score this match')
+    if (document.getElementById('gdone')) await app.tap('#gdone')
+    expect([...document.querySelectorAll('.hgrid [data-j]')].map(b => +b.dataset.j + 1)).toEqual([10, 11, 12, 13, 14, 15, 16, 17, 18])
+    expect(app.screen()).toBe('Hole 10')
+  })
   it('a member who isn’t the organiser doesn’t get the Change button', async () => {
     app = await boot(db => { draw(db); db.members[0].admin = false })
     await app.tap('Competition')
@@ -941,5 +950,33 @@ describe('club office: event templates and weekly repeats', () => {
     expect(document.getElementById('ev-tpl')).toBe(null)
     expect(document.getElementById('ev-rep')).toBe(null)
     await app.tap('#ev-next') // save it, so the journey ends back on Competitions
+  })
+})
+describe('found in review: the event editor’s holes', () => {
+  const start = async name => {
+    await app.tap('Competition'); await app.tap('Events'); await app.tap('+ Create your own event'); await app.tap('#cr-ev')
+    await app.type('#ev-name', name)
+  }
+  it('a league week with no holes open stops counting once the league is shorter than it', async () => {
+    app = await boot(db => { db.asOffice = true })
+    await app.tap('[data-ov="comps"]'); await app.tap('#o-new'); await app.tap('[data-o-kind="league"]')
+    await app.type('#ev-name', 'Shrinking League')
+    await app.tap('[data-evhd="6"]')
+    await app.tap('[data-hpq="d6:front"]')
+    for (let n = 1; n <= 9; n++) await app.tap(`[data-hp="d6:${n}"]`)
+    expect($ev('#ev-next').disabled).toBe(true)
+    await app.tap('[data-lg="weeks"][data-d="-1"]') // 5 weeks: week 6 has gone
+    expect($ev('#ev-next').disabled).toBe(false)
+  })
+  it('switching a one-off to a season drops the event’s holes (a season’s days pick their own)', async () => {
+    app = await boot()
+    await start('Season Switch'); await app.tap('[data-style="ryder"]')
+    await app.tap('[data-hpq="ev:front"]')
+    await app.tap('[data-when="season"]')
+    await app.type('#ev-end', '2027-03-31')
+    await app.tap('#ev-next')
+    for (const id of [10, 12, 9]) await app.tap(`[data-pick="${id}"]`)
+    await app.tap('#ev-next'); await app.tap('#ev-bal'); await app.tap('#ev-next'); await app.tap('#ev-next'); await app.tap('#ev-next')
+    expect(app.db.events.find(e => e.name === 'Season Switch')).toMatchObject({ season: true, holes: null })
   })
 })

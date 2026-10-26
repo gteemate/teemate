@@ -1,4 +1,5 @@
 import { isoDate, today } from '../dates.js'
+import { savedHoles } from '../open-holes.js'
 import { toView, toStored, mergeSaved, disagreements } from '../card-view.js'
 import { must, myId, sb, todayIso } from './client.js'
 import { getMembers } from './members.js'
@@ -103,7 +104,8 @@ export async function saveRound(round) {
 }
 
 /**
- * Everyone's round today: [{ member, gross: [...completed holes], teeTime?, live }]. My group comes first.
+ * Everyone's round today: [{ member, holes: [course indexes saved], gross: [on those holes], teeTime?, live }]. My group
+ * comes first. Every saved hole counts (an event on, say, holes 1–6 and 10–12 skips the rest).
  * Guests appear as member-like entries { id: 'g<id>', name, hcp, guest: true } (hcp 0 until it's set).
  */
 export async function getTodayRounds(date = today()) {
@@ -120,13 +122,11 @@ export async function getTodayRounds(date = today()) {
   rounds.sort((a, b) => (b.created_by === meId) - (a.created_by === meId))
   const seen = new Set(), out = []
   for (const r of rounds) {
-    let played = r.done.findIndex(d => !d)
-    if (played === -1) played = r.done.length
     r.lineup.forEach((e, k) => {
       const key = e.m != null ? `m${e.m}` : `g${e.g}`
       if (seen.has(key) || !byKey.has(key)) return
       seen.add(key)
-      out.push({ member: byKey.get(key), gross: r.scores.slice(0, played).map(s => s[k]), teeTime: r.tee_time ?? undefined, live: true })
+      out.push({ member: byKey.get(key), ...savedHoles(r, k), teeTime: r.tee_time ?? undefined, live: true })
     })
   }
   return out

@@ -62,7 +62,7 @@ function todayBoard({ events, course, rounds, me }) {
 /** Today's scores (gross, net, Stableford, birdies): the members' Leaderboard tab and the club office. */
 export function fieldHtml({ course, rounds, me }) {
   const m = S.lbm
-  const rows = rounds.map(r => ({ ...r, ...roundSummary(course.holes, r.gross, courseHandicap(r.member.hcp, teeRating(course))), ch: courseHandicap(r.member.hcp, teeRating(course)) }))
+  const rows = rounds.map(r => ({ ...r, ...roundSummary(r.holes ? r.holes.map(i => course.holes[i]) : course.holes, r.gross, courseHandicap(r.member.hcp, teeRating(course))), ch: courseHandicap(r.member.hcp, teeRating(course)) }))
   const played = rows.filter(r => r.thru), waiting = rows.filter(r => !r.thru)
   const key = { gross: r => r.g, net: r => r.n, stab: r => -r.pts, birdies: r => -r.bd }[m]
   played.sort((a, b) => key(a) - key(b) || (m === 'birdies' ? a.g - b.g : 0) || b.thru - a.thru)

@@ -57,3 +57,12 @@ describe('open holes', () => {
     expect(holesFor({}, 1)).toBe(null)
   })
 })
+
+import { savedHoles } from './open-holes.js'
+describe('found in review: today’s scores count every saved hole', () => {
+  it('holes saved out of order or with gaps all count, with their course index', () => {
+    const card = { scores: COURSE.holes.map((_, i) => [i + 1]), done: COURSE.holes.map((_, i) => i < 6 || (i >= 9 && i <= 11)) }
+    expect(savedHoles(card, 0)).toEqual({ holes: [0, 1, 2, 3, 4, 5, 9, 10, 11], gross: [1, 2, 3, 4, 5, 6, 10, 11, 12] })
+    expect(savedHoles({ ...card, done: COURSE.holes.map((_, i) => i >= 9) }, 0).holes).toEqual([9, 10, 11, 12, 13, 14, 15, 16, 17])
+  })
+})

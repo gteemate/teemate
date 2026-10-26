@@ -68,6 +68,11 @@ export async function setRoundDeadlines(compId, dates) { must(await sb.rpc('admi
 export async function setKoRoundHoles(compId, round, holes) { must(await sb.rpc('set_ko_round_holes', { p_comp: compId, p_round: round, p_holes: holes })) }
 export async function publishDraw(compId) { must(await sb.rpc('admin_publish_draw', { p_comp: compId })) }
 /** Link my scorecard to my match (Score this match). */
+/** The knockout match a card is for: { compId, round }, or null. */
+export async function getKoMatchOfCard(roundId) {
+  const m = must(await sb.from('ko_matches').select('comp_id, round').eq('round_id', roundId).limit(1))[0]
+  return m ? { compId: m.comp_id, round: m.round } : null
+}
 export async function linkKoCard(matchId, roundId) { must(await sb.rpc('ko_link_card', { p_match: matchId, p_round: roundId })) }
 export async function reportKoResult(matchId, winnerEntry, result) { must(await sb.rpc('report_ko_result', { p_match: matchId, p_winner: winnerEntry, p_result: result })) }
 export async function confirmKoResult(matchId) { must(await sb.rpc('confirm_ko_result', { p_match: matchId })) }

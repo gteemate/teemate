@@ -6,7 +6,7 @@ import { esc, sur } from '../ui.js'
 import { eventDates, isoDate, today } from '../dates.js'
 import { dayDate, dayOfDate, drawDay } from '../season.js'
 import { DEFAULT_POINTS, dayRules, matchType } from '../match-scoring.js'
-import { holesText } from '../open-holes.js'
+import { holesText, holeList } from '../open-holes.js'
 import { holePickerHtml, bindHolePicker, noneOpen } from './hole-picker.js'
 
 const STEPS = ['date', 'players', 'matches', 'holes', 'points', 'confirm']
@@ -123,7 +123,10 @@ export function flowNext(ev, f) {
   if (f.step === 'holes' && noneOpen(f.holes)) return 'Open at least one hole.'
   if (f.step !== 'confirm') { f.step = STEPS[STEPS.indexOf(f.step) + 1]; return '' }
   ev.matches = { ...ev.matches, [f.d]: f.matches }
-  ev.dayRules = { ...(ev.dayRules ?? {}), [f.d]: { holes: f.holes, points: f.points } }
+  // The day keeps holes of its own only when they differ from the event's (all 18 kept as the full list, since null
+  // would mean "the event's").
+  const same = JSON.stringify(holeList(f.holes)) === JSON.stringify(holeList(ev.holes ?? null))
+  ev.dayRules = { ...(ev.dayRules ?? {}), [f.d]: same ? { points: f.points } : { holes: f.holes ?? holeList(null), points: f.points } }
   S.mdFlow = null
   return ''
 }

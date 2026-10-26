@@ -42,7 +42,11 @@ export async function load() {
   // The round's Leaderboard tab: the competition this card counts for (none for a general round).
   const onToday = round ? allEvents.filter(e => e.style !== 'league' && e.startDate <= t && eventLastDay(e) >= t && round.lineup.some(x => e.players.includes(x.m))) : []
   const eventEntries = round?.id ? await api.getEventEntries(onToday.map(e => e.id)) : []
+  // A card for a knockout match plays its round's holes (the draw's competition knows them).
+  const ko = round?.id ? await api.getKoMatchOfCard(round.id) : null
+  const koHoles = ko ? (await api.getSignups()).comps.find(c => c.id === ko.compId)?.roundHoles?.[ko.round] ?? null : null
   S.roundBoard = round?.id ? roundBoard({ cardId: round.id, lineup: round.lineup, events: allEvents, leagueEntries: entries, eventEntries, playerEvents: events, date: t }) : null
+  S.cardHoles = S.roundBoard?.holes ?? koHoles // the holes this card plays (null: all 18)
   return { course, members, guests, L: buildLibrary(games), me, teeTimes, events, leagues, entries }
 }
 
@@ -121,7 +125,7 @@ export function draw({ course, members, guests, L, me, teeTimes, events, leagues
   const LG = base === NO_GAME || (pair && !one) ? null : L.lib[pair ? base : round.game]
   // The holes played: a competition's open holes (the round's Leaderboard tab knows which), else all 18. S.ch is the
   // course hole being scored; games, shots and "played" go by place among the open holes.
-  const spec = S.roundBoard?.holes ?? null, open = openCourse(course.holes, spec), onIdx = open.map(x => x.i)
+  const spec = S.cardHoles ?? null, open = openCourse(course.holes, spec), onIdx = open.map(x => x.i)
   const P = (k => (k === -1 ? onIdx.length : k))(onIdx.findIndex(c => !round.done[c])) // open holes saved in order
   if (S.ch == null || !onIdx.includes(S.ch)) S.ch = onIdx[Math.min(P, onIdx.length - 1)]
   const o = PAIRINGS[round.pairing], G = LG ? gameSpec(LG) : SCORES_ONLY, g = G.kind

@@ -58,7 +58,7 @@ const dropFromMatches = (ev, id) => {
 const ALL18 = Array.from({ length: 18 }, (_, i) => i + 1)
 const holeUnits = ev => (ev.style === 'league' ? ev.weeks : ev.days) ?? 1
 const ownHoles = (ev, d) => (ev.dayRules?.[d] && 'holes' in ev.dayRules[d] ? ev.dayRules[d].holes : undefined)
-const holesEmpty = ev => noneOpen(ev.holes) || Object.values(ev.dayRules ?? {}).some(r => noneOpen(r?.holes))
+const holesEmpty = ev => noneOpen(ev.holes) || Object.entries(ev.dayRules ?? {}).some(([d, r]) => +d <= holeUnits(ev) && noneOpen(r?.holes)) // days still in it
 function holesCard(ev) {
   const unit = ev.style === 'league' ? 'Week' : 'Day', n = holeUnits(ev)
   const days = n > 1 ? Array.from({ length: n }, (_, i) => i + 1).map(d => {
@@ -78,12 +78,12 @@ export function holesSummary(ev) {
 }
 
 // Club event templates (the club office): an event's settings without its date or players, run again on any day.
-const NOT_KEPT = ['id', 'startDate', 'endDate', 'start0', 'team0', 'players', 'team', 'matches', 'captainPool', 'leaguePairs', 'createdBy', 'koComp', 'entryRequired']
+const NOT_KEPT = ['id', 'startDate', 'endDate', 'start0', 'team0', 'players', 'team', 'matches', 'captainPool', 'leaguePairs', 'createdBy', 'koComp', 'koFinish', 'entryRequired']
 export function templateOf(ev) {
   const setup = structuredClone(ev)
   NOT_KEPT.forEach(k => delete setup[k])
   if (setup.teams) setup.teams = setup.teams.map(t => ({ name: t.name, col: t.col })) // no captains: they're players
-  if (setup.dayRules) for (const r of Object.values(setup.dayRules)) delete r.matches
+  if (setup.season) { delete setup.dayRules; setup.days = 1 } // a season's match days are its own: a run starts with none
   if (ev.leaguePairs) setup.pairs = true
   return setup
 }
@@ -364,6 +364,7 @@ export function draw({ members, me }) {
   document.querySelectorAll('[data-when]').forEach(b => (b.onclick = () => {
     read()
     ev.season = b.dataset.when === 'season'; ev.matches = {}; ev.dayRules = null // the days start again
+    if (ev.season) ev.holes = null // a season's match days pick their own holes
     if (ev.season) { ev.endDate ??= addDaysIso(ev.startDate, 182); ev.days = dayOfDate(ev, ev.endDate) } else { ev.days = 1; ev.endDate = null }
     redraw()
   }))
