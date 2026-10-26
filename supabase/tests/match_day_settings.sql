@@ -49,7 +49,22 @@ begin
   perform t.ok('Refuse: 0.3 points', e like '%points%', e);
   e := t.err(format(s, v, current_date + 100, team0, jsonb_build_object('1', past), '{"1":{"holes":9}}'));
   perform t.ok('Refuse: changing a played day''s holes', e like '%has started%', e);
+  e := t.err(format(s, v, current_date + 100, team0, jsonb_build_object('1', past), '{"10":{"points":{"four":"2"}}}'));
+  perform t.ok('Refuse (friendly): points as text', e like 'Match points%', e);
+  e := t.err(format(s, v, current_date + 100, team0, jsonb_build_object('1', past), '{"10":{"points":{"fourball":2}}}'));
+  perform t.ok('Refuse: a points name that isn''t a match type', e like 'Match points%', e);
+  e := t.err(format(s, v, current_date + 100, team0, jsonb_build_object('1', past), '{"x":{"holes":9}}'));
+  perform t.ok('Refuse: a day that isn''t a day number', e like '%match day%', e);
+  e := t.err(format(s, v, current_date + 100, team0, jsonb_build_object('1', past), '{"500":{"holes":9}}'));
+  perform t.ok('Refuse: a day after the end of the season', e like '%match day%', e);
   perform t.done();
+  -- Every save is checked, not just save_season (one-offs, seasons before they start, admins).
+  e := t.err(format($q$update public.events set points = '{"four":"2"}' where id = %s$q$, v));
+  perform t.ok('Check: an event''s points are numbers', e is not null, e);
+  e := t.err(format($q$update public.events set day_rules = '{"3":{"holes":11}}' where id = %s$q$, v));
+  perform t.ok('Check: an event''s day holes are from the list', e is not null, e);
+  e := t.err($q$insert into public.events (name, start_date, days, style, fmt, points, day_rules) values ('Ok one-off', current_date + 3, 2, 'ryder', 'bbl', '{"four":1.5}', '{"2":{"holes":12,"points":{"singles":2}}}')$q$);
+  perform t.ok('Check: good points and day settings save', e is null, e);
 end $$;
 
 select test, ok, detail from t.results order by n;
