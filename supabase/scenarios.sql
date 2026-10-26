@@ -89,11 +89,13 @@ begin
   returning id into r;
   return r;
 end $$;
-with e as (insert into public.events (name, team_a, team_b, start_date, days, season, style, fmt, players, team, matches, club, everyone, entry_required, created_by)
-  values ('Pals Ryder Season', '{"name":"Blues","col":"#19335A"}', '{"name":"Reds","col":"#762A43"}', current_date - 30, 91, true, 'ryder', 'bbl',
+-- Day 45 (in two weeks): 12 holes on winter greens, a 3-ball and a four-ball worth 2.
+with e as (insert into public.events (name, team_a, team_b, start_date, days, season, style, fmt, players, team, matches, club, everyone, entry_required, created_by, points, day_rules)
+  values ('Pals Ryder Season', '{"name":"Blues","col":"#6CB6FF"}', '{"name":"Reds","col":"#E5484D"}', current_date - 30, 91, true, 'ryder', 'bbl',
     '{0,1,7,11,3,5,9,10}', '{"0":"A","1":"A","7":"A","11":"A","3":"B","5":"B","9":"B","10":"B"}',
-    '{"3":[{"a":[0,1],"b":[3,5]},{"a":[7,11],"b":[9,10]}],"17":[{"a":[0,7],"b":[5,9]},{"a":[1],"b":[3]}],"31":[{"a":[7,11],"b":[9,10]}],"38":[{"a":[0],"b":[9]}]}',
-    false, false, true, 0) returning id),
+    '{"3":[{"a":[0,1],"b":[3,5]},{"a":[7,11],"b":[9,10]}],"17":[{"a":[0,7],"b":[5,9]},{"a":[1],"b":[3]}],"31":[{"a":[7,11],"b":[9,10]}],"38":[{"a":[0],"b":[9]}],"45":[{"a":[0,1],"b":[3]},{"a":[7,11],"b":[9,10]}]}',
+    false, false, true, 0, '{"four":1,"singles":1,"threePair":1,"threeSingle":2}',
+    '{"45":{"holes":12,"points":{"four":2,"singles":1,"threePair":1,"threeSingle":2}}}') returning id),
 c as (select pg_temp.card(-28, '{0,1,3,5}', '[4,5,5,5]') a, pg_temp.card(-28, '{7,11,9,10}', '[5,5,4,5]') b,
              pg_temp.card(-14, '{0,7,5,9}', '[4,4,5,5]') c, pg_temp.card(-14, '{1,3}', '[4,5]') d)
 insert into public.event_entries (event_id, day, member_id, round_id)

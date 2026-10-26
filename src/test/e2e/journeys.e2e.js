@@ -98,11 +98,16 @@ describe('journeys against the test database', () => {
     await app.tap('+ Add a match day')
     const [{ d }] = await sql(`select (current_date + 10)::text as d`)
     await app.type('#ev-md', d)
-    await app.tap('#ev-mdadd')
+    await app.tap('#ev-mdadd') // Players
+    await app.tap('#ev-next') // Matches
     await app.tap('[data-add1="41"]') // day 41 of the season (it started 30 days ago)
+    await app.tap('#ev-next') // Holes
+    await app.tap('[data-holes="12"]')
+    for (let i = 0; i < 3; i++) await app.tap('#ev-next') // Points, Confirm, Add match day
     await app.tap('#ev-next') // Review
     await app.tap('#ev-next') // Save changes: through save_season
-    const [e] = await sql(`select matches->'41' as day, matches->'3' as played from public.events where name = 'Pals Ryder Season'`)
+    const [e] = await sql(`select matches->'41' as day, matches->'3' as played, day_rules->'41'->>'holes' as holes from public.events where name = 'Pals Ryder Season'`)
+    expect(e.holes).toBe('12')
     expect(e.day).toHaveLength(1)
     expect(e.day[0].a).toHaveLength(1)
     expect(e.played).toHaveLength(2) // the played day as it was
