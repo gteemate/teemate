@@ -29,10 +29,10 @@ export function playingHandicaps(courseHcps, allowance, offLow = false) {
  * Shots received on a hole. 20 → 2 on SI 1–2 and 1 elsewhere.
  * Plus handicaps give shots back, starting from SI 18: −2 → −1 on SI 17 and 18.
  */
-export function shotsOnHole(ph, si) {
-  if (ph >= 0) return Math.floor(ph / HOLES_IN_ROUND) + (si <= ph % HOLES_IN_ROUND ? 1 : 0)
+export function shotsOnHole(ph, si, of = HOLES_IN_ROUND) { // of: holes played (si ranked among them)
+  if (ph >= 0) return Math.floor(ph / of) + (si <= ph % of ? 1 : 0)
   const give = -ph
-  return -(Math.floor(give / HOLES_IN_ROUND) + (si > HOLES_IN_ROUND - (give % HOLES_IN_ROUND) ? 1 : 0)) || 0 // no −0
+  return -(Math.floor(give / of) + (si > of - (give % of) ? 1 : 0)) || 0 // no −0
 }
 
 /** Stableford points: 2 for a net par, one more per stroke better, never below 0. null = no score. */
