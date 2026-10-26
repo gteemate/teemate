@@ -348,17 +348,19 @@ export function makeWorld(today, setup = () => {}) {
     enterEvent: async eid => {
       const e = db.events.find(x => x.id === eid)
       if (!e?.club || !(e.selfEntry || e.signup)) throw new Error('This competition isn’t open for entry. Ask an admin to add you.')
+      if (!e.signup && e.startDate <= db.today) throw new Error('This competition has started, so entries are closed.')
       if (e.players.includes(ME)) return
       if (e.signup) {
         if (e.advertiseFrom && db.today < e.advertiseFrom) throw new Error(`Entries open on ${e.advertiseFrom}.`)
         if (db.today > closesOn(e)) throw new Error('Entries have closed.')
         if (e.maxEntries != null && e.players.length >= e.maxEntries) throw new Error('Sorry, it’s full: someone took the last place.')
-      } else if (e.startDate <= db.today) throw new Error('This competition has started, so entries are closed.')
+      }
       e.players.push(ME)
     },
     withdrawEvent: async eid => {
       const e = db.events.find(x => x.id === eid)
-      if (e.signup ? db.today > closesOn(e) : e.startDate <= db.today) throw new Error('Entries have closed. Ask the club office to take you off.')
+      if (e.signup && db.today > closesOn(e)) throw new Error('Entries have closed. Ask the club office to take you off.')
+      if (!e.signup && e.startDate <= db.today) throw new Error('This competition has started. Ask an admin to take you off.')
       takeOff(e, ME)
     },
     removeEventEntrant: async (eid, mid) => {

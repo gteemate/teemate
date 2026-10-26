@@ -101,7 +101,7 @@ export function draw({ evs, comps, kos, members, t, tpls = [] }) {
   }
   // Take someone off an event open for sign-up: tap twice.
   document.querySelectorAll('[data-o-rment]').forEach(b => (b.onclick = async () => {
-    if (b.dataset.armed !== '1') { b.dataset.armed = '1'; b.textContent = 'Tap again'; return }
+    if (b.dataset.armed !== '1') { b.dataset.armed = '1'; b.textContent = 'Tap again'; setTimeout(() => { b.dataset.armed = ''; b.textContent = 'Remove' }, 4000); return }
     const mid = +b.dataset.oRment, who = members.find(m => m.id === mid)?.name ?? 'They'
     try { await api.removeEventEntrant(sel.e.id, mid) } catch (er) { toast(er.message); return }
     await keepScroll(render); toast(`${who} taken off ${sel.e.name}`)

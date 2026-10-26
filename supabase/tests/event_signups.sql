@@ -77,5 +77,28 @@ do $$ declare e text; begin
   reset role;
 end $$;
 
+-- Found in review: the club's own date, visibility after entries close, on-the-day entry, empty team lists.
+with e as (insert into public.events (name, start_date, style, fmt, club, everyone, created_by, self_entry, players)
+  values ('Started Day Cup', current_date, 'teams', 'teamstab', true, false, 990501, true, '{990502}') returning id)
+insert into t.ev select 'started', id from e;
+with e as (insert into public.events (name, start_date, style, fmt, club, everyone, created_by, weeks, best_of, signup, max_entries, players, league_teams)
+  values ('Team League', current_date + 30, 'league', 'beststab', true, false, 990501, 10, 4, true, 10, '{990503}', '[]') returning id)
+insert into t.ev select 'teams', id from e;
+
+do $$ declare e text; begin
+  perform t.ok('club_today: the club''s date (UK time), not the server''s', public.club_today() = (now() at time zone 'Europe/London')::date);
+  perform t.act_as(990503);
+  perform t.ok('See: not once entries have closed (for a member not in it)', not exists (select 1 from public.events where id = t.id('closed')));
+  perform public.withdraw_event(t.id('teams'));
+  perform t.ok('Withdraw: an empty team list stays an empty list', (select league_teams = '[]'::jsonb from public.events where id = t.id('teams')));
+  reset role;
+  perform t.act_as(990502);
+  e := t.err(format('select public.enter_event(%s)', t.id('started')));
+  perform t.ok('On the day: entering after the start is still refused, even when already in', e like '%has started%', e);
+  e := t.err(format('select public.withdraw_event(%s)', t.id('started')));
+  perform t.ok('On the day: the withdraw message as before', e like '%has started. Ask an admin%', e);
+  reset role;
+end $$;
+
 select test, ok, detail from t.results order by n;
 rollback;

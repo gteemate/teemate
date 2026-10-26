@@ -1112,3 +1112,33 @@ describe('found in review: sign-ups on club events, templates and repeats', () =
     expect(app.db.events.find(e => e.name === 'Day Medal').signup).toBe(false)
   })
 })
+describe('found in review: sign-up places and the office’s Remove', () => {
+  it('a team league’s places follow the teams until the office types its own number', async () => {
+    app = await boot(db => { db.asOffice = true })
+    await app.tap('[data-ov="comps"]'); await app.tap('#o-new'); await app.tap('[data-o-kind="league"]')
+    await app.type('#ev-name', 'Growing League')
+    await app.tap('#ev-signup')
+    expect(+$ev('#ev-max').value).toBe(120)
+    await app.tap('[data-lg="nteams"][data-d="-1"]') // 9 teams
+    expect(+$ev('#ev-max').value).toBe(108)
+    await app.type('#ev-max', '50')
+    await app.tap('[data-lg="nteams"][data-d="-1"]')
+    expect(+$ev('#ev-max').value).toBe(50)
+  })
+  it('Remove goes back to Remove if the second tap doesn’t come', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    try {
+      app = await boot(db => {
+        db.asOffice = true
+        db.events.push({ id: 884, name: 'Remove League', style: 'league', fmt: 'beststab', club: true, everyone: false, startDate: '2026-12-07', days: 1, weeks: 10, bestOf: 4,
+          teams: [], team: {}, players: [10], matches: {}, captainPool: [], signup: true, advertiseFrom: null, entriesClose: null, maxEntries: 4, createdBy: { id: 0, name: 'Gary Cochrane' } })
+      })
+      await app.tap('[data-ov="comps"]'); await app.tap('[data-o-comp="e:884"]')
+      await app.tap('[data-o-rment="10"]')
+      expect($ev('[data-o-rment="10"]').textContent).toBe('Tap again')
+      vi.advanceTimersByTime(5000)
+      expect($ev('[data-o-rment="10"]').textContent).toBe('Remove')
+      expect($ev('[data-o-rment="10"]').dataset.armed).not.toBe('1')
+    } finally { vi.useRealTimers() }
+  })
+})

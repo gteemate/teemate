@@ -88,7 +88,7 @@ const signupCard = ev => `<div class="card evsec"><div class="actrow"><span clas
       <span class="hint">${signupLine(ev)}</span>` : ''}</div>`
 
 // Club event templates (the club office): an event's settings without its date or players, run again on any day.
-const NOT_KEPT = ['id', 'startDate', 'endDate', 'start0', 'team0', 'players', 'team', 'matches', 'captainPool', 'leaguePairs', 'createdBy', 'koComp', 'koFinish', 'entryRequired', 'advertiseFrom', 'entriesClose'] // sign-up dates go with the day it's run
+const NOT_KEPT = ['id', 'startDate', 'endDate', 'start0', 'team0', 'players', 'team', 'matches', 'captainPool', 'leaguePairs', 'createdBy', 'koComp', 'koFinish', 'entryRequired', 'advertiseFrom', 'entriesClose', 'placesAuto'] // sign-up dates go with the day it's run
 export function templateOf(ev) {
   const setup = structuredClone(ev)
   NOT_KEPT.forEach(k => delete setup[k])
@@ -198,6 +198,7 @@ function draw1(ev, d) {
 
 export function draw({ members, me }) {
   const ev = S.ev, steps = stepsFor(ev)
+  if (ev.placesAuto && ev.signup && ev.style === 'league') ev.maxEntries = leaguePlaces(ev) // places follow the teams until the office sets its own
   if (!steps.includes(S.evStep)) S.evStep = steps[0]
   const step = S.evStep, idx = steps.indexOf(step)
   const byId = id => members.find(m => m.id === id)
@@ -371,7 +372,12 @@ export function draw({ members, me }) {
   const redraw = () => keepScroll(render)
   const read = () => {
     if ($('ev-name')) { ev.name = $('ev-name').value; ev.startDate = $('ev-date').value; if ($('ev-fmt')) ev.fmt = $('ev-fmt').value }
-    if ($('ev-adv')) { ev.advertiseFrom = $('ev-adv').value || null; ev.entriesClose = $('ev-close').value || null; ev.maxEntries = +$('ev-max').value || null }
+    if ($('ev-adv')) {
+      ev.advertiseFrom = $('ev-adv').value || null; ev.entriesClose = $('ev-close').value || null
+      const max = +$('ev-max').value || null
+      if (max !== ev.maxEntries) ev.placesAuto = false // the office typed its own number: it stays
+      ev.maxEntries = max
+    }
     if ($('ev-end')) ev.endDate = $('ev-end').value
     if (ev.season && ev.endDate && ev.startDate) ev.days = dayOfDate(ev, ev.endDate)
     if ($('ev-fee')) { const f = $('ev-fee').value.trim(); ev.entryFee = f && +f > 0 ? Math.min(100000, Math.round(+f * 100)) : null }
@@ -511,7 +517,7 @@ export function draw({ members, me }) {
     toast(`${saved} saved as a template`)
   })
   if ($('ev-self')) $('ev-self').onclick = () => { read(); ev.selfEntry = !ev.selfEntry; redraw() }
-  if ($('ev-signup')) $('ev-signup').onclick = () => { read(); ev.signup = !ev.signup; if (ev.signup && ev.maxEntries == null && ev.style === 'league' && leaguePlaces(ev)) ev.maxEntries = leaguePlaces(ev); redraw() }
+  if ($('ev-signup')) $('ev-signup').onclick = () => { read(); ev.signup = !ev.signup; if (ev.signup && ev.maxEntries == null && ev.style === 'league' && leaguePlaces(ev)) { ev.maxEntries = leaguePlaces(ev); ev.placesAuto = true }; redraw() }
   ;['ev-adv', 'ev-close', 'ev-max'].forEach(id => { if ($(id)) $(id).onchange = () => { read(); redraw() } })
   document.querySelectorAll('[data-who]').forEach(b => (b.onclick = () => { read(); ev.selfEntry = b.dataset.who === 'all'; if (ev.selfEntry) ev.everyone = true; redraw() }))
   document.querySelectorAll('[data-vis]').forEach(b => (b.onclick = () => { read(); ev.everyone = b.dataset.vis === 'all'; redraw() }))
