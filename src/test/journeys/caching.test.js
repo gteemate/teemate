@@ -89,3 +89,19 @@ describe('taps that only change the view', () => {
     expect(app.main()).toContain('Hide declined')
   })
 })
+
+describe('the club office iPad', () => {
+  it('office pages don’t refetch what’s waiting, until someone asks to join', async () => {
+    app = await boot(db => { db.asOffice = true; db.joins.push({ id: 1, name: 'Sean Byrne', email: 'sean@example.invalid', createdAt: '2026-10-09T10:00:00Z' }) })
+    await app.tap('[data-ov="members"]')
+    await app.tap('[data-ov="tee"]')
+    await app.tap('[data-ov="today"]')
+    expect(callsTo('getAccessRequests')).toBe(1)
+    app.db.joins.push({ id: 2, name: 'Aoife Kelly', email: 'aoife@example.invalid', createdAt: '2026-10-10T08:00:00Z' })
+    app.db.stamps.requests = '2'
+    await vi.advanceTimersByTimeAsync(31_000)
+    await app.tap('[data-ov="today"]')
+    await app.settle()
+    expect(app.main()).toContain('Aoife Kelly')
+  })
+})

@@ -186,6 +186,7 @@ async function render() {
     drawSide(s, me, theme?.name)
     $('roundbar').hidden = true
     $('alerts').innerHTML = ''
+    checkForChanges()
     return
   }
   hideSide()
