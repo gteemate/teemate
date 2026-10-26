@@ -194,7 +194,7 @@ export function scoreAdvanceEvent(event, holes, dayCards, player, allow, entries
   const rows = event.players.map(id => {
     const perDay = days.map(d => {
       const p = P(id, event.team[id], d), thru = groupThru([p])
-      const ph = playingHandicaps([p.courseHcp], allow)[0]
+      const ph = playingHandicaps([p.courseHcp], typeof allow === 'number' ? allow : allow.base ?? allow.stab)[0] // the event's own game's allowance
       let pts = 0, net = 0
       for (let i = 0; i < thru; i++) {
         const sh = shotsOnHole(ph, holes[i].si)

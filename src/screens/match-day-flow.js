@@ -16,9 +16,10 @@ const fmtPts = n => (Number.isInteger(n) ? String(n) : `${Math.floor(n) || ''}½
 /** Open the flow: a new season day (from its date) or an existing day d. */
 export function openFlow(ev, d = null) {
   const sides = ['A', 'B'].flatMap(t => ev.players.filter(id => ev.team[id] === t))
-  if (d == null) { S.mdFlow = { d: null, step: 'date', isNew: true, playing: sides, matches: [], ...dayRules(ev, 0), points: { ...DEFAULT_POINTS, ...(ev.points ?? {}) }, holes: 18 }; return }
+  const eventId = ev.id ?? 'new'
+  if (d == null) { S.mdFlow = { eventId, d: null, step: 'date', isNew: true, playing: sides, matches: [], ...dayRules(ev, 0), points: { ...DEFAULT_POINTS, ...(ev.points ?? {}) }, holes: 18 }; return }
   const r = dayRules(ev, d), inDay = (ev.matches[d] ?? []).flatMap(m => [...m.a, ...m.b])
-  S.mdFlow = { d, step: 'players', isNew: !(ev.matches[d] ?? []).length, playing: inDay.length ? sides.filter(id => inDay.includes(id) || !ev.matches[d]) : sides,
+  S.mdFlow = { eventId, d, step: 'players', isNew: !(ev.matches[d] ?? []).length, playing: inDay.length ? sides.filter(id => inDay.includes(id) || !ev.matches[d]) : sides,
     matches: structuredClone(ev.matches[d] ?? []), holes: r.holes, points: r.points }
 }
 
@@ -27,6 +28,12 @@ const avail = f => f.matches.reduce((s, m) => {
   const type = matchType(m), p = f.points
   return s + (type === 'four' ? p.four : type === 'singles' ? p.singles : Math.max(p.threePair, p.threeSingle))
 }, 0)
+
+/** The flow open for this event, or none (one left open on another event is closed). */
+export function currentFlow(ev) {
+  if (S.mdFlow && S.mdFlow.eventId !== (ev.id ?? 'new')) S.mdFlow = null
+  return S.mdFlow ?? null
+}
 
 /** The flow's footer label. */
 export const flowCta = f => (f.step === 'confirm' ? (f.isNew ? 'Add match day' : 'Save match day') : 'Next')

@@ -448,3 +448,17 @@ describe('match day settings: points, 3-balls and short days', () => {
     expect(r.score).toMatchObject({ cA: 0.5, cB: 0.5 })
   })
 })
+
+describe('found in review', () => {
+  it('Individual and Team Stableford keep their handicaps when the board passes allowances for every format', () => {
+    const players = { 1: 'Declan', 2: 'Aoife' }
+    const player = id => ({ name: players[id], courseHcp: 18 })
+    const card = { lineup: [{ m: 1 }, { m: 2 }], scores: FLAT.map(() => [5, 5]), done: FLAT.map(() => true) }
+    for (const style of ['individual', 'teams']) {
+      const ev = { style, fmt: style === 'teams' ? 'teamstab' : 'stab', days: 1, players: [1, 2], team: { 1: 'A', 2: 'B' }, matches: {} }
+      const byNumber = scoreAdvanceEvent(ev, FLAT, { 1: [card] }, player, 1)
+      const byObject = scoreAdvanceEvent(ev, FLAT, { 1: [card] }, player, { four: 0.9, singles: 1, stab: 0.95, base: 1 })
+      expect(byObject, style).toEqual(byNumber)
+    }
+  })
+})

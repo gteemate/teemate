@@ -11,6 +11,7 @@ import { addDaysIso, eventDates, isoDate, today, fromIso, longDay, leagueWeek } 
 import { EVENT_TYPES, eventFormat } from './event-editor.js'
 import { myMatch, matchBooking } from '../match.js'
 import { matchDays, dayDate, seasonEnd, SINGLES_FMT, canChange } from '../season.js'
+import { matchType } from '../match-scoring.js'
 import { matchActionHtml, bindMatchAction } from './match.js'
 
 export async function loadBoard(id, dayWanted = null) {
@@ -36,7 +37,7 @@ export async function loadBoard(id, dayWanted = null) {
     action = { ...matchBooking(ids, sheet, me.id), date, ids, meId: me.id, names: name, eventName: e.name,
       started: (dayCards[day] ?? []).some(c => ids.every(mid => c.lineup.some(x => x.m === mid))) }
     // A season's singles can be played in each player's own tee time: no "all four together" advice.
-    if (e.season && mine.a.length === 1 && ['apart', 'split'].includes(action.kind)) action = null
+    if (matchType(mine) !== 'four' && ['apart', 'split'].includes(action.kind)) action = null
     // Rearrange: only when the four are one booking with nobody else on it (so moving it bumps no one).
     if (action?.kind === 'together' && !action.started) {
       const b = (await api.getMyBookings()).find(x => x.date === date && x.time === action.slot.time)
@@ -62,7 +63,7 @@ export function boardResult({ e, members, course, L, dayCards, entries }) {
   const m = id => members.find(x => x.id === id)
   const player = id => ({ name: m(id)?.name ?? 'Former member', courseHcp: courseHandicap(m(id)?.hcp ?? 0, tee) })
   const pct = k => (L.lib[k]?.pct == null ? 0 : L.lib[k].pct / 100)
-  return scoreAdvanceEvent(e, course.holes, dayCards, player, { four: pct(EVENT_ALLOWANCE_GAME[e.fmt]), singles: pct(SINGLES_FMT[e.fmt]), stab: pct('stab') }, entries)
+  return scoreAdvanceEvent(e, course.holes, dayCards, player, { four: pct(EVENT_ALLOWANCE_GAME[e.fmt]), singles: pct(SINGLES_FMT[e.fmt]), stab: pct('stab'), base: pct(EVENT_ALLOWANCE_GAME[e.fmt]) }, entries)
 }
 
 export function boardHtml(data, top = '') {
@@ -129,8 +130,8 @@ function daySelect(e, r, shown) {
 function matchCard(data, mt, k, d) {
   const { A, B } = data.e, res = mt.res, who = res.d > 0 ? A : res.d < 0 ? B : null, col = who ? who.col : 'var(--muted)'
   const stat = res.st === 'ns' ? `<b class="ms-big">Not started</b>`
-    : res.st === 'done' ? `<b class="ms-big" style="color:${col}">${who ? `${esc(who.name)} ${esc(res.txt)}` : 'Halved'}</b><small>${who ? 'Final' : '½ point each'}</small>`
-    : `<b class="ms-big" style="color:${col}">${res.d ? `${Math.abs(res.d)} up` : 'AS'}</b><small>thru ${res.thru} <span class="livedot">● live</span></small>`
+    : res.st === 'done' ? `<b class="ms-big" style="color:${col}">${who ? `${esc(who.name)} ${esc(res.txt)}` : 'Halved'}</b><small>${who ? 'Final' : `${fmtPts(mt.pts.cA)} – ${fmtPts(mt.pts.cB)} pts`}</small>`
+    : `<b class="ms-big" style="color:${col}">${data.e.fmt === 'stabtot' ? `${who ? esc(who.name) : 'Level'} ${esc(res.txt)}` : res.d ? `${Math.abs(res.d)} up` : 'AS'}</b><small>thru ${res.thru} <span class="livedot">● live</span></small>`
   const mineHere = data.mine?.no === k + 1 && data.day === d
   return `<div class="card mcard tap${mineHere ? ' minem' : ''}" data-match="${k + 1}" data-mday="${d}" role="button" tabindex="0" aria-label="${typeLabel(mt)}: open its scorecard"><div class="mtitle">${mineHere ? 'Your match · ' : ''}${typeLabel(mt)} · ${ptsLabel(mt)}</div><div class="mgrid"><div class="mside">${pairHtml(mt.a, A.col)}</div><div class="mstat">${stat}</div><div class="mside r">${pairHtml(mt.b, B.col)}</div></div>${mineHere ? `<div class="mact">${matchActionHtml(data.action)}</div>` : ''}</div>`
 }

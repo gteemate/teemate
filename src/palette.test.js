@@ -30,3 +30,15 @@ describe('team colours you can see on navy', () => {
     expect(visible('blue')).toBe('#6CB6FF')
   })
 })
+
+import { visiblePair } from './palette.js'
+describe('found in review: two teams never share a colour', () => {
+  it('two blues become two different colours', () => {
+    const [a, b] = visiblePair('#19335a', '#2a4a8a')
+    expect(a).toBe('#6CB6FF')
+    expect(b).not.toBe(a)
+  })
+  it('two different colours stay as they are', () => {
+    expect(visiblePair('#E5484D', '#6CB6FF')).toEqual(['#E5484D', '#6CB6FF'])
+  })
+})

@@ -32,7 +32,7 @@ export function matchActionHtml(st) {
   const move = st.moveBooking ? '<button class="ghost sm" data-mact="move">Rearrange</button>' : ''
   if (st.kind === 'together') return st.date === isoDate(today()) ? `<button class="primary sm" data-mact="score">${st.started ? 'Enter scores' : 'Start scoring'}</button>${move}`
     : `<span class="mbooked">Booked: ${longDay(fromIso(st.date)).split(' ')[0]} ${hhmm(st.slot.time)}</span>${move}`
-  return `<span class="mwarn">Your match needs all four in one tee time.${st.clash ? ` ${name(st.clash.id)} is booked at ${hhmm(st.clash.time)}.` : ' There isn’t room for everyone on yours.'}</span>`
+  return `<span class="mwarn">Your match needs everyone in it in one tee time.${st.clash ? ` ${name(st.clash.id)} is booked at ${hhmm(st.clash.time)}.` : ' There isn’t room for everyone on yours.'}</span>`
 }
 
 export function bindMatchAction(st) {
@@ -74,7 +74,7 @@ export function draw(data) {
   const r = e && boardResult(data)
   const mt = r?.byDay?.[day]?.[no - 1]
   if (!mt) { header('Match', '', back); $('main').innerHTML = '<div class="screen"><div class="empty-state">This match is no longer in the draw.</div></div>'; return }
-  header(`Match ${no}`, `${esc(e.name)}${e.season ? ` · ${mt.singles ? 'Singles' : 'Four-ball'} · ${longDay(fromIso(dayDate(e, day)))}` : e.days > 1 ? ` · day ${day}` : ''}`, back)
+  header(`Match ${no}`, `${esc(e.name)}${e.season ? ` · ${{ four: 'Four-ball', singles: 'Singles', three: '3-ball' }[mt.type] ?? 'Four-ball'} · ${longDay(fromIso(dayDate(e, day)))}` : e.days > 1 ? ` · day ${day}` : ''}`, back)
   const A = e.A, B = e.B, holes = data.course.holes, res = mt.res, run = mt.match.running
   const n = mt.holes ?? 18, rank = holeRanks(holes, n) // the day's holes, shots given among them
   const side = d => (d > 0 ? A : d < 0 ? B : null)
@@ -82,7 +82,7 @@ export function draw(data) {
   const tee = data.mine?.no === no && data.action?.slot ? ` · Tee ${hhmm(data.action.slot.time)}` : ''
   const status = res.st === 'ns' ? `<b class="ms-big">Not started</b><small>${tee.replace(' · ', '')}</small>`
     : res.st === 'done' ? `<b class="ms-big" style="color:${lead ? lead.col : 'var(--muted)'}">${lead ? `${esc(lead.name)} won ${esc(res.txt)}` : 'Halved'}</b><small>Final</small>`
-    : `<b class="ms-big" style="color:${lead ? lead.col : 'var(--muted)'}">${res.d ? `${Math.abs(res.d)} up` : 'AS'}</b><small>thru ${res.thru} <span class="livedot">● live</span></small>`
+    : `<b class="ms-big" style="color:${lead ? lead.col : 'var(--muted)'}">${e.fmt === 'stabtot' ? `${lead ? esc(lead.name) : 'Level'} ${esc(res.txt)}` : res.d ? `${Math.abs(res.d)} up` : 'AS'}</b><small>thru ${res.thru} <span class="livedot">● live</span></small>`
   const ps = mt.players, pa = ps.filter(p => p.team === 'A'), pb = ps.filter(p => p.team === 'B')
   const pair = (list, c, right) => `<div class="mside${right ? ' r' : ''}"><span class="pairav">${list.map(p => `<span class="av" style="border-color:${c}">${ini(p.name)}</span>`).join('')}</span><span>${list.map(p => esc(sur(p.name))).join('<br>')}</span></div>`
   // Match summary: the state after each hole, in the colour of the side that's up.

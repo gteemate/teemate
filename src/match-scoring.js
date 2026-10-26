@@ -63,7 +63,7 @@ export function scoreMatch({ holes, a, b, fmt, allow, holesPlayed = 18, points =
     let diff = 0
     const running = A.map((x, i) => (diff += x - B[i]))
     const tA = A.reduce((s, x) => s + x, 0), tB = B.reduce((s, x) => s + x, 0)
-    match = { diff: tA - tB, thru, over: false, finished: thru === n, running, text: `${tA} – ${tB}`, lead: tA > tB ? 'A' : tB > tA ? 'B' : null }
+    match = { diff: tA - tB, thru, over: false, finished: thru === n, running, text: `${Math.max(tA, tB)} – ${Math.min(tA, tB)}` /* the leader's total first */, lead: tA > tB ? 'A' : tB > tA ? 'B' : null }
   } else {
     match = matchProgress(A.map((x, i) => Math.sign(cmpPts ? x - B[i] : B[i] - x)), n)
   }

@@ -1,7 +1,8 @@
 // A round: what "Scoring round?" offers when a card starts, and (Task 10) whether the round has a leaderboard.
 import { eventLastDay, leagueWeek, addDaysIso } from './dates.js'
 import { myMatch } from './match.js'
-import { dayOfDate, isSingles } from './season.js'
+import { dayOfDate } from './season.js'
+import { matchType } from './match-scoring.js'
 
 /**
  * Competitions this card could count for today:
@@ -35,8 +36,8 @@ export function countsForOptions({ lineup, events, leagueEntries, date, meId }) 
       if (e.season || Object.keys(e.matches ?? {}).length) { // a season counts only on a match day of mine
         const mine = myMatch(e, day, meId), four = mine ? [...mine.a, ...mine.b] : []
         if (mine && four.every(m => onCard.includes(m))) out.push({ kind: 'event', e, players: four, day, match: mine.no, auto: true })
-        // A season's singles can be played on different cards: count mine, marked by someone else on my card.
-        else if (mine && e.season && isSingles(mine) && marked) out.push({ kind: 'event', e, players: [meId], day, match: mine.no, needsMarker: true })
+        // A singles or a 3-ball can be played on different cards: count mine, marked by someone else on my card.
+        else if (mine && matchType(mine) !== 'four' && marked) out.push({ kind: 'event', e, players: [meId], day, match: mine.no, needsMarker: true })
       } else if (marked) out.push({ kind: 'event', e, players: inIt, day, needsMarker: true })
     }
   }

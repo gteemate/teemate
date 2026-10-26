@@ -271,6 +271,49 @@ describe('four-ball team match play over a season', () => {
     expect(app.main()).toContain('3-ball · 1 / 2 pts')
     expect(app.main()).toContain('Singles · 1 pt')
   })
+  it('found in review: a 3-ball’s page is headed 3-ball, and a halved 3-ball shares the points it was worth', async () => {
+    app = await boot(db => {
+      palsPlayed(db); const e = db.events.at(-1)
+      e.fmt = 'bbscr' // scratch, so level scores are a halve
+      e.matches[1] = [{ a: [0, 9], b: [10] }]
+      db.rounds.find(r => r.id === 950).lineup = [{ m: 0 }, { m: 9 }, { m: 10 }]
+      db.rounds.find(r => r.id === 950).scores = Array.from({ length: 18 }, () => [4, 4, 4])
+      db.entries.splice(0, db.entries.length, ...[0, 9, 10].map(m => ({ eventId: 900, day: 1, memberId: m, roundId: 950 })))
+    })
+    await openSeasonBoard()
+    const sel = document.getElementById('ev-mday'); sel.value = '1'; sel.dispatchEvent(new Event('change')); await app.settle()
+    expect(app.main()).toContain('½ – 1 pts')
+    await app.tap('[data-mday="1"]')
+    expect(app.text()).toContain('3-ball')
+  })
+  it('found in review: Stableford total shows the running totals while it’s being played', async () => {
+    app = await boot(db => {
+      palsPlayed(db); db.events.at(-1).fmt = 'stabtot'
+      const r = db.rounds.find(x => x.id === 950); r.done = r.done.map((_, i) => i < 9)
+    })
+    await openSeasonBoard()
+    const sel = document.getElementById('ev-mday'); sel.value = '1'; sel.dispatchEvent(new Event('change')); await app.settle()
+    expect(app.main()).toMatch(/Blues \d+ – \d+/)
+    expect(app.main()).toContain('thru 9')
+    expect(app.main()).not.toMatch(/\d+ up/)
+  })
+  it('found in review: once a season has started, the event’s points can’t change (they’d rescore played days)', async () => {
+    app = await boot(pals)
+    await openSeasonEditor()
+    expect(document.querySelector('[data-pt="four"]').disabled).toBe(true)
+    for (let i = 0; i < 5; i++) await app.tap('#ev-next')
+  })
+  it('found in review: one team’s colour can’t be picked for the other', async () => {
+    app = await boot(() => {})
+    await app.tap('Competition'); await app.tap('Events'); await app.tap('+ Create your own event'); await app.tap('#cr-ev')
+    await app.type('#ev-name', 'Same Colours'); await app.type('#ev-date', app.db.today)
+    await app.tap('[data-style="ryder"]'); await app.tap('#ev-next')
+    for (const id of [10, 12, 9]) await app.tap(`[data-pick="${id}"]`)
+    await app.tap('#ev-next')
+    expect(document.querySelector('[data-col="B:#6CB6FF"]').disabled).toBe(true)
+    expect(document.querySelector('[data-col="A:#E5484D"]').disabled).toBe(true)
+    await app.tap('#ev-bal'); await app.tap('#ev-next'); await app.tap('#ev-next'); await app.tap('#ev-next')
+  })
   it('cards say it’s a season, and a match page says which day', async () => {
     app = await boot(palsPlayed)
     await app.tap('Competition')

@@ -103,3 +103,16 @@ describe('countsForOptions: a season only on my match day', () => {
   it('a singles on my own card with nobody to mark it: not offered', () =>
     expect(countsForOptions({ lineup: [{ m: 1 }], events: [season()], leagueEntries: [], date: '2026-10-12', meId: 1 })).toEqual([]))
 })
+
+describe('found in review: a 3-ball can be played on separate cards, whichever team has the single', () => {
+  const ev = matches => ({ id: 41, name: 'Trio', style: 'ryder', season: true, startDate: '2026-10-01', days: 120, players: [1, 2, 3], entryRequired: true,
+    team: { 1: 'A', 2: 'A', 3: 'B' }, matches: { 9: matches } })
+  it('single on team B: the pair on one card, the single elsewhere', () =>
+    expect(countsForOptions({ lineup: [{ m: 1 }, { m: 2 }], events: [ev([{ a: [1, 2], b: [3] }])], leagueEntries: [], date: D, meId: 1 }))
+      .toEqual([expect.objectContaining({ kind: 'event', players: [1], day: 9, match: 1, needsMarker: true })]))
+  it('single on team A: just the same', () => {
+    const e = { ...ev([{ a: [3], b: [1, 2] }]), team: { 3: 'A', 1: 'B', 2: 'B' } }
+    expect(countsForOptions({ lineup: [{ m: 1 }, { m: 2 }], events: [e], leagueEntries: [], date: D, meId: 1 }))
+      .toEqual([expect.objectContaining({ kind: 'event', players: [1], day: 9, match: 1, needsMarker: true })])
+  })
+})

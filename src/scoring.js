@@ -209,4 +209,4 @@ export function teamEventScore(matches) {
 }
 
 /** Points with halves shown as ½: 2.5 → "2½", 0.5 → "½". */
-export const fmtPts = n => (Number.isInteger(n) ? String(n) : Math.floor(n) ? `${Math.floor(n)}½` : '½')
+export const fmtPts = n => { const w = Math.floor(n), f = { 0.25: '¼', 0.5: '½', 0.75: '¾' }[n - w]; return f ? `${w || ''}${f}` : String(n) }

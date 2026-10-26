@@ -98,3 +98,12 @@ describe('a short day', () => {
     expect(r.res).toMatchObject({ st: 'done', txt: '3&2', d: 3, thru: 10 })
   })
 })
+
+describe('found in review', () => {
+  const even = (id, gross) => ({ id, courseHcp: 0, gross })
+  it('Stableford total: the leader’s total first', () => {
+    const half = v => HOLES.map((h, i) => (i < 9 ? h.par + v : null))
+    const r = scoreMatch({ holes: HOLES, a: [even(1, half(1)), even(2, half(1))], b: [even(3, half(0)), even(4, half(1))], fmt: 'stabtot', allow: ALLOW })
+    expect(r.res).toMatchObject({ st: 'live', d: -9, txt: '18 – 9' })
+  })
+})

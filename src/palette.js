@@ -31,3 +31,13 @@ export function visible(col) {
   const gap = p => { const d = Math.abs(hsl(p.hex).h - h); return Math.min(d, 360 - d) }
   return COLOURED.reduce((best, p) => (gap(p) < gap(best) ? p : best)).hex
 }
+
+/** Both teams' colours, never the same: if they'd match, team B gets the next nearest colour. */
+export function visiblePair(a, b) {
+  const ca = visible(a), cb = visible(b)
+  if (ca !== cb) return [ca, cb]
+  const others = COLOURED.filter(p => p.hex !== ca)
+  if (typeof b !== 'string' || !/^#[0-9a-f]{6}$/i.test(b)) return [ca, others[0].hex]
+  const { h } = hsl(b.toUpperCase()), gap = p => { const d = Math.abs(hsl(p.hex).h - h); return Math.min(d, 360 - d) }
+  return [ca, others.reduce((best, p) => (gap(p) < gap(best) ? p : best)).hex]
+}

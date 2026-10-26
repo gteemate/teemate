@@ -198,6 +198,7 @@ describe('team event points', () => {
 
   it('formats halves', () => {
     expect([2, 1.5, 0.5, 0].map(fmtPts)).toEqual(['2', '1½', '½', '0'])
+    expect([0.25, 0.75, 2.25, 1.75].map(fmtPts)).toEqual(['¼', '¾', '2¼', '1¾']) // half of 1½ points
   })
 })
 
