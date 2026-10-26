@@ -2,6 +2,9 @@
 const at = (db, time, date = db.today) => db.slotsOn(date).find(s => s.time === time)
 const players = (db, time) => at(db, time).players.map(p => p.memberId)
 const FUTURE = '2026-10-30' // beyond the booking window (requests)
+const teeTime = db => db.book(1, at(db, 570).id, [3]) // 09:30 today with Ciarán (both in the Winter League)
+const startRound = [{ tap: 'Scoring' }, { tap: '09:30' }, { tap: '#start' }]
+const toHole9 = Array.from({ length: 8 }, (_, h) => ({ tap: `Save hole ${h + 1}` }))
 
 export default [
   {
@@ -85,5 +88,30 @@ export default [
     id: 'game-pref', who: 'member', title: 'Choose my usual game for a two-ball',
     steps: [{ tap: '#account' }, { tap: '[data-a="mygames"]' }, { tap: '[data-n="2"][data-k="sc2"]' }],
     action: 'setMyGamePref', expect: db => db.calls.includes('setMyGamePref'), refusals: 'all',
+  },
+  {
+    id: 'save-hole', who: 'member', title: 'Start my round and save a hole',
+    setup: teeTime, steps: [...startRound, { tap: 'Save hole 1' }],
+    action: 'saveRound', expect: db => db.rounds.some(r => r.done[0]), refusals: 'all',
+  },
+  {
+    id: 'delete-scorecard', who: 'member', title: 'Delete a scorecard',
+    setup: teeTime, steps: [...startRound, { tap: '#delcard' }, { tap: '#delcard' }],
+    action: 'deleteRound', expect: db => db.rounds.length === 0, refusals: 'all',
+  },
+  {
+    id: 'count-for-league', who: 'member', title: 'Count my round for the Winter League as I start',
+    setup: teeTime, steps: [{ tap: 'Scoring' }, { tap: '09:30' }, { tap: 'Winter League' }, { tap: '#start' }],
+    action: 'enterLeague', expect: db => db.leagueEntries.some(x => x.memberId === 1), refusals: 'all',
+  },
+  {
+    id: 'join-today', who: 'member', title: 'Join today’s club competition as I start',
+    setup: teeTime, steps: [{ tap: 'Scoring' }, { tap: '09:30' }, { tap: 'Saturday Medal' }, { tap: '#start' }],
+    action: 'enterEventToday', expect: db => db.events.find(e => e.id === 21).players.includes(1), refusals: 'all',
+  },
+  {
+    id: 'hut-order', who: 'member', title: 'Order from the halfway hut after the 8th',
+    setup: teeTime, steps: [...startRound, ...toHole9, { tap: 'Order' }, { tap: 'One more Bacon roll' }, { tap: 'Send order' }],
+    action: 'placeHutOrder', expect: db => db.orders.some(o => o.memberId === 1), refusals: 'all',
   },
 ]
