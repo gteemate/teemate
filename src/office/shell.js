@@ -61,8 +61,8 @@ export function hideSide() {
 }
 
 /** A side panel for the one thing being worked on (a member, a booking, a request). Bottom sheet on a phone. */
-export function panel(html, onClose) {
-  $('modal').innerHTML = `<div class="overlay opanelwrap" id="ovl"><div class="sheet opanel" role="dialog" aria-modal="true"><button class="x opx" id="opx" aria-label="Close">×</button>${html}</div></div>`
+export function panel(html, onClose, { small } = {}) { // small: a short form, as a box in the middle on a wide screen
+  $('modal').innerHTML = `<div class="overlay opanelwrap${small ? ' small' : ''}" id="ovl"><div class="sheet opanel" role="dialog" aria-modal="true"><button class="x opx" id="opx" aria-label="Close">×</button>${html}</div></div>`
   const close = () => { $('modal').innerHTML = ''; onClose?.() }
   $('opx').onclick = close
   $('ovl').onclick = e => { if (e.target.id === 'ovl') close() }

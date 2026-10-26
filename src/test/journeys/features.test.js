@@ -702,3 +702,33 @@ describe('club office: the leaderboard sections fold away', () => {
     expect([...document.querySelectorAll('#main details.oboard')].find(d => d.textContent.includes('Winter League')).open).toBe(true)
   })
 })
+
+describe('club office: finding a member and adding one', () => {
+  const surname = n => n.trim().split(/\s+/).pop()[0].toUpperCase()
+  it('a letter shows only the members whose surname starts with it; All shows everyone again', async () => {
+    app = await boot(db => { db.asOffice = true })
+    await app.tap('[data-ov="members"]')
+    const all = document.querySelectorAll('[data-o-m]').length
+    const letters = [...document.querySelectorAll('[data-o-az]')]
+    expect(letters.map(b => b.dataset.oAz)).toEqual(['', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'])
+    const used = letters.find(b => b.dataset.oAz && !b.disabled)
+    expect(letters.some(b => b.disabled)).toBe(true) // letters nobody's surname starts with can't be tapped
+    await app.tap(`[data-o-az="${used.dataset.oAz}"]`)
+    const names = [...document.querySelectorAll('[data-o-m] .ot b')].map(b => b.textContent.replace(' (you)', ''))
+    expect(names.length).toBeGreaterThan(0)
+    expect(names.length).toBeLessThan(all)
+    expect(names.every(n => surname(n) === used.dataset.oAz)).toBe(true)
+    expect(document.querySelector(`[data-o-az="${used.dataset.oAz}"]`).getAttribute('aria-pressed')).toBe('true')
+    await app.tap('[data-o-az=""]')
+    expect(document.querySelectorAll('[data-o-m]').length).toBe(all)
+  })
+  it('Add a member opens as a small box, not the full side panel', async () => {
+    app = await boot(db => { db.asOffice = true })
+    await app.tap('[data-ov="members"]')
+    await app.tap('#o-add')
+    expect(document.querySelector('#modal .opanelwrap').classList.contains('small')).toBe(true)
+    await app.tap('#opx')
+    await app.tap('[data-o-m]')
+    expect(document.querySelector('#modal .opanelwrap').classList.contains('small')).toBe(false)
+  })
+})

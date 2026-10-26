@@ -838,6 +838,8 @@ h4,.sheet h4{font-family:var(--display);font-weight:600;letter-spacing:0}
 @media (min-width:761px){
   #app.office .opanelwrap{justify-content:flex-end;align-items:stretch}
   #app.office .opanel{width:min(420px,100%);max-height:none;border-radius:0;border-left:1px solid var(--line);padding:26px 24px}
+  #app.office .opanelwrap.small{justify-content:center;align-items:center}
+  #app.office .opanelwrap.small .opanel{width:min(380px,92%);max-height:92%;border-radius:20px;border:1px solid var(--line)}
 }
 @media (max-width:760px){
   #app.office{display:flex;flex-direction:column;height:auto;min-height:calc(100vh - 48px)}
@@ -899,3 +901,9 @@ details.oboard > summary{display:flex;align-items:baseline;gap:10px;cursor:point
 details.oboard > summary::-webkit-details-marker{display:none}
 details.oboard > summary::before{content:'▸';color:var(--muted);transition:transform .15s}
 details.oboard[open] > summary::before{transform:rotate(90deg)}
+
+/* Club office Members: pick a surname letter */
+.oaz{display:flex;flex-wrap:wrap;gap:3px;margin:0 0 10px}
+.oaz button{min-width:26px;height:30px;padding:0 5px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:600 13px var(--sys);cursor:pointer}
+.oaz button[aria-pressed="true"]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.oaz button:disabled{opacity:.3;cursor:default}
