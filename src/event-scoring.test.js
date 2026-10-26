@@ -422,3 +422,29 @@ describe('four-ball team match play over a season', () => {
     expect(r.score).toMatchObject({ cA: 2, cB: 0, pA: 2, pB: 0 })
   })
 })
+
+describe('match day settings: points, 3-balls and short days', () => {
+  const player = id => ({ name: `P${id}`, courseHcp: 0 })
+  const card = (id, ids, rows) => ({ id, lineup: ids.map(m => ({ m })), scores: FLAT.map((_, i) => rows[i] ?? ids.map(() => 4)), done: FLAT.map((_, i) => i < rows.length) })
+  const all = (n, row) => Array.from({ length: n }, () => row)
+  const ev = over => ({ style: 'ryder', fmt: 'bbscr', season: true, days: 120, players: [1, 2, 3, 4, 5], team: { 1: 'A', 2: 'A', 3: 'B', 4: 'B', 5: 'B' }, ...over })
+  const allow = { four: 1, singles: 1, stab: 1 }
+  it('a day worth 2 a four-ball', () => {
+    const e = ev({ matches: { 1: [{ a: [1, 2], b: [3, 4] }] }, dayRules: { 1: { points: { four: 2 } } } })
+    const r = scoreAdvanceEvent(e, FLAT, { 1: [card(1, [1, 2, 3, 4], all(18, [3, 4, 4, 4]))] }, player, allow)
+    expect(r.score).toMatchObject({ cA: 2, cB: 0, tot: 2 })
+    expect(r.byDay[1][0]).toMatchObject({ type: 'four', win: { A: 2, B: 2 } })
+  })
+  it('a 3-ball the single wins: their team gets the single’s points', () => {
+    const e = ev({ matches: { 1: [{ a: [1, 2], b: [5] }] } })
+    const r = scoreAdvanceEvent(e, FLAT, { 1: [card(1, [1, 2, 5], all(18, [5, 5, 4]))] }, player, allow)
+    expect(r.byDay[1][0]).toMatchObject({ type: 'three', a: ['P1', 'P2'], b: ['P5'] })
+    expect(r.score).toMatchObject({ cA: 0, cB: 2, tot: 2, toWin: 1.5 })
+  })
+  it('a 12-hole day is decided over 12', () => {
+    const e = ev({ matches: { 1: [{ a: [1], b: [3] }] }, dayRules: { 1: { holes: 12 } } })
+    const r = scoreAdvanceEvent(e, FLAT, { 1: [card(1, [1, 3], all(12, [4, 4]))] }, player, allow)
+    expect(r.byDay[1][0].res).toMatchObject({ st: 'done', thru: 12, txt: 'Halved' })
+    expect(r.score).toMatchObject({ cA: 0.5, cB: 0.5 })
+  })
+})

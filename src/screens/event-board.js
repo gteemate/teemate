@@ -62,7 +62,7 @@ export function boardResult({ e, members, course, L, dayCards, entries }) {
   const m = id => members.find(x => x.id === id)
   const player = id => ({ name: m(id)?.name ?? 'Former member', courseHcp: courseHandicap(m(id)?.hcp ?? 0, tee) })
   const pct = k => (L.lib[k]?.pct == null ? 0 : L.lib[k].pct / 100)
-  return scoreAdvanceEvent(e, course.holes, dayCards, player, pct(EVENT_ALLOWANCE_GAME[e.fmt]), entries, pct(SINGLES_FMT[e.fmt]))
+  return scoreAdvanceEvent(e, course.holes, dayCards, player, { four: pct(EVENT_ALLOWANCE_GAME[e.fmt]), singles: pct(SINGLES_FMT[e.fmt]), stab: pct('stab') }, entries)
 }
 
 export function boardHtml(data, top = '') {

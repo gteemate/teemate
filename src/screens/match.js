@@ -6,7 +6,7 @@ import { S } from '../state.js'
 import { $, esc, ini, sur, header, render, toast, top0, goBack } from '../ui.js'
 import { hhmm, longDay, fromIso, isoDate, today, nextDays } from '../dates.js'
 import { dayDate } from '../season.js'
-import { shotsOnHole } from '../scoring.js'
+import { shotsOn, holeRanks } from '../match-scoring.js'
 import { NO_GAME } from '../games.js'
 import { loadBoard, boardResult } from './event-board.js'
 import { newRound, setRound, lineupFromTeeTime } from './scores.js'
@@ -76,6 +76,7 @@ export function draw(data) {
   if (!mt) { header('Match', '', back); $('main').innerHTML = '<div class="screen"><div class="empty-state">This match is no longer in the draw.</div></div>'; return }
   header(`Match ${no}`, `${esc(e.name)}${e.season ? ` · ${mt.singles ? 'Singles' : 'Four-ball'} · ${longDay(fromIso(dayDate(e, day)))}` : e.days > 1 ? ` · day ${day}` : ''}`, back)
   const A = e.A, B = e.B, holes = data.course.holes, res = mt.res, run = mt.match.running
+  const n = mt.holes ?? 18, rank = holeRanks(holes, n) // the day's holes, shots given among them
   const side = d => (d > 0 ? A : d < 0 ? B : null)
   const lead = side(res.d)
   const tee = data.mine?.no === no && data.action?.slot ? ` · Tee ${hhmm(data.action.slot.time)}` : ''
@@ -94,10 +95,11 @@ export function draw(data) {
     const idx = Array.from({ length: 9 }, (_, k) => from + k)
     const tot = (f) => idx.reduce((t, i) => t + (f(i) ?? 0), 0)
     const row = p => { const col = p.team === 'A' ? A.col : B.col, mine = p.team === 'A' ? 1 : -1
-      const cells = idx.map(i => { const g = p.gross[i], sh = shotsOnHole(p.ph, holes[i].si)
+      const cells = idx.map(i => { if (i >= n) return '<td></td>' // not played on a short day
+        const g = p.gross[i], sh = shotsOn(p.ph, rank[i], n)
         return `<td class="${won(i) === mine ? 'mwon' : ''}" style="${won(i) === mine ? `background:${col}38` : ''}">${g ?? ''}<i>${'•'.repeat(sh)}</i></td>` }).join('')
-      const done = idx.filter(i => p.gross[i] != null)
-      return `<tr><th style="color:${col}">${esc(sur(p.name))}<small>(${p.ph})</small></th>${cells}<td class="mtot">${done.length ? tot(i => p.gross[i]) : ''}</td></tr>` }
+      const done = idx.filter(i => i < n && p.gross[i] != null)
+      return `<tr><th style="color:${col}">${esc(sur(p.name))}<small>(${p.ph})</small></th>${cells}<td class="mtot">${done.length ? tot(i => (i < n ? p.gross[i] : 0)) : ''}</td></tr>` }
     return `<div class="card mcardtbl"><table class="msc"><thead><tr><th>${label}</th>${idx.map(i => `<th>${i + 1}</th>`).join('')}<th>Tot</th></tr></thead><tbody>
       <tr class="mpar"><th>Par</th>${idx.map(i => `<td>${holes[i].par}</td>`).join('')}<td class="mtot">${tot(i => holes[i].par)}</td></tr>
       <tr class="mpar"><th>SI</th>${idx.map(i => `<td>${holes[i].si}</td>`).join('')}<td></td></tr>

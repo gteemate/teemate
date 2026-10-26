@@ -6,7 +6,8 @@
 //
 // A hole counts for a group once everyone in that group has a score for it (cards save whole holes).
 import { stablefordPoints, shotsOnHole, playingHandicaps, holeCalc, betterBallWinner, matchProgress, teamEventScore, courseHandicap } from './scoring.js'
-import { matchDays, isSingles, SINGLES_FMT } from './season.js'
+import { matchDays } from './season.js'
+import { scoreMatch, matchPoints, dayRules } from './match-scoring.js'
 
 /**
  * Build the scoring input from an event and each group's card.
@@ -155,23 +156,12 @@ export function grossOnDay(rounds, memberId, holes) {
   return holes.map((_, i) => (r.done[i] ? r.scores[i][k] : null))
 }
 
-// A singles in a season, shaped like a four-ball's result (ryderMatches) so the board and the season total treat
-// both the same. The two players can be on different cards: only holes both have played count.
-function seasonSingles(holes, g, format, allow) {
-  const [a, b] = g.players
-  const m = singlesMatch(holes, [{ players: [a] }, { players: [b] }], format, allow)
-  const res = { st: m.thru === 0 ? 'ns' : m.finished ? 'done' : 'live', d: m.diff, txt: m.text, thru: m.thru }
-  const ph = playingHandicaps([a.courseHcp, b.courseHcp], format === 'sc2' ? 0 : allow, true)
-  return { key: g.key, name: g.name, a: [a.name], b: [b.name], res, match: m, singles: true,
-    players: [a, b].map((p, k) => ({ id: p.id, name: p.name, team: p.team, gross: p.gross, ph: ph[k] })) }
-}
-
 /**
  * Score an event set up in advance.
  *   event:    { style: 'ryder'|'teams'|'individual', fmt, days, players: [ids], team: { id: 'A'|'B' }, matches: { day: [{ a, b }] } }
  *             a season (ryder only) plays just its match days, and a match with one a side is a singles
  *   dayCards: { [day]: rounds on that day }       player(id) → { name, courseHcp }
- *   allow:    handicap allowance (fraction); allowSingles: the allowance for a season's singles (its own game)
+ *   allow:    handicap allowances { four, singles, stab } (fractions; a single number still works: allowSingles for singles)
  *   entries:  [{ day, memberId, roundId }] — for an event with entryRequired, only these cards count
  *             (ticked on "Scoring round?"); other events count every card, as they always have.
  */
@@ -183,14 +173,21 @@ export function scoreAdvanceEvent(event, holes, dayCards, player, allow, entries
   const P = (id, team, d) => ({ id, name: player(id).name, team, courseHcp: player(id).courseHcp, gross: grossOnDay(cardsFor(id, d), id, holes) })
 
   if (event.style === 'ryder') {
+    // Every match (four-ball, singles or 3-ball) by the day's holes and points (match-scoring.js).
+    const allowance = typeof allow === 'number' ? { four: allow, singles: allowSingles, stab: allow } : allow
     const byDay = {}
     for (const d of days) {
+      const rules = dayRules(event, d)
       byDay[d] = (event.matches[d] ?? []).map((m, i) => {
-        const g = { key: `${d}-${i}`, name: `Match ${i + 1}`, players: [...m.a.map(id => P(id, 'A', d)), ...m.b.map(id => P(id, 'B', d))] }
-        return isSingles(m) ? seasonSingles(holes, g, SINGLES_FMT[event.fmt], allowSingles) : ryderMatches(holes, [g], event.fmt, allow).matches[0]
+        const a = m.a.map(id => P(id, 'A', d)), b = m.b.map(id => P(id, 'B', d))
+        const r = scoreMatch({ holes, a, b, fmt: event.fmt, allow: allowance, holesPlayed: rules.holes, points: rules.points })
+        return { key: `${d}-${i}`, name: `Match ${i + 1}`, a: a.map(p => p.name), b: b.map(p => p.name), ...r, singles: r.type === 'singles',
+          pts: matchPoints(r), players: [...a, ...b].map(p => ({ id: p.id, name: p.name, team: p.team, gross: p.gross, ph: r.ph[p.id] })) }
       })
     }
-    return { kind: 'ryder', byDay, score: teamEventScore(Object.values(byDay).flat()) }
+    const ms = Object.values(byDay).flat(), sum = k => ms.reduce((t, m) => t + m.pts[k], 0)
+    const tot = sum('avail')
+    return { kind: 'ryder', byDay, score: { pA: sum('pA'), pB: sum('pB'), cA: sum('cA'), cB: sum('cB'), tot, toWin: tot / 2 + 0.5 } }
   }
 
   // Per player, per day: points (or net to par) over the holes they've saved.
