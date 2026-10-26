@@ -2,6 +2,7 @@
 // src/api.js, so the real screens run unchanged. It does what the screens need (bookings take spaces, cancelling
 // frees them, entries and orders are recorded); the database's own rules are covered by the database tests.
 // Anything not covered throws "not faked: <name>", so a gap fails the journey loudly.
+import { closesOn } from '../../event-signups.js'
 import { COURSE, MEMBERS, GAME_SETTINGS, PIN_SHEET } from '../../sample-data.js'
 import { isoDate, addDaysIso } from '../../dates.js'
 import { createCache } from '../../api/cache.js'
@@ -22,7 +23,7 @@ export const API_NAMES = ['getMe', 'forgetMe', 'getSession', 'signIn', 'needsAcc
   'getGuestPoints', 'getBookingRules', 'setBookingRules', 'requestTeeTime', 'cancelTeeTimeRequest', 'getMyTeeTimeRequests', 'getTeeTimeRequests',
   'decideTeeTimeRequest', 'markTeeTimeRequestsSeen', 'dismissTeeTimeRequest', 'getGameSettings', 'setMyGamePref', 'getCurrentRound', 'getRound', 'deleteRound', 'saveRound',
   'getTodayRounds', 'getCardsForTeeTimes', 'getMyPlayerEvents', 'proposePlayerEvent', 'proposeSingles', 'counterPlayerEvent', 'answerPlayerEvent', 'cancelPlayerEvent',
-  'getStamps', 'getEvents', 'saveEvent', 'saveEvents', 'getEventTemplates', 'saveEventTemplate', 'deleteEventTemplate', 'saveSeason', 'deleteEvent', 'getCardsOn', 'getLeagueEntries', 'getCardsById', 'enterLeague', 'leaveLeague', 'enterEventToday',
+  'getStamps', 'getEvents', 'saveEvent', 'saveEvents', 'enterEvent', 'withdrawEvent', 'removeEventEntrant', 'getEventTemplates', 'saveEventTemplate', 'deleteEventTemplate', 'saveSeason', 'deleteEvent', 'getCardsOn', 'getLeagueEntries', 'getCardsById', 'enterLeague', 'leaveLeague', 'enterEventToday',
   'getEventEntries', 'enterEventRound', 'leaveEventRound', 'startLeagueKnockout',
   'getSignups', 'getSignupCounts', 'getSignupDeclines', 'declineSignup', 'undeclineSignup', 'runSignup', 'enterSignup', 'withdrawSignup', 'setMyPlaysIn', 'adminSetPlaysIn', 'saveSignup', 'deleteSignup',
   'getKnockout', 'createMemberKnockout', 'deleteMemberKnockout', 'makeDraw', 'swapDraw', 'setRoundDeadlines', 'setKoRoundHoles', 'publishDraw', 'getKoMatchOfCard', 'linkKoCard', 'reportKoResult', 'confirmKoResult', 'disputeKoResult', 'adminSetKoResult']
@@ -45,6 +46,12 @@ const member = id => MEMBERS.find(m => m.id === id)
 const holesProblem = h => (h == null || (typeof h === 'number' && [18, 14, 12, 9, 6].includes(h))
   || (Array.isArray(h) && h.length >= 1 && h.every(n => Number.isInteger(n) && n >= 1 && n <= 18) && new Set(h).size === h.length)
   ? null : 'Pick at least one hole, from 1 to 18.')
+const takeOff = (e, mid) => {
+  e.players = e.players.filter(p => p !== mid)
+  if (e.team) delete e.team[mid]
+  e.captainPool = (e.captainPool ?? []).filter(p => p !== mid)
+  if (e.teams) e.teams = e.teams.map(t => (t.captain === mid ? (({ captain, ...rest }) => rest)(t) : t))
+}
 const holesRefusal = e => {
   const bad = [e.holes, ...Object.values(e.dayRules ?? {}).map(d => d?.holes)].map(holesProblem).find(Boolean)
   if (bad) throw new Error(bad)
@@ -337,6 +344,27 @@ export function makeWorld(today, setup = () => {}) {
     // As the real saveEvent: points only for four-ball team match play; holes checked as the database does.
     saveEvent: async e => { holesRefusal(e); if (e.style !== 'ryder') e = { ...e, points: null }; if (e.dayRules && !Object.keys(e.dayRules).length) e = { ...e, dayRules: null }; if (e.id) Object.assign(db.events.find(x => x.id === e.id), copy(e)); else db.events.push({ ...copy(e), id: id(), createdBy: { id: ME, name: 'Gary Cochrane' } }); return e.id ?? db.events.at(-1).id },
     saveEvents: async list => { list.forEach(holesRefusal); return list.map(e => { const n = { ...copy(e), id: id(), createdBy: { id: ME, name: 'Gary Cochrane' } }; db.events.push(n); return n.id }) },
+    // As the database's enter_event / withdraw_event / remove_event_entrant (sign-ups: dates and places).
+    enterEvent: async eid => {
+      const e = db.events.find(x => x.id === eid)
+      if (!e?.club || !(e.selfEntry || e.signup)) throw new Error('This competition isn’t open for entry. Ask an admin to add you.')
+      if (e.players.includes(ME)) return
+      if (e.signup) {
+        if (e.advertiseFrom && db.today < e.advertiseFrom) throw new Error(`Entries open on ${e.advertiseFrom}.`)
+        if (db.today > closesOn(e)) throw new Error('Entries have closed.')
+        if (e.maxEntries != null && e.players.length >= e.maxEntries) throw new Error('Sorry, it’s full: someone took the last place.')
+      } else if (e.startDate <= db.today) throw new Error('This competition has started, so entries are closed.')
+      e.players.push(ME)
+    },
+    withdrawEvent: async eid => {
+      const e = db.events.find(x => x.id === eid)
+      if (e.signup ? db.today > closesOn(e) : e.startDate <= db.today) throw new Error('Entries have closed. Ask the club office to take you off.')
+      takeOff(e, ME)
+    },
+    removeEventEntrant: async (eid, mid) => {
+      if (!db.members.find(m => m.id === ME)?.admin) throw new Error('Only the club office can take someone off.')
+      takeOff(db.events.find(x => x.id === eid), mid)
+    },
     getEventTemplates: async () => { if (!db.members.find(m => m.id === ME)?.admin) return []; return copy(db.eventTemplates).sort((a, b) => a.name.localeCompare(b.name)) },
     saveEventTemplate: async ({ id: tid, name, setup }) => {
       if (!db.members.find(m => m.id === ME)?.admin) throw new Error('new row violates row-level security policy for table "event_templates"')

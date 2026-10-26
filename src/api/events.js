@@ -4,7 +4,7 @@ import { visible, visiblePair } from '../palette.js'
 
 /* ---------- Events set up in advance ---------- */
 
-const EVENT_COLS = 'id, name, team_a, team_b, club, everyone, start_date, days, season, points, day_rules, holes, style, fmt, players, team, matches, weeks, best_of, league_teams, captain_pool, self_entry, entry_required, league_pairs, ko_top, ko_finish, ko_comp, entry_fee_pence, creator:created_by(id, name)'
+const EVENT_COLS = 'id, name, team_a, team_b, club, everyone, start_date, days, season, points, day_rules, holes, signup, advertise_from, entries_close, max_entries, style, fmt, players, team, matches, weeks, best_of, league_teams, captain_pool, self_entry, entry_required, league_pairs, ko_top, ko_finish, ko_comp, entry_fee_pence, creator:created_by(id, name)'
 // The two teams' colours, visible on navy and never the same.
 const teamColours = e => {
   const [a, b] = visiblePair(e.team_a?.col, e.team_b?.col)
@@ -15,6 +15,8 @@ const toEvent = e => ({
   season: !!e.season, // four-ball team match play over a season: matches only on its match days
   points: e.points ?? null, dayRules: e.day_rules ?? null, // points per match type; each day's (a league's weeks') holes and points
   holes: e.holes ?? null, // the open holes (open-holes.js): null = all 18
+  // Open for sign-up (club office): advertised from a date, entries until a closing date, a number of places (event-signups.js)
+  signup: !!e.signup, advertiseFrom: e.advertise_from ?? null, entriesClose: e.entries_close ?? null, maxEntries: e.max_entries ?? null,
   style: e.style, fmt: e.fmt, players: e.players, team: e.team, matches: e.matches, createdBy: e.creator,
   weeks: e.weeks, bestOf: e.best_of, teams: e.league_teams?.map(t => ({ ...t, col: visible(t.col) })) ?? e.league_teams, captainPool: e.captain_pool ?? [], // leagues
   selfEntry: !!e.self_entry, // members can enter themselves (club competitions)
@@ -37,6 +39,8 @@ const eventRow = e => ({
     entry_required: e.id ? !!e.entryRequired : e.style !== 'league', // new events: only ticked cards count
     league_pairs: e.style === 'league' ? e.leaguePairs ?? null : null, ko_top: e.style === 'league' ? e.koTop ?? null : null, ko_finish: e.style === 'league' ? e.koFinish || null : null,
     entry_fee_pence: e.club ? e.entryFee || null : null,
+    signup: !!e.club && !!e.signup, advertise_from: e.club && e.signup ? e.advertiseFrom || null : null,
+    entries_close: e.club && e.signup ? e.entriesClose || null : null, max_entries: e.club && e.signup ? e.maxEntries || null : null,
 })
 
 /** Create (no id) or update an event. Returns its id. */
@@ -49,6 +53,13 @@ export async function saveEvent(e) {
   }
   return must(await sb.from('events').insert(row).select('id').single()).id
 }
+
+/** Sign up for a league or club event open for entry (refused before it opens, after it closes, or when full). */
+export async function enterEvent(id) { must(await sb.rpc('enter_event', { p_id: id })) }
+/** Take myself off one, until entries close. */
+export async function withdrawEvent(id) { must(await sb.rpc('withdraw_event', { p_id: id })) }
+/** The club office takes someone off an event. */
+export async function removeEventEntrant(eventId, memberId) { must(await sb.rpc('remove_event_entrant', { p_event: eventId, p_member: memberId })) }
 
 /** Make several new events at once (a weekly repeat): all or none. Returns their ids. */
 export async function saveEvents(list) {

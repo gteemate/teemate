@@ -19,7 +19,7 @@ export const RULES = {
   setTheme: changes('club'), setClubName: changes('club'), setFeePayment: changes('club'), setHutOn: changes('club'), setBookingRules: changes('club'),
   setDayBoardDays: changes('club'), setDayBoardToday: changes('club'),
   setCourseLocation: changes('club'), setGreenWidth: changes('course', 'pins'), publishPins: changes('pins'),
-  saveEvent: changes('events'), saveEvents: changes('events'), saveEventTemplate: changes('templates'), deleteEventTemplate: changes('templates'),
+  saveEvent: changes('events'), saveEvents: changes('events'), enterEvent: changes('events'), withdrawEvent: changes('events'), removeEventEntrant: changes('events'), saveEventTemplate: changes('templates'), deleteEventTemplate: changes('templates'),
   saveSeason: changes('events'), deleteEvent: changes('events'), enterEventToday: changes('events'),
   startLeagueKnockout: changes('events', 'comps'),
   setMyGamePref: changes('games'),
