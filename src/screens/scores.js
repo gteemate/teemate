@@ -13,6 +13,10 @@ import { courseHandicap, playingHandicaps, holeCalc, gameState, upText, toPar } 
 import { buildLibrary, playable, gameSpec, resolveGame, preferredGame, teeRating, PAIRINGS, NO_GAME, SCORES_ONLY, parseGame, oneOnOneKey, oneOnOneGames, gameName } from '../games.js'
 
 // The round is kept here between redraws so unsaved stepper changes survive; api.saveRound() persists it.
+// persist(): save the card; false (with the reason shown) if the server refused, so nothing looks saved that isn't.
+async function persist(round) {
+  try { await api.saveRound(round); return true } catch (err) { toast(err.message); return false }
+}
 // round.lineup: the card's players in order, each { m: memberId } or { g: guestId }; the first is you
 // (a card someone else started comes in your view of it, see card-view.js).
 let round
@@ -216,12 +220,12 @@ export function draw({ course, members, guests, L, me, teeTimes, events, leagues
   $('gchip').onclick = async () => { S.gmenu = !S.gmenu; await keepScroll(render) }
   $('gname').onclick = () => matchSheet({ L, n, ps })
   if (S.gmenu) {
-    document.querySelectorAll('[data-gm]').forEach(b => (b.onclick = async () => { round.game = b.dataset.gm; await api.saveRound(round); keepScroll(render) }))
+    document.querySelectorAll('[data-gm]').forEach(b => (b.onclick = async () => { round.game = b.dataset.gm; if (await persist(round)) keepScroll(render) }))
     document.querySelectorAll('[data-pr]').forEach(b => (b.onclick = async () => {
       const n = +b.dataset.pr
       if (n !== round.pairing && P) toast('Pairs changed. Results recalculated')
       round.pairing = n
-      await api.saveRound(round)
+      if (!(await persist(round))) return
       keepScroll(render)
     }))
     $('chg').onclick = async () => { S.gmenu = false; S.pickTmp = round.lineup.slice(1).filter(e => e.m != null).map(e => e.m); S.sview = 'players'; await render(); top0() }
@@ -267,7 +271,7 @@ export function draw({ course, members, guests, L, me, teeTimes, events, leagues
   on('prevh', () => { S.ch--; render() })
   on('save', async () => {
     round.done[i] = true
-    await api.saveRound(round)
+    if (!(await persist(round))) { round.done[i] = false; return } // not saved: the hole stays open to try again
     const after = stateAt(played(round))
     if (!after.finished && i < 17) S.ch = i + 1
     await render()
@@ -277,13 +281,13 @@ export function draw({ course, members, guests, L, me, teeTimes, events, leagues
   })
   on('submit', async () => {
     round.submitted[round.game] = true
-    await api.saveRound(round)
+    if (!(await persist(round))) { round.submitted[round.game] = false; return }
     await render()
     toast('Round saved. Your scores are on the leaderboard')
   })
   on('newr', async () => {
     setRound(newRound(course, round.lineup, round.game, round.slotId))
-    await api.saveRound(round)
+    if (!(await persist(round))) return
     if (G.pairs) S.gmenu = true
     await render()
     top0()
@@ -333,7 +337,7 @@ function matchSheet({ L, n, ps }) {
   // Members out today in other groups (from a booked tee time only): [{ id (booking player), name, time }]
   let out = round.slotId ? null : []
   const close = () => { $('modal').innerHTML = '' }
-  const save = async (game, pairsMenu = false) => { round.game = game; if (pairsMenu) S.gmenu = true; await api.saveRound(round); close(); keepScroll(render) }
+  const save = async (game, pairsMenu = false) => { round.game = game; if (pairsMenu) S.gmenu = true; if (!(await persist(round))) return; close(); keepScroll(render) }
   const challenge = async () => {
     const who = out.find(x => x.id === +opp.slice(1))
     $('am-go').disabled = true

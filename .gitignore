@@ -13,3 +13,4 @@ supabase/seed.sql
 # Screen-size checks (npm run test:screens): results and screenshots
 test-results/
 playwright-report/
+src/test/**/*.tmp.test.js

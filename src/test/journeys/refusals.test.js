@@ -22,7 +22,8 @@ export function refusalsOf(j) {
   return msgs.length || !INDEX.api[j.action]?.tables.length ? msgs : [TABLE_WRITE_FAILED]
 }
 // The pretend database, without the call log and the refusal switch (for "nothing half-saved").
-const snapshot = db => JSON.stringify(Object.fromEntries(Object.entries(db).filter(([k, v]) => !['calls', 'refuse'].includes(k) && typeof v !== 'function')))
+// keeps: what a journey says may change even when refused (with why), e.g. a scorecard made before a count is refused.
+const snapshot = (db, keeps = {}) => JSON.stringify(Object.fromEntries(Object.entries(db).filter(([k, v]) => !['calls', 'refuse', ...Object.keys(keeps)].includes(k) && typeof v !== 'function')))
 
 let app
 afterEach(() => { app?.done(); app = null })
@@ -38,12 +39,12 @@ describe.each(JOURNEYS.map(j => [j.id, j]))('%s', (_, j) => {
   if (msgs.length) it.each(msgs)('refused: “%s” is seen, not stuck, nothing half-saved', async msg => {
     app = await boot(j.setup ?? (() => {}), { as: j.who, hash: j.hash ?? '' })
     await runSteps(app, j.steps.slice(0, -1))
-    const before = snapshot(app.db), text = fillMessage(msg)
+    const before = snapshot(app.db, j.keeps), text = fillMessage(msg)
     app.db.refuse = { [j.action]: text }
     await runSteps(app, j.steps.slice(-1))
     expect(whereSeen(text), 'the refusal should be seen where the person is looking').toMatch(/^(modal|notice|page)$/)
     const last = j.steps.at(-1).tap, el = last && (/^[#.[]/.test(last) ? document.querySelector(last) : [...document.querySelectorAll('button')].find(b => b.textContent.trim() === last))
     if (el) expect(el.disabled, 'the button should work again').toBe(false)
-    expect(snapshot(app.db), 'nothing should be half-saved').toBe(before)
+    expect(snapshot(app.db, j.keeps), 'nothing should be half-saved').toBe(before)
   })
 })

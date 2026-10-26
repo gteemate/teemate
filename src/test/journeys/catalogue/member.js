@@ -102,11 +102,13 @@ export default [
   {
     id: 'count-for-league', who: 'member', title: 'Count my round for the Winter League as I start',
     setup: teeTime, steps: [{ tap: 'Scoring' }, { tap: '09:30' }, { tap: 'Winter League' }, { tap: '#start' }],
+    keeps: { rounds: 'the card is made first; a refused count leaves a general-play card, which can still be counted before hole 1' },
     action: 'enterLeague', expect: db => db.leagueEntries.some(x => x.memberId === 1), refusals: 'all',
   },
   {
     id: 'join-today', who: 'member', title: 'Join today’s club competition as I start',
     setup: teeTime, steps: [{ tap: 'Scoring' }, { tap: '09:30' }, { tap: 'Saturday Medal' }, { tap: '#start' }],
+    keeps: { rounds: 'the card is made first; a refused count leaves a general-play card, which can still be counted before hole 1' },
     action: 'enterEventToday', expect: db => db.events.find(e => e.id === 21).players.includes(1), refusals: 'all',
   },
   {
