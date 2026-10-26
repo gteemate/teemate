@@ -23,6 +23,10 @@ decided), day 9 has one four-ball for whichever four are free, and day 12 has tw
 
 ## Setting it up (Events → New, four-ball team match play)
 
+A season is a general option, not something made just for Ballymena V Coleraine: **any player** can make one for
+their own group from Events → New (as they can a one-off now), and **admins** can make one as a club event that
+everyone sees. Who can see it follows the existing rules (players in it and its organiser; club events: everyone).
+
 - A new choice under When: **One-off** (1–3 days in a row, exactly as now) or **Season** (start date and end date;
   the end date is after the start date and at most a year later).
 - Players and teams are chosen as now: two named, coloured teams. Teams don't have to be the same size.
