@@ -20,6 +20,8 @@ const challenged = db => {
     createdBy: { id: 7, name: 'Peter Walsh' }, teamNames: {}, players: [{ id: 1, memberId: 1, name: 'Declan Murphy', slot: mine.slotId }, { id: 2, memberId: 7, name: 'Peter Walsh', slot: theirs.slotId }],
     groups: [{ slot: theirs.slotId, time: 560, host: true, answer: null }, { slot: mine.slotId, time: 570, host: false, answer: null }] })
 }
+// My four-ball at 09:30 (with Tom) and Peter's at 09:40 (with Liam).
+const twoGroups = db => { db.book(1, at(db, 570).id, [10]); db.book(7, at(db, 580).id, [11]) }
 const toHole9 = Array.from({ length: 8 }, (_, h) => ({ tap: `Save hole ${h + 1}` }))
 
 export default [
@@ -157,5 +159,17 @@ export default [
     id: 'answer-challenge', who: 'member', title: 'Accept another four-ball’s challenge',
     setup: challenged, steps: [{ tap: 'Accept' }],
     action: 'answerPlayerEvent', expect: db => db.playerEvents[0].status === 'accepted', refusals: 'all',
+  },
+  {
+    id: 'send-challenge', who: 'member', title: 'Challenge another four-ball on the tee sheet',
+    setup: twoGroups, steps: [{ tap: 'Scoring' }, { tap: '#pe-new' }, { tap: db => `[data-inv="${at(db, 580).id}"]` }, { tap: '#pe-setup' }, { tap: '#pe-send' }],
+    action: 'proposePlayerEvent', expect: db => db.playerEvents.some(e => e.status === 'pending'), refusals: 'all',
+  },
+  {
+    id: 'send-singles', who: 'member', title: 'Challenge a player in another group to a one-on-one',
+    setup: twoGroups,
+    steps: [...startRound, { tap: '#gname' }, { tap: '[data-am="one"]' }, { tap: db => `[data-op="t${at(db, 580).players.find(p => p.memberId === 11).id}"]` }, { tap: '[data-ok="sm2"]' }, { tap: '#am-go' }],
+    keeps: { rounds: 'the card is started first (Scoring); the challenge is separate' },
+    action: 'proposeSingles', expect: db => db.playerEvents.some(e => e.style === 'singles'), refusals: 'all',
   },
 ]
