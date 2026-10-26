@@ -6,7 +6,7 @@
 --   clean@test.com           a brand-new member: nothing booked, entered or played
 --   admin@test.com           the club office: the back-office login that runs the club and doesn't play
 --   hut@test.com             halfway hut staff: sees orders and marks them ready
---   live@test.com            "Live Tester", a playing admin for setting up events and filling them with made-up rounds
+--   live@test.com            "Live Tester", an ordinary member for setting up his own events and filling them with made-up rounds
 --   newjoiner@test.com       approved but no login yet: taps "create your password" on the sign-in screen
 
 -- ---------------------------------------------------------------- start clean
@@ -31,7 +31,7 @@ select (select max(id) from public.members) + row_number() over (), v.name, v.hc
   from (values ('New Member', 18.0, false, false, false, 'clean@test.com', 'men'),
                ('Club Office', 54.0, true, true, false, 'admin@test.com', null),
                ('Halfway Hut', 54.0, false, false, true, 'hut@test.com', null),
-               ('Live Tester', 15.0, true, false, false, 'live@test.com', 'men'),
+               ('Live Tester', 15.0, false, false, false, 'live@test.com', 'men'),
                ('New Joiner', 24.0, false, false, false, 'newjoiner@test.com', 'ladies')) v(name, hcp, admin, office, hut, email, plays_in)
  where not exists (select 1 from public.members m where m.email = v.email);
 
