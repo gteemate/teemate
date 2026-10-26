@@ -3,11 +3,12 @@ import * as api from '../api.js'
 import { S } from '../state.js'
 import { $, esc, header, keepScroll, top0, render, nn, asset } from '../ui.js'
 import { flagOf, FLAGCOL, greenPic, holeGrid, pinDistances } from '../course-art.js'
+import { today } from '../dates.js'
 
 let course
 export async function load() {
   course ??= await api.getCourse()
-  return { course, pinSheet: await api.getPins(new Date()) }
+  return { course, pinSheet: await api.getPins(today()) }
 }
 
 export function draw({ course, pinSheet }) {

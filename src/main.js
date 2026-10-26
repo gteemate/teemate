@@ -127,8 +127,13 @@ let seq = 0
 let stampsKnown = false, lastReads = new Set(), lastScreen = null, lastData
 setRedraw(() => (lastScreen ? lastScreen.draw(lastData) : render()))
 function checkForChanges(force = false) {
+  if (!signedInAs) return
   const at = seq
-  api.cache.check(force).then(kinds => { if (at === seq && kinds.some(k => lastReads.has(k))) keepScroll(render) })
+  api.cache.check(force).then(kinds => {
+    // Not over an open pop-up or half-typed form: the changed data is fetched fresh on the next screen anyway.
+    const busy = $('modal').innerHTML.trim() || document.activeElement?.matches?.('input, textarea, select')
+    if (at === seq && !busy && kinds.some(k => lastReads.has(k))) keepScroll(render)
+  })
 }
 
 async function render() {

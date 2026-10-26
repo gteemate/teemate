@@ -15,6 +15,17 @@ self.swRoute = (url, scope, method = 'GET') => {
   return 'network-first'
 }
 
+// Keep a response. An app file (assets/name-HASH.ext) replaces older versions of the same file, so they don't pile up.
+// (Pictures keep their names: to send a replaced picture to devices, change CACHE above.)
+async function keep(kept, req, res) {
+  const m = new URL(req.url).pathname.match(/^(.*\/assets\/.+)-[^-/]+(\.[a-z]+)$/i)
+  if (m) for (const old of await kept.keys()) {
+    const p = new URL(old.url).pathname
+    if (p !== new URL(req.url).pathname && p.startsWith(m[1] + '-') && p.endsWith(m[2]) && !p.slice(m[1].length + 1).includes('-')) await kept.delete(old)
+  }
+  await kept.put(req, res)
+}
+
 self.addEventListener('install', () => self.skipWaiting())
 self.addEventListener('activate', ev => ev.waitUntil((async () => {
   for (const k of await caches.keys()) if (k !== CACHE) await caches.delete(k)
@@ -30,12 +41,12 @@ self.addEventListener('fetch', ev => {
       const hit = await kept.match(ev.request)
       if (hit) return hit
       const res = await fetch(ev.request)
-      if (res.ok) kept.put(ev.request, res.clone())
+      if (res.ok) ev.waitUntil(keep(kept, ev.request, res.clone()))
       return res
     }
     try {
-      const res = await fetch(ev.request)
-      if (res.ok) kept.put(ev.request, res.clone())
+      const res = await fetch(ev.request, { cache: 'no-cache' }) // past the browser's own cache: a new version shows now
+      if (res.ok) ev.waitUntil(keep(kept, ev.request, res.clone()))
       return res
     } catch (err) {
       return (await kept.match(ev.request)) ?? Promise.reject(err)

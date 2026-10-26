@@ -9,19 +9,25 @@ const CHECK_EVERY = 30_000
 const keyOf = user => `tm-cache:${user}`
 
 export function createCache({ storage, getStamps, now = Date.now }) {
-  let user = null, kept = {}, known = {}, lastCheck = -Infinity, read = new Set()
+  let user = null, kept = {}, known = {}, lastCheck = -Infinity, read = new Set(), generation = 0
   // localStorage can be missing or refuse (private browsing): keep working from memory only.
   const load = () => { try { return JSON.parse(storage?.getItem(keyOf(user)) ?? 'null') } catch { return null } }
   const save = () => { try { if (user) storage?.setItem(keyOf(user), JSON.stringify({ kept, known })) } catch { /* memory only */ } }
-  const forget = u => { try { storage?.removeItem(keyOf(u)) } catch { /* nothing kept */ } }
+  // Remove every other person's kept data from this device (also after a reload, when we don't know who was last).
+  const forgetOthers = keep => {
+    try {
+      const keys = Array.from({ length: storage?.length ?? 0 }, (_, i) => storage.key(i))
+      for (const k of keys) if (k?.startsWith('tm-cache:') && k !== keep) storage.removeItem(k)
+    } catch { /* nothing kept */ }
+  }
 
   return {
     getStampsFn: getStamps,
     /** The signed-in user (null when signed out). Someone else: start empty, and remove the last user's data. */
     setUser(id) {
-      if (id === user) return
-      if (user) forget(user)
-      user = id; kept = {}; known = {}; lastCheck = -Infinity
+      if (id === user && generation) return
+      forgetOthers(id ? keyOf(id) : null)
+      user = id; kept = {}; known = {}; lastCheck = -Infinity; generation++
       const saved = id ? load() : null
       if (saved) { kept = saved.kept ?? {}; known = saved.known ?? {} }
     },
@@ -30,8 +36,11 @@ export function createCache({ storage, getStamps, now = Date.now }) {
       read.add(kind)
       const hit = kept[kind]?.data?.[key]
       if (hit !== undefined) return structuredClone(hit)
+      const stamp = known[kind] ?? null, gen = generation // as they were when the fetch started
       const data = await fetch()
-      kept[kind] ??= { stamp: known[kind] ?? null, data: {} }
+      if (gen !== generation) return data // someone else signed in meanwhile: not theirs to keep
+      if (kept[kind] && kept[kind].stamp !== stamp) delete kept[kind] // the server moved on while we fetched
+      kept[kind] ??= { stamp, data: {} }
       kept[kind].data[key] = structuredClone(data)
       save()
       return data

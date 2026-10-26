@@ -105,3 +105,30 @@ describe('the club office iPad', () => {
     expect(app.main()).toContain('Aoife Kelly')
   })
 })
+
+describe('found in review', () => {
+  it('the Course tab fetches today’s pins once, however many holes you look at', async () => {
+    app = await boot(db => db.book(0, db.slotsOn(db.today).find(x => x.time === 570).id, [10, 12, 9]))
+    await app.tap('Scoring')
+    await app.tap('09:30')
+    if (app.screen() === 'Scoring round?') await app.tap('#start')
+    if (document.getElementById('gdone')) await app.tap('#gdone')
+    await app.tap('[data-rt="course"]')
+    await app.tap('#next')
+    await app.tap('#next')
+    expect(callsTo('getPins')).toBe(1)
+  })
+  it('a background check leaves an open pop-up and what’s typed in it alone', async () => {
+    app = await boot(db => { db.asOffice = true })
+    await app.tap('[data-ov="members"]')
+    await app.tap('#o-add')
+    const field = document.querySelector('#modal input')
+    field.value = 'Half typed'
+    field.focus()
+    app.db.stamps.members = '2'
+    await vi.advanceTimersByTimeAsync(31_000)
+    document.dispatchEvent(new Event('visibilitychange'))
+    await app.settle()
+    expect(document.querySelector('#modal input')?.value).toBe('Half typed')
+  })
+})

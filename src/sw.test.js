@@ -2,15 +2,15 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 
 // The service worker (public/sw.js) runs in a pretend worker: its own `self`, `caches` and `fetch`.
-function loadWorker() {
+function loadWorker(fetchFn = async () => new Response('net')) {
   const handlers = {}, store = new Map([['tm-v0', new Map()], ['tm-v1', new Map()]])
   const caches = {
     keys: async () => [...store.keys()],
     delete: async k => store.delete(k),
-    open: async k => { if (!store.has(k)) store.set(k, new Map()); return { match: async r => store.get(k).get(r.url ?? r), put: async (r, res) => store.get(k).set(r.url ?? r, res) } },
+    open: async k => { if (!store.has(k)) store.set(k, new Map()); const m = store.get(k); return { match: async r => m.get(r.url ?? r), put: async (r, res) => m.set(r.url ?? r, res), keys: async () => [...m.keys()].map(url => ({ url })), delete: async r => m.delete(r.url ?? r) } },
   }
   const self = { addEventListener: (t, f) => (handlers[t] = f), registration: { scope: 'https://gteemate.github.io/teemate/' }, skipWaiting: () => {}, clients: { claim: async () => {} } }
-  new Function('self', 'caches', 'fetch', readFileSync(new URL('../public/sw.js', import.meta.url), 'utf8'))(self, caches, async () => new Response('net'))
+  new Function('self', 'caches', 'fetch', readFileSync(new URL('../public/sw.js', import.meta.url), 'utf8'))(self, caches, fetchFn)
   return { self, handlers, store }
 }
 
@@ -36,5 +36,27 @@ describe('the service worker', () => {
     w.handlers.activate({ waitUntil: p => (done = p) })
     await done
     expect([...w.store.keys()]).toEqual(['tm-v1'])
+  })
+})
+
+describe('the service worker, found in review', () => {
+  const run = async (w, url) => {
+    let answer; const waits = []
+    w.handlers.fetch({ request: { url, method: 'GET' }, respondWith: p => (answer = p), waitUntil: p => waits.push(p) })
+    await answer; await Promise.all(waits)
+  }
+  it('a new version of an app file replaces the old one (no pile-up)', async () => {
+    const w = loadWorker()
+    const scope = 'https://gteemate.github.io/teemate/'
+    await run(w, scope + 'assets/index-old1.js')
+    await run(w, scope + 'assets/leaflet-src-aaa.js')
+    await run(w, scope + 'assets/index-new2.js')
+    expect([...w.store.get('tm-v1').keys()].sort()).toEqual([scope + 'assets/index-new2.js', scope + 'assets/leaflet-src-aaa.js'])
+  })
+  it('the page skips the browser’s own cache, so a new version shows straight away', async () => {
+    const seen = []
+    const w = loadWorker(async (req, opts) => { seen.push(opts?.cache); return new Response('page') })
+    await run(w, 'https://gteemate.github.io/teemate/')
+    expect(seen).toEqual(['no-cache'])
   })
 })

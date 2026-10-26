@@ -4,7 +4,7 @@ import { createCache } from './cache.js'
 import { RULES } from './cache-rules.js'
 
 // A pretend localStorage (Map-backed) shared across "restarts", and pretend server stamps.
-const store = () => { const m = new Map(); return { getItem: k => m.get(k) ?? null, setItem: (k, v) => m.set(k, String(v)), removeItem: k => m.delete(k), m } }
+const store = () => { const m = new Map(); return { getItem: k => m.get(k) ?? null, setItem: (k, v) => m.set(k, String(v)), removeItem: k => m.delete(k), key: i => [...m.keys()][i] ?? null, get length() { return m.size }, m } }
 const setup = (over = {}) => {
   let t = 1_000_000
   const stamps = { members: 's1', events: 's1' }
@@ -103,5 +103,42 @@ describe('wrapping the data functions by the rules', () => {
     const dir = new URL('.', import.meta.url).pathname
     const text = readdirSync(dir).filter(f => f.endsWith('.js') && !f.includes('cache')).map(f => readFileSync(dir + f, 'utf8')).join('\n')
     for (const name of Object.keys(RULES)) expect(text, name).toMatch(new RegExp(`export (async )?function ${name}\\b|export const ${name}\\b`))
+  })
+})
+
+describe('found in review', () => {
+  it('booking rules are not kept (they carry the server’s clock for tee time release)', () => {
+    expect(RULES.getBookingRules).toBeUndefined()
+  })
+  it('changes clear everything they touch', () => {
+    const has = (n, ...kinds) => expect(RULES[n]?.changes, n).toEqual(expect.arrayContaining(kinds))
+    has('setCourseLocation', 'club')
+    has('deleteMember', 'members', 'friends', 'games', 'comps', 'requests')
+    has('setOfficeLogin', 'members', 'requests')
+    has('deleteSignup', 'comps', 'events')
+    has('deleteRound', 'comps')
+    has('cancelBooking', 'requests', 'comps')
+    has('adminCancelBooking', 'requests')
+    has('adminMoveBooking', 'requests')
+  })
+  it('after a reload, signing out removes the last person’s kept data', async () => {
+    const storage = store()
+    const a = setup({ storage }); a.c.setUser('A'); await a.c.get('members', 'm', async () => ['emails'])
+    const b = setup({ storage }); b.c.setUser(null)
+    expect(storage.m.has('tm-cache:A')).toBe(false)
+  })
+  it('after a reload, someone else signing in removes the last person’s kept data', async () => {
+    const storage = store()
+    const a = setup({ storage }); a.c.setUser('A'); await a.c.get('members', 'm', async () => ['emails'])
+    const b = setup({ storage }); b.c.setUser('B')
+    expect([...storage.m.keys()].filter(k => k.startsWith('tm-cache:A'))).toEqual([])
+  })
+  it('data fetched while a check moves the stamp is kept under the older stamp (so the next check refetches it)', async () => {
+    const { c, stamps } = setup(); c.setUser('u1'); await c.check(true)
+    let finish; const pending = c.get('members', 'm', () => new Promise(r => (finish = r)))
+    stamps.members = 's2'
+    await c.check(true)
+    finish(['old']); await pending
+    expect(await c.check(true)).toEqual(['members'])
   })
 })

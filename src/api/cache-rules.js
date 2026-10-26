@@ -10,26 +10,30 @@ export const RULES = {
   getPins: kept('pins'),
   getGameSettings: kept('games'),
   getEvents: kept('events'),
-  getTheme: kept('club'), getBookingRules: kept('club'),
+  getTheme: kept('club'), // not getBookingRules: it carries the server's clock for tee time release, so it's always fresh
   getSignups: kept('comps'), getSignupCounts: kept('comps'), getKnockout: kept('comps'),
   getAccessRequests: kept('requests'), getTeeTimeRequests: kept('requests'),
   getBuddies: kept('friends'), getFriends: kept('friends'), getFavourites: kept('friends'),
 
   // Changes: what each one makes out of date.
   setTheme: changes('club'), setClubName: changes('club'), setFeePayment: changes('club'), setHutOn: changes('club'), setBookingRules: changes('club'),
-  setCourseLocation: changes('course'), setGreenWidth: changes('course', 'pins'), publishPins: changes('pins'),
+  setCourseLocation: changes('club'), setGreenWidth: changes('course', 'pins'), publishPins: changes('pins'),
   saveEvent: changes('events'), saveSeason: changes('events'), deleteEvent: changes('events'), enterEventToday: changes('events'),
   startLeagueKnockout: changes('events', 'comps'),
   setMyGamePref: changes('games'),
-  setHutStaff: changes('members'), saveMember: changes('members', 'requests'), setOfficeLogin: changes('members'),
-  deleteMember: changes('members'), resetLogin: changes('members'),
+  setHutStaff: changes('members'), saveMember: changes('members', 'requests'), setOfficeLogin: changes('members', 'requests'),
+  deleteMember: changes('members', 'friends', 'games', 'comps', 'requests'), // its rows elsewhere go with it
+  resetLogin: changes('members'),
   declineRequest: changes('requests'), requestAccess: changes('requests'),
   addBuddy: changes('friends'), removeBuddy: changes('friends'), saveContact: changes('friends'), removeContact: changes('friends'),
   setFriendFavourite: changes('friends'), setFavourite: changes('friends'),
   setMyPlaysIn: changes('members', 'comps'), adminSetPlaysIn: changes('members', 'comps'),
-  ...Object.fromEntries(['declineSignup', 'undeclineSignup', 'runSignup', 'enterSignup', 'withdrawSignup', 'saveSignup', 'deleteSignup',
+  ...Object.fromEntries(['declineSignup', 'undeclineSignup', 'runSignup', 'enterSignup', 'withdrawSignup', 'saveSignup',
     'createMemberKnockout', 'deleteMemberKnockout', 'makeDraw', 'swapDraw', 'setRoundDeadlines', 'publishDraw', 'linkKoCard',
     'reportKoResult', 'confirmKoResult', 'disputeKoResult', 'adminSetKoResult'].map(n => [n, changes('comps')])),
+  deleteSignup: changes('comps', 'events'), // a league's knockout link goes with it
+  // Bookings and cards aren't kept, but losing one clears a tee time request's booking or a knockout's scorecard link.
+  deleteRound: changes('comps'), cancelBooking: changes('requests', 'comps'), adminCancelBooking: changes('requests'), adminMoveBooking: changes('requests'),
   ...Object.fromEntries(['requestTeeTime', 'cancelTeeTimeRequest', 'dismissTeeTimeRequest', 'decideTeeTimeRequest', 'markTeeTimeRequestsSeen']
     .map(n => [n, changes('requests')])),
 }
