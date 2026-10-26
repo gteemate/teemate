@@ -89,6 +89,25 @@ describe('journeys against the test database', () => {
     expect(m).toMatchObject({ linked: true, game: 'kos', lineup: [{ m: 0 }, { m: 9 }] })
   })
 
+  it('the organiser adds a match day with a singles to his season', async () => {
+    await signedInAsGary()
+    await app.tap('[data-tile="comp"]')
+    await app.tap('[data-tab="entered"]')
+    await app.tap('Pals Ryder Season')
+    expect(app.main()).toContain('Season ends')
+    await app.tap('+ Add a match day')
+    const [{ d }] = await sql(`select (current_date + 10)::text as d`)
+    await app.type('#ev-md', d)
+    await app.tap('#ev-mdadd')
+    await app.tap('[data-add1="41"]') // day 41 of the season (it started 30 days ago)
+    await app.tap('#ev-next') // Review
+    await app.tap('#ev-next') // Save changes: through save_season
+    const [e] = await sql(`select matches->'41' as day, matches->'3' as played from public.events where name = 'Pals Ryder Season'`)
+    expect(e.day).toHaveLength(1)
+    expect(e.day[0].a).toHaveLength(1)
+    expect(e.played).toHaveLength(2) // the played day as it was
+  })
+
   it('confirms a result the other side entered', async () => {
     await signedInAsGary()
     await app.tap('[data-tile="comp"]')

@@ -77,6 +77,29 @@ insert into public.events (name, team_a, team_b, start_date, days, style, fmt, w
 values ('Pals Pairs League', '{"name":"A","col":"#19335A"}', '{"name":"B","col":"#762A43"}', current_date - 35, 1, 'league', 'beststab', 4, 1,
   '[]', '[[0,1],[3,5],[7,11],[9,10]]', '{0,1,3,5,7,11,9,10}', '{}', '{}', false, false, false, 4, current_date + 40, 0);
 
+-- Gary's season of four-ball team match play (Competitions → Entered → Pals Ryder Season): started 30 days ago, ends in
+-- 60. Played: day 3 (two four-balls, one each) and day 17 (a four-ball and a singles, the Blues take both); today a
+-- four-ball for Peter, Liam, Eoin and Tom (not started); in a week Gary's singles against Eoin.
+create function pg_temp.card(p_day int, p_ids bigint[], p_rows jsonb) returns bigint language plpgsql as $$
+declare r bigint;
+begin
+  insert into public.rounds (date, created_by, game, pairing, scores, done, submitted, lineup)
+  values (current_date + p_day, p_ids[1], 'none', 0, (select jsonb_agg(p_rows) from generate_series(1, 18)),
+          (select jsonb_agg(true) from generate_series(1, 18)), '{}', (select jsonb_agg(jsonb_build_object('m', x)) from unnest(p_ids) x))
+  returning id into r;
+  return r;
+end $$;
+with e as (insert into public.events (name, team_a, team_b, start_date, days, season, style, fmt, players, team, matches, club, everyone, entry_required, created_by)
+  values ('Pals Ryder Season', '{"name":"Blues","col":"#19335A"}', '{"name":"Reds","col":"#762A43"}', current_date - 30, 91, true, 'ryder', 'bbl',
+    '{0,1,7,11,3,5,9,10}', '{"0":"A","1":"A","7":"A","11":"A","3":"B","5":"B","9":"B","10":"B"}',
+    '{"3":[{"a":[0,1],"b":[3,5]},{"a":[7,11],"b":[9,10]}],"17":[{"a":[0,7],"b":[5,9]},{"a":[1],"b":[3]}],"31":[{"a":[7,11],"b":[9,10]}],"38":[{"a":[0],"b":[9]}]}',
+    false, false, true, 0) returning id),
+c as (select pg_temp.card(-28, '{0,1,3,5}', '[4,5,5,5]') a, pg_temp.card(-28, '{7,11,9,10}', '[5,5,4,5]') b,
+             pg_temp.card(-14, '{0,7,5,9}', '[4,4,5,5]') c, pg_temp.card(-14, '{1,3}', '[4,5]') d)
+insert into public.event_entries (event_id, day, member_id, round_id)
+select e.id, x.day, x.m, x.r from e, c, lateral (values (3, 0, c.a), (3, 1, c.a), (3, 3, c.a), (3, 5, c.a), (3, 7, c.b), (3, 11, c.b), (3, 9, c.b), (3, 10, c.b),
+  (17, 0, c.c), (17, 7, c.c), (17, 5, c.c), (17, 9, c.c), (17, 1, c.d), (17, 3, c.d)) x(day, m, r);
+
 -- ---------------------------------------------------------------- knockouts and sign-up competitions
 create function pg_temp.comp(p_name text, p_cat text, p_kind text, p_open boolean, p_closes int, p_drawn boolean, p_max int default null, p_fee int default null, p_by bigint default null)
 returns bigint language sql as $$
@@ -196,5 +219,5 @@ insert into public.member_balances (member_id, competition_pence, clubhouse_penc
   (1, 300, 0, 'example');       -- short of a £5 fee: "top it up before entries close"
 
 select (select count(*) from public.signup_comps) as competitions, (select count(*) from public.ko_matches) as ko_matches,
-       (select count(*) from public.events) as events, (select count(*) from public.tee_time_requests) as requests,
+       (select count(*) from public.events) as events, (select count(*) from public.events where season) as seasons, (select count(*) from public.tee_time_requests) as requests,
        (select count(*) from public.hut_orders) as hut_orders, (select user_id is not null from public.members where id = 0) as gary_has_login;
