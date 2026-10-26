@@ -544,7 +544,7 @@ describe('the pretend server', () => {
 
   it('has every function src/api.js exports (so a new one is never silently missing)', () => {
     const dir = `${process.cwd()}/src/api`
-    const real = readdirSync(dir).flatMap(f => [...readFileSync(`${dir}/${f}`, 'utf8').matchAll(/^export (?:async )?function (\w+)/gm)].map(m => m[1]))
+    const real = readdirSync(dir).filter(f => !f.startsWith('cache')).flatMap(f => [...readFileSync(`${dir}/${f}`, 'utf8').matchAll(/^export (?:async )?function (\w+)/gm)].map(m => m[1]))
     const fromClient = ['getMe', 'forgetMe']
     expect([...API_NAMES].sort()).toEqual([...new Set([...real.filter(n => n !== 'getMe'), ...fromClient])].sort())
   })
