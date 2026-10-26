@@ -1,6 +1,9 @@
 // Club office → Leaderboard: today's club competitions, live from the players' cards, and today's scores while the
 // leaderboard of the day is on (the club's days, or switched for today here). Big enough for a clubhouse screen.
+// Each part folds away: today's scores first, then today's competitions (open), then leagues (closed: for a nosey);
+// what's open is remembered while the office is in use (S.oBoardOpen).
 import * as api from '../api.js'
+import { S } from '../state.js'
 import { $, esc, header, keepScroll, render, toast } from '../ui.js'
 import { eventLastDay, isoDate, longDay, today } from '../dates.js'
 import { matchDays, dayDate } from '../season.js'
@@ -20,15 +23,22 @@ export async function load() {
   return { boards, dayOn, switched, field }
 }
 
+// A part of the page that folds away; open by default or as last left.
+const part = (key, title, sub, openFirst, html) => `<details class="card oboard" data-ob="${key}" ${(S.oBoardOpen?.[key] ?? openFirst) ? 'open' : ''}>
+  <summary><b>${title}</b><span class="hint">${sub}</span></summary>${html}</details>`
+
 export function draw({ boards, dayOn, switched, field }) {
   header('Leaderboard', longDay(today()))
   $('main').innerHTML = `<div class="screen office">
     <div class="card olist"><div class="orow"><span class="ot"><b>Leaderboard of the day</b><span>${dayOn ? 'On today: members see everyone’s scores' : 'Off today: members see only competitions'}${switched ? ' (switched for today)' : ''}</span></span>
       <span class="seg" role="group" aria-label="Leaderboard of the day today"><button data-o-db="on" aria-pressed="${dayOn}">On</button><button data-o-db="off" aria-pressed="${!dayOn}">Off</button></span></div></div>
-    ${boards.map(b => `<h3>${esc(b.e.name)}</h3><div class="card oboard">${boardHtml(b)}</div>`).join('') || '<div class="hint">No club competition today.</div>'}
-    ${field ? `<h3>Today’s scores</h3><div class="card oboard">${fieldHtml(field)}</div>` : ''}
+    ${field ? part('today', 'Today’s scores', 'Everyone’s round today', true, fieldHtml(field)) : ''}
+    ${[...boards].sort((a, b) => (a.e.style === 'league') - (b.e.style === 'league')).map(b =>
+      part(`e:${b.e.id}`, esc(b.e.name), b.e.style === 'league' ? 'League · this week' : 'On today', b.e.style !== 'league', boardHtml(b))).join('')
+      || (field ? '' : '<div class="hint">No club competition today.</div>')}
   </div>`
   bindField()
+  document.querySelectorAll('details[data-ob]').forEach(d => d.addEventListener('toggle', () => { S.oBoardOpen = { ...S.oBoardOpen, [d.dataset.ob]: d.open } }))
   document.querySelectorAll('[data-o-db]').forEach(b => (b.onclick = async () => {
     const on = b.dataset.oDb === 'on'
     try { await api.setDayBoardToday(on) } catch (err) { toast(err.message); return }

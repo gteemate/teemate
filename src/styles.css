@@ -894,3 +894,8 @@ h4,.sheet h4{font-family:var(--display);font-weight:600;letter-spacing:0}
 .swatches button{width:30px;height:30px;border-radius:50%;border:2px solid transparent;cursor:pointer;padding:0}
 .swatches button[aria-pressed="true"]{border-color:var(--ink);box-shadow:0 0 0 2px var(--bg) inset}
 .swatches button:disabled{opacity:.5;cursor:default}
+/* Club office leaderboard: parts that fold away. */
+details.oboard > summary{display:flex;align-items:baseline;gap:10px;cursor:pointer;padding:12px 14px;list-style:none}
+details.oboard > summary::-webkit-details-marker{display:none}
+details.oboard > summary::before{content:'▸';color:var(--muted);transition:transform .15s}
+details.oboard[open] > summary::before{transform:rotate(90deg)}

@@ -683,3 +683,22 @@ describe('club office: members with no guest points left', () => {
     expect(document.querySelectorAll('[data-o-m]').length).toBeGreaterThan(2)
   })
 })
+
+describe('club office: the leaderboard sections fold away', () => {
+  it('today’s scores first and open; today’s competition open; the league closed for a nosey', async () => {
+    app = await boot(db => { db.asOffice = true })
+    await app.tap('[data-ov="board"]')
+    const parts = [...document.querySelectorAll('#main details.oboard')].map(d => [d.querySelector('summary b').textContent.trim(), d.open])
+    expect(parts[0]).toEqual(['Today’s scores', true])
+    expect(parts.find(p => p[0].startsWith('Saturday Medal'))?.[1]).toBe(true)
+    expect(parts.find(p => p[0].startsWith('Winter League'))?.[1]).toBe(false)
+  })
+  it('opened or closed stays that way when the page redraws', async () => {
+    app = await boot(db => { db.asOffice = true })
+    await app.tap('[data-ov="board"]')
+    const league = [...document.querySelectorAll('#main details.oboard')].find(d => d.textContent.includes('Winter League'))
+    league.open = true; league.dispatchEvent(new Event('toggle'))
+    await app.tap('[data-ov="today"]'); await app.tap('[data-ov="board"]')
+    expect([...document.querySelectorAll('#main details.oboard')].find(d => d.textContent.includes('Winter League')).open).toBe(true)
+  })
+})
