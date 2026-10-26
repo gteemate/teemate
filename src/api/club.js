@@ -25,3 +25,8 @@ export async function setCourseLocation(lat, lon, place) {
 export async function setFeePayment(p) {
   must(await sb.rpc('admin_set_fee_payment', { p }))
 }
+
+/** When each kind of data last changed, { kind: timestamp } (see src/api/cache.js). */
+export async function getStamps() {
+  return must(await sb.rpc('data_versions')) ?? {}
+}
