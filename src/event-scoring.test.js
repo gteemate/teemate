@@ -439,7 +439,7 @@ describe('match day settings: points, 3-balls and short days', () => {
     const e = ev({ matches: { 1: [{ a: [1, 2], b: [5] }] } })
     const r = scoreAdvanceEvent(e, FLAT, { 1: [card(1, [1, 2, 5], all(18, [5, 5, 4]))] }, player, allow)
     expect(r.byDay[1][0]).toMatchObject({ type: 'three', a: ['P1', 'P2'], b: ['P5'] })
-    expect(r.score).toMatchObject({ cA: 0, cB: 2, tot: 2, toWin: 1.5 })
+    expect(r.score).toMatchObject({ cA: 0, cB: 2, tot: 2, toWin: null }) // uneven points: no single “to win”
   })
   it('a 12-hole day is decided over 12', () => {
     const e = ev({ matches: { 1: [{ a: [1], b: [3] }] }, dayRules: { 1: { holes: 12 } } })
@@ -460,5 +460,16 @@ describe('found in review', () => {
       const byObject = scoreAdvanceEvent(ev, FLAT, { 1: [card] }, player, { four: 0.9, singles: 1, stab: 0.95, base: 1 })
       expect(byObject, style).toEqual(byNumber)
     }
+  })
+})
+
+describe('tidy: “to win” only when every match is worth the same to both teams', () => {
+  const player = id => ({ name: `P${id}`, courseHcp: 0 })
+  const ev = matches => ({ style: 'ryder', fmt: 'bbscr', days: 1, players: [1, 2, 3, 4], team: { 1: 'A', 2: 'A', 3: 'B', 4: 'B' }, matches: { 1: matches } })
+  it('four-balls: to win as before', () => {
+    expect(scoreAdvanceEvent(ev([{ a: [1, 2], b: [3, 4] }]), FLAT, { 1: [] }, player, 1).score.toWin).toBe(1)
+  })
+  it('a 3-ball worth 1 to one side and 2 to the other: no single “to win” figure', () => {
+    expect(scoreAdvanceEvent(ev([{ a: [1, 2], b: [3] }]), FLAT, { 1: [] }, player, 1).score.toWin).toBeNull()
   })
 })

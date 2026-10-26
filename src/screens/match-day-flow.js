@@ -17,9 +17,9 @@ const fmtPts = n => (Number.isInteger(n) ? String(n) : `${Math.floor(n) || ''}½
 export function openFlow(ev, d = null) {
   const sides = ['A', 'B'].flatMap(t => ev.players.filter(id => ev.team[id] === t))
   const eventId = ev.id ?? 'new'
-  if (d == null) { S.mdFlow = { eventId, d: null, step: 'date', isNew: true, playing: sides, matches: [], ...dayRules(ev, 0), points: { ...DEFAULT_POINTS, ...(ev.points ?? {}) }, holes: 18 }; return }
+  if (d == null) { S.mdFlow = { eventId, d: null, step: 'date', first: 'date', isNew: true, playing: sides, matches: [], points: { ...DEFAULT_POINTS, ...(ev.points ?? {}) }, holes: 18 }; return }
   const r = dayRules(ev, d), inDay = (ev.matches[d] ?? []).flatMap(m => [...m.a, ...m.b])
-  S.mdFlow = { eventId, d, step: 'players', isNew: !(ev.matches[d] ?? []).length, playing: inDay.length ? sides.filter(id => inDay.includes(id) || !ev.matches[d]) : sides,
+  S.mdFlow = { eventId, d, step: 'players', first: 'players', isNew: !(ev.matches[d] ?? []).length, playing: inDay.length ? sides.filter(id => inDay.includes(id)) : sides,
     matches: structuredClone(ev.matches[d] ?? []), holes: r.holes, points: r.points }
 }
 
@@ -94,7 +94,7 @@ export function bindFlow(ev, f, redraw, setError) {
   on('[data-mdp]', b => {
     const id = +b.dataset.mdp
     f.playing = f.playing.includes(id) ? f.playing.filter(x => x !== id) : [...f.playing, id]
-    f.matches = f.matches.filter(m => f.playing.includes(m.a[0]) && m.a.every(x => f.playing.includes(x)) && m.b.every(x => f.playing.includes(x)))
+    f.matches = f.matches.filter(m => [...m.a, ...m.b].every(x => f.playing.includes(x)))
     redraw()
   })
   on('[data-rmm]', b => { f.matches.splice(+b.dataset.rmm.split(':')[1], 1); redraw() })
@@ -127,7 +127,6 @@ export function flowNext(ev, f) {
 
 /** Back inside the flow: the step before, or out of it. */
 export function flowBack(f) {
-  const i = STEPS.indexOf(f.step)
-  if (i <= (f.isNew && f.d == null ? 0 : 1) || (!f.isNew && i <= 1)) { S.mdFlow = null; return }
-  f.step = STEPS[i - 1]
+  if (f.step === f.first) { S.mdFlow = null; return }
+  f.step = STEPS[STEPS.indexOf(f.step) - 1]
 }

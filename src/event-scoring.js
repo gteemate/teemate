@@ -187,7 +187,9 @@ export function scoreAdvanceEvent(event, holes, dayCards, player, allow, entries
     }
     const ms = Object.values(byDay).flat(), sum = k => ms.reduce((t, m) => t + m.pts[k], 0)
     const tot = sum('avail')
-    return { kind: 'ryder', byDay, score: { pA: sum('pA'), pB: sum('pB'), cA: sum('cA'), cB: sum('cB'), tot, toWin: tot / 2 + 0.5 } }
+    // "To win" only makes sense when every match is worth the same to both teams (not with a 1 / 2 point 3-ball).
+    const even = ms.every(m => m.win.A === m.win.B)
+    return { kind: 'ryder', byDay, score: { pA: sum('pA'), pB: sum('pB'), cA: sum('cA'), cB: sum('cB'), tot, toWin: even ? tot / 2 + 0.5 : null } }
   }
 
   // Per player, per day: points (or net to par) over the holes they've saved.

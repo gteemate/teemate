@@ -93,7 +93,7 @@ export function draw(data) {
   const won = i => (run[i] == null ? 0 : run[i] - (i ? run[i - 1] : 0))
   const table = (from, label) => {
     const idx = Array.from({ length: 9 }, (_, k) => from + k)
-    const tot = (f) => idx.reduce((t, i) => t + (f(i) ?? 0), 0)
+    const tot = (f) => idx.reduce((t, i) => t + (i < n ? f(i) ?? 0 : 0), 0) // only the day's holes
     const row = p => { const col = p.team === 'A' ? A.col : B.col, mine = p.team === 'A' ? 1 : -1
       const cells = idx.map(i => { if (i >= n) return '<td></td>' // not played on a short day
         const g = p.gross[i], sh = shotsOn(p.ph, rank[i], n)
@@ -110,9 +110,9 @@ export function draw(data) {
     <div class="card mcard"><div class="mgrid">${pair(pa, A.col)}<div class="mstat">${status}</div>${pair(pb, B.col, true)}</div>
       ${mineAction ? `<div class="mact">${mineAction}</div>` : ''}</div>
     <h3>Match summary</h3>
-    <div class="card msum"><div class="msrow">${holes.slice(0, 9).map((_, i) => holeDot(i)).join('')}</div><div class="msrow">${holes.slice(9).map((_, i) => holeDot(i + 9)).join('')}</div></div>
+    <div class="card msum"><div class="msrow">${holes.slice(0, Math.min(9, n)).map((_, i) => holeDot(i)).join('')}</div>${n > 9 ? `<div class="msrow">${holes.slice(9, n).map((_, i) => holeDot(i + 9)).join('')}</div>` : ''}</div>
     <h3>Scorecard</h3>
-    ${table(0, 'Out')}${table(9, 'In')}
+    ${table(0, 'Out')}${n > 9 ? table(9, 'In') : ''}
     <span class="hint">${data.mine?.no === no ? 'Enter scores on your scorecard: this page fills in as holes are saved.' : 'Scores come from the players’ own scorecard and update as holes are saved.'} Dots are shots received.</span>
   </div>`
   if (mineAction) bindMatchAction(data.action)

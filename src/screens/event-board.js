@@ -85,7 +85,7 @@ export function boardHtml(data, top = '') {
         <div class="tug"><i class="ta" style="width:${wA}%;background:${A.col}"></i><i class="tb" style="width:${wB}%;background:${B.col}"></i><span class="mid"></span></div>
         <div class="evteams"><div><span class="tn" style="color:${A.col}">${esc(A.name)}</span><span class="tp" style="color:${A.col}">${fmtPts(sc.pA)} <small>projected</small></span><small>${fmtPts(sc.cA)} confirmed</small></div>
           <div class="r"><span class="tn" style="color:${B.col}">${esc(B.name)}</span><span class="tp" style="color:${B.col}">${fmtPts(sc.pB)} <small>projected</small></span><small>${fmtPts(sc.cB)} confirmed</small></div></div>
-        <div class="evfoot">${fmtPts(sc.toWin)} to win · ${fmtPts(sc.tot)} point${sc.tot === 1 ? '' : 's'} available</div></div>
+        <div class="evfoot">${sc.toWin != null ? `${fmtPts(sc.toWin)} to win · ` : ''}${fmtPts(sc.tot)} point${sc.tot === 1 ? '' : 's'} available</div></div>
       ${e.days > 1 ? daySelect(e, r, day) : ''}
       ${matches.map((mt, k) => matchCard(data, mt, k, day)).join('') || '<div class="empty-state">No matches drawn for this day.</div>'}`
   } else if (r.kind === 'teams') {

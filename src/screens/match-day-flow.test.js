@@ -12,3 +12,22 @@ describe('found in review: a match day setup belongs to its event', () => {
     expect(S.mdFlow).toBeNull()
   })
 })
+
+import { flowBack } from './match-day-flow.js'
+describe('Back inside the match day steps', () => {
+  const ev = { id: 900, startDate: '2026-10-01', days: 100, season: true, players: [1, 2], team: { 1: 'A', 2: 'B' }, matches: { 5: [{ a: [1], b: [2] }] } }
+  it('a new day: from Who’s playing back to the date, not out', () => {
+    openFlow(ev); S.mdFlow.d = 12; S.mdFlow.step = 'players'
+    flowBack(S.mdFlow)
+    expect(S.mdFlow?.step).toBe('date')
+    flowBack(S.mdFlow)
+    expect(S.mdFlow).toBeNull()
+  })
+  it('back from Matches keeps the matches built', () => {
+    openFlow(ev, 5); S.mdFlow.step = 'matches'
+    flowBack(S.mdFlow)
+    expect(S.mdFlow).toMatchObject({ step: 'players', matches: [{ a: [1], b: [2] }] })
+    flowBack(S.mdFlow)
+    expect(S.mdFlow).toBeNull()
+  })
+})

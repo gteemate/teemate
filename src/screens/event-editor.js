@@ -11,7 +11,7 @@ import { openFlow, currentFlow, flowHtml, bindFlow, flowNext, flowBack, flowCta,
 import { drawDay, dayDate, dayOfDate, playedIds } from '../season.js'
 
 export const EVENT_TYPES = {
-  ryder: { name: 'Four-ball team match play', desc: 'Two teams. Pairs play better-ball matches, 1 point each.', formats: [['bbl', 'Better ball · off the low'], ['bbstab', 'Better ball · Stableford'], ['bbscr', 'Better ball · scratch'], ['stabtot', 'Stableford total over the holes']] },
+  ryder: { name: 'Four-ball team match play', desc: 'Two teams play four-balls, singles and 3-balls for points.', formats: [['bbl', 'Better ball · off the low'], ['bbstab', 'Better ball · Stableford'], ['bbscr', 'Better ball · scratch'], ['stabtot', 'Stableford total over the holes']] },
   teams: { name: 'Team Stableford', desc: 'Two teams. Everyone’s Stableford points count for their team.', formats: [['teamstab', 'Team Stableford']] },
   individual: { name: 'Individual', desc: 'A leaderboard of everyone: Stableford or net.', formats: [['stab', 'Stableford'], ['net', 'Net strokeplay']] },
   league: { name: 'League', desc: 'Over several weeks: singles or pairs Stableford, with teams for club leagues and an optional knockout finish.', formats: [['beststab', 'Best Stableford rounds']] },
@@ -278,7 +278,7 @@ export function draw({ members, me }) {
         <span>Format</span><b>${EVENT_TYPES[ev.style].name}${ev.style !== 'teams' ? ` · ${eventFormat(ev)}` : ''}</b>
         <span>Players</span><b>${openToAll(ev) ? 'Anyone playing that day' : `${ev.players.length} members`}</b>
         ${ev.style !== 'individual' ? `<span>Teams</span><b>${esc(ev.A.name)} ${A.length} · ${esc(ev.B.name)} ${B.length}</b>` : ''}
-        ${ev.style === 'ryder' ? `<span>Matches</span><b>${Object.values(ev.matches).flat().length}${ev.season ? ` on ${seasonDays(ev).filter(d => ev.matches[d].length).length} match days so far` : ''} · 1 point each</b>` : ''}
+        ${ev.style === 'ryder' ? `<span>Matches</span><b>${Object.values(ev.matches).flat().length}${ev.season ? ` on ${seasonDays(ev).filter(d => ev.matches[d].length).length} match days so far` : ''} · points as set for each day</b>` : ''}
         <span>Who sees it</span><b>${ev.everyone ? 'All members' : 'Only the players in it'}</b>
         <span>Scoring</span><b>Live from each player’s own card</b></div></div>
       <div class="hint">${ev.season ? `Players see it on their Leaderboard tab on their match days. You can add match days and players until the season ends.` : `Players see it on their Leaderboard tab on the day${ev.days > 1 ? 's' : ''}. ${me.admin ? 'As an admin you can change it any time.' : 'You can change it until the first day.'}`}</div>
@@ -303,12 +303,12 @@ export function draw({ members, me }) {
   const fixCaptains = () => { ev.teams = ev.teams.map((x, k) => (x.captain != null && ev.team[x.captain] !== k ? { ...x, captain: null } : x)) }
   document.querySelectorAll('[data-when]').forEach(b => (b.onclick = () => {
     read()
-    ev.season = b.dataset.when === 'season'; ev.matches = {}
+    ev.season = b.dataset.when === 'season'; ev.matches = {}; ev.dayRules = null // the days start again
     if (ev.season) { ev.endDate ??= addDaysIso(ev.startDate, 182); ev.days = dayOfDate(ev, ev.endDate) } else { ev.days = 1; ev.endDate = null }
     redraw()
   }))
   if ($('ev-end')) $('ev-end').onchange = () => { read(); redraw() }
-  document.querySelectorAll('[data-rmday]').forEach(b => (b.onclick = () => { delete ev.matches[+b.dataset.rmday]; redraw() }))
+  document.querySelectorAll('[data-rmday]').forEach(b => (b.onclick = () => { const d = +b.dataset.rmday; delete ev.matches[d]; if (ev.dayRules) delete ev.dayRules[d]; redraw() }))
   on('md-new', () => { openFlow(ev); redraw() })
   document.querySelectorAll('[data-mdset]').forEach(b => (b.onclick = () => { openFlow(ev, +b.dataset.mdset); redraw() }))
   if (flow) bindFlow(ev, flow, redraw, msg => ($('ev-err').textContent = msg))
@@ -318,7 +318,7 @@ export function draw({ members, me }) {
     ev.points = { ...p, [k]: Math.max(0, Math.min(10, p[k] + +b.dataset.d / 2)) }
     redraw()
   }))
-  document.querySelectorAll('[data-days]').forEach(b => (b.onclick = () => { read(); ev.days = +b.dataset.days; ev.matches = {}; redraw() }))
+  document.querySelectorAll('[data-days]').forEach(b => (b.onclick = () => { read(); ev.days = +b.dataset.days; ev.matches = {}; ev.dayRules = null; redraw() }))
   document.querySelectorAll('[data-style]').forEach(b => (b.onclick = () => {
     read()
     const was = ev.style
