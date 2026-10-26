@@ -101,7 +101,7 @@ export function makeWorld(today, setup = () => {}) {
   const api = {
     // Signed in as Gary Cochrane (member 0, an admin).
     getMe: async () => (db.asOffice ? { id: 9000, name: 'Club office', admin: true, office: true, hutStaff: false, playsIn: null }
-      : { ...member(ME), hutStaff: db.members[0].hutStaff, playsIn: db.members[0].playsIn, office: false }), forgetMe: () => {},
+      : { ...member(ME), admin: !!db.members[0].admin, hutStaff: db.members[0].hutStaff, playsIn: db.members[0].playsIn, office: false }), forgetMe: () => {},
     getSession: async () => ({ user: { id: 'u0', email: 'gary@example.invalid' } }), onAuthChange: () => {},
     myRequestPending: async () => false,
     getTheme: async () => ({ ...db.theme }),

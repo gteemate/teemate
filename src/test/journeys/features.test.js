@@ -107,6 +107,20 @@ const pals = db => db.events.push({ id: 900, name: 'Pals Season', A: { name: 'Bl
   club: false, everyone: false, startDate: '2026-10-07', days: 176, season: true, style: 'ryder', fmt: 'bbl', entryRequired: true,
   players: [0, 9, 11, 10, 12, 1], team: { 0: 'A', 9: 'A', 11: 'A', 10: 'B', 12: 'B', 1: 'B' },
   matches: { 1: [{ a: [0, 9], b: [10, 12] }] }, createdBy: { id: 0, name: 'Gary Cochrane' } })
+// …with day 1 played on one card (the Blues win every hole) and a singles to come on 12 Oct (Quinn v Murphy).
+const palsPlayed = db => {
+  pals(db)
+  const e = db.events.at(-1)
+  e.matches[6] = [{ a: [11], b: [1] }]
+  db.rounds.push({ id: 950, date: '2026-10-07', lineup: [{ m: 0 }, { m: 9 }, { m: 10 }, { m: 12 }], scores: Array.from({ length: 18 }, () => [3, 4, 4, 4]),
+    done: Array(18).fill(true), updated_at: '2026-10-07T12:00:00Z' })
+  for (const m of [0, 9, 10, 12]) db.entries.push({ eventId: 900, day: 1, memberId: m, roundId: 950 })
+}
+async function openSeasonBoard() {
+  await app.tap('Competition')
+  await app.tap('[data-tab="entered"]')
+  await app.tap('Pals Season')
+}
 async function openSeasonEditor() {
   await app.tap('Competition')
   await app.tap('[data-tab="entered"]')
@@ -151,6 +165,37 @@ describe('four-ball team match play over a season', () => {
     expect(e.matches[11]).toHaveLength(2)
     expect(e.matches[11].filter(m => m.a.length === 1)).toHaveLength(1)
     expect(e.matches[1]).toEqual([{ a: [0, 9], b: [10, 12] }]) // the played day as it was
+  })
+  it('the board: season score, match days newest first, a singles one a side, the organiser’s buttons', async () => {
+    app = await boot(palsPlayed)
+    await openSeasonBoard()
+    const t = app.main()
+    expect(t).toContain('Season ends')
+    expect(t).toContain('1 match played · 1 to come')
+    expect(t).toMatch(/Blues \d&\d/) // the played four-ball, won by the Blues
+    expect(t).toContain('Quinn')
+    expect(t).toContain('Murphy')
+    expect(document.querySelector('[data-mday="6"] .mside').textContent).not.toContain('&')
+    expect(t).toContain('+ Add a match day')
+    await app.tap('+ Add a match day')
+    expect(document.getElementById('ev-md')).not.toBeNull() // the editor, at Match days
+    await app.tap('#ev-next')
+    await app.tap('#ev-next')
+  })
+  it('cards say it’s a season, and a match page says which day', async () => {
+    app = await boot(palsPlayed)
+    await app.tap('Competition')
+    await app.tap('[data-tab="entered"]')
+    expect(app.main()).toContain('Season · ends Wed 31 Mar')
+    await app.tap('Pals Season')
+    await app.tap('[data-mday="6"]')
+    expect(app.text()).toContain('Singles · Mon 12 Oct')
+  })
+  it('a player who isn’t the organiser sees the board but no organiser buttons', async () => {
+    app = await boot(db => { palsPlayed(db); db.events.at(-1).createdBy = { id: 9, name: 'Eoin Fitzgerald' }; db.members[0].admin = false })
+    await openSeasonBoard()
+    expect(app.main()).toContain('Season ends')
+    expect(app.main()).not.toContain('+ Add a match day')
   })
   it('a played match day can’t be changed, and nobody switches teams', async () => {
     app = await boot(pals)

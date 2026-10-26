@@ -5,6 +5,7 @@ import * as api from '../api.js'
 import { S } from '../state.js'
 import { $, esc, ini, header, keepScroll, render, top0, toast } from '../ui.js'
 import { isoDate, today, eventDates, hhmm } from '../dates.js'
+import { eventWhen } from '../season.js'
 import { eventFormatName } from '../games.js'
 import { competitionLists } from '../competitions.js'
 import { canEdit } from './events.js'
@@ -35,7 +36,7 @@ export function draw({ me, date, members, friends, signups, counts = {}, fees = 
     if (x.kind === 'match') return `<button class="card comp" data-n="${n}"><span class="row"><span class="ct">${esc(eventFormatName(e.format))} match</span><span class="pill live">● Live</span></span>
       <span class="sub">Today · ${e.groups.map(g => hhmm(g.time)).join(' v ')}</span><span class="row"><span></span><span class="link">Leaderboard ›</span></span></button>`
     const when = x.running ? (x.kind === 'league' ? (x.week > x.weeks ? 'Season over: knockout next' : `Week ${x.week} of ${x.weeks}`) : 'On now') : `Starts ${eventDates(e.startDate, 1)}`
-    const what = x.kind === 'league' ? `${e.weeks} weeks · best ${e.bestOf} count${teamOf(e) ? ` · ${esc(teamOf(e))}` : ''}` : `${eventDates(e.startDate, e.days)} · ${FORMAT[e.style] ?? ''}${e.club ? ' · club' : ''}`
+    const what = x.kind === 'league' ? `${e.weeks} weeks · best ${e.bestOf} count${teamOf(e) ? ` · ${esc(teamOf(e))}` : ''}` : `${eventWhen(e)} · ${FORMAT[e.style] ?? ''}${e.club ? ' · club' : ''}`
     const bars = x.kind === 'league' ? `<span class="cprog">${Array.from({ length: x.weeks }, (_, i) => `<i class="${i + 1 < x.week ? 'wk-done' : i + 1 === x.week && x.running ? 'wk-now' : ''}"></i>`).join('')}</span>` : ''
     const action = `<span class="link">${tab === 'history' ? 'Results' : 'Leaderboard'} ›</span>`
     const edit = tab === 'entered' && canEdit(e, me) ? `<button class="linkbtn" data-edit="${e.id}">Edit</button>` : '<span></span>'

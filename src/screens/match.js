@@ -5,6 +5,7 @@ import * as api from '../api.js'
 import { S } from '../state.js'
 import { $, esc, ini, sur, header, render, toast, top0, goBack } from '../ui.js'
 import { hhmm, longDay, fromIso, isoDate, today, nextDays } from '../dates.js'
+import { dayDate } from '../season.js'
 import { shotsOnHole } from '../scoring.js'
 import { NO_GAME } from '../games.js'
 import { loadBoard, boardResult } from './event-board.js'
@@ -73,7 +74,7 @@ export function draw(data) {
   const r = e && boardResult(data)
   const mt = r?.byDay?.[day]?.[no - 1]
   if (!mt) { header('Match', '', back); $('main').innerHTML = '<div class="screen"><div class="empty-state">This match is no longer in the draw.</div></div>'; return }
-  header(`Match ${no}`, `${esc(e.name)}${e.days > 1 ? ` · day ${day}` : ''}`, back)
+  header(`Match ${no}`, `${esc(e.name)}${e.season ? ` · ${mt.singles ? 'Singles' : 'Four-ball'} · ${longDay(fromIso(dayDate(e, day)))}` : e.days > 1 ? ` · day ${day}` : ''}`, back)
   const A = e.A, B = e.B, holes = data.course.holes, res = mt.res, run = mt.match.running
   const side = d => (d > 0 ? A : d < 0 ? B : null)
   const lead = side(res.d)

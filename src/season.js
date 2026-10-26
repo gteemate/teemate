@@ -1,6 +1,6 @@
 // Four-ball team match play over a season: match days the organiser adds (any number of matches each, four-balls
 // and singles), points adding up to one season score. Plain functions, tested in season.test.js.
-import { addDaysIso, fromIso, eventLastDay } from './dates.js'
+import { addDaysIso, fromIso, eventLastDay, eventDates } from './dates.js'
 
 /** How a singles is played in a season of each format (four-balls play the format itself). */
 export const SINGLES_FMT = { bbl: 'kos', bbstab: 'sm2', bbscr: 'sc2' }
@@ -53,3 +53,6 @@ export function drawDay(aIds, bIds, rand = Math.random) {
 
 /** Who can change an event: admins any time; its organiser before a one-off's first day, or until a season ends. */
 export const canChange = (e, me, todayIso) => !!me.admin || (e.createdBy?.id === me.id && (e.season ? seasonEnd(e) >= todayIso : e.startDate > todayIso))
+
+/** When an event is on, for its card: a season's end, or a one-off's dates. */
+export const eventWhen = e => (e.season ? `Season · ends ${eventDates(seasonEnd(e), 1)}` : eventDates(e.startDate, e.days))

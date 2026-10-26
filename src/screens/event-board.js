@@ -10,6 +10,7 @@ import { buildLibrary, teeRating, EVENT_ALLOWANCE_GAME } from '../games.js'
 import { addDaysIso, eventDates, isoDate, today, fromIso, longDay, leagueWeek } from '../dates.js'
 import { EVENT_TYPES, eventFormat } from './event-editor.js'
 import { myMatch, matchBooking } from '../match.js'
+import { matchDays, dayDate, seasonEnd, SINGLES_FMT, canChange } from '../season.js'
 import { matchActionHtml, bindMatchAction } from './match.js'
 
 export async function loadBoard(id, dayWanted = null) {
@@ -21,15 +22,15 @@ export async function loadBoard(id, dayWanted = null) {
     const cards = await api.getCardsById([...new Set(entries.map(x => x.roundId))])
     return { e, members, course, L: buildLibrary(games), entries, cards, me: await api.getMe() }
   }
-  const dates = Array.from({ length: e.days }, (_, i) => addDaysIso(e.startDate, i))
+  const days = matchDays(e), dates = days.map(d => dayDate(e, d))
   const [cards, entries] = await Promise.all([api.getCardsOn(dates), e.entryRequired ? api.getEventEntries([e.id]) : []])
-  const dayCards = Object.fromEntries(dates.map((d, i) => [i + 1, cards.filter(c => c.date === d)]))
+  const dayCards = Object.fromEntries(days.map((d, i) => [d, cards.filter(c => c.date === dates[i])]))
   const me = await api.getMe()
-  // My match on the day shown, and where its four are booked that day (for Book this match / Start scoring).
-  const day = Math.min(dayWanted ?? (S.evDay || dayOf(e)), e.days), mine = myMatch(e, day, me.id)
+  // My match on the day shown (a season: my next match day), and where its players are booked that day (for Book this match / Start scoring).
+  const day = e.season ? dayWanted ?? myNextDay(e, me.id) : Math.min(dayWanted ?? (S.evDay || dayOf(e)), e.days), mine = myMatch(e, day, me.id)
   let action = null
   if (mine) {
-    const ids = [...mine.a, ...mine.b], date = dates[day - 1]
+    const ids = [...mine.a, ...mine.b], date = dayDate(e, day)
     const sheet = await api.getTeeSheet(date).catch(() => [])
     const name = mid => members.find(x => x.id === mid)?.name ?? 'A player'
     action = { ...matchBooking(ids, sheet, me.id), date, ids, meId: me.id, names: name, eventName: e.name,
@@ -44,6 +45,12 @@ export async function loadBoard(id, dayWanted = null) {
   return { e, members, course, L: buildLibrary(games), dayCards, entries, me, mine, action, day }
 }
 
+/** A season: my match day from today on (else the next match day, else the last one). */
+function myNextDay(e, meId) {
+  const now = isoDate(today()), ahead = matchDays(e).filter(d => dayDate(e, d) >= now)
+  return ahead.find(d => myMatch(e, d, meId)) ?? ahead[0] ?? matchDays(e).at(-1) ?? 1
+}
+
 /** Which day of the event today is (1-based), clamped to the event's days. */
 export const dayOf = e => Math.min(e.days, Math.max(1, Math.round((fromIso(isoDate(today())) - fromIso(e.startDate)) / 864e5) + 1))
 
@@ -52,8 +59,8 @@ export function boardResult({ e, members, course, L, dayCards, entries }) {
   const tee = teeRating(course)
   const m = id => members.find(x => x.id === id)
   const player = id => ({ name: m(id)?.name ?? 'Former member', courseHcp: courseHandicap(m(id)?.hcp ?? 0, tee) })
-  const g = L.lib[EVENT_ALLOWANCE_GAME[e.fmt]]
-  return scoreAdvanceEvent(e, course.holes, dayCards, player, g?.pct == null ? 0 : g.pct / 100, entries)
+  const pct = k => (L.lib[k]?.pct == null ? 0 : L.lib[k].pct / 100)
+  return scoreAdvanceEvent(e, course.holes, dayCards, player, pct(EVENT_ALLOWANCE_GAME[e.fmt]), entries, pct(SINGLES_FMT[e.fmt]))
 }
 
 export function boardHtml(data, top = '') {
@@ -63,12 +70,13 @@ export function boardHtml(data, top = '') {
   const day = Math.min(S.evDay || dayOf(e), e.days)
   const thruText = n => (n === 18 ? 'Finished' : n ? `thru ${n}` : 'not started')
   const notYet = e.startDate > isoDate(today())
-  const head = `<div class="matchline"><b style="color:var(--ink)">${EVENT_TYPES[e.style].name}${e.style !== 'teams' ? ` · ${eventFormat(e)}` : ''}</b><span>${eventDates(e.startDate, e.days)}${e.club ? ' · club event' : ''}</span></div>`
+  const head = `<div class="matchline"><b style="color:var(--ink)">${EVENT_TYPES[e.style].name}${e.style !== 'teams' ? ` · ${eventFormat(e)}` : ''}</b><span>${e.season ? `Season · ${eventDates(e.startDate, 1)} – ${eventDates(seasonEnd(e), 1)}` : eventDates(e.startDate, e.days)}${e.club ? ' · club event' : ''}</span></div>`
   const dayTabs = e.days > 1 ? `<div class="tabs-pill" role="group" aria-label="Day">${Array.from({ length: e.days }, (_, i) => `<button data-evday="${i + 1}" aria-pressed="${day === i + 1}">Day ${i + 1} · ${longDay(fromIso(addDaysIso(e.startDate, i))).split(' ').slice(0, 2).join(' ')}</button>`).join('')}</div>` : ''
   const A = e.A, B = e.B
   let body = ''
 
-  if (r.kind === 'ryder') {
+  if (r.kind === 'ryder' && e.season) body = seasonHtml(data, r)
+  else if (r.kind === 'ryder') {
     const sc = r.score, wA = sc.tot ? (sc.pA / sc.tot) * 100 : 0, wB = sc.tot ? (sc.pB / sc.tot) * 100 : 0
     const matches = r.byDay[day] ?? []
     body = `<div class="card evscore">
@@ -101,7 +109,37 @@ export function boardHtml(data, top = '') {
     <div class="hint" style="text-align:center">Scores come from each player’s own card and update as holes are saved.</div></div>`
 }
 
+const pairHtml = (names, c) => `<span class="pairav">${names.map(n => `<span class="av" style="border-color:${c}">${ini(n)}</span>`).join('')}</span><span>${names.map(n => esc(sur(n))).join('<br>')}</span>`
+function matchCard(data, mt, k, d) {
+  const { A, B } = data.e, res = mt.res, who = res.d > 0 ? A : res.d < 0 ? B : null, col = who ? who.col : 'var(--muted)'
+  const stat = res.st === 'ns' ? `<b class="ms-big">Not started</b>`
+    : res.st === 'done' ? `<b class="ms-big" style="color:${col}">${who ? `${esc(who.name)} ${esc(res.txt)}` : 'Halved'}</b><small>${who ? 'Final' : '½ point each'}</small>`
+    : `<b class="ms-big" style="color:${col}">${res.d ? `${Math.abs(res.d)} up` : 'AS'}</b><small>thru ${res.thru} <span class="livedot">● live</span></small>`
+  const mineHere = data.mine?.no === k + 1 && data.day === d
+  return `<div class="card mcard tap${mineHere ? ' minem' : ''}" data-match="${k + 1}" data-mday="${d}" role="button" tabindex="0" aria-label="${mt.singles ? 'Singles' : `Match ${k + 1}`}: open its scorecard"><div class="mtitle">${mineHere ? 'Your match · ' : ''}${mt.singles ? 'Singles' : 'Four-ball'}</div><div class="mgrid"><div class="mside">${pairHtml(mt.a, A.col)}</div><div class="mstat">${stat}</div><div class="mside r">${pairHtml(mt.b, B.col)}</div></div>${mineHere ? `<div class="mact">${matchActionHtml(data.action)}</div>` : ''}</div>`
+}
+
+// A season: the score so far, the organiser's buttons, match days played (newest first), then the ones to come.
+function seasonHtml(data, r) {
+  const { e, me } = data, { A, B } = e, sc = r.score, now = isoDate(today()), end = seasonEnd(e)
+  const all = Object.values(r.byDay).flat(), played = all.filter(m => m.res.st === 'done').length
+  const wA = sc.tot ? (sc.pA / sc.tot) * 100 : 0, wB = sc.tot ? (sc.pB / sc.tot) * 100 : 0
+  const days = matchDays(e), past = days.filter(d => dayDate(e, d) <= now).reverse(), ahead = days.filter(d => dayDate(e, d) > now)
+  const dayHtml = d => `<h3>${longDay(fromIso(dayDate(e, d)))}</h3>${(r.byDay[d] ?? []).map((mt, k) => matchCard(data, mt, k, d)).join('')}`
+  return `<div class="card evscore">
+      <div class="tug"><i class="ta" style="width:${wA}%;background:${A.col}"></i><i class="tb" style="width:${wB}%;background:${B.col}"></i><span class="mid"></span></div>
+      <div class="evteams"><div><span class="tn" style="color:${A.col}">${esc(A.name)}</span><span class="tp" style="color:${A.col}">${fmtPts(sc.pA)}</span><small>${fmtPts(sc.cA)} confirmed</small></div>
+        <div class="r"><span class="tn" style="color:${B.col}">${esc(B.name)}</span><span class="tp" style="color:${B.col}">${fmtPts(sc.pB)}</span><small>${fmtPts(sc.cB)} confirmed</small></div></div>
+      <div class="evfoot">${played} match${played === 1 ? '' : 'es'} played · ${all.length - played} to come · ${end < now ? `Final · season ended ${eventDates(end, 1)}` : `Season ends ${eventDates(end, 1)}`}</div></div>
+    ${canChange(e, me, now) && end >= now ? '<div class="bk-btns"><button class="ghost" id="sn-add">+ Add a match day</button><button class="ghost" id="sn-players">Add a player</button></div>' : ''}
+    ${past.map(dayHtml).join('') || (ahead.length ? '' : '<div class="empty-state">No match days yet.</div>')}
+    ${ahead.length ? `<h3>Coming up</h3>${ahead.map(dayHtml).join('')}` : ''}`
+}
+
 export function bindBoard(data = {}) {
+  const edit = step => async () => { Object.assign(S, { ev: null, evId: data.e.id, evStep: step, evScope: data.e.club ? 'club' : 'player', aview: 'event' }); await render(); top0() }
+  if (document.getElementById('sn-add')) document.getElementById('sn-add').onclick = edit(4)
+  if (document.getElementById('sn-players')) document.getElementById('sn-players').onclick = edit(2)
   document.querySelectorAll('[data-lgko]').forEach(b => (b.onclick = async () => { Object.assign(S, { koComp: +b.dataset.lgko, koRound: null, koFrom: S.tab === 'home' ? S.aview : null, tab: 'home', aview: 'ko' }); await render(); top0() }))
   if (document.getElementById('lg-kostart')) document.getElementById('lg-kostart').onclick = async ev => {
     const b = ev.currentTarget, e = data.e, seeds = koSeeds
@@ -115,7 +153,7 @@ export function bindBoard(data = {}) {
   }
   // A match opens its page (scorecard); your match also carries its action (book / add / score).
   document.querySelectorAll('[data-match]').forEach(c => {
-    c.onclick = async () => { Object.assign(S, { evId: data.e.id, matchNo: +c.dataset.match, matchDay: data.day, matchFrom: S.tab === 'home' ? S.aview : null, tab: 'home', aview: 'match' }); await render(); top0() }
+    c.onclick = async () => { Object.assign(S, { evId: data.e.id, matchNo: +c.dataset.match, matchDay: c.dataset.mday ? +c.dataset.mday : data.day, matchFrom: S.tab === 'home' ? S.aview : null, tab: 'home', aview: 'match' }); await render(); top0() }
     c.onkeydown = ev => { if ((ev.key === 'Enter' || ev.key === ' ') && ev.target === c) { ev.preventDefault(); c.click() } }
   })
   if (data.action) bindMatchAction(data.action)
