@@ -666,3 +666,20 @@ describe('club office: the leaderboard', () => {
     expect(app.db.theme.dayBoardDays).toEqual([0, 1, 2, 3, 4, 5])
   })
 })
+
+describe('club office: members with no guest points left', () => {
+  it('a filter shows just the members with 0 points left, and back to everyone', async () => {
+    app = await boot(db => {
+      db.asOffice = true
+      for (const m of [3, 5]) db.guestVisits.push(...Array.from({ length: 12 }, (_, i) => ({ member: m, date: '2026-05-01', guest: `Guest ${i}`, club: 'Malone', points: 3 }))) // 36 of 36
+      db.guestVisits.push({ member: 7, date: '2026-05-01', guest: 'One guest', club: 'Malone', points: 3 })
+    })
+    await app.tap('[data-ov="members"]')
+    expect(app.labels()).toContain('No points left (2)')
+    await app.tap('No points left (2)')
+    const shown = [...document.querySelectorAll('[data-o-m]')].map(b => +b.dataset.oM)
+    expect(shown.sort()).toEqual([3, 5])
+    await app.tap('No points left (2)')
+    expect(document.querySelectorAll('[data-o-m]').length).toBeGreaterThan(2)
+  })
+})
