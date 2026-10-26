@@ -54,7 +54,7 @@ export function draw({ comp, m, matches = [], entries = [], members, course, st 
     return `<div class="mside${right ? ' r' : ''}"><span class="pairav">${ps.map(p => `<span class="av" style="border-color:${COL[k]}">${ini(pname(p.id))}</span>`).join('')}</span><span>${ps.map(p => esc(sur(pname(p.id)))).join('<br>')}</span></div>` }
   const lead = st.lead == null ? null : st.lead
   const status = !st.thru ? '<b class="ms-big">Not started</b>'
-    : st.finished ? `<b class="ms-big" style="color:${lead == null ? 'var(--muted)' : COL[lead]}">${lead == null ? 'All square' : `${esc(sur(name(lead === 0 ? m.aEntry : m.bEntry)))} won ${esc(st.text)}`}</b><small>${lead == null ? 'After 18: extra holes decide it' : 'On the card'}</small>`
+    : st.finished ? `<b class="ms-big" style="color:${lead == null ? 'var(--muted)' : COL[lead]}">${lead == null ? 'All square' : `${esc(sur(name(lead === 0 ? m.aEntry : m.bEntry)))} won ${esc(st.text)}`}</b><small>${lead == null ? `After ${open.length}: extra holes decide it` : 'On the card'}</small>`
     : `<b class="ms-big" style="color:${lead == null ? 'var(--muted)' : COL[lead]}">${lead == null ? 'AS' : st.text}</b><small>thru ${st.thru}</small>`
   const wonAt = j => (run[j] == null ? 0 : Math.sign(run[j] - (j ? run[j - 1] : 0))), won = i => (at.has(i) ? wonAt(at.get(i)) : 0)
   const g = (p, i) => (at.has(i) ? p.gross[at.get(i)] : null)

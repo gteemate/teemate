@@ -4,6 +4,7 @@
 // after hole 8; your order is ready), or Later (hides it until
 // the app is next opened; a gold dot by the date, or at the top right, brings it back). Checked after every screen
 // is drawn and when the app comes back to the front. No live pushes.
+import { cardHoles } from './screens/card-holes.js'
 import * as api from './api.js'
 import { S } from './state.js'
 import { $, esc, render, toast } from './ui.js'
@@ -21,7 +22,8 @@ const remember = (k, id) => { try { localStorage.setItem(k, JSON.stringify([...r
 async function hutNow() {
   const { on } = await api.getHut()
   const [card, orders] = await Promise.all([on ? api.getCurrentRound() : null, api.myHutOrders()])
-  return { on, card, orders, asked: remembered('teemate.hutAsked'), seen: remembered('teemate.hutSeen') }
+  const holes = card ? (await cardHoles(card, isoDate(today()))).holes : null // the holes the card plays (an event's)
+  return { on, card, orders, holes, asked: remembered('teemate.hutAsked'), seen: remembered('teemate.hutSeen') }
 }
 
 let lastPlace = null, lastAt = 0

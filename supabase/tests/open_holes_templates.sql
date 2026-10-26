@@ -72,6 +72,10 @@ do $$ declare e text; begin
   perform t.ok('Knockout holes: the organiser sets a round''s', (select round_holes->'1' = '[1,2,3,4,5,6,7,8,9]' from public.signup_comps where id = t.id('ko')));
   e := t.err(format('select public.set_ko_round_holes(%s, 2, %L)', t.id('ko'), '[]'));
   perform t.ok('Knockout holes: none refused', e like '%Pick at least one hole%', e);
+  e := t.err('select public.set_ko_round_holes(-12345, 1, ''[1,2,3]'')');
+  perform t.ok('Knockout holes: a knockout that doesn''t exist is refused, not ignored', e like '%no longer exists%', e);
+  e := t.err(format('select public.set_ko_round_holes(%s, 11, %L)', t.id('ko'), '[1,2,3]'));
+  perform t.ok('Knockout holes: a round beyond the draw is refused', e like '%isn''t a round%', e);
   perform public.set_ko_round_holes(t.id('ko'), 1, null);
   perform t.ok('Knockout holes: cleared back to all 18', (select round_holes is null from public.signup_comps where id = t.id('ko')));
   reset role;

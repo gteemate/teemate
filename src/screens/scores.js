@@ -3,12 +3,12 @@ import * as api from '../api.js'
 import { S } from '../state.js'
 import { forceAlertCheck } from '../alert-bar.js'
 import { $, esc, ini, sur, header, keepScroll, top0, render, toast, fmtHcp } from '../ui.js'
-import { today, hhmm, isoDate, eventLastDay } from '../dates.js'
+import { today, hhmm, isoDate } from '../dates.js'
 import { banners, bindBanners, pendingInvite, invitePopup } from './player-events.js'
 import { leagueBadges, bindLeagueBox } from './scores-league.js'
-import { roundBoard } from '../round.js'
 import { guestHcpSheet } from './scores-guest.js'
 import { holeGrid } from '../course-art.js'
+import { cardHoles } from './card-holes.js'
 import { openCourse, scaleHcp, holesText, allOpen } from '../open-holes.js'
 import { courseHandicap, playingHandicaps, holeCalc, gameState, upText, toPar } from '../scoring.js'
 import { buildLibrary, playable, gameSpec, resolveGame, preferredGame, teeRating, PAIRINGS, NO_GAME, SCORES_ONLY, parseGame, oneOnOneKey, oneOnOneGames, gameName } from '../games.js'
@@ -35,18 +35,11 @@ export async function load() {
   const [course, members, games, me, teeTimes, events, allEvents] = await Promise.all([api.getCourse(), api.getMembers(), api.getGameSettings(), api.getMe(), api.getMyTeeTimes(today()), api.getMyPlayerEvents(), api.getEvents()])
   round = !round ? await api.getCurrentRound() : round.id ? await latest(round) : round
   const guests = round ? await api.getGuests(round.lineup.filter(e => e.g != null).map(e => e.g)) : []
-  // Leagues running this week that someone on this card plays in.
+  // The competition this card counts for (its Leaderboard tab) and the holes it plays (card-holes.js).
   const t = isoDate(today())
-  const leagues = round ? allEvents.filter(e => e.style === 'league' && e.startDate <= t && eventLastDay(e) >= t && round.lineup.some(x => e.players.includes(x.m))) : []
-  const entries = await api.getLeagueEntries(leagues.map(e => e.id))
-  // The round's Leaderboard tab: the competition this card counts for (none for a general round).
-  const onToday = round ? allEvents.filter(e => e.style !== 'league' && e.startDate <= t && eventLastDay(e) >= t && round.lineup.some(x => e.players.includes(x.m))) : []
-  const eventEntries = round?.id ? await api.getEventEntries(onToday.map(e => e.id)) : []
-  // A card for a knockout match plays its round's holes (the draw's competition knows them).
-  const ko = round?.id ? await api.getKoMatchOfCard(round.id) : null
-  const koHoles = ko ? (await api.getSignups()).comps.find(c => c.id === ko.compId)?.roundHoles?.[ko.round] ?? null : null
-  S.roundBoard = round?.id ? roundBoard({ cardId: round.id, lineup: round.lineup, events: allEvents, leagueEntries: entries, eventEntries, playerEvents: events, date: t }) : null
-  S.cardHoles = S.roundBoard?.holes ?? koHoles // the holes this card plays (null: all 18)
+  const { board, holes, leagues, entries } = await cardHoles(round, t, { playerEvents: events, allEvents })
+  S.roundBoard = board
+  S.cardHoles = holes // the holes this card plays (null: all 18)
   return { course, members, guests, L: buildLibrary(games), me, teeTimes, events, leagues, entries }
 }
 
@@ -203,12 +196,12 @@ export function draw({ course, members, guests, L, me, teeTimes, events, leagues
   const fin = gs.finished && round.done[i]
   // Two people typed different scores for the same player: ask for a second look.
   const nm = id => members.find(m => m.id === id)?.name ?? 'Someone'
-  const checks = (round.checks ?? []).map((c, n) => {
+  const checks = (round.checks ?? []).map((c, n) => (!onIdx.includes(c.i) ? '' : (() => { // a closed hole doesn't count: no second look needed
     const who = k => (round.lineup[k].m === me.id ? 'you' : esc(ps[k].name))
     const byTxt = c.by === round.lineup[c.k].m ? `${esc(nm(c.by))} put ${c.theirs} (own score)` : `${esc(nm(c.by))} put ${c.theirs}`
     return `<div class="hcpnote checknote"><b>Check hole ${c.i + 1}, ${who(c.k) === 'you' ? 'your score' : who(c.k)}:</b> you put ${c.mine}, ${byTxt}. The card has ${c.kept}.
       <span class="row"><button class="linkbtn" data-chk-go="${n}">Go to hole ${c.i + 1}</button><button class="linkbtn" data-chk-ok="${n}">OK, it's right</button></span></div>`
-  }).join('')
+  })())).join('')
   const hcpNote = noHcp.length ? `<div class="hcpnote">${noHcp.map(p => esc(p.name.split(' ')[0])).join(' and ')} ${noHcp.length > 1 ? 'have' : 'has'} no handicap yet, so ${noHcp.length > 1 ? 'they play' : 'plays'} off an index of 0 until you set one. Shots and points update as soon as you do.</div>` : ''
   $('main').innerHTML = `<div class="screen">${eventsTop(events, me)}${grid}${checks}${hcpNote}
     <div class="rstatus">${LG ? `<b>${esc(line)}</b> · <button class="gname" id="gname" aria-haspopup="dialog">${one ? `${esc(pn(duo[0]))} v ${esc(pn(duo[1]))} · ` : ''}${esc(LG.name)} ${CHEV}</button>` : '<button class="addmatch" id="gname" aria-haspopup="dialog">+ Add a match</button>'}
@@ -284,7 +277,7 @@ export function draw({ course, members, guests, L, me, teeTimes, events, leagues
     if (!after.finished && at < onIdx.length - 1) S.ch = onIdx[at + 1]
     await render()
     top0()
-    if (i === 7) forceAlertCheck() // hole 8: the halfway hut may ask
+    if (i <= 7 && !(onIdx[at + 1] <= 7)) forceAlertCheck() // the last hole before the 9th (hole 8, or the last open one): the halfway hut may ask
     if (after.finished) toast(after.match ? `Match over: ${after.match.text}` : 'Round complete')
   })
   on('submit', async () => {

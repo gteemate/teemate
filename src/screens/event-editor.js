@@ -108,12 +108,14 @@ function clubExtras(ev) {
   const dates = S.evRepeatUntil ? weeklyDates(ev.startDate, S.evRepeatUntil) : []
   const repeat = ev.style === 'league' || ev.season ? '' : `<div class="card evsec"><label for="ev-rep">Repeat weekly until <span class="opt">blank: just this day</span></label>
       <input id="ev-rep" type="date" class="plainsel" value="${S.evRepeatUntil ?? ''}" min="${addDaysIso(ev.startDate, 7)}">
-      <span class="hint">${dates.length > 1 ? `<b>Makes ${dates.length} events: ${eventDates(dates[0], 1)} … ${eventDates(dates.at(-1), 1)}</b>. Each can be changed or deleted on its own.` : 'The same day each week, each its own event.'}</span></div>`
+      <span class="hint">${dates.length > MAX_REPEATS ? `<b class="gerr">That would make ${dates.length} events: at most ${MAX_REPEATS} (a year). Pick an earlier date.</b>`
+        : dates.length > 1 ? `<b>Makes ${dates.length} events: ${eventDates(dates[0], 1)} … ${eventDates(dates.at(-1), 1)}</b>. Each can be changed or deleted on its own.` : 'The same day each week, each its own event.'}</span></div>`
   return `${repeat}<div class="card evsec"><button type="button" class="ghost" id="ev-tpl">Save as a template</button>
     <span class="hint">Keeps everything but the date and the players, under Competitions → Templates, to run on any day.</span></div>`
 }
 /** Where a run template opens: the step after the details (players, or the review for an event open to all). */
 export const stepsAfterDetails = ev => stepsFor(ev)[1] ?? 1
+const MAX_REPEATS = 52 // a year of weeks: a wrong year shouldn't make hundreds of events
 const repeatDates = ev => (S.evRepeatUntil && !(ev.style === 'league' || ev.season) ? weeklyDates(ev.startDate, S.evRepeatUntil) : [ev.startDate])
 
 // A club event open for sign-up with nobody in yet: players come from the sign-ups (teams and draw are set later by Edit).
@@ -577,6 +579,7 @@ export function draw({ members, me }) {
     const p1 = !S.evTemplate && problem(ev, 1) // the details again (a run template opens past them)
     if (p1) { $('ev-err').textContent = p1; $('ev-next').disabled = false; return }
     const dates = repeatDates(ev)
+    if (dates.length > MAX_REPEATS) { $('ev-err').textContent = `A weekly repeat makes at most ${MAX_REPEATS} events. Pick an earlier date.`; $('ev-next').disabled = false; return }
     try {
       if (S.evTemplate) await api.saveEventTemplate({ id: S.evTemplate, name: ev.name.trim(), setup: templateOf(ev) })
       else if (dates.length > 1) await api.saveEvents(dates.map((d, i) => ({ ...ev, startDate: d, // each week's sign-up dates move with it

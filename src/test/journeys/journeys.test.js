@@ -164,6 +164,16 @@ describe('journeys', () => {
     await app.homeFromHere()
   })
 
+  it('6b. Found in review: on holes 1–6 and 10–12 the halfway hut asks after hole 6 (hole 8 is closed)', async () => {
+    app = await boot(db => { teeTimeToday(db); db.events.find(e => e.name === 'Winter League').holes = [1, 2, 3, 4, 5, 6, 10, 11, 12] })
+    await app.tap('Scoring')
+    await app.tap('09:30')
+    await app.tap('Winter League')
+    await app.tap('Start round · Winter League')
+    for (let h = 1; h <= 6; h++) await app.tap(`Save hole ${h}`)
+    expect(app.text()).toContain('Halfway hut is open')
+  })
+
   it("7. Join today's club competition as you start", async () => {
     app = await boot(teeTimeToday)
     await app.tap('Scoring')

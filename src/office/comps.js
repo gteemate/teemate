@@ -99,6 +99,8 @@ export function draw({ evs, comps, kos, members, t, tpls = [] }) {
     S.oComp = null
     await keepScroll(render); toast(`${sel.t.name} template deleted`)
   }
+  // An event's entrants: shown on a tap (a long list would swamp the page), A–Z by surname.
+  document.querySelectorAll('[data-o-ents]').forEach(b => (b.onclick = () => { S.oEnts = S.oEnts === +b.dataset.oEnts ? null : +b.dataset.oEnts; keepScroll(redraw) }))
   // Take someone off an event open for sign-up: tap twice.
   document.querySelectorAll('[data-o-rment]').forEach(b => (b.onclick = async () => {
     if (b.dataset.armed !== '1') { b.dataset.armed = '1'; b.textContent = 'Tap again'; setTimeout(() => { b.dataset.armed = ''; b.textContent = 'Remove' }, 4000); return }
@@ -159,13 +161,15 @@ function runForm(x, ko, champ, members, t) {
 
 function detail(x, ko, members, t) {
   if (x.e) {
+    const name = id => members.find(m => m.id === id)?.name ?? 'Former member', sur = n => n.split(' ').pop()
     const e = x.e, wk = e.style === 'league' ? leagueWeek(e, t) : 0
     return `<div class="ohead"><div><h4>${esc(e.name)}</h4><p class="hint">${e.style === 'league' ? `${e.weeks}-week league from ${eventDates(e.startDate, 1)}${wk > 0 && wk <= e.weeks ? ` · week ${wk}` : ''}` : eventWhen(e)}${holesText(e.holes) ? ` · ${holesText(e.holes)}` : ''}</p></div><span class="oacts"><button class="ghost sm accremove" id="o-del">Delete</button></span></div>
       <div class="olist">
         <div class="orow"><span class="ot"><b>${e.style === 'league' ? 'Table and results' : 'Leaderboard'}</b><span>${e.players.length} player${e.players.length === 1 ? '' : 's'}${e.everyone ? ' · everyone can play' : ''}${e.entryFee ? ` · entry ${money(e.entryFee)}` : ''}</span></span><span class="oacts"><button class="ghost sm" data-o-go="board:${e.id}">Open</button></span></div>
         <div class="orow"><span class="ot"><b>Settings</b><span>Dates, format, who plays</span></span><span class="oacts"><button class="ghost sm" data-o-go="edit:${e.id}">Edit</button></span></div>
-        ${e.signup ? `<div class="orow"><span class="ot"><b>Sign-up · ${e.players.length}${e.maxEntries ? ` of ${e.maxEntries} places` : ' entered'}</b><span>${signupLine(e)}</span></span></div>
-          ${e.players.map(id => `<div class="orow"><span class="ot"><b>${esc(members.find(m => m.id === id)?.name ?? 'Former member')}</b></span><span class="oacts"><button class="ghost sm accremove" data-o-rment="${id}">Remove</button></span></div>`).join('')}` : ''}
+        ${e.signup ? `<div class="orow"><span class="ot"><b>Sign-up · ${e.players.length}${e.maxEntries ? ` of ${e.maxEntries} places` : ' entered'}</b><span>${signupLine(e)}</span></span>
+            ${e.players.length ? `<span class="oacts"><button class="ghost sm" data-o-ents="${e.id}" aria-expanded="${S.oEnts === e.id}">${S.oEnts === e.id ? 'Hide entrants' : `Show entrants (${e.players.length})`}</button></span>` : ''}</div>
+          ${S.oEnts !== e.id ? '' : [...e.players].sort((a, b) => sur(name(a)).localeCompare(sur(name(b)))).map(id => `<div class="orow"><span class="ot"><b>${esc(name(id))}</b></span><span class="oacts"><button class="ghost sm accremove" data-o-rment="${id}">Remove</button></span></div>`).join('')}` : ''}
         ${e.koComp ? `<div class="orow"><span class="ot"><b>The knockout finish</b><span>The top ${e.koTop} from the table</span></span><span class="oacts"><button class="ghost sm" data-o-go="draw:${e.koComp}">Open the draw</button></span></div>` : ''}
       </div>`
   }

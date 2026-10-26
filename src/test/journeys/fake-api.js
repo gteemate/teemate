@@ -52,6 +52,16 @@ const takeOff = (e, mid) => {
   e.captainPool = (e.captainPool ?? []).filter(p => p !== mid)
   if (e.teams) e.teams = e.teams.map(t => (t.captain === mid ? (({ captain, ...rest }) => rest)(t) : t))
 }
+// As the real saveEvent's row and the database's checks: points only for four-ball team match play, no empty day
+// settings, sign-up only for club events, holes as holes_problem, day settings only for the event's days (weeks).
+const tidyEvent = e => {
+  holesRefusal(e)
+  const units = Math.max(e.days ?? 1, e.weeks ?? 0)
+  if (Object.keys(e.dayRules ?? {}).some(d => +d < 1 || +d > units)) throw new Error('Those settings aren’t for a match day in this event.')
+  const su = !!e.club && !!e.signup
+  return { ...e, points: e.style === 'ryder' ? e.points ?? null : null, dayRules: e.dayRules && Object.keys(e.dayRules).length ? e.dayRules : null,
+    signup: su, advertiseFrom: su ? e.advertiseFrom || null : null, entriesClose: su ? e.entriesClose || null : null, maxEntries: su ? e.maxEntries || null : null }
+}
 const holesRefusal = e => {
   const bad = [e.holes, ...Object.values(e.dayRules ?? {}).map(d => d?.holes)].map(holesProblem).find(Boolean)
   if (bad) throw new Error(bad)
@@ -342,8 +352,8 @@ export function makeWorld(today, setup = () => {}) {
     adminSetKoResult: async (mid, w, r) => { const m = db.koMatches.find(x => x.id === mid); Object.assign(m, { status: 'confirmed', winnerEntry: w, result: r }); db.koAdvance(m) },
     saveSeason: async e => { const x = db.events.find(y => y.id === e.id); Object.assign(x, copy({ days: e.days, team: e.team, players: Object.keys(e.team).map(Number), matches: e.matches, dayRules: e.dayRules ?? x.dayRules ?? null })) },
     // As the real saveEvent: points only for four-ball team match play; holes checked as the database does.
-    saveEvent: async e => { holesRefusal(e); if (e.style !== 'ryder') e = { ...e, points: null }; if (e.dayRules && !Object.keys(e.dayRules).length) e = { ...e, dayRules: null }; if (e.id) Object.assign(db.events.find(x => x.id === e.id), copy(e)); else db.events.push({ ...copy(e), id: id(), createdBy: { id: ME, name: 'Gary Cochrane' } }); return e.id ?? db.events.at(-1).id },
-    saveEvents: async list => { list.forEach(holesRefusal); return list.map(e => { const n = { ...copy(e), id: id(), createdBy: { id: ME, name: 'Gary Cochrane' } }; db.events.push(n); return n.id }) },
+    saveEvent: async e => { e = tidyEvent(e); if (e.id) Object.assign(db.events.find(x => x.id === e.id), copy(e)); else db.events.push({ ...copy(e), id: id(), createdBy: { id: ME, name: 'Gary Cochrane' } }); return e.id ?? db.events.at(-1).id },
+    saveEvents: async list => { list = list.map(tidyEvent); return list.map(e => { const n = { ...copy(e), id: id(), createdBy: { id: ME, name: 'Gary Cochrane' } }; db.events.push(n); return n.id }) },
     // As the database's enter_event / withdraw_event / remove_event_entrant (sign-ups: dates and places).
     enterEvent: async eid => {
       const e = db.events.find(x => x.id === eid)
@@ -376,7 +386,10 @@ export function makeWorld(today, setup = () => {}) {
     deleteEventTemplate: async tid => { db.eventTemplates = db.eventTemplates.filter(t => t.id !== tid) },
     setKoRoundHoles: async (cid, round, holes) => {
       const c = db.signups.find(x => x.id === cid)
+      if (!c) throw new Error('That knockout no longer exists.')
       if (!db.members.find(m => m.id === ME)?.admin && c.createdBy !== ME) throw new Error('Only the knockout’s organiser (or an admin) sets its holes.')
+      const rounds = Math.max(0, ...db.koMatches.filter(m => m.compId === cid).map(m => m.round)) || 10
+      if (!(round >= 1 && round <= rounds)) throw new Error('That isn’t a round of this knockout.')
       if (holesProblem(holes)) throw new Error(holesProblem(holes))
       const rh = { ...(c.roundHoles ?? {}) }
       if (holes == null) delete rh[round]; else rh[round] = [...holes]

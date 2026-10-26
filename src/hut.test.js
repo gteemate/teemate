@@ -54,3 +54,15 @@ import { orderable } from './hut.js'
 describe('orderable: only hot food is ordered ahead (it takes time); drinks and snacks are bought at the hut', () => {
   it('Food yes, Drinks and Snacks no', () => expect(menu.map(i => [i.name, orderable(i)])).toEqual([['Tea', false], ['Bacon roll', true], ['Sausage roll', true], ['Mars bar', false]]))
 })
+
+describe('found in review: the hut asks on an event’s open holes', () => {
+  const card = done => ({ id: 9, game: 'stab', done, submitted: {} })
+  const at = n => Array.from({ length: 18 }, (_, i) => i < n)
+  const q = (done, holes) => hutPromptDue({ on: true, card: card(done), asked: [], orders: [], holes })
+  it('holes 1–6 and 10–12: asked once hole 6 is saved', () => {
+    expect(q(at(5), [1, 2, 3, 4, 5, 6, 10, 11, 12])).toBe(false)
+    expect(q(at(6), [1, 2, 3, 4, 5, 6, 10, 11, 12])).toBe(true)
+  })
+  it('all 18 as before: hole 8', () => { expect(q(at(7), null)).toBe(false); expect(q(at(8), null)).toBe(true) })
+  it('the back 9 only: never at the turn', () => expect(q(Array.from({ length: 18 }, (_, i) => i >= 9), [10, 11, 12, 13, 14, 15, 16, 17, 18])).toBe(false))
+})

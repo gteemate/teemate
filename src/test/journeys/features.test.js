@@ -824,6 +824,18 @@ describe('open holes: a knockout round’s holes', () => {
     expect([...document.querySelectorAll('.hgrid [data-j]')].map(b => +b.dataset.j + 1)).toEqual([10, 11, 12, 13, 14, 15, 16, 17, 18])
     expect(app.screen()).toBe('Hole 10')
   })
+  it('found in review: a halved 9-hole match says “After 9”, not “After 18”', async () => {
+    app = await boot(db => { draw(db); db.signups[0].roundHoles = { 1: [1, 2, 3, 4, 5, 6, 7, 8, 9] }; db.members.find(m => m.id === 1).hcp = db.members.find(m => m.id === 0).hcp })
+    await app.tap('Competition')
+    await app.tap('Men’s Match Play')
+    await app.tap('Score this match')
+    const card = app.db.rounds.at(-1)
+    card.scores = card.scores.map(() => [4, 4]); card.done = card.done.map((_, i) => i < 9)
+    await app.back()
+    await app.tap('[data-kcard="1"]')
+    expect(app.text()).toContain('After 9')
+    expect(app.text()).not.toContain('After 18')
+  })
   it('a member who isn’t the organiser doesn’t get the Change button', async () => {
     app = await boot(db => { draw(db); db.members[0].admin = false })
     await app.tap('Competition')
@@ -857,6 +869,9 @@ describe('open holes: the scorecard plays only the open holes', () => {
     expect(app.main()).toContain('Holes 1–6, 10–12 today')
     for (let n = 0; n < 6; n++) await app.tap('#save')
     expect(app.screen()).toBe('Hole 10')
+    await app.homeFromHere()
+    expect(app.text()).toContain('Hole 10 ·') // found in review: Home's tile names the next open hole
+    await app.tap('Scoring')
     for (let n = 0; n < 3; n++) await app.tap('#save')
     expect(document.getElementById('submit')).not.toBe(null) // round complete after the 9th open hole
   })
@@ -936,6 +951,18 @@ describe('club office: event templates and weekly repeats', () => {
     const made = app.db.events.filter(e => e.name === 'Sunday Stableford')
     expect(made.map(e => e.startDate)).toEqual(['2026-12-06', '2026-12-13', '2026-12-20', '2026-12-27', '2027-01-03', '2027-01-10'])
     expect(new Set(made.map(e => e.id)).size).toBe(6)
+  })
+  it('found in review: a weekly repeat is at most 52 events', async () => {
+    app = await boot(office)
+    await newClubEvent('Endless Stableford')
+    await app.type('#ev-date', '2026-12-06')
+    await app.tap('#ev-next')
+    await app.type('#ev-rep', '2028-12-31')
+    expect(app.main()).toContain('at most 52')
+    await app.tap('#ev-next')
+    expect(app.db.events.filter(e => e.name === 'Endless Stableford')).toHaveLength(0)
+    expect(app.text()).toContain('at most 52')
+    await app.type('#ev-rep', ''); await app.tap('#ev-next')
   })
   it('a league has no weekly repeat; a member’s own event has neither option', async () => {
     app = await boot(office)
@@ -1017,6 +1044,9 @@ describe('club office: leagues and events open for sign-up', () => {
     expect(row.textContent).toContain('Sign-up · 1 of 4')
     await app.tap('[data-o-comp="e:880"]')
     expect(document.querySelector('.odetail').textContent).toContain('1 of 4 places')
+    expect(document.querySelector('[data-o-rment]')).toBe(null) // the names wait behind a tap (50+ would be a mess)
+    await app.tap('[data-o-ents="880"]')
+    expect(document.querySelector('[data-o-ents="880"]').textContent).toContain('Hide')
     await app.tap('[data-o-rment="10"]'); await app.tap('[data-o-rment="10"]')
     expect(app.db.events.find(e => e.id === 880).players).toEqual([])
   })
@@ -1133,12 +1163,29 @@ describe('found in review: sign-up places and the office’s Remove', () => {
         db.events.push({ id: 884, name: 'Remove League', style: 'league', fmt: 'beststab', club: true, everyone: false, startDate: '2026-12-07', days: 1, weeks: 10, bestOf: 4,
           teams: [], team: {}, players: [10], matches: {}, captainPool: [], signup: true, advertiseFrom: null, entriesClose: null, maxEntries: 4, createdBy: { id: 0, name: 'Gary Cochrane' } })
       })
-      await app.tap('[data-ov="comps"]'); await app.tap('[data-o-comp="e:884"]')
+      await app.tap('[data-ov="comps"]'); await app.tap('[data-o-comp="e:884"]'); await app.tap('[data-o-ents="884"]')
       await app.tap('[data-o-rment="10"]')
       expect($ev('[data-o-rment="10"]').textContent).toBe('Tap again')
       vi.advanceTimersByTime(5000)
       expect($ev('[data-o-rment="10"]').textContent).toBe('Remove')
       expect($ev('[data-o-rment="10"]').dataset.armed).not.toBe('1')
     } finally { vi.useRealTimers() }
+  })
+})
+describe('found in review: the pretend server saves several events as the real one does', () => {
+  it('saveEvents tidies each event like saveEvent, and refuses a day the event doesn’t have', async () => {
+    app = await boot()
+    const api = globalThis.__world.wrapped
+    const base = { name: 'Twin', style: 'individual', fmt: 'stab', days: 1, startDate: '2026-12-06', players: [], team: {}, matches: {}, club: false }
+    await api.saveEvents([{ ...base, points: { four: 2 }, dayRules: {}, signup: true, maxEntries: 9 }])
+    expect(app.db.events.find(e => e.name === 'Twin')).toMatchObject({ points: null, dayRules: null, signup: false, maxEntries: null })
+    await expect(api.saveEvents([{ ...base, name: 'Twin 2', dayRules: { 3: { holes: [1] } } }])).rejects.toThrow('aren’t for a match day')
+    await expect(api.saveEvent({ ...base, name: 'Twin 3', dayRules: { 3: { holes: [1] } } })).rejects.toThrow('aren’t for a match day')
+  })
+  it('knockout holes: a knockout that’s gone, or a round beyond the draw, is refused', async () => {
+    app = await boot()
+    const api = globalThis.__world.wrapped
+    await expect(api.setKoRoundHoles(-1, 1, [1])).rejects.toThrow('no longer exists')
+    await expect(api.setKoRoundHoles(1, 11, [1])).rejects.toThrow('isn’t a round')
   })
 })

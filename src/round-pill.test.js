@@ -22,3 +22,10 @@ describe('roundPill: Scoring tile on Home', () => {
   it('all 18 saved but not finished: stays on 18', () =>
     expect(roundPill(card({ done: doneTo(18), gross: Array(N).fill(4) }))).toBe('Hole 18 · E'))
 })
+
+describe('found in review: the pill on an event’s open holes', () => {
+  it('holes 1–6 and 10–12 with 6 saved: next is hole 10', () => {
+    const nums = [1, 2, 3, 4, 5, 6, 10, 11, 12], d = nums.map((_, j) => j < 6)
+    expect(roundPill({ done: d, gross: nums.map((_, j) => (j < 6 ? 4 : null)), pars: nums.map(() => 4), shots: nums.map(() => 0), nums, finished: false })).toBe('Hole 10 · E')
+  })
+})

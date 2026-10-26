@@ -1,3 +1,4 @@
+import { holeList } from './open-holes.js'
 // Halfway hut: prices, totals, the menu by section, when to ask after hole 8, and how an order moves along.
 // Plain functions, tested in hut.test.js.
 
@@ -18,8 +19,11 @@ export function menuSections(menu) {
 }
 
 /** Ask "would you like to order?" — hut on, hole 8 saved on a saved card not finished, not asked on it, no order on it. */
-export function hutPromptDue({ on, card, asked, orders }) {
-  if (!on || !card?.id || !card.done?.[7] || card.submitted?.[card.game]) return false
+export function hutPromptDue({ on, card, asked, orders, holes = null }) {
+  // At the turn: once the last hole the card plays before the 9th is saved (hole 8, or e.g. hole 6 on holes 1–6 and
+  // 10–12). A card playing only the back 9 never passes the hut.
+  const turn = holeList(holes).filter(n => n <= 8).at(-1)
+  if (!on || !card?.id || turn == null || !card.done?.[turn - 1] || card.submitted?.[card.game]) return false
   return !asked.includes(card.id) && !orders.some(o => o.roundId === card.id && o.status !== 'cancelled')
 }
 
