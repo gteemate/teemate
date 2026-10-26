@@ -364,7 +364,12 @@ export function makeWorld(today, setup = () => {}, as = 'admin') {
     },
   }
   // Record every call (journeys check what reached the server).
-  for (const [k, f] of Object.entries(api)) api[k] = (...a) => { db.calls.push(k); return f(...a) }
+  // Refusal on demand (journey tests): db.refuse = { [action]: message } makes that call fail once, before it changes anything.
+  for (const [k, f] of Object.entries(api)) api[k] = (...a) => {
+    db.calls.push(k)
+    if (db.refuse?.[k]) { const m = db.refuse[k]; delete db.refuse[k]; return Promise.reject(new Error(m)) }
+    return f(...a)
+  }
   db.slotsOn = sheet
   db.koAdvance = m => { const n = db.koMatches.find(x => x.compId === m.compId && x.round === m.round + 1 && x.slot === Math.floor(m.slot / 2)); if (n) n[m.slot % 2 ? 'bEntry' : 'aEntry'] = m.winnerEntry }
   // The person: hut staff, a league captain, the office, or signed out (a new joiner has an approved email).
