@@ -237,10 +237,11 @@ export function draw({ course, members, guests, L, me, teeTimes, events, leagues
     if (b.dataset.armed !== '1') { b.dataset.armed = '1'; b.textContent = P ? `Tap again to delete the scorecard and its ${P} hole${P === 1 ? '' : 's'} of scores` : 'Tap again to delete the scorecard'; return }
     b.disabled = true
     try { await api.deleteRound(round.id) } catch (err) { toast(err.message); b.disabled = false; return }
+    const booked = round.slotId != null // (the card is cleared next)
     resetRound()
     await render()
     top0()
-    toast(round.slotId ? 'Scorecard deleted. Your booking is still there.' : 'Scorecard deleted')
+    toast(booked ? 'Scorecard deleted. Your booking is still there.' : 'Scorecard deleted')
   }
 
   bindEvents(events, me)
