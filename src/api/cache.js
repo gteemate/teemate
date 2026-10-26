@@ -8,11 +8,12 @@ import { RULES } from './cache-rules.js'
 const CHECK_EVERY = 30_000
 const keyOf = user => `tm-cache:${user}`
 
-export function createCache({ storage, getStamps, now = Date.now }) {
+export function createCache({ storage, getStamps, now = Date.now, version = '' }) {
   let user = null, kept = {}, known = {}, lastCheck = -Infinity, read = new Set(), generation = 0
   // localStorage can be missing or refuse (private browsing): keep working from memory only.
-  const load = () => { try { return JSON.parse(storage?.getItem(keyOf(user)) ?? 'null') } catch { return null } }
-  const save = () => { try { if (user) storage?.setItem(keyOf(user), JSON.stringify({ kept, known })) } catch { /* memory only */ } }
+  // Kept data belongs to the app version that kept it: a new version may read the server differently, so starts afresh.
+  const load = () => { try { const v = JSON.parse(storage?.getItem(keyOf(user)) ?? 'null'); return v?.version === version ? v : null } catch { return null } }
+  const save = () => { try { if (user) storage?.setItem(keyOf(user), JSON.stringify({ version, kept, known })) } catch { /* memory only */ } }
   // Remove every other person's kept data from this device (also after a reload, when we don't know who was last).
   const forgetOthers = keep => {
     try {
@@ -85,6 +86,7 @@ let storage = null
 try { storage = globalThis.localStorage ?? null } catch { /* none */ }
 let stampsFn = async () => ({})
 /** The app's cache. Its stamps come from the data layer (setStampSource), set once at start-up. */
-export const cache = createCache({ storage, getStamps: () => stampsFn() })
+// __APP_VERSION__ is set when the app is built (vite.config.js): each deploy starts with fresh kept data.
+export const cache = createCache({ storage, getStamps: () => stampsFn(), version: typeof __APP_VERSION__ === 'undefined' ? 'dev' : __APP_VERSION__ })
 export const setStampSource = f => { stampsFn = f }
 export const wrapApi = api => cache.wrap(api, RULES)

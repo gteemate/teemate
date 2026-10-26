@@ -167,3 +167,18 @@ describe('tidy: the pretend server behaves like the real one', () => {
     expect(tug.join(' ')).not.toMatch(/25, 51, 90|19335a/i)
   })
 })
+
+describe('found in use: entering a pairs competition with a partner who has already entered', () => {
+  it('says so in the sheet (not behind it), and you can pick someone else', async () => {
+    // An ordinary member (who can't see other people's entries); Declan is already in with Ciarán.
+    app = await boot(db => { db.members[0].admin = false; db.signupEntries.push({ id: 77, compId: 2, memberId: 3, partnerId: 1 }) })
+    await app.tap('Competition')
+    await app.tap('Events')
+    await app.tap('[data-sign="2"]')
+    await app.tap('Declan Murphy')
+    await app.tap('Enter as a pair')
+    expect(document.getElementById('sg-err')?.textContent).toContain('Declan Murphy is already entered')
+    expect(document.getElementById('sg-go').disabled).toBe(false)
+    await app.tap('Not now')
+  })
+})

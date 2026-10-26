@@ -142,3 +142,15 @@ describe('found in review', () => {
     expect(await c.check(true)).toEqual(['members'])
   })
 })
+
+describe('found in use: a new version of the app', () => {
+  it('starts with fresh kept data (what an older version kept may be in an older shape)', async () => {
+    const storage = store()
+    const a = setup({ storage, version: 'v1' }); a.c.setUser('u1'); await a.c.check(true)
+    await a.c.get('events', 'e', async () => [{ col: '#19335a' }])
+    const b = setup({ storage, version: 'v2' }); b.c.setUser('u1')
+    const fetch = vi.fn(async () => [{ col: '#6CB6FF' }])
+    expect(await b.c.get('events', 'e', fetch)).toEqual([{ col: '#6CB6FF' }])
+    expect(fetch).toHaveBeenCalledTimes(1)
+  })
+})

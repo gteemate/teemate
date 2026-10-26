@@ -281,11 +281,19 @@ export function makeWorld(today, setup = () => {}) {
     getEventEntries: async eids => copy(db.entries.filter(x => eids.includes(x.eventId))),
     enterLeague: async (rid, eid, ids, marker = null) => { ids.forEach(m => db.leagueEntries.push({ eventId: eid, week: 1, memberId: m, roundId: rid, marker })); return 1 },
     enterEventRound: async (rid, eid, ids, marker = null) => { ids.forEach(m => db.entries.push({ eventId: eid, day: 1, memberId: m, roundId: rid, marker })); return 1 },
-    getSignups: async () => copy({ comps: db.signups, entries: db.signupEntries }),
+    // As the database's rules: a member sees their own entries; admins see everyone's.
+    getSignups: async () => copy({ comps: db.signups, entries: db.members[0].admin ? db.signupEntries : db.signupEntries.filter(e => e.memberId === ME || e.partnerId === ME) }),
     saveSignup: async c => { if (c.id) Object.assign(db.signups.find(x => x.id === c.id), c); else db.signups.push({ ...c, id: id(), drawPublished: false, roundDeadlines: [] }) },
     deleteSignup: async cid => { db.signups = db.signups.filter(c => c.id !== cid) },
     getSignupCounts: async () => Object.fromEntries(db.signups.map(c => [c.id, db.signupEntries.filter(e => e.compId === c.id).length])),
-    enterSignup: async (cid, partnerId = null) => { db.signupEntries.push({ compId: cid, memberId: ME, partnerId }) },
+    enterSignup: async (cid, partnerId = null) => {
+      // As the real enter_signup: nobody in two entries of one competition.
+      const taken = id => db.signupEntries.some(e => e.compId === cid && (e.memberId === id || e.partnerId === id))
+      const c = db.signups.find(x => x.id === cid)
+      if (taken(ME)) throw new Error(`You’re already entered in ${c.name}.`)
+      if (partnerId != null && taken(partnerId)) throw new Error(`${member(partnerId).name} is already entered in ${c.name}. Pick another partner.`)
+      db.signupEntries.push({ compId: cid, memberId: ME, partnerId })
+    },
     withdrawSignup: async cid => { db.signupEntries = db.signupEntries.filter(e => !(e.compId === cid && (e.memberId === ME || e.partnerId === ME))) },
     setMyPlaysIn: async p => { db.members[0].playsIn = p },
     createMemberKnockout: async (name, kind, entries, deadlines) => {

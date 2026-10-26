@@ -33,7 +33,7 @@ with c as (insert into public.signup_comps (name, category, kind, closes_on, ope
 insert into t.ids select name, id from c;
 
 do $$ declare e text; begin
-  perform t.act_as(991402);
+  execute 'reset role'; perform t.act_as(991402);
   perform public.enter_signup(t.id('T Mens Singles'), null);
   perform t.ok('Men''s singles: a man enters', exists (select 1 from public.signup_entries where comp_id = t.id('T Mens Singles') and member_id = 991402));
   e := t.err(format('select public.enter_signup(%s, null)', t.id('T Mens Singles')));
@@ -46,6 +46,10 @@ do $$ declare e text; begin
   perform t.ok('Mixed pairs: two men refused', e like '%one man and one lady%', e);
   perform public.enter_signup(t.id('T Mixed Pairs'), 991404);
   perform t.ok('Mixed pairs: a man and a lady', exists (select 1 from public.signup_entries where comp_id = t.id('T Mixed Pairs') and partner_id = 991404));
+  execute 'reset role'; perform t.act_as(991403);
+  e := t.err(format('select public.enter_signup(%s, 991404)', t.id('T Mixed Pairs')));
+  perform t.ok('A partner already entered: named, so you can pick someone else', e like '% is already entered in T Mixed Pairs. Pick another partner.' and e not like 'You or%', e);
+  execute 'reset role'; perform t.act_as(991402);
   e := t.err(format('select public.enter_signup(%s, null)', t.id('T Closed')));
   perform t.ok('Entries closed: refused', e like '%closed%', e);
   e := t.err(format('select public.enter_signup(%s, null)', t.id('T Hidden')));
@@ -66,7 +70,7 @@ do $$ declare e text; begin
   reset role;
   update public.signup_comps set max_entries = 2 where id = t.id('T Open Singles');
   insert into public.signup_entries (comp_id, member_id) values (t.id('T Open Singles'), 991404), (t.id('T Open Singles'), 991405);
-  perform t.act_as(991402);
+  execute 'reset role'; perform t.act_as(991402);
   e := t.err(format('select public.enter_signup(%s, null)', t.id('T Open Singles')));
   perform t.ok('Full: no more entries', e like '%full%', e);
   perform t.ok('Members see how many have entered', (public.signup_counts()->>(t.id('T Open Singles')::text))::int = 2);

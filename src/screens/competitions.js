@@ -119,6 +119,7 @@ function signSheet(c, me, members, friends, entries, fees) {
     <span class="hint">${c.kind === 'pairs' ? 'Pairs' : 'Singles'} · Entries close ${eventDates(c.closesOn, 1)}${c.notes ? ` · ${esc(c.notes)}` : ''}. You can withdraw until then.</span>
     ${fee ? `<span class="feeline">${esc(fee)}${c.kind === 'pairs' ? ' (each)' : ''}</span>` : ''}
     ${c.kind === 'pairs' ? `<label for="sg-q">Your partner</label><input id="sg-q" type="search" autocomplete="off" placeholder="Type a name" value="${esc(q)}"><div class="pick picklist" id="sg-list">${list()}</div>` : ''}
+    <p class="gerr" id="sg-err" role="alert"></p>
     <div class="gm-btns"><button type="button" class="ghost" id="sg-no">Not now</button><button class="primary" id="sg-go" ${c.kind === 'pairs' && !partner ? 'disabled' : ''}>${c.kind === 'pairs' ? (partner ? 'Enter as a pair' : 'Pick your partner') : 'Enter'}</button></div>
   </div></div>`
   const draw = () => {
@@ -129,7 +130,8 @@ function signSheet(c, me, members, friends, entries, fees) {
     wire()
     $('sg-go').onclick = async () => {
       $('sg-go').disabled = true
-      try { await api.enterSignup(c.id, partner) } catch (err) { toast(err.message); $('sg-go').disabled = false; return }
+      // Refused (e.g. the partner has already entered with someone else): say so here, in the sheet, and let them pick again.
+      try { await api.enterSignup(c.id, partner) } catch (err) { $('sg-err').textContent = err.message; $('sg-go').disabled = false; return }
       $('modal').innerHTML = ''
       S.compTab = 'entered'
       await render(); top0()
