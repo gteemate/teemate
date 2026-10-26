@@ -10,3 +10,5 @@ import member from './catalogue/member.js'
 
 export const PEOPLE = ['member', 'organiser', 'captain', 'office', 'hut', 'newjoiner', 'visitor']
 export const JOURNEYS = [...member]
+// Messages no journey can meet, with why (guards for things the app never offers that person, input the screens prevent).
+export const ALSO_UNREACHABLE = {}
