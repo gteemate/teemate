@@ -1,9 +1,10 @@
 // Club admin → Sign-up competitions: the season competitions members put their names down for. Add or change one
 // (name, Men's / Ladies' / Mixed / Open, Singles / Pairs, entries close, notes, open), see and share who has
-// entered, and delete. Hidden ones (not open) members don't see.
+// entered, and delete. Hidden ones (not open) members don't see. From the club office, one competition opens on its
+// own page (S.signupOnly): its settings and entries, with Back to the office.
 import * as api from '../api.js'
 import { S } from '../state.js'
-import { $, esc, header, keepScroll, render, toast } from '../ui.js'
+import { $, esc, header, keepScroll, render, toast, goBack, top0 } from '../ui.js'
 import { toAdmin } from './nav.js'
 import { eventDates } from '../dates.js'
 
@@ -12,10 +13,17 @@ const CAT = { men: 'Men’s', ladies: 'Ladies’', mixed: 'Mixed', open: 'Open' 
 export async function load() {
   const [signups, members] = await Promise.all([api.getSignups(), api.getMembers()])
   const open = S.signupNew; S.signupNew = false // from Club events → + New knockout competition: the add form, open
-  return { ...signups, members, open }
+  return { ...signups, members, open, only: S.signupOnly ?? null }
 }
 
-export function draw({ comps, entries, members, open }) {
+export function draw({ comps, entries, members, open, only }) {
+  const one = only != null && comps.find(c => c.id === only)
+  if (one) { // just this competition, as a page
+    const back = () => goBack(async () => { S.signupOnly = null; S.aview = 'office'; await render(); top0() })
+    header(one.name, 'Entries and settings', () => { S.signupOnly = null; back() })
+    sheet(one, entries, members, () => { S.signupOnly = null; back() })
+    return
+  }
   header('Sign-up competitions', 'Season competitions members enter in advance', toAdmin)
   const count = id => entries.filter(e => e.compId === id).length
   $('main').innerHTML = `<div class="screen">
@@ -33,11 +41,12 @@ export function draw({ comps, entries, members, open }) {
   if (open) sheet(null, entries, members)
 }
 
-function sheet(c, entries, members) {
+// The competition's settings and entries: a pop-up over the list, or (with leave) the whole page.
+function sheet(c, entries, members, leave = null) {
   const name = id => members.find(m => m.id === id)?.name ?? 'Former member'
   const list = c ? entries.filter(e => e.compId === c.id).map(e => (e.partnerId ? `${name(e.memberId)} & ${name(e.partnerId)}` : name(e.memberId))) : []
   const v = c ?? { name: '', category: 'men', kind: 'singles', closesOn: '', notes: '', open: false }
-  $('modal').innerHTML = `<div class="overlay" id="ovl"><form class="sheet" id="sc-form" novalidate aria-labelledby="sct">
+  const form = `<form class="${leave ? 'card evsec' : 'sheet'}" id="sc-form" novalidate aria-labelledby="sct">
     <h4 id="sct">${c ? esc(c.name) : 'Add a competition'}</h4>
     <label for="sc-name">Name</label><input id="sc-name" maxlength="60" autocomplete="off" placeholder="e.g. Men’s Match Play" value="${esc(v.name)}">
     <label for="sc-cat">Who can enter</label><select id="sc-cat" class="plainsel">${Object.entries(CAT).map(([k, n]) => `<option value="${k}" ${v.category === k ? 'selected' : ''}>${n}${k === 'mixed' ? ' (a pair is one man and one lady)' : k === 'open' ? ' (anyone)' : ''}</option>`).join('')}</select>
@@ -52,11 +61,13 @@ function sheet(c, entries, members) {
       ${list.length ? '<button type="button" class="ghost" id="sc-share">Share the entry list</button>' : ''}
       <button type="button" class="primary" id="sc-draw">${c.drawPublished ? 'The draw' : 'Make or see the draw'}</button>
       <button type="button" class="ghost accremove" id="sc-del">Delete competition</button>` : ''}
-  </form></div>`
+  </form>`
+  if (leave) $('main').innerHTML = `<div class="screen">${form}</div>`
+  else $('modal').innerHTML = `<div class="overlay" id="ovl">${form}</div>`
   let open = !!v.open
   const close = () => { $('modal').innerHTML = '' }
-  $('sc-cancel').onclick = close
-  $('ovl').onclick = e => { if (e.target.id === 'ovl') close() }
+  $('sc-cancel').onclick = leave ?? close
+  if ($('ovl')) $('ovl').onclick = e => { if (e.target.id === 'ovl') close() }
   $('sc-open').onclick = () => { open = !open; $('sc-open').setAttribute('aria-checked', open) }
   $('sc-form').onsubmit = async e => {
     e.preventDefault()
@@ -76,6 +87,7 @@ function sheet(c, entries, members) {
     const b = $('sc-del')
     if (b.dataset.armed !== '1') { b.dataset.armed = '1'; b.textContent = list.length ? `Tap again: delete it and its ${list.length} entr${list.length === 1 ? 'y' : 'ies'}` : 'Tap again to delete'; return }
     try { await api.deleteSignup(c.id) } catch (er) { toast(er.message); return }
+    if (leave) { await leave(); toast(`${c.name} deleted`); return }
     close(); await keepScroll(render); toast(`${c.name} deleted`)
   }
 }
