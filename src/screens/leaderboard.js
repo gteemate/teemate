@@ -7,6 +7,7 @@ import { courseHandicap, roundSummary, toPar } from '../scoring.js'
 import { teeRating } from '../games.js'
 import { longDay, today, isoDate, eventLastDay, fromIso } from '../dates.js'
 import { loadBoard, boardHtml, bindBoard } from './event-board.js'
+import { dayBoardOn } from '../day-board.js'
 
 export async function load() {
   const [all, me] = await Promise.all([api.getEvents(), api.getMe()])
@@ -14,27 +15,35 @@ export async function load() {
   // Events on now or coming up that are for me to see: all-member events, or ones I'm in (or set up myself).
   const events = all.filter(e => eventLastDay(e) >= t && (e.everyone || e.players.includes(me.id) || (!e.club && e.createdBy?.id === me.id)))
     .sort((a, b) => (a.startDate > t) - (b.startDate > t) || (a.startDate < b.startDate ? -1 : 1)) // on now first, then by date
-  if (S.lbv === 'event') S.lbv = events[0]?.id ?? 'today' // first visit: show the event if there is one
+  // The leaderboard of the day can be off (the club's days, or today's switch): then only competitions show.
+  const dayOn = dayBoardOn(await api.getTheme(), t)
+  if (S.lbv === 'event' || (!dayOn && S.lbv === 'today')) S.lbv = events[0]?.id ?? 'today' // first visit: show the event if there is one
   const ev = events.find(e => e.id === S.lbv)
-  if (ev) return { events, board: await loadBoard(ev.id) }
+  if (ev) return { events, dayOn, board: await loadBoard(ev.id) }
+  if (!dayOn) return { events, dayOn, off: true }
   S.lbv = 'today'
   const [course, rounds] = await Promise.all([api.getCourse(), api.getTodayRounds(today())])
   return { events, course, rounds, me }
 }
 
 export function draw(data) {
+  if (data.off) { // the leaderboard of the day is off, and no competition is on
+    header('Leaderboard', longDay(today()))
+    $('main').innerHTML = '<div class="screen"><div class="empty-state">Today’s scores aren’t shown today. Competitions show here when they’re on.</div></div>'
+    return
+  }
   if (data.board?.e) {
     header(esc(data.board.e.name), `${data.board.e.players.length} player${data.board.e.players.length === 1 ? '' : 's'}`)
-    $('main').innerHTML = boardHtml(data.board, lbSeg(data.events))
+    $('main').innerHTML = boardHtml(data.board, lbSeg(data.events, data.dayOn))
     bindBoard(data.board)
     bindLbSeg()
   } else todayBoard(data)
 }
 
-export function lbSeg(events) {
-  if (!events.length) return ''
+export function lbSeg(events, dayOn = true) {
+  if (!events.length || (!dayOn && events.length < 2)) return ''
   const t = isoDate(today())
-  const opts = [['today', 'Today'], ...events.map(e => [e.id, esc(e.name) + (e.startDate > t ? ` · ${longDay(fromIso(e.startDate)).split(' ').slice(0, 2).join(' ')}` : '')])]
+  const opts = [...(dayOn ? [['today', 'Today']] : []), ...events.map(e => [e.id, esc(e.name) + (e.startDate > t ? ` · ${longDay(fromIso(e.startDate)).split(' ').slice(0, 2).join(' ')}` : '')])]
   return opts.length === 2
     ? `<div class="seg" role="group">${opts.map(([k, n]) => `<button data-lv="${k}" aria-pressed="${String(S.lbv) === String(k)}">${n}</button>`).join('')}</div>`
     : `<div class="tabs-pill" role="group">${opts.map(([k, n]) => `<button data-lv="${k}" aria-pressed="${String(S.lbv) === String(k)}">${n}</button>`).join('')}</div>`
@@ -62,7 +71,7 @@ function todayBoard({ events, course, rounds, me }) {
     return `<div class="lbrow${isMe(r) ? ' me' : ''}"><span class="lpos">${tie ? 'T' : ''}${pos}</span><span class="av">${ini(r.member.name)}</span><span class="who"><strong>${esc(r.member.name)}${isMe(r) ? ' (you)' : ''}${r.member.guest ? ' <span class="pill tag">Guest</span>' : ''}</strong><small>${sub(r)}${r.live && r.thru < 18 ? ' <span class="livedot">● live</span>' : ''}</small></span><span class="lval${neg ? ' under' : ''}">${val(r)}</span></div>`
   }).join('') + waiting.map(r => `<div class="lbrow wait"><span class="lpos">–</span><span class="av">${ini(r.member.name)}</span><span class="who"><strong>${esc(r.member.name)}</strong><small>yet to play${r.teeTime ? ` · tees ${r.teeTime}` : ''}</small></span><span class="lval">–</span></div>`).join('')
   const note = { gross: 'Strokes to par, no handicap.', net: 'Strokes to par after full course-handicap shots.', stab: 'Stableford points with full course-handicap shots.', birdies: "Gross birdies or better on today's round." }[m]
-  $('main').innerHTML = `<div class="screen">${lbSeg(events)}
+  $('main').innerHTML = `<div class="screen">${lbSeg(events, true)}
     <div class="tabs-pill" role="group" aria-label="Leaderboard type">${[['gross', 'Gross'], ['net', 'Net'], ['stab', 'Stableford'], ['birdies', 'Birdies']].map(([k, l]) => `<button data-m="${k}" aria-pressed="${m === k}">${l}</button>`).join('')}</div>
     <div class="hint">${note}</div>
     <div class="lblist">${html}</div>

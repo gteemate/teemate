@@ -623,3 +623,22 @@ describe('club office: one competition’s entries and settings', () => {
     expect(app.screen()).toBe('Competitions')
   })
 })
+
+describe('the leaderboard of the day', () => {
+  it('on (every day to start): Today at the club opens today’s scores', async () => {
+    app = await boot()
+    await app.tap('Competition'); await app.tap('[data-tab="entered"]')
+    await app.tap('#field')
+    expect(app.screen()).toBe('Leaderboard')
+  })
+  it('off today: nobody sees today’s scores', async () => {
+    app = await boot(db => { db.theme.dayBoardToday = { date: db.today, on: false } })
+    await app.tap('Competition'); await app.tap('[data-tab="entered"]')
+    expect(document.getElementById('field')).toBeNull()
+  })
+  it('off on Saturdays (today is a Saturday) by the weekly setting', async () => {
+    app = await boot(db => { db.theme.dayBoardDays = [0, 1, 2, 3, 4, 5] })
+    await app.tap('Competition'); await app.tap('[data-tab="entered"]')
+    expect(document.getElementById('field')).toBeNull()
+  })
+})

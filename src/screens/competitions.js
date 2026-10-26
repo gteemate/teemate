@@ -11,6 +11,7 @@ import { competitionLists } from '../competitions.js'
 import { canEdit } from './events.js'
 import { canEnter, myEntries, partnerChoices, needsSection, placesLeft, splitDeclined } from '../signups.js'
 import { feeLine, money } from '../fees.js'
+import { dayBoardOn } from '../day-board.js'
 
 const TABS = [['entered', 'Entered'], ['events', 'Events'], ['history', 'History']]
 const FORMAT = { individual: 'Individual', teams: 'Team Stableford', ryder: 'Four-ball team match play', league: 'League' }
@@ -20,12 +21,13 @@ export async function load() {
   const [counts, theme, balances] = await Promise.all([api.getSignupCounts(), api.getTheme(), api.getMyBalances()])
   const fees = { payment: theme?.feePayment ?? 'shop', purse: balances?.competition ?? null } // how entry fees are paid, and my purse once linked
   const date = isoDate(today())
+  const dayBoard = dayBoardOn(theme, date) // today's scores shown at all today?
   const open = canEnter({ ...signups, me, date })
-  return { me, date, members, friends, signups, counts, fees, lists: competitionLists({ me, events, playerEvents, date }),
+  return { dayBoard, me, date, members, friends, signups, counts, fees, lists: competitionLists({ me, events, playerEvents, date }),
     open, ...splitDeclined(open, declinedIds), entered: myEntries({ ...signups, me }) }
 }
 
-export function draw({ me, date, members, friends, signups, counts = {}, fees = { payment: 'shop', purse: null }, lists, open, offer = open, declined = [], entered }) {
+export function draw({ dayBoard = true, me, date, members, friends, signups, counts = {}, fees = { payment: 'shop', purse: null }, lists, open, offer = open, declined = [], entered }) {
   header('Competitions', '')
   const tab = TABS.some(([k]) => k === S.compTab) ? S.compTab : 'entered' // (Open is gone: a remembered 'open' falls back)
   const teamOf = e => e.teams?.[e.team?.[me.id]]?.name
@@ -63,7 +65,7 @@ export function draw({ me, date, members, friends, signups, counts = {}, fees = 
     events: needsSection(signups.comps, me, date) ? '' : 'No season competitions are open for entries right now.', history: 'Finished competitions you played in will show here.' }[tab]
   $('main').innerHTML = `<div class="screen">
     <div class="seg seg4" role="tablist" aria-label="Competitions">${TABS.map(([k, n]) => `<button role="tab" data-tab="${k}" aria-pressed="${tab === k}">${n}</button>`).join('')}</div>
-    ${tab === 'entered' ? '<button class="card comp" id="field"><span class="row"><span class="ct">Today at the club</span><span class="link">Scores ›</span></span><span class="sub">Everyone’s round today: gross, net, Stableford</span></button>' : ''}
+    ${tab === 'entered' && dayBoard ? '<button class="card comp" id="field"><span class="row"><span class="ct">Today at the club</span><span class="link">Scores ›</span></span><span class="sub">Everyone’s round today: gross, net, Stableford</span></button>' : ''}
     ${tab === 'events' && needsSection(signups.comps, me, date) ? '<button class="card comp gold" id="setsec"><span class="ct">Men’s or Ladies’?</span><span class="sub">Set which you play in on your Account to see the competitions you can enter.</span><span class="row"><span></span><span class="link">Account ›</span></span></button>' : ''}
     ${tab === 'events' ? offer.map(c => signRow(c)).join('') : ''}
     ${tab === 'events' && declined.length ? `<button class="linkbtn" id="declined" aria-expanded="${!!S.showDeclined}" style="align-self:flex-start">${S.showDeclined ? 'Hide declined' : `Declined (${declined.length})`}</button>
