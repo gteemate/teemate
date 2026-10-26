@@ -5,16 +5,26 @@
 // column names) and throw an Error with a message fit to show the user.
 //
 // Each area lives in its own file in src/api/; this file is the one front door the screens import.
-export { getMe, forgetMe } from './api/client.js'
-export * from './api/auth.js'
-export * from './api/club.js'
-export * from './api/hut.js'
-export * from './api/signups.js'
-export * from './api/members.js'
-export * from './api/course.js'
-export * from './api/tee-times.js'
-export * from './api/game-prefs.js'
-export * from './api/cards.js'
-export * from './api/player-events.js'
-export * from './api/events.js'
-export * from './api/balances.js'
+export * from './api/all.js'
+
+// Data kept on the device: the getters in api/cache-rules.js answer from it, and the changes there drop what they
+// touch. These wrapped functions take the place of the plain ones above (a module's own exports win over export *).
+import * as raw from './api/all.js'
+import { cache, wrapApi, setStampSource } from './api/cache.js'
+setStampSource(raw.getStamps)
+const w = wrapApi(raw)
+export { cache }
+export const {
+  getMembers, getAccessList, getCourse, getPins, getGameSettings, getEvents,
+  getTheme, getBookingRules, getSignups, getSignupCounts, getKnockout, getAccessRequests,
+  getTeeTimeRequests, getBuddies, getFriends, getFavourites, setTheme, setClubName,
+  setFeePayment, setHutOn, setBookingRules, setCourseLocation, setGreenWidth, publishPins,
+  saveEvent, saveSeason, deleteEvent, enterEventToday, startLeagueKnockout, setMyGamePref,
+  setHutStaff, saveMember, setOfficeLogin, deleteMember, resetLogin, declineRequest,
+  requestAccess, addBuddy, removeBuddy, saveContact, removeContact, setFriendFavourite,
+  setFavourite, setMyPlaysIn, adminSetPlaysIn, declineSignup, undeclineSignup, runSignup,
+  enterSignup, withdrawSignup, saveSignup, deleteSignup, createMemberKnockout, deleteMemberKnockout,
+  makeDraw, swapDraw, setRoundDeadlines, publishDraw, linkKoCard, reportKoResult,
+  confirmKoResult, disputeKoResult, adminSetKoResult, requestTeeTime, cancelTeeTimeRequest, dismissTeeTimeRequest,
+  decideTeeTimeRequest, markTeeTimeRequestsSeen,
+} = w

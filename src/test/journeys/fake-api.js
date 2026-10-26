@@ -4,6 +4,8 @@
 // Anything not covered throws "not faked: <name>", so a gap fails the journey loudly.
 import { COURSE, MEMBERS, GAME_SETTINGS, PIN_SHEET } from '../../sample-data.js'
 import { isoDate, addDaysIso } from '../../dates.js'
+import { createCache } from '../../api/cache.js'
+import { RULES } from '../../api/cache-rules.js'
 
 const copy = x => (x === undefined ? x : JSON.parse(JSON.stringify(x, (k, v) => (v instanceof Set ? undefined : v))))
 const ME = 0
@@ -26,11 +28,14 @@ export const API_NAMES = ['getMe', 'forgetMe', 'getSession', 'signIn', 'needsAcc
 
 /** For vi.mock('…/api.js'): every export, each calling the current world's version (globalThis.__world). */
 export function mockModule() {
-  return Object.fromEntries(API_NAMES.map(n => [n, (...a) => {
-    const f = globalThis.__world.api[n]
+  const plain = Object.fromEntries(API_NAMES.map(n => [n, (...a) => {
+    const f = globalThis.__world.wrapped[n]
     if (!f) throw new Error(`not faked: ${n}`)
     return f(...a)
   }]))
+  // Each world has its own device cache (the real one), as the app's own api.js does.
+  const cache = new Proxy({}, { get: (_, k) => (...a) => globalThis.__world.cache[k](...a) })
+  return { ...plain, cache }
 }
 
 const member = id => MEMBERS.find(m => m.id === id)
@@ -103,7 +108,7 @@ export function makeWorld(today, setup = () => {}) {
     // Signed in as Gary Cochrane (member 0, an admin).
     getMe: async () => (db.asOffice ? { id: 9000, name: 'Club office', admin: true, office: true, hutStaff: false, playsIn: null }
       : { ...member(ME), admin: !!db.members[0].admin, hutStaff: db.members[0].hutStaff, playsIn: db.members[0].playsIn, office: false }), forgetMe: () => {},
-    getSession: async () => ({ user: { id: 'u0', email: 'gary@example.invalid' } }), onAuthChange: () => {},
+    getSession: async () => ({ user: { id: db.session ?? 'u0', email: 'gary@example.invalid' } }), onAuthChange: () => {},
     myRequestPending: async () => false,
     getTheme: async () => ({ ...db.theme }),
     setTheme: async (main, accent) => { Object.assign(db.theme, { main: main.toUpperCase(), accent: accent.toUpperCase() }) },
@@ -322,5 +327,8 @@ export function makeWorld(today, setup = () => {}) {
   db.slotsOn = sheet
   db.koAdvance = m => { const n = db.koMatches.find(x => x.compId === m.compId && x.round === m.round + 1 && x.slot === Math.floor(m.slot / 2)); if (n) n[m.slot % 2 ? 'bEntry' : 'aEntry'] = m.winnerEntry }
   setup(db, { sheet, slotById, id })
-  return { api, db }
+  // The real device cache in front of the pretend server, with a pretend storage that lives as long as the world.
+  const kept = new Map(), storage = { getItem: k => kept.get(k) ?? null, setItem: (k, v) => kept.set(k, v), removeItem: k => kept.delete(k) }
+  const cache = createCache({ storage, getStamps: () => api.getStamps() })
+  return { api, db, cache, wrapped: cache.wrap(api, RULES) }
 }

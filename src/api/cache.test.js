@@ -94,6 +94,11 @@ describe('wrapping the data functions by the rules', () => {
     await w.getEvents()
     expect(api.getEvents).toHaveBeenCalledTimes(2)
   })
+  it('the app’s front door hands out the wrapped function for every rule', () => {
+    const front = readFileSync(new URL('../api.js', import.meta.url), 'utf8')
+    const listed = front.slice(front.indexOf('export const {')).split('}')[0]
+    for (const name of Object.keys(RULES)) expect(listed, name).toMatch(new RegExp(`\\b${name}\\b`))
+  })
   it('every rule names a function the data layer has', () => {
     const dir = new URL('.', import.meta.url).pathname
     const text = readdirSync(dir).filter(f => f.endsWith('.js') && !f.includes('cache')).map(f => readFileSync(dir + f, 'utf8')).join('\n')

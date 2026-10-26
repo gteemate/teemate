@@ -1,7 +1,7 @@
 import './styles.css'
 import { S } from './state.js'
 import * as api from './api.js'
-import { $, esc, header, setRender, setDefaultBack, toast, top0 } from './ui.js'
+import { $, esc, header, setRender, setDefaultBack, toast, top0, keepScroll } from './ui.js'
 import { navStack } from './nav-stack.js'
 import * as login from './screens/login.js'
 import * as colours from './screens/colours.js'
@@ -122,6 +122,14 @@ let startTabChosen = false
 const chooseStartTab = async () => startTab(await api.getCurrentRound())
 
 let seq = 0
+// Data kept on the device: ask (at most every 30 s, or now when forced) whether anyone changed any of it, and draw
+// the screen again if it used a kind that changed.
+let stampsKnown = false, lastReads = new Set()
+function checkForChanges(force = false) {
+  const at = seq
+  api.cache.check(force).then(kinds => { if (at === seq && kinds.some(k => lastReads.has(k))) keepScroll(render) })
+}
+
 async function render() {
   const mine = ++seq
   let screen, data
@@ -129,6 +137,8 @@ async function render() {
     // Signed out → sign-in screen. Signed in but not a member → explain. Otherwise the app.
     const session = await api.getSession()
     signedInAs = session?.user.id ?? null
+    api.cache.setUser(signedInAs) // data kept on this device belongs to whoever is signed in
+    if (signedInAs && !stampsKnown) { stampsKnown = true; await api.cache.check(true) } // what's changed since last time
     const me = session && (await api.getMe())
     if (mine !== seq) return
     $('app').classList.toggle('signed-out', !me)
@@ -152,7 +162,9 @@ async function render() {
       screen = screenFor()
     }
     if (S.office) forgetSummary() // what's waiting: fresh on every page
+    api.cache.resetReads()
     ;[data] = await Promise.all([screen.load ? screen.load() : undefined, S.office ? summary() : null])
+    lastReads = new Set(api.cache.reads())
   } catch (err) {
     if (mine !== seq) return
     console.error(err)
@@ -176,11 +188,16 @@ async function render() {
   }
   hideSide()
   drawRoundBar()
+  checkForChanges()
   if (screen === login || $('app').classList.contains('signed-out')) $('alerts').innerHTML = ''
   else checkAlerts(JSON.stringify(place()))
 }
 // Back to the app from another app or the lock screen: anything new?
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && !$('app').classList.contains('signed-out')) checkAlerts(JSON.stringify(place()), true) })
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible' || $('app').classList.contains('signed-out')) return
+  checkAlerts(JSON.stringify(place()), true)
+  checkForChanges(true)
+})
 setRender(render)
 
 // Opened from a friend link (a QR scanned with the camera, or a link in a message): keep it until it's been
