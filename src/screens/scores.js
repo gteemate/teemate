@@ -9,6 +9,7 @@ import { leagueBadges, bindLeagueBox } from './scores-league.js'
 import { roundBoard } from '../round.js'
 import { guestHcpSheet } from './scores-guest.js'
 import { holeGrid } from '../course-art.js'
+import { openCourse, scaleHcp, holesText, allOpen } from '../open-holes.js'
 import { courseHandicap, playingHandicaps, holeCalc, gameState, upText, toPar } from '../scoring.js'
 import { buildLibrary, playable, gameSpec, resolveGame, preferredGame, teeRating, PAIRINGS, NO_GAME, SCORES_ONLY, parseGame, oneOnOneKey, oneOnOneGames, gameName } from '../games.js'
 
@@ -118,16 +119,22 @@ export function draw({ course, members, guests, L, me, teeTimes, events, leagues
   const duo = pair ? pair.map(x => round.lineup.findIndex(e => same(e, x))) : null
   const one = !!duo && duo.every(k => k >= 0) // (a one-on-one whose player has left the card is scores only)
   const LG = base === NO_GAME || (pair && !one) ? null : L.lib[pair ? base : round.game]
-  S.ch ??= Math.min(played(round), 17)
+  // The holes played: a competition's open holes (the round's Leaderboard tab knows which), else all 18. S.ch is the
+  // course hole being scored; games, shots and "played" go by place among the open holes.
+  const spec = S.roundBoard?.holes ?? null, open = openCourse(course.holes, spec), onIdx = open.map(x => x.i)
+  const P = (k => (k === -1 ? onIdx.length : k))(onIdx.findIndex(c => !round.done[c])) // open holes saved in order
+  if (S.ch == null || !onIdx.includes(S.ch)) S.ch = onIdx[Math.min(P, onIdx.length - 1)]
   const o = PAIRINGS[round.pairing], G = LG ? gameSpec(LG) : SCORES_ONLY, g = G.kind
   const chs = ps.map(p => courseHandicap(p.hcp ?? 0, teeRating(course)))
   let ph = playingHandicaps(chs, G.allow, G.offLow)
   if (one) { const two = playingHandicaps(duo.map(k => chs[k]), G.allow, G.offLow); ph = ps.map((_, k) => (duo.includes(k) ? two[duo.indexOf(k)] : chs[k])) } // shots off the lower of the two
-  // The game's state after `upTo` holes: a one-on-one is scored between its two players only.
-  const stateAt = upTo => (one ? gameState(G, course.holes, duo.map(k => ph[k]), round.scores.map(r => duo.map(k => r[k])), upTo) : gameState(G, course.holes, ph, round.scores, upTo, o))
+  ph = ph.map(x => scaleHcp(x, open.length))
+  const sc = onIdx.map(c => round.scores[c])
+  // The game's state after `upTo` open holes: a one-on-one is scored between its two players only.
+  const stateAt = upTo => (one ? gameState(G, open, duo.map(k => ph[k]), sc.map(r => duo.map(k => r[k])), upTo) : gameState(G, open, ph, sc, upTo, o))
   const noHcp = ps.filter(p => p.guestId && p.hcp == null)
-  const i = S.ch, h = course.holes[i], P = played(round)
-  const c = holeCalc(h, round.scores[i], ph, o), gs = stateAt(P)
+  const i = S.ch, at = onIdx.indexOf(i), h = course.holes[i]
+  const c = holeCalc(open[at], round.scores[i], ph, o), gs = stateAt(P)
   const pts = G.cmp === 'pts' || g === 'stab'
   const pairName = s => (s === 'A' ? [o[0], o[1]] : [o[2], o[3]]).map(k => sur(ps[k].name)).join(' / ')
 
@@ -142,7 +149,7 @@ export function draw({ course, members, guests, L, me, teeTimes, events, leagues
     if (g === 'skins') return r.winner < 0 ? { cls: '', t: 'c/o' } : { cls: r.winner === 0 ? 'A' : '', t: ini(ps[r.winner].name) }
     return { cls: r.toPar < 0 ? 'A' : r.toPar > 0 ? 'B' : '', t: toPar(r.toPar) }
   }
-  const grid = holeGrid(i, j => { const r = cellText(j); return `<span class="res ${r.cls}">${r.t}</span>` }, 'data-j')
+  const grid = `${allOpen(spec) ? '' : `<div class="hint hptoday"><b>${holesText(spec)} today</b> · handicaps scaled to ${open.length} hole${open.length > 1 ? 's' : ''}</div>`}${holeGrid(i, j => { const r = cellText(onIdx.indexOf(j)); return `<span class="res ${r.cls}">${r.t}</span>` }, 'data-j', onIdx)}`
 
   const gamebar = S.gmenu ? `<div class="card gmenu" id="gmenu">
     ${G.pairs ? `<div class="gm-sec"><span class="gm-lbl">Pairs</span><div class="games" role="radiogroup" aria-label="Pairs">${PAIRINGS.map((pp, n) => `<button class="gamecard sm" role="radio" aria-checked="${round.pairing === n}" data-pr="${n}"><span class="radio"></span><span class="who"><strong>You & ${esc(ps[pp[1]].name)}</strong><small>v ${esc(ps[pp[2]].name)} & ${esc(ps[pp[3]].name)}</small></span></button>`).join('')}</div></div>` : ''}
@@ -210,7 +217,7 @@ export function draw({ course, members, guests, L, me, teeTimes, events, leagues
   </div>
   <div class="cta">${fin
     ? round.submitted[round.game] ? '<button class="primary" id="newr">Start a new round</button>' : '<button class="primary" id="submit">Finish round</button>'
-    : `<button class="ghost" id="prevh" ${i === 0 ? 'disabled' : ''}>‹</button><button class="primary" id="save">${round.done[i] ? 'Next hole' : `Save hole ${i + 1}`}</button>`}</div>`
+    : `<button class="ghost" id="prevh" ${at === 0 ? 'disabled' : ''}>‹</button><button class="primary" id="save">${round.done[i] ? 'Next hole' : `Save hole ${i + 1}`}</button>`}</div>`
 
   // Game menu
   $('gchip').onclick = async () => { S.gmenu = !S.gmenu; await keepScroll(render) }
@@ -251,7 +258,7 @@ export function draw({ course, members, guests, L, me, teeTimes, events, leagues
   // Scorecard
   document.querySelectorAll('[data-j]').forEach(b => (b.onclick = () => {
     const j = +b.dataset.j
-    if (j > P) { toast(`Finish hole ${P + 1} first`); return }
+    if (onIdx.indexOf(j) > P) { toast(`Finish hole ${onIdx[P] + 1} first`); return }
     S.ch = j
     keepScroll(render)
   }))
@@ -264,12 +271,13 @@ export function draw({ course, members, guests, L, me, teeTimes, events, leagues
     keepScroll(render)
   }))
   const on = (id, f) => { const el = $(id); if (el) el.onclick = f }
-  on('prevh', () => { S.ch--; render() })
+  on('prevh', () => { S.ch = onIdx[at - 1] ?? S.ch; render() })
   on('save', async () => {
     round.done[i] = true
     await api.saveRound(round)
-    const after = stateAt(played(round))
-    if (!after.finished && i < 17) S.ch = i + 1
+    const done = (k => (k === -1 ? onIdx.length : k))(onIdx.findIndex(c => !round.done[c]))
+    const after = stateAt(done)
+    if (!after.finished && at < onIdx.length - 1) S.ch = onIdx[at + 1]
     await render()
     top0()
     if (i === 7) forceAlertCheck() // hole 8: the halfway hut may ask

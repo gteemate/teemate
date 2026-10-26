@@ -822,3 +822,41 @@ describe('open holes: a knockout round’s holes', () => {
     expect(document.querySelector('[data-krh]')).toBe(null)
   })
 })
+describe('open holes: the scorecard plays only the open holes', () => {
+  const holesNow = () => [...document.querySelectorAll('.hgrid [data-j]')].map(b => +b.dataset.j + 1)
+  it('an event on holes 1–6 and 10–12: 9 holes on the card, 6 goes on to 10, the round ends after 12', async () => {
+    app = await boot(db => { fourBall(db); db.holesEv = true })
+    await app.tap('Competition'); await app.tap('Events'); await app.tap('+ Create your own event'); await app.tap('#cr-ev')
+    await app.type('#ev-name', 'Short Course Swindle')
+    await app.type('#ev-date', app.db.today)
+    await app.tap('[data-style="individual"]')
+    for (const n of [7, 8, 9, 13, 14, 15, 16, 17, 18]) await app.tap(`[data-hp="ev:${n}"]`)
+    await app.tap('#ev-next')
+    for (const id of [10, 12, 9]) await app.tap(`[data-pick="${id}"]`)
+    await app.tap('#ev-next'); await app.tap('#ev-next') // Review → Save event
+    await app.homeFromHere()
+    await app.tap('Scoring')
+    await app.tap('09:30')
+    if (app.screen() === 'Scoring round?') {
+      const tick = [...document.querySelectorAll('[data-k]')].find(b => b.textContent.includes('Short Course Swindle'))
+      if (tick && tick.getAttribute('aria-pressed') !== 'true') await app.tap(`[data-k="${tick.dataset.k}"]`)
+      if (document.querySelector('[data-mk]')) await app.tap('[data-mk="0"]')
+      await app.tap('#start')
+    }
+    if (document.getElementById('gdone')) await app.tap('#gdone')
+    expect(holesNow()).toEqual([1, 2, 3, 4, 5, 6, 10, 11, 12])
+    expect(app.main()).toContain('Holes 1–6, 10–12 today')
+    for (let n = 0; n < 6; n++) await app.tap('#save')
+    expect(app.screen()).toBe('Hole 10')
+    for (let n = 0; n < 3; n++) await app.tap('#save')
+    expect(document.getElementById('submit')).not.toBe(null) // round complete after the 9th open hole
+  })
+  it('a general round still has all 18', async () => {
+    app = await boot(fourBall)
+    await app.tap('Scoring')
+    await app.tap('09:30')
+    if (app.screen() === 'Scoring round?') await app.tap('#start')
+    if (document.getElementById('gdone')) await app.tap('#gdone')
+    expect(holesNow()).toHaveLength(18)
+  })
+})

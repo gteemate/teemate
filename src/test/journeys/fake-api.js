@@ -60,7 +60,7 @@ export function makeWorld(today, setup = () => {}) {
   const id = () => nextId++
   const db = {
     me: ME, today, calls: [],
-    stamps: Object.fromEntries(['members', 'course', 'pins', 'games', 'events', 'club', 'comps', 'requests', 'friends'].map(k => [k, '1'])),
+    stamps: Object.fromEntries(['members', 'course', 'pins', 'games', 'events', 'club', 'comps', 'requests', 'friends', 'templates'].map(k => [k, '1'])),
     members: MEMBERS.map(m => ({ ...m, hutStaff: false, playsIn: [2, 4, 8, 12].includes(m.id) ? 'ladies' : 'men' })),
     signups: [
       { id: 1, name: 'Men’s Match Play', category: 'men', kind: 'singles', closesOn: '2026-10-31', notes: null, open: true },

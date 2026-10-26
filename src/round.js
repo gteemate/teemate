@@ -3,6 +3,7 @@ import { eventLastDay, leagueWeek, addDaysIso } from './dates.js'
 import { myMatch } from './match.js'
 import { dayOfDate } from './season.js'
 import { matchType } from './match-scoring.js'
+import { holesFor } from './open-holes.js'
 
 /**
  * Competitions this card could count for today:
@@ -48,16 +49,18 @@ export function countsForOptions({ lineup, events, leagueEntries, date, meId }) 
 export const markerChoices = (lineup, meId) => lineup.filter(x => x.m !== meId)
 
 /**
- * The Leaderboard tab in a round: { view: 'evboard' | 'pevent', id } for the competition this card counts for, or
+ * The Leaderboard tab in a round: { view: 'evboard' | 'pevent', id, holes } for the competition this card counts for (holes: its
+ * open holes that day or league week, open-holes.js), or
  * null for a general round (no tab). A league or event this card was ticked for; else an accepted match today with
  * someone on the card; else an older event that counts every card, on today, with someone on the card in it.
  */
 export function roundBoard({ cardId, lineup, events, leagueEntries, eventEntries, playerEvents, date }) {
   const onCard = lineup.filter(x => x.m != null).map(x => x.m)
   const ticked = [...leagueEntries, ...eventEntries].find(x => x.roundId === cardId)
-  if (ticked) return { view: 'evboard', id: ticked.eventId }
+  const on = (e, d) => (e ? holesFor(e, d ?? dayOfDate(e, date)) : null)
+  if (ticked) return { view: 'evboard', id: ticked.eventId, holes: on(events.find(e => e.id === ticked.eventId), ticked.week ?? ticked.day) }
   const match = playerEvents.find(e => e.date === date && e.status === 'accepted' && e.players.some(p => onCard.includes(p.memberId)))
-  if (match) return { view: 'pevent', id: match.id }
+  if (match) return { view: 'pevent', id: match.id, holes: null }
   const auto = events.find(e => e.style !== 'league' && !e.entryRequired && e.startDate <= date && eventLastDay(e) >= date && e.players.some(m => onCard.includes(m)))
-  return auto ? { view: 'evboard', id: auto.id } : null
+  return auto ? { view: 'evboard', id: auto.id, holes: on(auto) } : null
 }

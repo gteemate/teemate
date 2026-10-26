@@ -208,7 +208,7 @@ export function scoreAdvanceEvent(event, holes, dayCards, player, allow, entries
         pts += stablefordPoints(p.gross[i], dh[i].par, sh)
         net += p.gross[i] - sh - dh[i].par
       }
-      return { thru, pts, net }
+      return { thru, pts, net, of: dh.length } // of: the day's open holes
     })
     return { id, name: player(id).name, team: event.team[id], perDay, pts: perDay.reduce((t, x) => t + x.pts, 0), net: perDay.reduce((t, x) => t + x.net, 0) }
   })

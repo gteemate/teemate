@@ -1,5 +1,6 @@
 // The board for an event set up in advance, scored live from each player's own card on each day.
 // Shown on the Leaderboard tab while it's on, and from Admin → Events (View / Results).
+import { holesText } from '../open-holes.js'
 import * as api from '../api.js'
 import { S } from '../state.js'
 import { $, esc, ini, sur, header, keepScroll, render, redraw, top0, toast, goBack } from '../ui.js'
@@ -11,7 +12,7 @@ import { addDaysIso, eventDates, isoDate, today, fromIso, longDay, leagueWeek } 
 import { EVENT_TYPES, eventFormat } from './event-editor.js'
 import { myMatch, matchBooking } from '../match.js'
 import { matchDays, dayDate, seasonEnd, SINGLES_FMT, canChange } from '../season.js'
-import { matchType } from '../match-scoring.js'
+import { matchType, dayRules } from '../match-scoring.js'
 import { matchActionHtml, bindMatchAction } from './match.js'
 
 export async function loadBoard(id, dayWanted = null) {
@@ -71,7 +72,7 @@ export function boardHtml(data, top = '') {
   const { e, me } = data
   const r = boardResult(data)
   const day = Math.min(S.evDay || dayOf(e), e.days)
-  const thruText = n => (n === 18 ? 'Finished' : n ? `thru ${n}` : 'not started')
+  const thruText = (n, of = 18) => (n === of ? 'Finished' : n ? `thru ${n}` : 'not started')
   const notYet = e.startDate > isoDate(today())
   const head = `<div class="matchline"><b style="color:var(--ink)">${EVENT_TYPES[e.style].name}${e.style !== 'teams' ? ` · ${eventFormat(e)}` : ''}</b><span>${e.season ? `Season · ${eventDates(e.startDate, 1)} – ${eventDates(seasonEnd(e), 1)}` : eventDates(e.startDate, e.days)}${e.club ? ' · club event' : ''}</span></div>`
   const A = e.A, B = e.B
@@ -94,10 +95,10 @@ export function boardHtml(data, top = '') {
         <div><span class="tn" style="color:${A.col}">${esc(A.name)}</span><span class="tp" style="color:${A.col}">${r.totals.A} <small>pts</small></span></div>
         <div class="r"><span class="tn" style="color:${B.col}">${esc(B.name)}</span><span class="tp" style="color:${B.col}">${r.totals.B} <small>pts</small></span></div></div>
         <div class="evfoot">${lead ? `${esc(lead.name)} lead by ${Math.abs(r.totals.A - r.totals.B)}` : r.totals.A ? 'All square' : 'Not started'}</div></div>
-      <div class="card list">${r.players.map(p => `<div class="lrow${p.id === me.id ? ' me' : ''}"><span class="av" style="border-color:${(p.team === 'A' ? A : B).col}">${ini(p.name)}</span><span class="who"><strong>${esc(p.name)}${p.id === me.id ? ' (you)' : ''}</strong><small>${esc((p.team === 'A' ? A : B).name)} · ${thruText(p.perDay[day - 1].thru)}${e.days > 1 ? ` today` : ''}</small></span><span class="hcp">${p.pts}<small>pts</small></span></div>`).join('')}</div>`
+      <div class="card list">${r.players.map(p => `<div class="lrow${p.id === me.id ? ' me' : ''}"><span class="av" style="border-color:${(p.team === 'A' ? A : B).col}">${ini(p.name)}</span><span class="who"><strong>${esc(p.name)}${p.id === me.id ? ' (you)' : ''}</strong><small>${esc((p.team === 'A' ? A : B).name)} · ${thruText(p.perDay[day - 1].thru, p.perDay[day - 1].of)}${e.days > 1 ? ` today` : ''}</small></span><span class="hcp">${p.pts}<small>pts</small></span></div>`).join('')}</div>`
   } else {
     const net = e.fmt === 'net'
-    body = `<div class="lblist">${r.rows.map(p => `<div class="lbrow${p.id === me.id ? ' me' : ''}${p.pos ? '' : ' wait'}"><span class="lpos">${p.pos ? `${p.tied ? 'T' : ''}${p.pos}` : '–'}</span><span class="av">${ini(p.name)}</span><span class="who"><strong>${esc(p.name)}${p.id === me.id ? ' (you)' : ''}</strong><small>${thruText(p.perDay[day - 1].thru)}${e.days > 1 ? ` on day ${day}` : ''}</small></span><span class="lval${net && p.net < 0 ? ' under' : ''}">${p.pos ? (net ? toPar(p.net) : p.pts) : '–'}</span></div>`).join('')}</div>`
+    body = `<div class="lblist">${r.rows.map(p => `<div class="lbrow${p.id === me.id ? ' me' : ''}${p.pos ? '' : ' wait'}"><span class="lpos">${p.pos ? `${p.tied ? 'T' : ''}${p.pos}` : '–'}</span><span class="av">${ini(p.name)}</span><span class="who"><strong>${esc(p.name)}${p.id === me.id ? ' (you)' : ''}</strong><small>${thruText(p.perDay[day - 1].thru, p.perDay[day - 1].of)}${e.days > 1 ? ` on day ${day}` : ''}</small></span><span class="lval${net && p.net < 0 ? ' under' : ''}">${p.pos ? (net ? toPar(p.net) : p.pts) : '–'}</span></div>`).join('')}</div>`
   }
   return `<div class="screen">${top}${head}${notYet ? `<div class="hcpnote">Starts ${longDay(fromIso(e.startDate))}. Scores appear here as players save holes on their cards.</div>` : ''}${body}
     <div class="hint" style="text-align:center">Scores come from each player’s own card and update as holes are saved.</div></div>`
@@ -123,8 +124,8 @@ function shownDay(e) {
 function daySelect(e, r, shown) {
   const now = isoDate(today()), days = matchDays(e), next = days.find(d => dayDate(e, d) > now)
   return `<label class="hint" for="ev-mday">Match day</label><select id="ev-mday" class="plainsel">${days.map(d => {
-    const n = (r.byDay[d] ?? []).length, holes = r.byDay[d]?.[0]?.holes ?? 18, iso = dayDate(e, d)
-    return `<option value="${d}" ${d === shown ? 'selected' : ''}>${longDay(fromIso(iso))} · ${n} match${n === 1 ? '' : 'es'} · ${holes} holes${iso === now ? ' (today)' : d === next ? ' (next)' : ''}</option>` }).join('')}</select>`
+    const n = (r.byDay[d] ?? []).length, holes = holesText(dayRules(e, d).holes) || '18 holes', iso = dayDate(e, d)
+    return `<option value="${d}" ${d === shown ? 'selected' : ''}>${longDay(fromIso(iso))} · ${n} match${n === 1 ? '' : 'es'} · ${holes}${iso === now ? ' (today)' : d === next ? ' (next)' : ''}</option>` }).join('')}</select>`
 }
 
 function matchCard(data, mt, k, d) {
