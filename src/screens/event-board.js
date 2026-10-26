@@ -2,7 +2,7 @@
 // Shown on the Leaderboard tab while it's on, and from Admin → Events (View / Results).
 import * as api from '../api.js'
 import { S } from '../state.js'
-import { $, esc, ini, sur, header, keepScroll, render, top0, toast, goBack } from '../ui.js'
+import { $, esc, ini, sur, header, keepScroll, render, redraw, top0, toast, goBack } from '../ui.js'
 import { courseHandicap, fmtPts, toPar } from '../scoring.js'
 import { scoreAdvanceEvent, scoreLeague, scorePairsLeague, leagueSeeds } from '../event-scoring.js'
 import { spreadDates } from '../knockout.js'
@@ -160,15 +160,15 @@ export function bindBoard(data = {}) {
   })
   if (data.action) bindMatchAction(data.action)
   document.querySelectorAll('[data-evday]').forEach(b => (b.onclick = () => { S.evDay = +b.dataset.evday; keepScroll(render) }))
-  document.querySelectorAll('[data-lgview]').forEach(b => (b.onclick = () => { S.lgView = b.dataset.lgview; keepScroll(render) }))
-  document.querySelectorAll('[data-lgweek]').forEach(b => (b.onclick = () => { S.lgWeek = b.dataset.lgweek === 'season' ? 'season' : +b.dataset.lgweek; keepScroll(render) }))
+  document.querySelectorAll('[data-lgview]').forEach(b => (b.onclick = () => { S.lgView = b.dataset.lgview; keepScroll(redraw) }))
+  document.querySelectorAll('[data-lgweek]').forEach(b => (b.onclick = () => { S.lgWeek = b.dataset.lgweek === 'season' ? 'season' : +b.dataset.lgweek; keepScroll(redraw) }))
   // Remember which teams are open between redraws.
   document.querySelectorAll('[data-lgteam]').forEach(d => d.addEventListener('toggle', () => { const k = +d.dataset.lgteam; d.open ? S.lgOpen.add(k) : S.lgOpen.delete(k) }))
   const all = document.getElementById('lg-all')
   if (all) all.onclick = () => {
     const teams = [...document.querySelectorAll('[data-lgteam]')].map(d => +d.dataset.lgteam)
     S.lgOpen = S.lgOpen.size === teams.length ? new Set() : new Set(teams)
-    keepScroll(render)
+    keepScroll(redraw)
   }
 }
 

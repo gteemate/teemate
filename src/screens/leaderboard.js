@@ -2,7 +2,7 @@
 // (all-member events for everyone; other events for the players in them).
 import * as api from '../api.js'
 import { S } from '../state.js'
-import { $, esc, ini, header, keepScroll, top0, render } from '../ui.js'
+import { $, esc, ini, header, keepScroll, top0, render, redraw } from '../ui.js'
 import { courseHandicap, roundSummary, toPar } from '../scoring.js'
 import { teeRating } from '../games.js'
 import { longDay, today, isoDate, eventLastDay, fromIso } from '../dates.js'
@@ -67,6 +67,6 @@ function todayBoard({ events, course, rounds, me }) {
     <div class="hint">${note}</div>
     <div class="lblist">${html}</div>
   </div>`
-  document.querySelectorAll('[data-m]').forEach(b => (b.onclick = () => { S.lbm = b.dataset.m; keepScroll(render) }))
+  document.querySelectorAll('[data-m]').forEach(b => (b.onclick = () => { S.lbm = b.dataset.m; keepScroll(redraw) }))
   bindLbSeg()
 }

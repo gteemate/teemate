@@ -1,7 +1,7 @@
 import './styles.css'
 import { S } from './state.js'
 import * as api from './api.js'
-import { $, esc, header, setRender, setDefaultBack, toast, top0, keepScroll } from './ui.js'
+import { $, esc, header, setRender, setRedraw, setDefaultBack, toast, top0, keepScroll } from './ui.js'
 import { navStack } from './nav-stack.js'
 import * as login from './screens/login.js'
 import * as colours from './screens/colours.js'
@@ -124,7 +124,8 @@ const chooseStartTab = async () => startTab(await api.getCurrentRound())
 let seq = 0
 // Data kept on the device: ask (at most every 30 s, or now when forced) whether anyone changed any of it, and draw
 // the screen again if it used a kind that changed.
-let stampsKnown = false, lastReads = new Set()
+let stampsKnown = false, lastReads = new Set(), lastScreen = null, lastData
+setRedraw(() => (lastScreen ? lastScreen.draw(lastData) : render()))
 function checkForChanges(force = false) {
   const at = seq
   api.cache.check(force).then(kinds => { if (at === seq && kinds.some(k => lastReads.has(k))) keepScroll(render) })
@@ -177,6 +178,7 @@ async function render() {
   $('modal').innerHTML = ''
   $('app').classList.toggle('onhome', screen === home) // Home fills the screen, no scroll (a remote)
   $('app').classList.toggle('office', !!S.office && !$('app').classList.contains('signed-out'))
+  lastScreen = screen; lastData = data
   screen.draw(data)
   if (S.office && !$('app').classList.contains('signed-out')) {
     const me = await api.getMe(), [s, theme] = await Promise.all([summary(), api.getTheme().catch(() => null)])

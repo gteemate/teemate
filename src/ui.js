@@ -92,3 +92,7 @@ export const top0 = () => (scroller().scrollTop = 0)
 let renderFn = () => {}
 export const setRender = f => (renderFn = f)
 export const render = () => renderFn()
+// Draw the screen again from the data it already has (a tap that only changes what's shown: no server).
+let redrawFn = () => renderFn()
+export const setRedraw = f => (redrawFn = f)
+export const redraw = () => redrawFn()

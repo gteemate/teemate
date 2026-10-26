@@ -66,3 +66,26 @@ describe('data kept on the device', () => {
     expect(callsTo('getFriends')).toBe(2)
   })
 })
+
+describe('taps that only change the view', () => {
+  it('a league’s week and view switches make no request', async () => {
+    app = await boot(() => {})
+    await openEntered()
+    await app.tap('Winter League')
+    const before = app.db.calls.length
+    await app.tap('[data-lgweek="1"]')
+    await app.tap('[data-lgview="individual"]')
+    expect(app.db.calls.slice(before)).toEqual([])
+    expect(document.querySelector('[data-lgview="individual"]').getAttribute('aria-pressed')).toBe('true')
+  })
+  it('showing declined competitions makes no request', async () => {
+    app = await boot(() => {})
+    await app.tap('Competition')
+    await app.tap('[data-tab="events"]')
+    await app.tap('[data-nothanks="1"]')
+    const before = app.db.calls.length
+    await app.tap('Declined (1)')
+    expect(app.db.calls.slice(before)).toEqual([])
+    expect(app.main()).toContain('Hide declined')
+  })
+})

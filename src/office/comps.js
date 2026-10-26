@@ -3,7 +3,7 @@
 // Members' own events, leagues and knockouts stay with them.
 import * as api from '../api.js'
 import { S } from '../state.js'
-import { $, esc, header, keepScroll, render, toast, top0 } from '../ui.js'
+import { $, esc, header, keepScroll, render, redraw, toast, top0 } from '../ui.js'
 import { addDaysIso, eventDates, eventLastDay, isoDate, leagueWeek, today } from '../dates.js'
 import { eventWhen } from '../season.js'
 import { entryName, roundName, champion } from '../knockout.js'
@@ -60,7 +60,7 @@ export function draw({ evs, comps, kos, members, t }) {
     </div>
   </div>`
 
-  document.querySelectorAll('[data-o-comp]').forEach(b => (b.onclick = () => { S.oComp = b.dataset.oComp; keepScroll(render) }))
+  document.querySelectorAll('[data-o-comp]').forEach(b => (b.onclick = () => { S.oComp = b.dataset.oComp; keepScroll(redraw) }))
   const go = async f => { $('modal').innerHTML = ''; f(); await render(); top0() }
   document.querySelectorAll('[data-o-go]').forEach(b => (b.onclick = () => go(() => {
     const [what, id] = b.dataset.oGo.split(':')

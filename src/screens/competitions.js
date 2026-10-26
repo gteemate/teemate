@@ -3,7 +3,7 @@
 // plus today's field and Create your own event. Lists from competitions.js and signups.js (tested).
 import * as api from '../api.js'
 import { S } from '../state.js'
-import { $, esc, ini, header, keepScroll, render, top0, toast } from '../ui.js'
+import { $, esc, ini, header, keepScroll, render, redraw, top0, toast } from '../ui.js'
 import { isoDate, today, eventDates, hhmm } from '../dates.js'
 import { eventWhen } from '../season.js'
 import { eventFormatName } from '../games.js'
@@ -86,7 +86,7 @@ export function draw({ me, date, members, friends, signups, counts = {}, fees = 
     try { await api.declineSignup(c.id) } catch (err) { toast(err.message); b.disabled = false; return }
     await keepScroll(render); toast(`No thanks to ${c.name}: it’s under Declined if you change your mind`)
   }))
-  if ($('declined')) $('declined').onclick = () => { S.showDeclined = !S.showDeclined; keepScroll(render) }
+  if ($('declined')) $('declined').onclick = () => { S.showDeclined = !S.showDeclined; keepScroll(redraw) }
   document.querySelectorAll('[data-ko]').forEach(c => (c.onclick = () => go(() => { S.koComp = +c.dataset.ko; S.koRound = null; S.koFrom = 'comp'; S.aview = 'ko' })))
   document.querySelectorAll('[data-wd]').forEach(b => (b.onclick = async () => {
     if (b.dataset.armed !== '1') { b.dataset.armed = '1'; b.textContent = 'Tap again to withdraw'; return }
