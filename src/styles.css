@@ -1053,3 +1053,5 @@ button.lrow.ci-m{width:100%;text-align:left;background:none;border:0;border-top:
 .tick:disabled{cursor:default}
 .ftagreed{border-color:var(--live)}
 .ftline b{color:var(--ink)}
+.ftcard{display:grid;gap:10px}
+.ftcard>b{font-size:18px}

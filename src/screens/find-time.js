@@ -7,6 +7,7 @@ import { $, esc, header, keepScroll, render, toast, top0, goBack } from '../ui.j
 import { fromIso, longDay, isoDate, addDaysIso, nextDays } from '../dates.js'
 
 const PARTS = [['morning', 'Morning'], ['afternoon', 'Afternoon'], ['evening', 'Evening']]
+const gone = part => { const h = new Date().getHours(); return (part === 'morning' && h >= 12) || (part === 'afternoon' && h >= 17) }
 const MAX = 6
 let sending = false
 
@@ -34,10 +35,10 @@ export function draw({ grid, me }) {
     return `<td><button class="tick ${cls}" ${p.id === me.id ? `data-t="${t.id}"` : 'disabled'} aria-label="${esc(p.name)}, ${dayLabel(t.day)} ${t.part}: ${a === true ? 'can' : a === false ? 'can’t' : 'not answered'}">${a === true ? '✓' : a === false ? '✕' : '·'}</button></td>`
   }
   $('main').innerHTML = `<div class="screen">
-    ${agreed ? `<div class="card ftagreed"><b>Everyone can do ${dayLabel(agreed.day)} · ${agreed.part}</b>
+    ${agreed ? `<div class="card ftcard ftagreed"><b>Everyone can do ${dayLabel(agreed.day)} · ${agreed.part}</b>
       <span class="hint">Book a tee time that ${agreed.part}: the tee sheet opens on that day with ${esc(others.map(p => first(p.name)).join(' and '))} ready to add.</span>
       <button class="primary" id="ft-book">Book a tee time · ${dayLabel(agreed.day)}</button></div>` : ''}
-    <div class="card"><b>Who can do which?</b>
+    <div class="card ftcard"><b>Who can do which?</b>
       ${times.length ? `<div class="ftwrap"><table class="ftgrid"><thead><tr><th></th>${players.map(p => `<th class="${p.id === me.id ? 'me' : ''}">${p.id === me.id ? 'You' : esc(first(p.name))}</th>`).join('')}</tr></thead>
         <tbody>${times.map(t => `<tr data-row="${t.id}" class="${t.id === grid.agreed ? 'all' : ''}"><td>${dayLabel(t.day)}<small>${partLabel(t.part)}</small></td>${players.map(p => cell(t, p)).join('')}</tr>`).join('')}</tbody></table></div>
         <span class="hint">${players.filter(answered).length} of ${players.length} have answered. Tap your column: ✓ you can, again for ✕, again to clear.</span>`
@@ -64,10 +65,11 @@ function drawSuggest(grid, me, others) {
   for (let d = today; d <= m.by && days.length < 42; d = addDaysIso(d, 1)) days.push(d)
   const taken = new Set(times.map(t => `${t.day}|${t.part}`)), pick = S.ftPick, n = pick.length
   $('main').innerHTML = `<div class="screen">
-    <div class="card"><b>When suits you?</b><span class="hint">Pick up to ${MAX}, up to ${dayLabel(m.by)}. ${esc(others.map(p => first(p.name)).join(', '))} tick the ones they can do.</span>
+    <div class="card ftcard"><b>When suits you?</b><span class="hint">Pick up to ${MAX}, up to ${dayLabel(m.by)}. ${esc(others.map(p => first(p.name)).join(', '))} tick the ones they can do.</span>
       <div class="ftdays">${days.map(d => `<div class="ftday"><span class="ftd">${dayLabel(d).replace(' ', '<small>')}</small></span><div class="ftparts">${PARTS.map(([k, l]) => {
         const key = `${d}|${k}`
         if (taken.has(key)) return '<span class="ftgone">Suggested</span>'
+        if (d === today && gone(k)) return '<span class="ftgone">Gone</span>' // today's morning after midday, afternoon after 5pm
         const on = pick.includes(key)
         return `<button aria-pressed="${on}" data-k="${key}" ${!on && n >= MAX ? 'disabled' : ''}>${l}</button>`
       }).join('')}</div></div>`).join('')}</div>
