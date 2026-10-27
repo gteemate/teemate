@@ -51,9 +51,9 @@ async function run() {
     const [me, playerEvents, requests, hutState, notices, waiting] = await Promise.all([api.getMe(), api.getMyPlayerEvents(), api.getMyTeeTimeRequests(), hutNow(), api.getBookingNotices(),
       api.getPaperConfirms().catch(() => [])])
     if (!me) return clear()
-    paperWaiting = waiting.filter(c => c.confirmer === me.id) // the club office confirms its own from Office → Today
+    paperWaiting = waiting.filter(c => !c.forOffice && c.confirmer === me.id) // the club office confirms its own from Office → Today
     paperMembers = paperWaiting.length ? await api.getMembers() : []
-    const paper = paperWaiting.map(c => ({ id: c.id, ...confirmLine(c, paperMembers) }))
+    const paper = paperWaiting.map(c => ({ id: c.id, at: c.at, ...confirmLine(c, paperMembers) }))
     const all = pickAlerts({ me, playerEvents, requests, date: isoDate(today()), hut: hutState, notices, paper }).filter(a => !done.has(a.key))
     // The Scores tab asks about a challenge itself, so it doesn't drop down there too.
     showAlerts(all.filter(a => !(a.kind === 'challenge' && S.tab === 'scores')))

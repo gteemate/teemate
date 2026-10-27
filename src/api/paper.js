@@ -13,11 +13,10 @@ async function toBase64(blob) {
 }
 
 /**
- * Read the cropped score grids (one per card). pars: the course's 18 pars; open: the card's open hole indexes;
- * players: how many are on the card. → { parMatches, cards: [{ columns: [{ label, holes: [{ score, sure }], out, in, total }] }] }
+ * Read the cropped score grids (one per card). pars: the course's 18 pars. → { parMatches, cards: [{ columns: [{ label, holes: [{ score, sure }], out, in, total }] }] }
  */
-export async function readScorecard({ images, pars, open, players }) {
-  const body = { images: await Promise.all(images.map(toBase64)), pars, open, players }
+export async function readScorecard({ images, pars }) {
+  const body = { images: await Promise.all(images.map(toBase64)), pars }
   const { data, error } = await sb.functions.invoke('read-scorecard', { body })
   if (error) {
     let msg = null

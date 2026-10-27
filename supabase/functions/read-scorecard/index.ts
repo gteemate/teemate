@@ -17,21 +17,25 @@ Deno.serve(async req => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
   if (req.method !== 'POST') return reply({ error: 'Not found' }, 404)
 
-  const auth = req.headers.get('Authorization') ?? ''
-  const sb = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: auth } } })
-  const taken = await sb.rpc('take_paper_read')
-  if (taken.error) return reply({ error: taken.error.message }, 400)
-
-  let body: { images?: string[]; pars?: number[]; open?: number[]; players?: number }
+  let body: { images?: string[]; pars?: number[] }
   try { body = await req.json() } catch { return reply({ error: UNREADABLE }, 400) }
   const images = (body.images ?? []).slice(0, 2)
   if (!images.length || !Array.isArray(body.pars) || body.pars.length !== 18) return reply({ error: UNREADABLE }, 400)
+
+  // As the member: is it switched on, and have they reads left today? A read is only counted once it's been read.
+  const auth = req.headers.get('Authorization') ?? ''
+  const sb = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: auth } } })
+  const allowed = await sb.rpc('can_read_paper')
+  if (allowed.error) return reply({ error: allowed.error.message }, 400)
 
   try {
     const msg = await anthropic.beta.messages.create({ ...buildRequest({ images, pars: body.pars }), betas: ['server-side-fallback-2026-07-01'] } as never)
     if (msg.stop_reason === 'refusal' || msg.stop_reason === 'max_tokens') return reply({ error: UNREADABLE }, 400)
     const text = msg.content.find((b: { type: string }) => b.type === 'text') as { text: string } | undefined
-    return reply(checkReply(JSON.parse(text?.text ?? 'null')))
+    const reading = checkReply(JSON.parse(text?.text ?? 'null'))
+    const taken = await sb.rpc('take_paper_read')
+    if (taken.error) return reply({ error: taken.error.message }, 400)
+    return reply(reading)
   } catch (err) {
     console.error('read-scorecard', err)
     return reply({ error: UNREADABLE }, 400)

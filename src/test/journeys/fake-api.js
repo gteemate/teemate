@@ -166,18 +166,19 @@ export function makeWorld(today, setup = () => {}) {
     markPaperCard: async (rid, photos, confirmer) => {
       const r = db.rounds.find(x => x.id === rid)
       if (!r || !r.lineup.some(x => x.m === ME)) throw new Error('Only players on this card can do that.')
+      if (r.paper?.state === 'confirmed') throw new Error('This card’s scores are already confirmed.')
       if (confirmer === ME) throw new Error('Someone else has to confirm your own score.')
       if (confirmer != null && !r.lineup.some(x => x.m === confirmer)) throw new Error('The person confirming your score has to be on this card.')
       r.paper = { by: ME, confirmer: confirmer ?? null, state: 'waiting', note: null, photos: Math.min(2, Math.max(0, photos)) }
     },
     confirmPaperScore: async rid => {
       const r = db.rounds.find(x => x.id === rid), admin = db.asOffice || db.members.find(m => m.id === ME)?.admin
-      if (r?.paper?.state !== 'waiting' || !(admin || r.paper.confirmer === ME)) throw new Error('Only the person asked to confirm this score can confirm it.')
+      if (r?.paper?.state !== 'waiting' || !(admin || (r.paper.confirmer === ME && r.lineup.some(x => x.m === ME)))) throw new Error('Only the person asked to confirm this score can confirm it.')
       Object.assign(r.paper, { state: 'confirmed', note: null, confirmer: admin && r.paper.confirmer !== ME ? null : r.paper.confirmer })
     },
     sendBackPaperScore: async (rid, note) => {
       const r = db.rounds.find(x => x.id === rid), admin = db.asOffice || db.members.find(m => m.id === ME)?.admin
-      if (r?.paper?.state !== 'waiting' || !(admin || r.paper.confirmer === ME)) throw new Error('Only the person asked to confirm this score can confirm it.')
+      if (r?.paper?.state !== 'waiting' || !(admin || (r.paper.confirmer === ME && r.lineup.some(x => x.m === ME)))) throw new Error('Only the person asked to confirm this score can confirm it.')
       if (!note?.trim()) throw new Error('Add a short note saying what isn’t right.')
       Object.assign(r.paper, { state: 'sent_back', note: note.trim() })
     },
@@ -189,8 +190,10 @@ export function makeWorld(today, setup = () => {}) {
     },
     getPaperConfirms: async () => {
       const admin = db.asOffice || db.members.find(m => m.id === ME)?.admin
-      return copy(db.rounds.filter(r => r.paper?.state === 'waiting' && (r.paper.confirmer === ME || (r.paper.confirmer == null && admin)))
-        .map(r => ({ id: r.id, date: r.date, paperBy: r.paper.by, paperPhotos: r.paper.photos, confirmer: r.paper.confirmer, lineup: r.lineup, scores: r.scores, game: r.game })))
+      const forOffice = r => r.paper.confirmer == null || !r.lineup.some(x => x.m === r.paper.confirmer) // nobody asked, or they've left the card
+      return copy(db.rounds.filter(r => r.paper?.state === 'waiting' && (forOffice(r) ? admin : r.paper.confirmer === ME))
+        .map(r => ({ id: r.id, date: r.date, paperBy: r.paper.by, paperPhotos: r.paper.photos, confirmer: r.paper.confirmer, forOffice: forOffice(r), at: r.updatedAt ?? '',
+          lineup: r.lineup, scores: r.scores, game: r.game })))
     },
     uploadCardPhoto: async (rid, n) => { db.photos.push(`${rid}/${n}.jpg`) },
     cardPhotoUrl: async (rid, n) => `data:image/gif;base64,R0lGODlhAQABAAAAACw=#${rid}-${n}`,

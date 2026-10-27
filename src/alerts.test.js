@@ -54,8 +54,8 @@ describe('pickAlerts: what drops down from the header', () => {
   })
 
   it('a paper score for me to confirm: who, the score, and Confirm / Not right / See the holes / Later', () => {
-    const [a] = pickAlerts({ ...base, paper: [{ id: 41, byName: 'Alex Hart', gross: 85, out: 41, in: 44 }] })
-    expect(a).toMatchObject({ key: 'pc:41', kind: 'paperconfirm', title: 'Please confirm a score', detail: 'Alex Hart · 85 (Out 41 · In 44)', ref: { roundId: 41 } })
+    const [a] = pickAlerts({ ...base, paper: [{ id: 41, at: 't1', byName: 'Alex Hart', gross: 85, out: 41, in: 44 }] })
+    expect(a).toMatchObject({ key: 'pc:41:t1', kind: 'paperconfirm', title: 'Please confirm a score', detail: 'Alex Hart · 85 (Out 41 · In 44)', ref: { roundId: 41 } })
     expect(ids(a)).toEqual(['pconfirm', 'pback', 'pholes', 'later'])
   })
 

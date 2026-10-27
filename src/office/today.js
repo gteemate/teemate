@@ -13,7 +13,7 @@ export async function load() {
   const [s, sheet, hut, pins, events, signups, members, paper] = await Promise.all([summary(), api.getTeeSheet(date), api.getHut(), api.getPins(), api.getEvents(), api.getSignups(), api.getMembers(),
     api.getPaperConfirms().catch(() => [])])
   const orders = hut.on ? await api.hutOrdersToday() : []
-  return { ...s, date, sheet: sheet ?? [], hut, orders, pinsToday: pins.date === date, events, signups, members, paper: paper.filter(c => c.confirmer == null) } // left for the office
+  return { ...s, date, sheet: sheet ?? [], hut, orders, pinsToday: pins.date === date, events, signups, members, paper: paper.filter(c => c.forOffice) } // left for the office (or the player asked has left the card)
 }
 
 export function draw({ joins, treqs, disputes, date, sheet, hut, orders, pinsToday, events, signups, members, paper = [] }) {

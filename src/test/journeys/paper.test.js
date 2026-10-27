@@ -170,6 +170,9 @@ describe('paper scorecards: reading the group’s cards', () => {
     await app.tap('#pf-save')
     const r = card()
     expect(r.done.map((d, h) => (d ? h + 1 : 0)).filter(Boolean)).toEqual([1, 2, 3, 4, 5, 6, 10, 11, 12])
+    const pars = (await (await import('../../api.js')).getCourse()).holes.map(h => h.par)
+    for (const h of [6, 7, 8, 12, 13, 14, 15, 16, 17]) expect(r.scores[h][col(10)], `closed hole ${h + 1} keeps the card's starting score`).toBe(pars[h])
+
   })
 
   it('a two-ball: Only one card goes straight to reading', async () => {
@@ -212,6 +215,24 @@ describe('paper scorecards: confirming the uploader’s score', () => {
     await app.type('#pb-note', 'Hole 14 was a 6')
     await app.tap('#pb-send')
     expect(app.db.rounds.find(r => r.id === 61).paper).toMatchObject({ state: 'sent_back', note: 'Hole 14 was a 6' })
+  })
+
+  it('found in review: the player asked has left the card, so it’s left for the office', async () => {
+    app = await boot(db => { paperCard(db, { confirmer: 12 }); db.asOffice = true }) // Orla isn't on the card
+    expect(app.main()).toContain('Score to confirm: Tom Byrne · 81')
+  })
+
+  it('found in review: sent back, then resent, it drops down again without reopening the app', async () => {
+    app = await boot(db => paperCard(db))
+    await app.settle()
+    await app.tap('[data-al="pback"]')
+    await app.type('#pb-note', 'Hole 14 was a 6')
+    await app.tap('#pb-send')
+    const r = app.db.rounds.find(x => x.id === 61)
+    Object.assign(r.paper, { state: 'waiting', note: null }); r.updatedAt = 'resent' // Tom fixes it and sends it again
+    await app.tap('Course')
+    await app.settle()
+    expect(document.getElementById('alerts').textContent).toContain('Please confirm a score')
   })
 
   it('the club office confirms one left for the office, from Today', async () => {

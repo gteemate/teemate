@@ -44,7 +44,7 @@ export function pickAlerts({ me, playerEvents, requests, date, now = Date.now(),
   }))
   // A score read from a paper card that I was asked to confirm.
   const confirm = paper.map(p => ({
-    key: `pc:${p.id}`, kind: 'paperconfirm', ref: { roundId: p.id },
+    key: `pc:${p.id}:${p.at}`, kind: 'paperconfirm', ref: { roundId: p.id }, // a resent score is a new alert
     title: 'Please confirm a score', detail: `${p.byName} · ${p.gross} (Out ${p.out} · In ${p.in})`,
     actions: [{ id: 'pconfirm', label: 'Confirm', primary: true }, { id: 'pback', label: 'Not right' }, { id: 'pholes', label: 'See the holes' }, later],
   }))

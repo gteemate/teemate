@@ -118,6 +118,48 @@ do $$ declare e text; v_r bigint; v_list jsonb; i int; begin
   reset role;
   perform t.ok('The office can confirm even when a player was picked', (select paper_state = 'confirmed' from public.rounds where id = v_r));
 
+  -- Found in review: a confirmed card can't be marked again
+  perform t.act_as(991102);
+  e := t.err(format('select public.mark_paper_card(%s, 1, 991104)', v_r));
+  perform t.ok('A confirmed card can''t be marked again', e like '%already confirmed%', e);
+  reset role;
+
+  -- Found in review: the player asked leaves the card; the office sees it and can confirm, they can't
+  perform set_config('teemate.paper', 'on', true);
+  update public.rounds set paper_state = 'waiting', paper_confirmer = 991104 where id = v_r;
+  perform set_config('teemate.paper', '', true);
+  update public.rounds set lineup = '[{"m":991102},{"m":991103}]' where id = v_r;
+  perform t.act_as(991104);
+  perform t.ok('Someone taken off the card no longer has it to confirm', jsonb_array_length(public.my_paper_confirms()) = 0);
+  e := t.err(format('select public.confirm_paper_score(%s)', v_r));
+  perform t.ok('…and can''t confirm it', e like '%confirm%', e);
+  reset role;
+  perform t.act_as(991101);
+  v_list := public.my_paper_confirms();
+  perform t.ok('The office sees it, marked for the office', (select bool_or((x->>'id')::bigint = v_r and (x->>'forOffice')::boolean) from jsonb_array_elements(v_list) x), v_list::text);
+  reset role;
+
+  -- Found in review: a read is only counted once the card has been read
+  perform t.act_as(991104);
+  perform public.can_read_paper();
+  perform public.can_read_paper();
+  reset role;
+  perform t.ok('Checking the limit doesn''t use a read', not exists (select 1 from public.paper_reads where member_id = 991104 and n > 0));
+  perform t.act_as(991102);
+  e := t.err('select public.can_read_paper()');
+  perform t.ok('The limit check refuses after 10', e like '%read 10 cards today%', e);
+  reset role;
+
+  -- Found in review: deleting a member who uploaded or was asked to confirm a card
+  perform set_config('teemate.paper', 'on', true);
+  update public.rounds set lineup = '[{"m":991102},{"m":991103},{"m":991104}]', paper_confirmer = 991104 where id = v_r;
+  perform set_config('teemate.paper', '', true);
+  perform t.act_as(991101);
+  e := t.err('select public.admin_delete_member(991104)');
+  reset role;
+  perform t.ok('The office can delete a member who was asked to confirm a card', e is null, e);
+  perform t.ok('…and the card is left for the office', (select paper_confirmer is null from public.rounds where id = v_r));
+
   -- Photos: players on the card and the office, nobody else
   perform t.ok('The scorecards bucket is private', (select not public from storage.buckets where id = 'scorecards'));
   insert into storage.objects (bucket_id, name, owner) values ('scorecards', v_r || '/1.jpg', null);
