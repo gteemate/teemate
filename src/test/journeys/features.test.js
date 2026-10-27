@@ -1211,6 +1211,16 @@ describe('the tee sheet shows who’s out', () => {
     await app.tap(`[data-id="${at(app.db, 600).id}"]`)
     expect(app.toast()).toBe('Within 2 hours of your 09:30 tee time. Tee times have to be at least 2 hours apart.')
   })
+  it('the 2 hours apply before my tee time too: an earlier time shows its names greyed and says why', async () => {
+    app = await boot(db => { db.book(0, at(db, 600).id, []); db.book(3, at(db, 500).id, [5]) }) // mine 10:00; 08:20 is 1h40 before
+    await sheet()
+    const row = document.querySelector(`[data-id="${at(app.db, 500).id}"]`)
+    expect(row.classList.contains('full')).toBe(true)
+    expect(row.textContent).toContain("Ciarán O'Neill")
+    await app.tap(`[data-id="${at(app.db, 500).id}"]`)
+    expect(app.toast()).toBe('Within 2 hours of your 10:00 tee time. Tee times have to be at least 2 hours apart.')
+    expect(document.querySelector(`[data-id="${at(app.db, 480).id}"]`).classList.contains('full')).toBe(false) // 08:00 is exactly 2 hours: fine
+  })
   it('a full time shows all four names greyed; tapping says it’s full', async () => {
     app = await boot(db => db.book(3, at(db, 720).id, [5, 7, 9]))
     await sheet()
