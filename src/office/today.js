@@ -6,16 +6,18 @@ import { $, esc, ini, header, keepScroll, render, toast, top0 } from '../ui.js'
 import { eventDates, eventLastDay, fromIso, hhmm, isoDate, longDay, today, addDaysIso } from '../dates.js'
 import { entryName, roundName } from '../knockout.js'
 import { summary, forgetSummary, clubComp, clubEvent, panel } from './shell.js'
+import { confirmLine, noteSheet, reviewSheet } from '../paper/review.js'
 
 export async function load() {
   const date = isoDate(today())
-  const [s, sheet, hut, pins, events, signups, members] = await Promise.all([summary(), api.getTeeSheet(date), api.getHut(), api.getPins(), api.getEvents(), api.getSignups(), api.getMembers()])
+  const [s, sheet, hut, pins, events, signups, members, paper] = await Promise.all([summary(), api.getTeeSheet(date), api.getHut(), api.getPins(), api.getEvents(), api.getSignups(), api.getMembers(),
+    api.getPaperConfirms().catch(() => [])])
   const orders = hut.on ? await api.hutOrdersToday() : []
-  return { ...s, date, sheet: sheet ?? [], hut, orders, pinsToday: pins.date === date, events, signups, members }
+  return { ...s, date, sheet: sheet ?? [], hut, orders, pinsToday: pins.date === date, events, signups, members, paper: paper.filter(c => c.forOffice) } // left for the office (or the player asked has left the card)
 }
 
-export function draw({ joins, treqs, disputes, date, sheet, hut, orders, pinsToday, events, signups, members }) {
-  const n = joins.length + treqs.length + disputes.length
+export function draw({ joins, treqs, disputes, date, sheet, hut, orders, pinsToday, events, signups, members, paper = [] }) {
+  const n = joins.length + treqs.length + disputes.length + paper.length
   header(longDay(fromIso(date)), n ? `<b>${n}</b> thing${n === 1 ? '' : 's'} waiting for you` : 'Nothing waiting for you')
   const name = id => members.find(m => m.id === id)?.name ?? 'A member'
   const booked = sheet.filter(s => s.players.length), players = sheet.reduce((t, s) => t + s.players.length, 0), guests = sheet.reduce((t, s) => t + s.players.filter(p => p.guest).length, 0)
@@ -41,6 +43,8 @@ export function draw({ joins, treqs, disputes, date, sheet, hut, orders, pinsTod
         <span class="oacts"><button class="ghost sm" data-o-refuse="${r.id}">Refuse</button><button class="primary sm" data-o-letin="${r.id}">Let in</button></span></div>`).join('')}
       ${treqs.map(r => `<div class="orow"><span class="oic">📨</span><span class="ot"><b>${esc(r.member?.name ?? name(r.memberId))}: ${longDay(fromIso(r.date))} at ${hhmm(r.time)}</b><span>${esc(who(r).join(', '))} · “${esc(r.reason)}”</span></span>
         <span class="oacts"><button class="ghost sm" data-o-decline="${r.id}">Decline</button><button class="primary sm" data-o-book="${r.id}">Book it</button></span></div>`).join('')}
+      ${paper.map(c => { const l = confirmLine(c, members); return `<div class="orow"><span class="oic">📷</span><span class="ot"><b>Score to confirm: ${esc(l.byName)} · ${l.gross}</b><span>Out ${l.out} · In ${l.in} · read from their paper card. Check it against the card handed in.</span></span>
+        <span class="oacts"><button class="ghost sm" data-o-plook="${c.id}">See the card</button><button class="ghost sm" data-o-pback="${c.id}">Not right</button><button class="primary sm" data-o-pconf="${c.id}">Confirm</button></span></div>` }).join('')}
       ${disputes.map(d => `<div class="orow"><span class="oic">⚠️</span><span class="ot"><b>${esc(d.comp.name)}: ${esc(entryName(d.match.aEntry, d.entries, members))} v ${esc(entryName(d.match.bEntry, d.entries, members))}</b><span>${roundName(d.match.round, d.rounds)} · the result was questioned</span></span>
         <span class="oacts"><button class="primary sm" data-o-ko="${d.comp.id}">Set the result</button></span></div>`).join('')}
     </div>` : '<div class="card empty-state">All done. Nothing needs you right now.</div>'}
@@ -50,6 +54,13 @@ export function draw({ joins, treqs, disputes, date, sheet, hut, orders, pinsTod
 
   const done = async msg => { forgetSummary(); await keepScroll(render); toast(msg) }
   if ($('o-pins')) $('o-pins').onclick = async () => { S.aview = 'pins'; await render(); top0() }
+  // Paper scores left for the office: confirm against the card handed in, or send back with a note.
+  const pc = id => paper.find(c => c.id === +id)
+  const confirmP = async id => { try { await api.confirmPaperScore(+id) } catch (err) { toast(err.message); return } await keepScroll(render); toast('Score confirmed') }
+  const backP = id => async note => { await api.sendBackPaperScore(+id, note); await keepScroll(render); toast('Sent back to the player') }
+  document.querySelectorAll('[data-o-pconf]').forEach(b => (b.onclick = () => confirmP(b.dataset.oPconf)))
+  document.querySelectorAll('[data-o-pback]').forEach(b => (b.onclick = () => noteSheet(backP(b.dataset.oPback))))
+  document.querySelectorAll('[data-o-plook]').forEach(b => (b.onclick = () => reviewSheet(pc(b.dataset.oPlook), members, { confirm: () => confirmP(b.dataset.oPlook), back: backP(b.dataset.oPlook) })))
   document.querySelectorAll('[data-o-letin]').forEach(b => (b.onclick = async () => {
     const r = joins.find(x => x.id === +b.dataset.oLetin)
     b.disabled = true

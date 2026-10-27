@@ -1,9 +1,10 @@
-// Club office → Members: people asking to join at the top, then everyone (search by name or email). A member opens
+// Club office → Members: people asking to join at the top, then everyone (search by name or email, or pick
+// a surname letter). A member opens
 // in a side panel: name, email (their sign-in), which section they play in, admin and halfway hut staff, guest
 // points used, and reset login, remove access or delete. Handicaps and scores belong to the player app.
 import * as api from '../api.js'
 import { S } from '../state.js'
-import { $, esc, ini, header, keepScroll, render, toast } from '../ui.js'
+import { $, esc, ini, header, keepScroll, render, redraw, toast } from '../ui.js'
 import { summary, forgetSummary, panel } from './shell.js'
 
 export async function load() {
@@ -14,24 +15,36 @@ export async function load() {
   return { joins: s.joins, list, allowance: points.allowance, me }
 }
 
+const AZ = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ']
+const initial = name => (name.trim().split(/\s+/).pop()[0] || '').toUpperCase() // by surname
+
 const status = m => (!m.email ? 'No access' : m.signedIn ? 'Signed in' : 'Approved: not signed in yet')
 
 export function draw({ joins, list, allowance, me }) {
   const withAccess = list.filter(m => m.email).length
   header('Members', `<b>${list.length}</b> members · ${withAccess} can sign in${joins.length ? ` · <b>${joins.length}</b> asking to join` : ''}`)
   const q = (S.oQ ?? '').trim().toLowerCase()
-  const shown = q ? list.filter(m => m.name.toLowerCase().includes(q) || (m.email || '').includes(q)) : list
+  const none = list.filter(m => allowance - m.used <= 0) // no guest points left this year
+  const pool = S.oNoPoints ? none : list
+  const matched = q ? pool.filter(m => m.name.toLowerCase().includes(q) || (m.email || '').includes(q)) : pool
+  const has = new Set(matched.map(m => initial(m.name)))
+  const az = S.oAZ && has.has(S.oAZ) ? S.oAZ : ''
+  const shown = az ? matched.filter(m => initial(m.name) === az) : matched
   $('main').innerHTML = `<div class="screen office">
     <div class="obar"><div class="search"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="o-q" type="search" placeholder="Search by name or email" value="${esc(S.oQ ?? '')}" autocomplete="off"></div>
+      <button class="ghost sm" id="o-nopts" aria-pressed="${!!S.oNoPoints}">No points left (${none.length})</button>
       <button class="primary sm" id="o-add">Add a member</button></div>
     ${joins.length ? `<h3>Asking to join</h3><div class="card olist">${joins.map(r => `<div class="orow"><span class="av">${esc(ini(r.name))}</span><span class="ot"><b>${esc(r.name)}</b><span>${esc(r.email)} · asked ${new Date(r.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span></span>
       <span class="oacts"><button class="ghost sm" data-o-refuse="${r.id}">Refuse</button><button class="primary sm" data-o-letin="${r.id}">Let in</button></span></div>`).join('')}</div>` : ''}
-    <h3>Members</h3>
+    <h3>${S.oNoPoints ? 'Members with no guest points left' : 'Members'}${az ? ` · surname ${az}` : ''}</h3>
+    <div class="oaz" role="group" aria-label="Surname starts with"><button data-o-az="" aria-pressed="${!az}">All</button>${AZ.map(l => `<button data-o-az="${l}" aria-pressed="${az === l}" ${has.has(l) ? '' : 'disabled'}>${l}</button>`).join('')}</div>
     <div class="card olist">${shown.map(m => `<button class="orow obtn" data-o-m="${m.id}"><span class="av">${esc(ini(m.name))}</span><span class="ot"><b>${esc(m.name)}${m.id === me.id ? ' (you)' : ''}</b><span>${m.email ? esc(m.email) : 'No email'} · ${status(m)}</span></span>
       <span class="otags">${m.admin ? '<span class="pill gold">Admin</span>' : ''}${m.hutStaff ? '<span class="pill">Hut staff</span>' : ''}<span class="pill ghosty">Guest points ${allowance - m.used} of ${allowance}</span></span></button>`).join('') || '<div class="empty-state">No member matches.</div>'}</div>
   </div>`
 
   const done = async msg => { forgetSummary(); $('modal').innerHTML = ''; await keepScroll(render); toast(msg) }
+  document.querySelectorAll('[data-o-az]').forEach(b => (b.onclick = () => { S.oAZ = b.dataset.oAz; keepScroll(redraw) }))
+  $('o-nopts').onclick = () => { S.oNoPoints = !S.oNoPoints; keepScroll(redraw) } // filter: members with no guest points left
   const qi = $('o-q')
   qi.oninput = () => { S.oQ = qi.value; const p = qi.selectionStart; render().then(() => { const n = $('o-q'); n.focus(); n.setSelectionRange(p, p) }) }
   document.querySelectorAll('[data-o-letin]').forEach(b => (b.onclick = async () => {
@@ -54,7 +67,7 @@ function addSheet(done) {
   panel(`<h4>Add a member</h4>
     <label for="o-name">Full name</label><input id="o-name" autocomplete="off" placeholder="e.g. Paul Hughes">
     <label for="o-email">Email <span class="opt">lets them sign in</span></label><input id="o-email" type="email" inputmode="email" autocomplete="off" placeholder="Leave blank for no access yet">
-    <p class="gerr" id="o-err" role="alert"></p><div class="gm-btns"><button class="primary" id="o-save">Add member</button></div>`)
+    <p class="gerr" id="o-err" role="alert"></p><div class="gm-btns"><button class="primary" id="o-save">Add member</button></div>`, null, { small: true })
   $('o-name').focus()
   $('o-save').onclick = async () => {
     const name = $('o-name').value.trim(), email = $('o-email').value.trim()

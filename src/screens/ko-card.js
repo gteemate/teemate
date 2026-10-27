@@ -8,19 +8,21 @@ import { $, esc, ini, sur, header, render, top0, goBack } from '../ui.js'
 import { courseHandicap, shotsOnHole } from '../scoring.js'
 import { buildLibrary, gameSpec, teeRating } from '../games.js'
 import { entryName, entryPlayers, koCardState, koSpec, roundName } from '../knockout.js'
+import { openCourse } from '../open-holes.js'
+import { isoDate, today as todayDate } from '../dates.js'
 
 const COL = ['var(--gold)', 'var(--flag-back)'] // side A, side B
 
-/** The state of every fixture with a scorecard: { [matchId]: koCardState + { card } }. */
-export function koStates({ matches, entries, members, course, games, cards }) {
+/** The state of every fixture with a scorecard: { [matchId]: koCardState + { card } }, each on its round's open holes. */
+export function koStates({ matches, entries, members, course, games, cards, roundHoles = {}, today = isoDate(todayDate()) }) {
   const L = buildLibrary(games), ch = id => courseHandicap(members.find(m => m.id === id)?.hcp ?? 0, teeRating(course))
   const out = {}
   for (const m of matches) {
     const card = m.roundId && cards[m.roundId]
     if (!card) continue
     const sides = [entryPlayers(m.aEntry, entries), entryPlayers(m.bEntry, entries)]
-    const lib = L.lib[card.game], st = koCardState(card, course.holes, sides, ch, koSpec(lib?.play ? gameSpec(lib) : null, sides[0].length === 2))
-    if (st) out[m.id] = { ...st, card }
+    const lib = L.lib[card.game], st = koCardState(card, openCourse(course.holes, roundHoles[m.round]), sides, ch, koSpec(lib?.play ? gameSpec(lib) : null, sides[0].length === 2))
+    if (st && (st.finished || card.date >= today)) out[m.id] = { ...st, card } // an earlier day's card left unfinished isn't the match any more
   }
   return out
 }
@@ -39,7 +41,7 @@ export async function load() {
   if (!comp) return { comp: null }
   const ko = await api.getKnockout(comp.id), m = ko.matches.find(x => x.id === S.koCard)
   const cards = m?.roundId ? await api.getCardsById([m.roundId]) : {}
-  return { comp, m, ...ko, members, course, st: m ? koStates({ matches: [m], entries: ko.entries, members, course, games, cards })[m.id] : null }
+  return { comp, m, ...ko, members, course, st: m ? koStates({ matches: [m], entries: ko.entries, members, course, games, cards, roundHoles: comp.roundHoles })[m.id] : null }
 }
 
 export function draw({ comp, m, matches = [], entries = [], members, course, st }) {
@@ -47,22 +49,24 @@ export function draw({ comp, m, matches = [], entries = [], members, course, st 
   if (!comp || !m || !st) { header('Scorecard', '', back); $('main').innerHTML = '<div class="screen"><div class="empty-state">This scorecard isn’t available any more.</div></div>'; return }
   const rounds = Math.max(...matches.map(x => x.round)), name = id => entryName(id, entries, members)
   header(`${esc(name(m.aEntry))} v ${esc(name(m.bEntry))}`, `${esc(comp.name)} · ${roundName(m.round, rounds)}`, back)
-  const holes = course.holes, run = st.run, pname = id => members.find(x => x.id === id)?.name ?? 'Former member'
+  // The round's open holes: st's runs and scores are by place among them (j); the card shows the course's holes (i).
+  const holes = course.holes, open = openCourse(holes, comp.roundHoles?.[m.round]), at = new Map(open.map((h, j) => [h.i, j])), run = st.run, pname = id => members.find(x => x.id === id)?.name ?? 'Former member'
   const sideEl = (k, right) => { const ps = st.players.filter(p => p.side === k)
     return `<div class="mside${right ? ' r' : ''}"><span class="pairav">${ps.map(p => `<span class="av" style="border-color:${COL[k]}">${ini(pname(p.id))}</span>`).join('')}</span><span>${ps.map(p => esc(sur(pname(p.id)))).join('<br>')}</span></div>` }
   const lead = st.lead == null ? null : st.lead
   const status = !st.thru ? '<b class="ms-big">Not started</b>'
-    : st.finished ? `<b class="ms-big" style="color:${lead == null ? 'var(--muted)' : COL[lead]}">${lead == null ? 'All square' : `${esc(sur(name(lead === 0 ? m.aEntry : m.bEntry)))} won ${esc(st.text)}`}</b><small>${lead == null ? 'After 18: extra holes decide it' : 'On the card'}</small>`
+    : st.finished ? `<b class="ms-big" style="color:${lead == null ? 'var(--muted)' : COL[lead]}">${lead == null ? 'All square' : `${esc(sur(name(lead === 0 ? m.aEntry : m.bEntry)))} won ${esc(st.text)}`}</b><small>${lead == null ? `After ${open.length}: extra holes decide it` : 'On the card'}</small>`
     : `<b class="ms-big" style="color:${lead == null ? 'var(--muted)' : COL[lead]}">${lead == null ? 'AS' : st.text}</b><small>thru ${st.thru}</small>`
-  const won = i => (run[i] == null ? 0 : Math.sign(run[i] - (i ? run[i - 1] : 0)))
-  const dot = i => { const d = run[i]; return `<div class="msh"><span class="mshn">${i + 1}</span><b style="color:${d ? COL[d > 0 ? 0 : 1] : 'var(--muted)'}">${d == null ? '–' : d === 0 ? 'AS' : Math.abs(d)}${d ? '<small>▲</small>' : ''}</b></div>` }
+  const wonAt = j => (run[j] == null ? 0 : Math.sign(run[j] - (j ? run[j - 1] : 0))), won = i => (at.has(i) ? wonAt(at.get(i)) : 0)
+  const g = (p, i) => (at.has(i) ? p.gross[at.get(i)] : null)
+  const dot = j => { const d = run[j]; return `<div class="msh"><span class="mshn">${open[j].n}</span><b style="color:${d ? COL[d > 0 ? 0 : 1] : 'var(--muted)'}">${d == null ? '–' : d === 0 ? 'AS' : Math.abs(d)}${d ? '<small>▲</small>' : ''}</b></div>` }
   const table = (from, label) => {
     const idx = Array.from({ length: 9 }, (_, k) => from + k), tot = f => idx.reduce((t, i) => t + (f(i) ?? 0), 0)
     const row = p => { const mineWin = p.side === 0 ? 1 : -1
-      const cells = idx.map(i => `<td class="${won(i) === mineWin ? `mwon kw${p.side}` : ''}">${p.gross[i] ?? ''}<i>${'•'.repeat(Math.max(0, shotsOnHole(p.ph, holes[i].si)))}</i></td>`).join('')
-      return `<tr><th style="color:${COL[p.side]}">${esc(sur(pname(p.id)))}<small>(${p.ph})</small></th>${cells}<td class="mtot">${idx.some(i => p.gross[i] != null) ? tot(i => p.gross[i]) : ''}</td></tr>` }
+      const cells = idx.map(i => (!at.has(i) ? '<td></td>' : `<td class="${won(i) === mineWin ? `mwon kw${p.side}` : ''}">${g(p, i) ?? ''}<i>${'•'.repeat(Math.max(0, shotsOnHole(p.ph, open[at.get(i)].si, open.length)))}</i></td>`)).join('')
+      return `<tr><th style="color:${COL[p.side]}">${esc(sur(pname(p.id)))}<small>(${p.ph})</small></th>${cells}<td class="mtot">${idx.some(i => g(p, i) != null) ? tot(i => g(p, i)) : ''}</td></tr>` }
     return `<div class="card mcardtbl"><table class="msc"><thead><tr><th>${label}</th>${idx.map(i => `<th>${i + 1}</th>`).join('')}<th>Tot</th></tr></thead><tbody>
-      <tr class="mpar"><th>Par</th>${idx.map(i => `<td>${holes[i].par}</td>`).join('')}<td class="mtot">${tot(i => holes[i].par)}</td></tr>
+      <tr class="mpar"><th>Par</th>${idx.map(i => `<td>${holes[i].par}</td>`).join('')}<td class="mtot">${tot(i => (at.has(i) ? holes[i].par : 0))}</td></tr>
       <tr class="mpar"><th>SI</th>${idx.map(i => `<td>${holes[i].si}</td>`).join('')}<td></td></tr>
       ${st.players.map(row).join('')}</tbody></table></div>`
   }
@@ -70,7 +74,7 @@ export function draw({ comp, m, matches = [], entries = [], members, course, st 
     <div class="card mcard"><div class="mgrid">${sideEl(0)}<div class="mstat">${status}</div>${sideEl(1, true)}</div></div>
     ${m.status === 'confirmed' ? `<span class="hint">Result: <b>${esc(name(m.winnerEntry))} won ${esc(m.result ?? '')}</b></span>` : ''}
     <h3>Match after each hole</h3>
-    <div class="card msum"><div class="msrow">${holes.slice(0, 9).map((_, i) => dot(i)).join('')}</div><div class="msrow">${holes.slice(9).map((_, i) => dot(i + 9)).join('')}</div></div>
+    <div class="card msum"><div class="msrow">${open.slice(0, 9).map((_, j) => dot(j)).join('')}</div>${open.length > 9 ? `<div class="msrow">${open.slice(9).map((_, j) => dot(j + 9)).join('')}</div>` : ''}</div>
     <h3>Scorecard</h3>
     ${table(0, 'Out')}${table(9, 'In')}
     <span class="hint">From the players’ own scorecard: it fills in as holes are saved. Dots are shots received; handicaps from the white tees.</span>

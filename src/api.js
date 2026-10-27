@@ -15,16 +15,17 @@ setStampSource(raw.getStamps)
 const w = wrapApi(raw)
 export { cache }
 export const {
-  getMembers, getAccessList, getCourse, getPins, getGameSettings, getEvents,
+  getMembers, getAccessList, getCourse, getPins, getGameSettings, getEvents, getEventTemplates, saveEvents, enterEvent, withdrawEvent, removeEventEntrant, saveEventTemplate, deleteEventTemplate, setKoRoundHoles,
   getTheme, getSignups, getSignupCounts, getKnockout, getAccessRequests, getTeeTimeRequests,
-  getBuddies, getFriends, getFavourites, setTheme, setClubName, setFeePayment,
-  setHutOn, setBookingRules, setCourseLocation, setGreenWidth, publishPins, saveEvent,
-  saveSeason, deleteEvent, enterEventToday, startLeagueKnockout, setMyGamePref, setHutStaff,
-  saveMember, setOfficeLogin, deleteMember, resetLogin, declineRequest, requestAccess,
-  addBuddy, removeBuddy, saveContact, removeContact, setFriendFavourite, setFavourite,
-  setMyPlaysIn, adminSetPlaysIn, declineSignup, undeclineSignup, runSignup, enterSignup,
-  withdrawSignup, saveSignup, createMemberKnockout, deleteMemberKnockout, makeDraw, swapDraw,
-  setRoundDeadlines, publishDraw, linkKoCard, reportKoResult, confirmKoResult, disputeKoResult,
-  adminSetKoResult, deleteSignup, deleteRound, cancelBooking, adminCancelBooking, adminMoveBooking,
-  requestTeeTime, cancelTeeTimeRequest, dismissTeeTimeRequest, decideTeeTimeRequest, markTeeTimeRequestsSeen,
+  getBuddies, getFriends, getFavourites, setTheme, setClubName, setFeePayment, setPaperCards,
+  setHutOn, setBookingRules, setDayBoardDays, setDayBoardToday, setCourseLocation, setGreenWidth,
+  publishPins, saveEvent, saveSeason, deleteEvent, enterEventToday, startLeagueKnockout,
+  setMyGamePref, setHutStaff, saveMember, setOfficeLogin, deleteMember, resetLogin,
+  declineRequest, requestAccess, addBuddy, removeBuddy, saveContact, removeContact,
+  setFriendFavourite, setFavourite, setMyPlaysIn, adminSetPlaysIn, declineSignup, undeclineSignup,
+  runSignup, enterSignup, withdrawSignup, saveSignup, createMemberKnockout, deleteMemberKnockout,
+  makeDraw, swapDraw, setRoundDeadlines, publishDraw, linkKoCard, reportKoResult,
+  confirmKoResult, disputeKoResult, adminSetKoResult, deleteSignup, deleteRound, cancelBooking,
+  adminCancelBooking, adminMoveBooking, requestTeeTime, cancelTeeTimeRequest, dismissTeeTimeRequest, decideTeeTimeRequest,
+  markTeeTimeRequestsSeen,
 } = w

@@ -164,6 +164,16 @@ describe('journeys', () => {
     await app.homeFromHere()
   })
 
+  it('6b. Found in review: on holes 1–6 and 10–12 the halfway hut asks after hole 6 (hole 8 is closed)', async () => {
+    app = await boot(db => { teeTimeToday(db); db.events.find(e => e.name === 'Winter League').holes = [1, 2, 3, 4, 5, 6, 10, 11, 12] })
+    await app.tap('Scoring')
+    await app.tap('09:30')
+    await app.tap('Winter League')
+    await app.tap('Start round · Winter League')
+    for (let h = 1; h <= 6; h++) await app.tap(`Save hole ${h}`)
+    expect(app.text()).toContain('Halfway hut is open')
+  })
+
   it("7. Join today's club competition as you start", async () => {
     app = await boot(teeTimeToday)
     await app.tap('Scoring')
@@ -426,6 +436,29 @@ describe('the pretend server', () => {
     await app.tap('OK')
     expect(app.db.notices.find(n => n.memberId === 0).seen).toBe(true)
     await app.homeFromHere()
+  })
+
+  it("20b. Another member books me in: I'm told who, when and with whom, and See my bookings opens them", async () => {
+    let slot
+    app = await boot(db => {
+      slot = at(db, 480)
+      const b = db.book(1, slot.id, [0])
+      db.notices.push({ id: 900, memberId: 0, kind: 'added', date: slot.date, oldTime: 480, newTime: null, note: null, byName: 'Pat Reid', withNames: ['Pat'], bookingId: b.id, seen: false })
+    })
+    await app.settle()
+    expect(document.getElementById('alerts').textContent).toContain('Pat Reid has booked you in')
+    expect(document.getElementById('alerts').textContent).toContain('at 08:00 · with Pat')
+    await app.tap('See my bookings')
+    expect(app.db.notices.find(n => n.id === 900).seen).toBe(true)
+    expect(app.text()).toContain('08:00')
+    await app.homeFromHere()
+  })
+
+  it('20c. When I book others in, each of them gets a "booked you in" notice (and I do not)', async () => {
+    app = await boot()
+    const slot = app.db.slotsOn(app.db.today).findLast(s => !s.players.length)
+    await (await import('../../api.js')).bookTeeTime({ slotId: slot.id, memberIds: [1, 3] })
+    expect(app.db.notices.filter(n => n.kind === 'added').map(n => [n.memberId, n.withNames.length])).toEqual([[1, 2], [3, 2]])
   })
 
   it('21. The club office cancels a booking, with a note', async () => {

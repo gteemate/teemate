@@ -8,6 +8,7 @@
 import { stablefordPoints, shotsOnHole, playingHandicaps, holeCalc, betterBallWinner, matchProgress, teamEventScore, courseHandicap } from './scoring.js'
 import { matchDays } from './season.js'
 import { scoreMatch, matchPoints, dayRules } from './match-scoring.js'
+import { openCourse, scaleHcp, holesFor } from './open-holes.js'
 
 /**
  * Build the scoring input from an event and each group's card.
@@ -24,7 +25,7 @@ export function buildEventGroups(event, holes, tee, cards, indexOf, timeOf = () 
       return {
         id: p.id, name: p.name, team: event.style === 'fourball' ? String(g.slot) : p.team,
         courseHcp: courseHandicap(indexOf(p) ?? 0, tee),
-        gross: holes.map((_, i) => (k >= 0 && card.done[i] ? card.scores[i][k] : null)),
+        gross: holes.map((h, i) => (k >= 0 && card.done[h.i ?? i] ? card.scores[h.i ?? i][k] : null)),
       }
     })
     return { key: String(g.slot), name: event.style === 'singles' ? players[0]?.name : event.teamNames[g.slot] ?? timeOf(g), time: g.time, players, hasCard: !!card }
@@ -34,11 +35,14 @@ export function buildEventGroups(event, holes, tee, cards, indexOf, timeOf = () 
 /** Holes a group has completed, from the first hole on. */
 export function groupThru(players) {
   let n = 0
-  while (n < 18 && players.every(p => p.gross[n] != null)) n++
+  const last = players[0]?.gross.length ?? 18
+  while (n < last && players.every(p => p.gross[n] != null)) n++
   return n
 }
 
-const points = (hole, gross, ph) => stablefordPoints(gross, hole.par, shotsOnHole(ph, hole.si))
+const points = (hole, gross, ph) => stablefordPoints(gross, hole.par, shotsOnHole(ph, hole.si, hole.of))
+// Playing handicaps scaled to the holes being played (all 18: as they are).
+const phOn = (holes, chs, allow, offLow) => playingHandicaps(chs, allow, offLow).map(x => scaleHcp(x, holes.length))
 
 /**
  * Four-ball v four-ball, Stableford: each group scores its best `count` points on every hole
@@ -46,7 +50,7 @@ const points = (hole, gross, ph) => stablefordPoints(gross, hole.par, shotsOnHol
  */
 export function groupStableford(holes, groups, allow, count) {
   const rows = groups.map(g => {
-    const ph = playingHandicaps(g.players.map(p => p.courseHcp), allow)
+    const ph = phOn(holes, g.players.map(p => p.courseHcp), allow)
     const thru = groupThru(g.players)
     let total = 0
     for (let i = 0; i < thru; i++) {
@@ -75,13 +79,13 @@ function rankRows(rows) {
  */
 export function groupBestBall(holes, [ga, gb], allow) {
   const all = [...ga.players, ...gb.players]
-  const ph = playingHandicaps(all.map(p => p.courseHcp), allow, true)
+  const ph = phOn(holes, all.map(p => p.courseHcp), allow, true)
   const phA = ph.slice(0, ga.players.length), phB = ph.slice(ga.players.length)
   const thru = Math.min(groupThru(ga.players), groupThru(gb.players))
-  const best = (players, phs, i) => Math.min(...players.map((p, k) => p.gross[i] - shotsOnHole(phs[k], holes[i].si)))
+  const best = (players, phs, i) => Math.min(...players.map((p, k) => p.gross[i] - shotsOnHole(phs[k], holes[i].si, holes[i].of)))
   const winners = []
   for (let i = 0; i < thru; i++) winners.push(Math.sign(best(gb.players, phB, i) - best(ga.players, phA, i)))
-  return { ...matchProgress(winners), ahead: { A: groupThru(ga.players), B: groupThru(gb.players) } }
+  return { ...matchProgress(winners, holes.length), ahead: { A: groupThru(ga.players), B: groupThru(gb.players) } }
 }
 
 /**
@@ -90,14 +94,14 @@ export function groupBestBall(holes, [ga, gb], allow) {
  */
 export function singlesMatch(holes, [ga, gb], format, allow) {
   const [a, b] = [ga.players[0], gb.players[0]]
-  const ph = playingHandicaps([a.courseHcp, b.courseHcp], format === 'sc2' ? 0 : allow, true)
+  const ph = phOn(holes, [a.courseHcp, b.courseHcp], format === 'sc2' ? 0 : allow, true)
   const thru = Math.min(groupThru([a]), groupThru([b]))
   const winners = []
   for (let i = 0; i < thru; i++) {
-    const [x, y] = [a, b].map((p, k) => (format === 'sm2' ? -points(holes[i], p.gross[i], ph[k]) : p.gross[i] - shotsOnHole(ph[k], holes[i].si)))
+    const [x, y] = [a, b].map((p, k) => (format === 'sm2' ? -points(holes[i], p.gross[i], ph[k]) : p.gross[i] - shotsOnHole(ph[k], holes[i].si, holes[i].of)))
     winners.push(Math.sign(y - x))
   }
-  return { ...matchProgress(winners), ahead: { A: groupThru([a]), B: groupThru([b]) } }
+  return { ...matchProgress(winners, holes.length), ahead: { A: groupThru([a]), B: groupThru([b]) } }
 }
 
 /**
@@ -108,11 +112,11 @@ export function ryderMatches(holes, groups, format, allow) {
   const matches = groups.map(g => {
     const a = g.players.filter(p => p.team === 'A'), b = g.players.filter(p => p.team === 'B')
     const four = [...a, ...b]
-    const ph = playingHandicaps(four.map(p => p.courseHcp), format === 'bbscr' ? 0 : allow, format === 'bbl')
+    const ph = phOn(holes, four.map(p => p.courseHcp), format === 'bbscr' ? 0 : allow, format === 'bbl')
     const thru = groupThru(four)
     const winners = []
     for (let i = 0; i < thru; i++) winners.push(betterBallWinner(holeCalc(holes[i], four.map(p => p.gross[i]), ph), format === 'bbstab' ? 'pts' : 'net'))
-    const m = matchProgress(winners)
+    const m = matchProgress(winners, holes.length)
     const res = { st: m.thru === 0 ? 'ns' : m.finished ? 'done' : 'live', d: m.diff, txt: m.text, thru: m.thru }
     const players = four.map((p, k) => ({ id: p.id, name: p.name, team: p.team, gross: p.gross, ph: ph[k] })) // for the match's page
     return { key: g.key, name: g.name, a: a.map(p => p.name), b: b.map(p => p.name), res, match: m, players }
@@ -123,7 +127,7 @@ export function ryderMatches(holes, groups, format, allow) {
 /** Own teams: everyone's Stableford points count for their team. */
 export function teamStableford(holes, groups, allow) {
   const players = groups.flatMap(g => {
-    const ph = playingHandicaps(g.players.map(p => p.courseHcp), allow)
+    const ph = phOn(holes, g.players.map(p => p.courseHcp), allow)
     const thru = groupThru(g.players)
     return g.players.map((p, k) => {
       let pts = 0
@@ -153,7 +157,7 @@ export function grossOnDay(rounds, memberId, holes) {
   const r = [...rounds].reverse().find(x => x.lineup.some(e => e.m === memberId)) // latest card wins
   if (!r) return holes.map(() => null)
   const k = r.lineup.findIndex(e => e.m === memberId)
-  return holes.map((_, i) => (r.done[i] ? r.scores[i][k] : null))
+  return holes.map((h, i) => (r.done[h.i ?? i] ? r.scores[h.i ?? i][k] : null))
 }
 
 /**
@@ -170,7 +174,8 @@ export function scoreAdvanceEvent(event, holes, dayCards, player, allow, entries
   const cardsFor = (id, d) => (event.entryRequired
     ? (dayCards[d] ?? []).filter(c => entries.some(x => x.day === d && x.memberId === id && x.roundId === c.id))
     : dayCards[d] ?? [])
-  const P = (id, team, d) => ({ id, name: player(id).name, team, courseHcp: player(id).courseHcp, gross: grossOnDay(cardsFor(id, d), id, holes) })
+  const on = d => openCourse(holes, holesFor(event, d)) // each day's open holes (the day's own, else the event's)
+  const P = (id, team, d) => ({ id, name: player(id).name, team, courseHcp: player(id).courseHcp, gross: grossOnDay(cardsFor(id, d), id, on(d)) })
 
   if (event.style === 'ryder') {
     // Every match (four-ball, singles or 3-ball) by the day's holes and points (match-scoring.js).
@@ -180,7 +185,7 @@ export function scoreAdvanceEvent(event, holes, dayCards, player, allow, entries
       const rules = dayRules(event, d)
       byDay[d] = (event.matches[d] ?? []).map((m, i) => {
         const a = m.a.map(id => P(id, 'A', d)), b = m.b.map(id => P(id, 'B', d))
-        const r = scoreMatch({ holes, a, b, fmt: event.fmt, allow: allowance, holesPlayed: rules.holes, points: rules.points })
+        const r = scoreMatch({ holes: openCourse(holes, rules.holes), a, b, fmt: event.fmt, allow: allowance, points: rules.points })
         return { key: `${d}-${i}`, name: `Match ${i + 1}`, a: a.map(p => p.name), b: b.map(p => p.name), ...r, singles: r.type === 'singles',
           pts: matchPoints(r), players: [...a, ...b].map(p => ({ id: p.id, name: p.name, team: p.team, gross: p.gross, ph: r.ph[p.id] })) }
       })
@@ -195,15 +200,15 @@ export function scoreAdvanceEvent(event, holes, dayCards, player, allow, entries
   // Per player, per day: points (or net to par) over the holes they've saved.
   const rows = event.players.map(id => {
     const perDay = days.map(d => {
-      const p = P(id, event.team[id], d), thru = groupThru([p])
-      const ph = playingHandicaps([p.courseHcp], typeof allow === 'number' ? allow : allow.base ?? allow.stab)[0] // the event's own game's allowance
+      const p = P(id, event.team[id], d), thru = groupThru([p]), dh = on(d)
+      const ph = phOn(dh, [p.courseHcp], typeof allow === 'number' ? allow : allow.base ?? allow.stab)[0] // the event's own game's allowance
       let pts = 0, net = 0
       for (let i = 0; i < thru; i++) {
-        const sh = shotsOnHole(ph, holes[i].si)
-        pts += stablefordPoints(p.gross[i], holes[i].par, sh)
-        net += p.gross[i] - sh - holes[i].par
+        const sh = shotsOnHole(ph, dh[i].si, dh[i].of)
+        pts += stablefordPoints(p.gross[i], dh[i].par, sh)
+        net += p.gross[i] - sh - dh[i].par
       }
-      return { thru, pts, net }
+      return { thru, pts, net, of: dh.length } // of: the day's open holes
     })
     return { id, name: player(id).name, team: event.team[id], perDay, pts: perDay.reduce((t, x) => t + x.pts, 0), net: perDay.reduce((t, x) => t + x.net, 0) }
   })
@@ -240,19 +245,20 @@ export function scoreLeague(event, holes, entries, cards, player, allow) {
   const rounds = entries.map(en => {
     const card = cards[en.roundId]
     const k = card ? card.lineup.findIndex(x => x.m === en.memberId) : -1
-    const gross = holes.map((_, i) => (k >= 0 && card.done[i] ? card.scores[i][k] : null))
+    const wh = openCourse(holes, holesFor(event, en.week)) // the week's open holes
+    const gross = wh.map(h => (k >= 0 && card.done[h.i] ? card.scores[h.i][k] : null))
     const thru = groupThru([{ gross }])
-    const ph = playingHandicaps([player(en.memberId).courseHcp], allow)[0]
+    const ph = phOn(wh, [player(en.memberId).courseHcp], allow)[0]
     let pts = 0
-    for (let i = 0; i < thru; i++) pts += stablefordPoints(gross[i], holes[i].par, shotsOnHole(ph, holes[i].si))
-    return { ...en, team: event.team[en.memberId], pts, thru }
+    for (let i = 0; i < thru; i++) pts += stablefordPoints(gross[i], wh[i].par, shotsOnHole(ph, wh[i].si, wh[i].of))
+    return { ...en, team: event.team[en.memberId], pts, thru, live: thru < wh.length }
   })
   const weeks = Array.from({ length: event.weeks }, (_, i) => i + 1)
   const teams = (event.teams ?? []).map((t, idx) => {
     const perWeek = weeks.map(w => {
       const mine = rounds.filter(r => r.team === idx && r.week === w).sort((a, b) => b.pts - a.pts)
       const counted = mine.slice(0, event.bestOf)
-      return { week: w, score: counted.reduce((s, r) => s + r.pts, 0), entered: mine.length, counting: counted.map(r => r.memberId), live: mine.some(r => r.thru < 18) }
+      return { week: w, score: counted.reduce((s, r) => s + r.pts, 0), entered: mine.length, counting: counted.map(r => r.memberId), live: mine.some(r => r.live) }
     })
     return { idx, name: t.name, col: t.col, perWeek, total: perWeek.reduce((s, w) => s + w.score, 0) }
   })
@@ -260,7 +266,7 @@ export function scoreLeague(event, holes, entries, cards, player, allow) {
   const ids = event.teams?.length ? Object.keys(event.team).map(Number) : event.players // a league with no teams: just its players
   const players = ids.map(id => {
     const mine = rounds.filter(r => r.memberId === id)
-    return { id, name: player(id).name, team: event.team[id], total: mine.reduce((s, r) => s + r.pts, 0), rounds: mine.length, perWeek: Object.fromEntries(mine.map(r => [r.week, { pts: r.pts, thru: r.thru }])) }
+    return { id, name: player(id).name, team: event.team[id], total: mine.reduce((s, r) => s + r.pts, 0), rounds: mine.length, perWeek: Object.fromEntries(mine.map(r => [r.week, { pts: r.pts, thru: r.thru, done: !r.live }])) }
   })
   rankBy(players.filter(p => p.rounds), p => p.total)
   players.sort((a, b) => (b.rounds > 0) - (a.rounds > 0) || b.total - a.total)
@@ -354,12 +360,14 @@ export function scorePairsLeague(event, holes, entries, cards, player, allow) {
       if (!card) continue
       const ka = card.lineup.findIndex(x => x.m === a), kb = card.lineup.findIndex(x => x.m === b)
       if (ka < 0 || kb < 0) continue
-      const gross = k => holes.map((_, i) => (card.done[i] ? card.scores[i][k] : null))
+      const wh = openCourse(holes, holesFor(event, w)) // the week's open holes
+      const gross = k => wh.map(h => (card.done[h.i] ? card.scores[h.i][k] : null))
       const ga = gross(ka), gb = gross(kb), thru = groupThru([{ gross: ga }, { gross: gb }])
-      const [pa, pb] = [a, b].map(id => playingHandicaps([player(id).courseHcp], allow)[0])
+      const [pa, pb] = [a, b].map(id => phOn(wh, [player(id).courseHcp], allow)[0])
+      const pts1 = (g, ph, i) => stablefordPoints(g[i], wh[i].par, shotsOnHole(ph, wh[i].si, wh[i].of))
       let pts = 0
-      for (let i = 0; i < thru; i++) pts += Math.max(stablefordPoints(ga[i], holes[i].par, shotsOnHole(pa, holes[i].si)), stablefordPoints(gb[i], holes[i].par, shotsOnHole(pb, holes[i].si)))
-      perWeek[w] = { pts, thru }
+      for (let i = 0; i < thru; i++) pts += Math.max(pts1(ga, pa, i), pts1(gb, pb, i))
+      perWeek[w] = { pts, thru, done: thru === wh.length }
     }
     const weeks = Object.values(perWeek)
     return { pair, names: pair.map(id => player(id).name), total: weeks.reduce((s, x) => s + x.pts, 0), rounds: weeks.length, perWeek }

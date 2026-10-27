@@ -28,8 +28,10 @@ export function greenPic(hole, pin) {
 }
 
 // 18-hole picker used by the Course and Scores screens. extra(j) adds a line under each number.
-export function holeGrid(cur, extra, attr) {
+export function holeGrid(cur, extra, attr, only = null) { // only: the course indexes to show (the open holes), else all 18
   const cell = j => `<button class="hc ${j === cur ? 'cur' : ''}" ${attr}="${j}" aria-label="Hole ${j + 1}"><span class="num">${j + 1}</span>${extra(j)}</button>`
-  const row = from => [...Array(9)].map((_, j) => cell(j + from)).join('')
-  return `<div class="card hgrid"><div class="row">${row(0)}</div><hr><div class="row">${row(9)}</div></div>`
+  const pick = from => [...Array(9)].map((_, j) => j + from).filter(j => !only || only.includes(j))
+  const row = from => pick(from).map(cell).join('')
+  const rows = [0, 9].filter(f => pick(f).length).map(f => `<div class="row">${row(f)}</div>`)
+  return `<div class="card hgrid">${rows.join('<hr>')}</div>`
 }

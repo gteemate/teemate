@@ -2,6 +2,7 @@
 // src/api.js, so the real screens run unchanged. It does what the screens need (bookings take spaces, cancelling
 // frees them, entries and orders are recorded); the database's own rules are covered by the database tests.
 // Anything not covered throws "not faked: <name>", so a gap fails the journey loudly.
+import { closesOn } from '../../event-signups.js'
 import { COURSE, MEMBERS, GAME_SETTINGS, PIN_SHEET } from '../../sample-data.js'
 import { isoDate, addDaysIso } from '../../dates.js'
 import { createCache } from '../../api/cache.js'
@@ -13,7 +14,7 @@ const ME = 0
 
 /** Every name src/api.js exports (kept in step with it by a test). */
 export const API_NAMES = ['getMe', 'forgetMe', 'getSession', 'signIn', 'needsAccount', 'createAccount', 'myRequestPending', 'changePassword', 'signOut',
-  'onAuthChange', 'requestAccess', 'getTheme', 'setTheme', 'setFeePayment', 'getMyBalances', 'setClubName', 'setCourseLocation', 'getHut', 'setHutOn', 'saveHutItem', 'removeHutItem',
+  'onAuthChange', 'requestAccess', 'getTheme', 'setTheme', 'setDayBoardDays', 'setDayBoardToday', 'setFeePayment', 'getMyBalances', 'setClubName', 'setCourseLocation', 'getHut', 'setHutOn', 'saveHutItem', 'removeHutItem',
   'getHutStaff', 'setHutStaff', 'placeHutOrder', 'cancelMyHutOrder', 'myHutOrders', 'hutOrdersToday', 'setHutOrderStatus', 'getMembers', 'getBuddies',
   'addBuddy', 'removeBuddy', 'getFriends', 'saveContact', 'removeContact', 'setFriendFavourite', 'getAccessList', 'saveMember', 'getFavourites',
   'setFavourite', 'setOfficeLogin', 'getAccessRequests', 'declineRequest', 'deleteMember', 'resetLogin', 'getCourse', 'getPins', 'setGreenWidth', 'publishPins',
@@ -22,10 +23,11 @@ export const API_NAMES = ['getMe', 'forgetMe', 'getSession', 'signIn', 'needsAcc
   'getGuestPoints', 'getBookingRules', 'setBookingRules', 'requestTeeTime', 'cancelTeeTimeRequest', 'getMyTeeTimeRequests', 'getTeeTimeRequests',
   'decideTeeTimeRequest', 'markTeeTimeRequestsSeen', 'dismissTeeTimeRequest', 'getGameSettings', 'setMyGamePref', 'getCurrentRound', 'getRound', 'deleteRound', 'saveRound',
   'getTodayRounds', 'getCardsForTeeTimes', 'getMyPlayerEvents', 'proposePlayerEvent', 'proposeSingles', 'counterPlayerEvent', 'answerPlayerEvent', 'cancelPlayerEvent',
-  'getStamps', 'getEvents', 'saveEvent', 'saveSeason', 'deleteEvent', 'getCardsOn', 'getLeagueEntries', 'getCardsById', 'enterLeague', 'leaveLeague', 'enterEventToday',
+  'getStamps', 'getEvents', 'saveEvent', 'saveEvents', 'enterEvent', 'withdrawEvent', 'removeEventEntrant', 'getEventTemplates', 'saveEventTemplate', 'deleteEventTemplate', 'saveSeason', 'deleteEvent', 'getCardsOn', 'getLeagueEntries', 'getCardsById', 'enterLeague', 'leaveLeague', 'enterEventToday',
   'getEventEntries', 'enterEventRound', 'leaveEventRound', 'startLeagueKnockout',
   'getSignups', 'getSignupCounts', 'getSignupDeclines', 'declineSignup', 'undeclineSignup', 'runSignup', 'enterSignup', 'withdrawSignup', 'setMyPlaysIn', 'adminSetPlaysIn', 'saveSignup', 'deleteSignup',
-  'getKnockout', 'createMemberKnockout', 'deleteMemberKnockout', 'makeDraw', 'swapDraw', 'setRoundDeadlines', 'publishDraw', 'linkKoCard', 'reportKoResult', 'confirmKoResult', 'disputeKoResult', 'adminSetKoResult']
+  'getKnockout', 'createMemberKnockout', 'deleteMemberKnockout', 'makeDraw', 'swapDraw', 'setRoundDeadlines', 'setKoRoundHoles', 'publishDraw', 'getKoMatchOfCard', 'linkKoCard', 'reportKoResult', 'confirmKoResult', 'disputeKoResult', 'adminSetKoResult',
+  'setPaperCards', 'readScorecard', 'markPaperCard', 'confirmPaperScore', 'sendBackPaperScore', 'resendPaperScore', 'getPaperConfirms', 'uploadCardPhoto', 'cardPhotoUrl', 'removeCardPhotos']
 
 /** For vi.mock('…/api.js'): every export, each calling the current world's version (globalThis.__world). */
 export function mockModule() {
@@ -39,7 +41,40 @@ export function mockModule() {
   return { ...plain, cache }
 }
 
+// The pretend reader's answer: two cards, four Score columns (the demo's). Card 1's B column has holes 8 and 18
+// hard to read, and its holes 10–18 add up to 43 where the card says 44 (hole 18 was really a 10).
+const col = (label, s, out, inn, unsure = []) => ({ label, holes: s.map((score, h) => ({ score, sure: !unsure.includes(h) })), out, in: inn, total: out + inn })
+export const PAPER_READING = { parMatches: true, cards: [
+  { columns: [col('A', [5,4,3,5,4,5,3,6,6, 5,5,4,5,5,4,4,6,6], 41, 44), col('B', [4,4,4,6,5,5,3,8,5, 4,5,3,5,4,4,4,5,9], 44, 44, [7, 17])] },
+  { columns: [col('A', [6,5,3,5,5,6,4,5,7, 5,6,4,5,5,5,4,6,7], 46, 47), col('B', [5,3,4,5,4,5,3,5,8, 4,5,3,5,4,5,3,6,6], 42, 41)] },
+] }
+
 const member = id => MEMBERS.find(m => m.id === id)
+
+// As the database's holes_problem: null (all 18), an older match day's number, or a list of holes 1–18, each once.
+const holesProblem = h => (h == null || (typeof h === 'number' && [18, 14, 12, 9, 6].includes(h))
+  || (Array.isArray(h) && h.length >= 1 && h.every(n => Number.isInteger(n) && n >= 1 && n <= 18) && new Set(h).size === h.length)
+  ? null : 'Pick at least one hole, from 1 to 18.')
+const takeOff = (e, mid) => {
+  e.players = e.players.filter(p => p !== mid)
+  if (e.team) delete e.team[mid]
+  e.captainPool = (e.captainPool ?? []).filter(p => p !== mid)
+  if (e.teams) e.teams = e.teams.map(t => (t.captain === mid ? (({ captain, ...rest }) => rest)(t) : t))
+}
+// As the real saveEvent's row and the database's checks: points only for four-ball team match play, no empty day
+// settings, sign-up only for club events, holes as holes_problem, day settings only for the event's days (weeks).
+const tidyEvent = e => {
+  holesRefusal(e)
+  const units = Math.max(e.days ?? 1, e.weeks ?? 0)
+  if (Object.keys(e.dayRules ?? {}).some(d => +d < 1 || +d > units)) throw new Error('Those settings aren’t for a match day in this event.')
+  const su = !!e.club && !!e.signup
+  return { ...e, points: e.style === 'ryder' ? e.points ?? null : null, dayRules: e.dayRules && Object.keys(e.dayRules).length ? e.dayRules : null,
+    signup: su, advertiseFrom: su ? e.advertiseFrom || null : null, entriesClose: su ? e.entriesClose || null : null, maxEntries: su ? e.maxEntries || null : null }
+}
+const holesRefusal = e => {
+  const bad = [e.holes, ...Object.values(e.dayRules ?? {}).map(d => d?.holes)].map(holesProblem).find(Boolean)
+  if (bad) throw new Error(bad)
+}
 const slotTimes = Array.from({ length: 31 }, (_, i) => 480 + i * 10) // 08:00 … 13:00
 
 /**
@@ -60,26 +95,29 @@ export function makeWorld(today, setup = () => {}, as = 'admin') {
   const me = () => db.members.find(m => m.id === ME)
   const db = {
     me: ME, today, calls: [],
-    stamps: Object.fromEntries(['members', 'course', 'pins', 'games', 'events', 'club', 'comps', 'requests', 'friends'].map(k => [k, '1'])),
+    stamps: Object.fromEntries(['members', 'course', 'pins', 'games', 'events', 'club', 'comps', 'requests', 'friends', 'templates'].map(k => [k, '1'])),
     members: MEMBERS.map(m => ({ ...m, hutStaff: false, playsIn: [2, 4, 8, 12].includes(m.id) ? 'ladies' : 'men' })),
     signups: [
       { id: 1, name: 'Men’s Match Play', category: 'men', kind: 'singles', closesOn: '2026-10-31', notes: null, open: true },
       { id: 2, name: 'Men’s Fourball', category: 'men', kind: 'pairs', closesOn: '2026-10-31', notes: '£5 a pair', open: true },
       { id: 3, name: 'Ladies Singles', category: 'ladies', kind: 'singles', closesOn: '2026-10-31', notes: null, open: true },
       { id: 4, name: 'Mixed Foursome', category: 'mixed', kind: 'pairs', closesOn: '2026-10-31', notes: null, open: true }],
+    eventTemplates: [], // club event templates: { id, name, setup }
     signupEntries: [], koMatches: [], declines: [], // declines: compIds I've said No thanks to
     buddies: [{ id: 1, favourite: false }, { id: 3, favourite: true }, { id: 5, favourite: false }, { id: 7, favourite: false }, { id: 11, favourite: false }],
     contacts: [{ id: 1, name: 'Sam Visitor', club: 'Royal Portrush GC', hcp: '12.0', gui: '1234567', sharedOn: today, favourite: false, updatedAt: `${today}T08:00:00Z` }],
     slots: {}, bookings: [], guestVisits: [], rounds: [], requests: [], playerEvents: [],
     rules: { time: '20:00', days: 8, weekendsOnly: false },
-    theme: { main: '#19335A', accent: '#762A43', name: 'Royal Teemate Golf Club', courseLat: 55.2, courseLon: -6.65, coursePlace: 'Portrush', feePayment: 'shop' },
+    theme: { main: '#19335A', accent: '#762A43', name: 'Royal Teemate Golf Club', courseLat: 55.2, courseLon: -6.65, coursePlace: 'Portrush', feePayment: 'shop', dayBoardDays: [0, 1, 2, 3, 4, 5, 6], dayBoardToday: null, paperCards: false },
     balances: null, // the club's system once linked: { competition, clubhouse } in pence
     hut: { on: true, menu: [
       { id: 1, section: 'Food', name: 'Bacon roll', pricePence: 450, soldOut: false, sort: 1 },
       { id: 2, section: 'Food', name: 'Toastie', pricePence: 500, soldOut: false, sort: 2 },
       { id: 3, section: 'Drinks', name: 'Tea', pricePence: 250, soldOut: false, sort: 1 }] },
     orders: [], entries: [], leagueEntries: [],
-    notices: [], // the office changed a booking: { id, memberId, kind, date, oldTime, newTime, note, seen }
+    paperReads: {}, photos: [], // paper scorecards: reads today per member, stored photo paths
+    paperReading: PAPER_READING, // what the reader returns (journeys can change it)
+    notices: [], // the office changed a booking, or someone booked me in: { id, memberId, kind, date, oldTime, newTime, note, byName?, withNames?, bookingId?, seen }
     joins: [], emails: { 0: 'gary@example.invalid' }, office: null, asOffice: false, pinsToday: false, // club office: asking to join, sign-in emails, the office login
     events: [
       { id: 2, name: 'Winter League', style: 'league', fmt: 'beststab', club: true, everyone: false, startDate: addDaysIso(today, -5), days: 1, weeks: 6, bestOf: 4,
@@ -141,6 +179,54 @@ export function makeWorld(today, setup = () => {}, as = 'admin') {
       db.joins.push({ id: id(), name: name.trim(), email: e, createdAt: new Date().toISOString() })
     },
     getTheme: async () => ({ ...db.theme }),
+    setDayBoardDays: async days => { if (!db.members.find(m => m.id === ME)?.admin && !db.asOffice) throw new Error('Only admins can change the club settings.'); db.theme.dayBoardDays = [...new Set(days)].sort() },
+    setDayBoardToday: async on => { if (!db.members.find(m => m.id === ME)?.admin && !db.asOffice) throw new Error('Only admins can change the club settings.'); db.theme.dayBoardToday = on == null ? null : { date: today, on } },
+    // Paper scorecards, with the database's rules and messages.
+    setPaperCards: async on => { if (!db.members.find(m => m.id === ME)?.admin && !db.asOffice) throw new Error('Only the club office can change this.'); db.theme.paperCards = !!on },
+    readScorecard: async ({ images }) => {
+      if (!db.theme.paperCards) throw new Error('Paper scorecards are switched off at this club.')
+      const n = (db.paperReads[ME] ?? 0)
+      if (n >= 10) throw new Error('You’ve read 10 cards today. Enter the scores by hand, or try again tomorrow.')
+      db.paperReads[ME] = n + 1
+      db.calls.push(['readScorecard', images.length])
+      const reading = copy(db.paperReading)
+      return { ...reading, cards: reading.cards.slice(0, images.length) }
+    },
+    markPaperCard: async (rid, photos, confirmer) => {
+      const r = db.rounds.find(x => x.id === rid)
+      if (!r || !r.lineup.some(x => x.m === ME)) throw new Error('Only players on this card can do that.')
+      if (r.paper?.state === 'confirmed') throw new Error('This card’s scores are already confirmed.')
+      if (confirmer === ME) throw new Error('Someone else has to confirm your own score.')
+      if (confirmer != null && !r.lineup.some(x => x.m === confirmer)) throw new Error('The person confirming your score has to be on this card.')
+      r.paper = { by: ME, confirmer: confirmer ?? null, state: 'waiting', note: null, photos: Math.min(2, Math.max(0, photos)) }
+    },
+    confirmPaperScore: async rid => {
+      const r = db.rounds.find(x => x.id === rid), admin = db.asOffice || db.members.find(m => m.id === ME)?.admin
+      if (r?.paper?.state !== 'waiting' || !(admin || (r.paper.confirmer === ME && r.lineup.some(x => x.m === ME)))) throw new Error('Only the person asked to confirm this score can confirm it.')
+      Object.assign(r.paper, { state: 'confirmed', note: null, confirmer: admin && r.paper.confirmer !== ME ? null : r.paper.confirmer })
+    },
+    sendBackPaperScore: async (rid, note) => {
+      const r = db.rounds.find(x => x.id === rid), admin = db.asOffice || db.members.find(m => m.id === ME)?.admin
+      if (r?.paper?.state !== 'waiting' || !(admin || (r.paper.confirmer === ME && r.lineup.some(x => x.m === ME)))) throw new Error('Only the person asked to confirm this score can confirm it.')
+      if (!note?.trim()) throw new Error('Add a short note saying what isn’t right.')
+      Object.assign(r.paper, { state: 'sent_back', note: note.trim() })
+    },
+    resendPaperScore: async rid => {
+      const r = db.rounds.find(x => x.id === rid)
+      if (r?.paper?.by !== ME) throw new Error('Only the player who uploaded the card can send it again.')
+      if (r.paper.state !== 'sent_back') throw new Error('This score isn’t waiting to be fixed.')
+      r.paper.state = 'waiting'
+    },
+    getPaperConfirms: async () => {
+      const admin = db.asOffice || db.members.find(m => m.id === ME)?.admin
+      const forOffice = r => r.paper.confirmer == null || !r.lineup.some(x => x.m === r.paper.confirmer) // nobody asked, or they've left the card
+      return copy(db.rounds.filter(r => r.paper?.state === 'waiting' && (forOffice(r) ? admin : r.paper.confirmer === ME))
+        .map(r => ({ id: r.id, date: r.date, paperBy: r.paper.by, paperPhotos: r.paper.photos, confirmer: r.paper.confirmer, forOffice: forOffice(r), at: r.updatedAt ?? '',
+          lineup: r.lineup, scores: r.scores, game: r.game })))
+    },
+    uploadCardPhoto: async (rid, n) => { db.photos.push(`${rid}/${n}.jpg`) },
+    cardPhotoUrl: async (rid, n) => `data:image/gif;base64,R0lGODlhAQABAAAAACw=#${rid}-${n}`,
+    removeCardPhotos: async rid => { db.photos = db.photos.filter(x => !x.startsWith(`${rid}/`)) },
     setTheme: async (main, accent) => { Object.assign(db.theme, { main: main.toUpperCase(), accent: accent.toUpperCase() }) },
     setClubName: async name => { db.theme.name = name.trim() },
     setCourseLocation: async (lat, lon, place) => { Object.assign(db.theme, { courseLat: lat, courseLon: lon, coursePlace: place }) },
@@ -229,11 +315,14 @@ export function makeWorld(today, setup = () => {}, as = 'admin') {
       db.book(b.bookedBy, sid, ids.filter(m => m !== b.bookedBy), mine.filter(p => p.guest).map(p => ({ name: p.name, club: p.club, hcp: p.hcp })))
       ids.forEach(m => db.notices.push({ id: id(), memberId: m, kind: 'moved', date: to.date, oldTime: s.time, newTime: to.time, note: note || null, seen: false }))
     },
-    getBookingNotices: async () => copy(db.notices.filter(n => n.memberId === ME && !n.seen)),
+    getBookingNotices: async () => copy(db.notices.filter(n => n.memberId === ME && !n.seen && (n.kind !== 'added' || db.bookings.some(b => b.id === n.bookingId)))),
     seenBookingNotice: async nid => { const n = db.notices.find(x => x.id === nid); if (n?.memberId === ME) n.seen = true },
     getMyTeeTimes: async date => copy(sheet(isoDate(date)).filter(s => s.players.some(p => p.memberId === ME))),
     bookTeeTime: async ({ slotId, memberIds = [], guests = [] }) => {
       const b = db.book(ME, slotId, memberIds, guests), s = slotById(slotId)
+      const on = s.players.filter(p => p.bookingId === b.id) // as the database: everyone else on it is told who booked them in
+      on.filter(p => p.memberId != null && p.memberId !== ME).forEach(p => db.notices.push({ id: id(), memberId: p.memberId, kind: 'added', date: s.date, oldTime: s.time,
+        newTime: null, note: null, byName: member(ME).name, withNames: on.filter(o => o !== p).map(o => o.name.split(' ')[0]), bookingId: b.id, seen: false }))
       return { id: b.id, date: s.date, time: s.time, players: s.players.filter(p => p.bookingId === b.id).map(p => p.name), guests: guests.length, pointsUsed: guests.length * 3 }
     },
     getGuests: async ids => Object.values(db.slots).flat().flatMap(s => s.players).filter(p => p.guest && ids.includes(p.id)).map(p => ({ id: p.id, name: p.name, club: p.club, hcp: p.hcp })),
@@ -289,10 +378,10 @@ export function makeWorld(today, setup = () => {}, as = 'admin') {
       }
       if (!round.id) Object.assign(round, { id: id(), createdBy: ME })
       round.updatedAt = new Date().toISOString(); round.changed = new Set()
-      const row = { ...copy(round), date: today }
+      const row = { ...copy(round), date: today, paper: db.rounds.find(r => r.id === round.id)?.paper ?? null } // as the database: only the paper steps change it
       db.rounds = [...db.rounds.filter(r => r.id !== round.id), row]
     },
-    deleteRound: async rid => { db.rounds = db.rounds.filter(r => r.id !== rid) },
+    deleteRound: async rid => { db.rounds = db.rounds.filter(r => r.id !== rid); db.photos = db.photos.filter(x => !x.startsWith(`${rid}/`)) },
     getTodayRounds: async () => [],
     getCardsForTeeTimes: async () => ({}),
     getMyPlayerEvents: async () => copy(db.playerEvents),
@@ -344,14 +433,57 @@ export function makeWorld(today, setup = () => {}, as = 'admin') {
       db.koMatches = db.koMatches.filter(m => m.compId !== cid); db.signupEntries = db.signupEntries.filter(e => e.compId !== cid); db.declines = db.declines.filter(x => x !== cid)
       Object.assign(db.signups.find(c => c.id === cid), { open: true, closesOn, finalBy, maxEntries: maxEntries ? +maxEntries : null, notes: notes || null, drawPublished: false, roundDeadlines: [], entryFee: fee || null })
     },
+    getKoMatchOfCard: async rid => { const m = db.koMatches.find(x => x.roundId === rid); return m ? { compId: m.compId, round: m.round } : null },
     linkKoCard: async (mid, rid) => { db.koMatches.find(m => m.id === mid).roundId = rid },
     reportKoResult: async (mid, w, r) => Object.assign(db.koMatches.find(m => m.id === mid), { status: 'reported', winnerEntry: w, result: r, reportedEntry: db.signupEntries.find(e => e.memberId === ME || e.partnerId === ME)?.id }),
     confirmKoResult: async mid => { const m = db.koMatches.find(x => x.id === mid); m.status = 'confirmed'; db.koAdvance(m) },
     disputeKoResult: async mid => { db.koMatches.find(m => m.id === mid).status = 'disputed' },
     adminSetKoResult: async (mid, w, r) => { const m = db.koMatches.find(x => x.id === mid); Object.assign(m, { status: 'confirmed', winnerEntry: w, result: r }); db.koAdvance(m) },
     saveSeason: async e => { const x = db.events.find(y => y.id === e.id); Object.assign(x, copy({ days: e.days, team: e.team, players: Object.keys(e.team).map(Number), matches: e.matches, dayRules: e.dayRules ?? x.dayRules ?? null })) },
-    // As the real saveEvent: points and day settings only for four-ball team match play.
-    saveEvent: async e => { if (e.style !== 'ryder') e = { ...e, points: null, dayRules: null }; if (e.id) Object.assign(db.events.find(x => x.id === e.id), copy(e)); else db.events.push({ ...copy(e), id: id(), createdBy: { id: ME, name: 'Gary Cochrane' } }); return e.id ?? db.events.at(-1).id },
+    // As the real saveEvent: points only for four-ball team match play; holes checked as the database does.
+    saveEvent: async e => { e = tidyEvent(e); if (e.id) Object.assign(db.events.find(x => x.id === e.id), copy(e)); else db.events.push({ ...copy(e), id: id(), createdBy: { id: ME, name: 'Gary Cochrane' } }); return e.id ?? db.events.at(-1).id },
+    saveEvents: async list => { list = list.map(tidyEvent); return list.map(e => { const n = { ...copy(e), id: id(), createdBy: { id: ME, name: 'Gary Cochrane' } }; db.events.push(n); return n.id }) },
+    // As the database's enter_event / withdraw_event / remove_event_entrant (sign-ups: dates and places).
+    enterEvent: async eid => {
+      const e = db.events.find(x => x.id === eid)
+      if (!e?.club || !(e.selfEntry || e.signup)) throw new Error('This competition isn’t open for entry. Ask an admin to add you.')
+      if (!e.signup && e.startDate <= db.today) throw new Error('This competition has started, so entries are closed.')
+      if (e.players.includes(ME)) return
+      if (e.signup) {
+        if (e.advertiseFrom && db.today < e.advertiseFrom) throw new Error(`Entries open on ${e.advertiseFrom}.`)
+        if (db.today > closesOn(e)) throw new Error('Entries have closed.')
+        if (e.maxEntries != null && e.players.length >= e.maxEntries) throw new Error('Sorry, it’s full: someone took the last place.')
+      }
+      e.players.push(ME)
+    },
+    withdrawEvent: async eid => {
+      const e = db.events.find(x => x.id === eid)
+      if (e.signup && db.today > closesOn(e)) throw new Error('Entries have closed. Ask the club office to take you off.')
+      if (!e.signup && e.startDate <= db.today) throw new Error('This competition has started. Ask an admin to take you off.')
+      takeOff(e, ME)
+    },
+    removeEventEntrant: async (eid, mid) => {
+      if (!db.members.find(m => m.id === ME)?.admin) throw new Error('Only the club office can take someone off.')
+      takeOff(db.events.find(x => x.id === eid), mid)
+    },
+    getEventTemplates: async () => { if (!db.members.find(m => m.id === ME)?.admin) return []; return copy(db.eventTemplates).sort((a, b) => a.name.localeCompare(b.name)) },
+    saveEventTemplate: async ({ id: tid, name, setup }) => {
+      if (!db.members.find(m => m.id === ME)?.admin) throw new Error('new row violates row-level security policy for table "event_templates"')
+      if (tid) { Object.assign(db.eventTemplates.find(t => t.id === tid), copy({ name, setup })); return tid }
+      const n = { id: id(), name, setup: copy(setup) }; db.eventTemplates.push(n); return n.id
+    },
+    deleteEventTemplate: async tid => { db.eventTemplates = db.eventTemplates.filter(t => t.id !== tid) },
+    setKoRoundHoles: async (cid, round, holes) => {
+      const c = db.signups.find(x => x.id === cid)
+      if (!c) throw new Error('That knockout no longer exists.')
+      if (!db.members.find(m => m.id === ME)?.admin && c.createdBy !== ME) throw new Error('Only the knockout’s organiser (or an admin) sets its holes.')
+      const rounds = Math.max(0, ...db.koMatches.filter(m => m.compId === cid).map(m => m.round)) || 10
+      if (!(round >= 1 && round <= rounds)) throw new Error('That isn’t a round of this knockout.')
+      if (holesProblem(holes)) throw new Error(holesProblem(holes))
+      const rh = { ...(c.roundHoles ?? {}) }
+      if (holes == null) delete rh[round]; else rh[round] = [...holes]
+      c.roundHoles = rh
+    },
     startLeagueKnockout: async (eid, seeds, deadlines) => {
       const ev = db.events.find(x => x.id === eid)
       const cid = await api.createMemberKnockout(`${ev.name} knockout`, seeds[0].length === 2 ? 'pairs' : 'singles', seeds, deadlines)

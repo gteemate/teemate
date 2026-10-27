@@ -26,6 +26,20 @@ export async function setFeePayment(p) {
   must(await sb.rpc('admin_set_fee_payment', { p }))
 }
 
+/** Admins: the days of the week (0 Sunday … 6 Saturday) the leaderboard of the day is on. */
+export async function setPaperCards(on) {
+  must(await sb.rpc('admin_set_paper_cards', { p: on }))
+}
+
+export async function setDayBoardDays(days) {
+  must(await sb.rpc('admin_set_day_board_days', { p_days: days }))
+}
+
+/** Admins: switch the leaderboard of the day on or off for today only (null: back to the weekly setting). */
+export async function setDayBoardToday(on) {
+  must(await sb.rpc('admin_set_day_board_today', { p_on: on }))
+}
+
 /** When each kind of data last changed, { kind: timestamp } (see src/api/cache.js). */
 export async function getStamps() {
   return must(await sb.rpc('data_versions')) ?? {}

@@ -11,6 +11,7 @@ import * as scoringRound from './screens/scoring-round.js'
 import * as teeRequests from './screens/tee-requests.js'
 import { applyTheme, cachedTheme } from './theme.js'
 import * as scores from './screens/scores.js'
+import * as paperFlow from './paper/paper-flow.js'
 import * as players from './screens/players.js'
 import * as challenge from './screens/challenge.js'
 import * as eventLive from './screens/event-live.js'
@@ -48,18 +49,19 @@ import * as officeMembers from './office/members.js'
 import * as officeTee from './office/tee.js'
 import * as officeComps from './office/comps.js'
 import * as officeClub from './office/club.js'
+import * as officeBoard from './office/leaderboard.js'
 import { drawSide, hideSide, forgetSummary, summary } from './office/shell.js'
 
 // Each screen exports an optional async load() and a sync draw(data).
 const ADMIN = { home, account: adminHome, tee: teeTimes, book: booking, booked, mine: bookings, buddies, pins, points, events, event: eventEditor, evboard: eventBoardScreen, access, colours, weather, friend, hutadmin: hutAdmin, hutorder: hutOrder, hutstaff: hutStaff, match: matchScreen, signups: signupsAdmin, ko: knockout, konew: koNew, kocard: koCard, rules: bookingRules, comp: competitions, treq: teeRequests, mygames: myGames }
 // The club office: a section page, or one of the admin pages it opens (pins, a competition…). Pages that go back
 // to Account, Home, Club events or Competitions go back to the office section instead.
-const OFFICE = { today: officeToday, members: officeMembers, tee: officeTee, comps: officeComps, club: officeClub }
+const OFFICE = { today: officeToday, members: officeMembers, tee: officeTee, board: officeBoard, comps: officeComps, club: officeClub }
 const OFFICE_HOME = new Set(['office', 'account', 'home', 'events', 'comp'])
 const officeScreen = () => (OFFICE_HOME.has(S.aview) || !ADMIN[S.aview] ? OFFICE[S.ov] ?? officeToday : ADMIN[S.aview])
 function screenFor() {
   if (S.office) return officeScreen()
-  if (S.tab === 'scores') return S.sview === 'players' ? players : S.sview === 'challenge' ? challenge : S.sview === 'pevent' ? eventLive : S.sview === 'counts' ? scoringRound : scores
+  if (S.tab === 'scores') return S.sview === 'players' ? players : S.sview === 'challenge' ? challenge : S.sview === 'pevent' ? eventLive : S.sview === 'counts' ? scoringRound : S.sview === 'paper' ? paperFlow : scores
   if (S.tab === 'lb') return leaderboard
   if (S.tab === 'course') return course
   return ADMIN[S.aview] || home

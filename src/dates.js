@@ -13,6 +13,12 @@ export const hhmm = m => `${p2(Math.floor(m / 60))}:${p2(m % 60)}`
 export const addDaysIso = (iso, n) => { const d = fromIso(iso); d.setDate(d.getDate() + n); return isoDate(d) }
 /** "Sat 17 Oct" or "Sat 17 – Sun 18 Oct" for an event's days. */
 export const eventDates = (iso, days) => (days > 1 ? `${longDay(fromIso(iso))} – ${longDay(fromIso(addDaysIso(iso, days - 1)))}` : longDay(fromIso(iso)))
+/** A weekly repeat: the same day each week from start up to and including until. */
+export function weeklyDates(start, until) {
+  const out = []
+  for (let d = start; d <= until; d = addDaysIso(d, 7)) out.push(d)
+  return out
+}
 /** Last day of an event: the last of its days, or the Sunday of a league's final week. */
 export const eventLastDay = e => addDaysIso(e.startDate, e.style === 'league' ? e.weeks * 7 - 1 : e.days - 1)
 /** Which league week a date falls in (1-based), or 0 before it starts. */

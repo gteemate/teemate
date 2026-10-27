@@ -1,15 +1,18 @@
 import { isoDate, today } from '../dates.js'
+import { savedHoles } from '../open-holes.js'
 import { toView, toStored, mergeSaved, disagreements } from '../card-view.js'
 import { must, myId, sb, todayIso } from './client.js'
 import { getMembers } from './members.js'
 import { getGuests } from './tee-times.js'
+import { removeCardPhotos } from './paper.js'
 
 /* ---------- Rounds and leaderboard ---------- */
 
 // lineup: the card's players in order, each { m: memberId } or { g: guestId }; the first started the card.
 // Everyone on a card shares it; each player gets it in their own view (themselves first, see card-view.js).
-const ROUND_COLS = 'id, created_by, lineup, slot_id, game, pairing, scores, entered, done, submitted, tee_time, updated_at'
-const toCard = r => ({ id: r.id, createdBy: r.created_by, updatedAt: r.updated_at, lineup: r.lineup, slotId: r.slot_id, game: r.game, pairing: r.pairing, scores: r.scores, entered: r.entered, done: r.done, submitted: r.submitted })
+const ROUND_COLS = 'id, created_by, lineup, slot_id, game, pairing, scores, entered, done, submitted, tee_time, updated_at, paper_by, paper_confirmer, paper_state, paper_note, paper_photos'
+const toCard = r => ({ id: r.id, createdBy: r.created_by, updatedAt: r.updated_at, lineup: r.lineup, slotId: r.slot_id, game: r.game, pairing: r.pairing, scores: r.scores, entered: r.entered, done: r.done, submitted: r.submitted,
+  paper: r.paper_state ? { by: r.paper_by, confirmer: r.paper_confirmer, state: r.paper_state, note: r.paper_note, photos: r.paper_photos } : null })
 
 /** Today's card I'm on (one I started, or one someone started with me on it), or null. */
 export async function getCurrentRound() {
@@ -28,6 +31,7 @@ export async function getRound(id) {
 
 /** Delete a scorecard I'm on (anyone on it can, not only whoever started it). */
 export async function deleteRound(id) {
+  await removeCardPhotos(id).catch(() => {}) // a paper card's photos (none for most cards)
   const gone = must(await sb.from('rounds').delete().eq('id', id).select('id'))
   if (!gone.length) throw new Error('That scorecard couldn’t be deleted. Only players on it can delete it.')
 }
@@ -103,7 +107,8 @@ export async function saveRound(round) {
 }
 
 /**
- * Everyone's round today: [{ member, gross: [...completed holes], teeTime?, live }]. My group comes first.
+ * Everyone's round today: [{ member, holes: [course indexes saved], gross: [on those holes], teeTime?, live }]. My group
+ * comes first. Every saved hole counts (an event on, say, holes 1–6 and 10–12 skips the rest).
  * Guests appear as member-like entries { id: 'g<id>', name, hcp, guest: true } (hcp 0 until it's set).
  */
 export async function getTodayRounds(date = today()) {
@@ -120,13 +125,12 @@ export async function getTodayRounds(date = today()) {
   rounds.sort((a, b) => (b.created_by === meId) - (a.created_by === meId))
   const seen = new Set(), out = []
   for (const r of rounds) {
-    let played = r.done.findIndex(d => !d)
-    if (played === -1) played = r.done.length
     r.lineup.forEach((e, k) => {
       const key = e.m != null ? `m${e.m}` : `g${e.g}`
       if (seen.has(key) || !byKey.has(key)) return
       seen.add(key)
-      out.push({ member: byKey.get(key), gross: r.scores.slice(0, played).map(s => s[k]), teeTime: r.tee_time ?? undefined, live: true })
+      const paper = r.paper_state && r.paper_state !== 'confirmed' && e.m != null && e.m === r.paper_by ? r.paper_state : null // the uploader's score, not yet confirmed
+      out.push({ member: byKey.get(key), ...savedHoles(r, k), teeTime: r.tee_time ?? undefined, live: true, paper })
     })
   }
   return out

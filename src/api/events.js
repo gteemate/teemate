@@ -4,7 +4,7 @@ import { visible, visiblePair } from '../palette.js'
 
 /* ---------- Events set up in advance ---------- */
 
-const EVENT_COLS = 'id, name, team_a, team_b, club, everyone, start_date, days, season, points, day_rules, style, fmt, players, team, matches, weeks, best_of, league_teams, captain_pool, self_entry, entry_required, league_pairs, ko_top, ko_finish, ko_comp, entry_fee_pence, creator:created_by(id, name)'
+const EVENT_COLS = 'id, name, team_a, team_b, club, everyone, start_date, days, season, points, day_rules, holes, signup, advertise_from, entries_close, max_entries, style, fmt, players, team, matches, weeks, best_of, league_teams, captain_pool, self_entry, entry_required, league_pairs, ko_top, ko_finish, ko_comp, entry_fee_pence, creator:created_by(id, name)'
 // The two teams' colours, visible on navy and never the same.
 const teamColours = e => {
   const [a, b] = visiblePair(e.team_a?.col, e.team_b?.col)
@@ -13,7 +13,10 @@ const teamColours = e => {
 const toEvent = e => ({
   id: e.id, name: e.name, ...teamColours(e), club: e.club, everyone: e.everyone, startDate: e.start_date, days: e.days,
   season: !!e.season, // four-ball team match play over a season: matches only on its match days
-  points: e.points ?? null, dayRules: e.day_rules ?? null, // points per match type; each day's holes and points
+  points: e.points ?? null, dayRules: e.day_rules ?? null, // points per match type; each day's (a league's weeks') holes and points
+  holes: e.holes ?? null, // the open holes (open-holes.js): null = all 18
+  // Open for sign-up (club office): advertised from a date, entries until a closing date, a number of places (event-signups.js)
+  signup: !!e.signup, advertiseFrom: e.advertise_from ?? null, entriesClose: e.entries_close ?? null, maxEntries: e.max_entries ?? null,
   style: e.style, fmt: e.fmt, players: e.players, team: e.team, matches: e.matches, createdBy: e.creator,
   weeks: e.weeks, bestOf: e.best_of, teams: e.league_teams?.map(t => ({ ...t, col: visible(t.col) })) ?? e.league_teams, captainPool: e.captain_pool ?? [], // leagues
   selfEntry: !!e.self_entry, // members can enter themselves (club competitions)
@@ -27,18 +30,22 @@ export async function getEvents() {
   return must(await sb.from('events').select(EVENT_COLS).order('start_date')).map(toEvent)
 }
 
-/** Create (no id) or update an event. Returns its id. */
-export async function saveEvent(e) {
-  const row = {
+const eventRow = e => ({
     name: e.name, team_a: e.A, team_b: e.B, club: !!e.club, everyone: !!e.everyone, start_date: e.startDate, days: e.days,
     season: e.style === 'ryder' && !!e.season,
-    points: e.style === 'ryder' ? e.points ?? null : null, day_rules: e.style === 'ryder' ? e.dayRules ?? null : null,
+    points: e.style === 'ryder' ? e.points ?? null : null, day_rules: e.dayRules && Object.keys(e.dayRules).length ? e.dayRules : null, holes: e.holes ?? null,
     style: e.style, fmt: e.fmt, players: e.players, team: e.team, matches: e.matches,
     weeks: e.weeks ?? null, best_of: e.bestOf ?? null, league_teams: e.teams ?? null, captain_pool: e.captainPool ?? [], self_entry: !!e.club && !!e.selfEntry,
     entry_required: e.id ? !!e.entryRequired : e.style !== 'league', // new events: only ticked cards count
     league_pairs: e.style === 'league' ? e.leaguePairs ?? null : null, ko_top: e.style === 'league' ? e.koTop ?? null : null, ko_finish: e.style === 'league' ? e.koFinish || null : null,
     entry_fee_pence: e.club ? e.entryFee || null : null,
-  }
+    signup: !!e.club && !!e.signup, advertise_from: e.club && e.signup ? e.advertiseFrom || null : null,
+    entries_close: e.club && e.signup ? e.entriesClose || null : null, max_entries: e.club && e.signup ? e.maxEntries || null : null,
+})
+
+/** Create (no id) or update an event. Returns its id. */
+export async function saveEvent(e) {
+  const row = eventRow(e)
   if (e.id) {
     const rows = must(await sb.from('events').update(row).eq('id', e.id).select('id'))
     if (!rows.length) throw new Error('This event can’t be changed now. It has started, or it isn’t yours.')
@@ -46,6 +53,31 @@ export async function saveEvent(e) {
   }
   return must(await sb.from('events').insert(row).select('id').single()).id
 }
+
+/** Sign up for a league or club event open for entry (refused before it opens, after it closes, or when full). */
+export async function enterEvent(id) { must(await sb.rpc('enter_event', { p_id: id })) }
+/** Take myself off one, until entries close. */
+export async function withdrawEvent(id) { must(await sb.rpc('withdraw_event', { p_id: id })) }
+/** The club office takes someone off an event. */
+export async function removeEventEntrant(eventId, memberId) { must(await sb.rpc('remove_event_entrant', { p_event: eventId, p_member: memberId })) }
+
+/** Make several new events at once (a weekly repeat): all or none. Returns their ids. */
+export async function saveEvents(list) {
+  return must(await sb.from('events').insert(list.map(eventRow)).select('id')).map(r => r.id)
+}
+
+/* ---------- Club event templates (the club office) ---------- */
+
+/** [{ id, name, setup }]: an event's settings without its date or players. */
+export async function getEventTemplates() {
+  return must(await sb.from('event_templates').select('id, name, setup').order('name'))
+}
+/** Save a template (no id: a new one). Returns its id. */
+export async function saveEventTemplate({ id, name, setup }) {
+  if (id) { must(await sb.from('event_templates').update({ name, setup }).eq('id', id)); return id }
+  return must(await sb.from('event_templates').insert({ name, setup }).select('id').single()).id
+}
+export async function deleteEventTemplate(id) { must(await sb.from('event_templates').delete().eq('id', id)) }
 
 /** Change a season while it runs (its organiser or an admin): end date, teams and match days, checked by the server. */
 export async function saveSeason(e) {

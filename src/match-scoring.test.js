@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { DEFAULT_POINTS, matchType, dayRules, shotsOn, holeRanks, scoreMatch, matchPoints } from './match-scoring.js'
+import { DEFAULT_POINTS, matchType, dayRules, shotsOn, scoreMatch, matchPoints } from './match-scoring.js'
+import { openCourse } from './open-holes.js'
+const holeRanks = (holes, n) => openCourse(holes, n).map(h => h.si) // the first n holes ranked among themselves
 import { shotsOnHole } from './scoring.js'
 import { ryderMatches, singlesMatch } from './event-scoring.js'
 
@@ -49,7 +51,7 @@ describe('match types and the day’s rules', () => {
   })
   it('the event’s points over the defaults, and a day’s rules over those', () => {
     const e = { points: { four: 1.5 }, dayRules: { 9: { holes: 12, points: { four: 2 } } } }
-    expect(dayRules(e, 1)).toEqual({ holes: 18, points: { ...DEFAULT_POINTS, four: 1.5 } })
+    expect(dayRules(e, 1)).toEqual({ holes: null, points: { ...DEFAULT_POINTS, four: 1.5 } })
     expect(dayRules(e, 9)).toEqual({ holes: 12, points: { ...DEFAULT_POINTS, four: 2 } })
   })
 })
@@ -86,15 +88,15 @@ describe('Stableford total', () => {
 
 describe('a short day', () => {
   it('12 holes: shots scaled, only holes 1–12 count, decided over 12', () => {
-    const r = scoreMatch({ holes: HOLES, holesPlayed: 12, a: [P(1, 18, 1)], b: [P(2, 0, 1)], fmt: 'bbscr', allow: ALLOW })
+    const r = scoreMatch({ holes: openCourse(HOLES, 12), a: [P(1, 18, 1)], b: [P(2, 0, 1)], fmt: 'bbscr', allow: ALLOW })
     expect(r.res.thru).toBeLessThanOrEqual(12)
     expect(r.res.st).toBe('done')
-    const s = scoreMatch({ holes: HOLES, holesPlayed: 12, a: [P(1, 18, 1)], b: [P(2, 0, 1)], fmt: 'bbl', allow: { ...ALLOW, singles: 1 } })
+    const s = scoreMatch({ holes: openCourse(HOLES, 12), a: [P(1, 18, 1)], b: [P(2, 0, 1)], fmt: 'bbl', allow: { ...ALLOW, singles: 1 } })
     expect(s.ph[1]).toBe(12) // 18 shots off the low over 18 holes → 12 over 12
   })
   it('“3&2” over 12 holes', () => {
     const a = HOLES.map((h, i) => (i < 12 ? h.par - (i < 3 ? 1 : 0) : null)), b = HOLES.map((h, i) => (i < 12 ? h.par : null))
-    const r = scoreMatch({ holes: HOLES, holesPlayed: 12, a: [{ id: 1, courseHcp: 0, gross: a }], b: [{ id: 2, courseHcp: 0, gross: b }], fmt: 'bbscr', allow: ALLOW })
+    const r = scoreMatch({ holes: openCourse(HOLES, 12), a: [{ id: 1, courseHcp: 0, gross: a }], b: [{ id: 2, courseHcp: 0, gross: b }], fmt: 'bbscr', allow: ALLOW })
     expect(r.res).toMatchObject({ st: 'done', txt: '3&2', d: 3, thru: 10 })
   })
 })

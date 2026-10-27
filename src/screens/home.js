@@ -2,6 +2,8 @@
 // it (Booking, Competition, Friends, Scoring; a tile glows gold when something there needs you), and the date and
 // course weather in the header. Nothing else: things that need you drop down from the header (alert-bar.js).
 // No tab bar: these tiles and each screen's back arrow are the way around.
+import { openCourse, scaleHcp } from '../open-holes.js'
+import { cardHoles } from './card-holes.js'
 import * as api from '../api.js'
 import { S } from '../state.js'
 import { $, esc, render, top0, fmtHcp } from '../ui.js'
@@ -38,10 +40,12 @@ async function cardPill(card) {
     api.getGuests(card.lineup.filter(e => e.g != null).map(e => e.g))])
   const hcps = card.lineup.map(e => (e.m != null ? members.find(m => m.id === e.m)?.hcp : guests.find(g => g.id === e.g)?.hcp) ?? 0)
   const L = buildLibrary(games), G = cardSpec(L, card.game, hcps.length)
-  const ph = playingHandicaps(hcps.map(h => courseHandicap(h, teeRating(course))), G.allow, G.offLow)
+  // On the holes the card plays (an event's open holes, else all 18), with shots over those holes, as the card does.
+  const open = openCourse(course.holes, (await cardHoles(card, isoDate(today()))).holes)
+  const ph = playingHandicaps(hcps.map(h => courseHandicap(h, teeRating(course))), G.allow, G.offLow).map(x => scaleHcp(x, open.length))
   return roundPill({
-    done: card.done, gross: course.holes.map((_, i) => card.scores[i]?.[0] ?? null), pars: course.holes.map(h => h.par),
-    shots: course.holes.map(h => (G.allow ? shotsOnHole(ph[0], h.si) : 0)), finished: !!card.submitted?.[card.game],
+    done: open.map(h => card.done[h.i]), gross: open.map(h => card.scores[h.i]?.[0] ?? null), pars: open.map(h => h.par), nums: open.map(h => h.n),
+    shots: open.map(h => (G.allow ? shotsOnHole(ph[0], h.si, h.of) : 0)), finished: !!card.submitted?.[card.game],
   })
 }
 

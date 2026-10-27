@@ -3,12 +3,15 @@
 import * as api from '../api.js'
 import { S } from '../state.js'
 import { $, esc, ini, sur, header, keepScroll, top0, render, toast, fmtHcp, goBack } from '../ui.js'
-import { addDaysIso, eventDates, isoDate, today } from '../dates.js'
+import { addDaysIso, eventDates, isoDate, today, weeklyDates } from '../dates.js'
 import { drawTeams, drawCaptains } from '../event-scoring.js'
 import { PALETTE } from '../palette.js'
 import { DEFAULT_POINTS, dayRules } from '../match-scoring.js'
 import { openFlow, currentFlow, flowHtml, bindFlow, flowNext, flowBack, flowCta, flowTitle, typeName } from './match-day-flow.js'
 import { drawDay, dayDate, dayOfDate, playedIds } from '../season.js'
+import { holesText } from '../open-holes.js'
+import { signupLine } from '../event-signups.js'
+import { holePickerHtml, bindHolePicker, noneOpen } from './hole-picker.js'
 
 export const EVENT_TYPES = {
   ryder: { name: 'Four-ball team match play', desc: 'Two teams play four-balls, singles and 3-balls for points.', formats: [['bbl', 'Better ball · off the low'], ['bbstab', 'Better ball · Stableford'], ['bbscr', 'Better ball · scratch'], ['stabtot', 'Stableford total over the holes']] },
@@ -35,7 +38,7 @@ function dayCard(ev, d, name, canChange) {
   const when = ev.season ? eventDates(dayDate(ev, d), 1) : `Day ${d} · ${eventDates(addDaysIso(ev.startDate, d - 1), 1)}`
   return `<div class="card evsec"><div class="pinhead"><h4 style="font-size:20px">${when}</h4>${canChange ? `<span><button class="linkbtn" data-mdset="${d}">${list.length ? 'Change' : 'Set up'}</button>${ev.season ? ` <button class="linkbtn" data-rmday="${d}">Remove</button>` : ` <button class="linkbtn" data-draw="${d}">Redraw</button>`}</span>` : '<span class="hint">Played</span>'}</div>
     ${list.map(m => `<div class="matchedit"><span style="color:${ev.A.col}">${m.a.map(id => esc(sur(name(id)))).join(' &amp; ')}</span><span class="v">${typeName(m)}</span><span class="r" style="color:${ev.B.col}">${m.b.map(id => esc(sur(name(id)))).join(' &amp; ')}</span></div>`).join('') || '<span class="hint">No matches yet.</span>'}
-    <span class="hint">${r.holes} holes · four-ball ${fmtHalf(r.points.four)}, singles ${fmtHalf(r.points.singles)}, 3-ball ${fmtHalf(r.points.threePair)} / ${fmtHalf(r.points.threeSingle)}</span></div>`
+    <span class="hint">${holesText(r.holes) || '18 holes'} · four-ball ${fmtHalf(r.points.four)}, singles ${fmtHalf(r.points.singles)}, 3-ball ${fmtHalf(r.points.threePair)} / ${fmtHalf(r.points.threeSingle)}</span></div>`
 }
 const stepName = (ev, s) => (s === 4 && ev.season ? 'Match days' : STEPS[s])
 // A season that has begun: changes go through save_season (teams fixed, played match days locked).
@@ -51,7 +54,73 @@ const dropFromMatches = (ev, id) => {
   if (!ev.season) { ev.matches = {}; return }
   for (const d of seasonDays(ev)) if (!lockedDay(ev, d)) ev.matches[d] = ev.matches[d].filter(m => !m.a.includes(id) && !m.b.includes(id))
 }
-const stepsFor = ev => (ev.style === 'ryder' ? [1, 2, 3, 4, 5] : ev.style === 'teams' ? [1, 2, 3, 5] : pairsLeague(ev) ? [1, 7, 5] : teamLeague(ev) ? [1, 6, 5]
+// The open holes: the event's, and any day's (a league's weeks') own. A day's own all 18 is kept as the full list, so
+// it isn't mistaken for "same as the event".
+const ALL18 = Array.from({ length: 18 }, (_, i) => i + 1)
+const holeUnits = ev => (ev.style === 'league' ? ev.weeks : ev.days) ?? 1
+const ownHoles = (ev, d) => (ev.dayRules?.[d] && 'holes' in ev.dayRules[d] ? ev.dayRules[d].holes : undefined)
+const holesEmpty = ev => noneOpen(ev.holes) || Object.entries(ev.dayRules ?? {}).some(([d, r]) => +d <= holeUnits(ev) && noneOpen(r?.holes)) // days still in it
+function holesCard(ev) {
+  const unit = ev.style === 'league' ? 'Week' : 'Day', n = holeUnits(ev)
+  const days = n > 1 ? Array.from({ length: n }, (_, i) => i + 1).map(d => {
+    const own = ownHoles(ev, d), open = S.evHoleDay === d
+    return `<div class="actrow hpday"><span class="who"><strong>${unit} ${d}</strong><small>${own === undefined ? 'Same holes as the event' : holesText(own) || 'All 18 holes'}</small></span>
+      <button type="button" class="ghost sm" data-evhd="${d}">${open ? 'Done' : 'Change'}</button></div>
+      ${open ? `${holePickerHtml(own ?? ev.holes, `d${d}`)}${own !== undefined ? `<button type="button" class="linkbtn" data-evhsame="${d}">Same as the event</button>` : ''}` : ''}`
+  }).join('') : ''
+  return `<div class="card evsec"><h4>Holes</h4><span class="hint">Tap a hole to open or close it. Handicaps are scaled to the holes played, with shots on the hardest of them.</span>
+    ${holePickerHtml(ev.holes, 'ev')}${days ? `<div class="hpdays">${days}</div>` : ''}</div>`
+}
+/** "All 18", or "Holes 1–6, 10–12", with any day's (week's) own holes after it. */
+export function holesSummary(ev) {
+  const unit = ev.style === 'league' ? 'week' : 'day'
+  const own = Object.entries(ev.dayRules ?? {}).filter(([, r]) => r && 'holes' in r).map(([d, r]) => `${unit} ${d}: ${holesText(r.holes).replace(/^H/, 'h') || 'all 18'}`)
+  return [holesText(ev.holes) || 'All 18', ...own].join(' · ')
+}
+
+// Sign-up in advance (club office): advertised from a date, entries until a closing date, a number of places.
+const leaguePlaces = ev => (ev.teams ?? []).reduce((n, t) => n + (t.size ?? 12), 0)
+const signupCard = ev => `<div class="card evsec"><div class="actrow"><span class="who"><strong>Members sign up in advance</strong><small>Advertise it with a closing date and a number of places; members see the spaces left.</small></span>
+    <button type="button" class="switch" role="switch" id="ev-signup" aria-checked="${!!ev.signup}" aria-label="Members sign up in advance"><span></span></button></div>
+    ${ev.signup ? `<div class="tnames"><div><label for="ev-adv">Advertise from</label><input id="ev-adv" type="date" value="${ev.advertiseFrom ?? ''}"></div>
+      <div><label for="ev-close">Entries close</label><input id="ev-close" type="date" value="${ev.entriesClose ?? ''}"></div></div>
+      <label for="ev-max">Places <span class="opt">blank: no limit</span></label><input id="ev-max" type="number" class="plainsel" min="1" inputmode="numeric" value="${ev.maxEntries ?? ''}">
+      <span class="hint">${signupLine(ev)}</span>` : ''}</div>`
+
+// Club event templates (the club office): an event's settings without its date or players, run again on any day.
+const NOT_KEPT = ['id', 'startDate', 'endDate', 'start0', 'team0', 'players', 'team', 'matches', 'captainPool', 'leaguePairs', 'createdBy', 'koComp', 'koFinish', 'entryRequired', 'advertiseFrom', 'entriesClose', 'placesAuto'] // sign-up dates go with the day it's run
+export function templateOf(ev) {
+  const setup = structuredClone(ev)
+  NOT_KEPT.forEach(k => delete setup[k])
+  if (setup.teams) setup.teams = setup.teams.map(t => ({ name: t.name, col: t.col })) // no captains: they're players
+  if (setup.season) { delete setup.dayRules; setup.days = 1 } // a season's match days are its own: a run starts with none
+  if (ev.leaguePairs) setup.pairs = true
+  return setup
+}
+/** A new event from a template, on a day (null when changing the template itself). */
+export function fromTemplate(setup, date) {
+  const { pairs, ...rest } = structuredClone(setup)
+  return { days: 1, A: { name: 'Blues', col: '#6CB6FF' }, B: { name: 'Reds', col: '#E5484D' }, points: { ...DEFAULT_POINTS }, ...rest,
+    startDate: date ?? addDaysIso(isoDate(today()), 1), players: [], team: {}, matches: {}, captainPool: [], leaguePairs: pairs ? [] : null, club: true }
+}
+// The review step's extras for a new club event: save it as a template instead, or repeat it weekly.
+function clubExtras(ev) {
+  const dates = S.evRepeatUntil ? weeklyDates(ev.startDate, S.evRepeatUntil) : []
+  const repeat = ev.style === 'league' || ev.season ? '' : `<div class="card evsec"><label for="ev-rep">Repeat weekly until <span class="opt">blank: just this day</span></label>
+      <input id="ev-rep" type="date" class="plainsel" value="${S.evRepeatUntil ?? ''}" min="${addDaysIso(ev.startDate, 7)}">
+      <span class="hint">${dates.length > MAX_REPEATS ? `<b class="gerr">That would make ${dates.length} events: at most ${MAX_REPEATS} (a year). Pick an earlier date.</b>`
+        : dates.length > 1 ? `<b>Makes ${dates.length} events: ${eventDates(dates[0], 1)} … ${eventDates(dates.at(-1), 1)}</b>. Each can be changed or deleted on its own.` : 'The same day each week, each its own event.'}</span></div>`
+  return `${repeat}<div class="card evsec"><button type="button" class="ghost" id="ev-tpl">Save as a template</button>
+    <span class="hint">Keeps everything but the date and the players, under Competitions → Templates, to run on any day.</span></div>`
+}
+/** Where a run template opens: the step after the details (players, or the review for an event open to all). */
+export const stepsAfterDetails = ev => stepsFor(ev)[1] ?? 1
+const MAX_REPEATS = 52 // a year of weeks: a wrong year shouldn't make hundreds of events
+const repeatDates = ev => (S.evRepeatUntil && !(ev.style === 'league' || ev.season) ? weeklyDates(ev.startDate, S.evRepeatUntil) : [ev.startDate])
+
+// A club event open for sign-up with nobody in yet: players come from the sign-ups (teams and draw are set later by Edit).
+const fromSignups = ev => ev.club && ev.signup && ev.style !== 'league' && !ev.players.length
+const stepsFor = ev => S.evTemplate || fromSignups(ev) ? [1, 5] : (ev.style === 'ryder' ? [1, 2, 3, 4, 5] : ev.style === 'teams' ? [1, 2, 3, 5] : pairsLeague(ev) ? [1, 7, 5] : teamLeague(ev) ? [1, 6, 5]
   : ev.style === 'league' ? [1, 2, 5] : openToAll(ev) ? [1, 5] : [1, 2, 5])
 
 // Members and events are loaded once when the wizard opens, so each tap redraws instantly
@@ -74,7 +143,7 @@ export async function load() {
 
 // Done (saved or cancelled): back the way you came. Deleted: to Competitions (its leaderboard has gone).
 const leave = async (deleted = false) => {
-  S.ev = null; S.evQ = ''; S.evSwap = null; S.evTeam = null; S.mdFlow = null; cache = null
+  S.ev = null; S.evQ = ''; S.evSwap = null; S.evTeam = null; S.mdFlow = null; S.evTemplate = null; S.evRepeatUntil = null; cache = null
   if (deleted) { S.aview = 'comp'; await render(); top0(); return }
   await goBack(async () => { S.aview = 'comp'; await render(); top0() })
 }
@@ -94,6 +163,10 @@ function problem(ev, step) {
       const late = days.find(d => d > ev.days)
       if (late) return `There’s a match day on ${eventDates(dayDate(ev, late), 1)}, after the end date.`
     }
+  }
+  if (step === 1 && ev.signup) {
+    if (ev.entriesClose && ev.entriesClose >= ev.startDate) return 'Entries have to close before the first day.'
+    if (ev.advertiseFrom && ev.advertiseFrom > (ev.entriesClose ?? addDaysIso(ev.startDate, -1))) return 'Advertise it before entries close.'
   }
   if (step === 2) {
     if (ev.players.length < 2) return 'Pick at least two players.'
@@ -127,6 +200,7 @@ function draw1(ev, d) {
 
 export function draw({ members, me }) {
   const ev = S.ev, steps = stepsFor(ev)
+  if (ev.placesAuto && ev.signup && ev.style === 'league') ev.maxEntries = leaguePlaces(ev) // places follow the teams until the office sets its own
   if (!steps.includes(S.evStep)) S.evStep = steps[0]
   const step = S.evStep, idx = steps.indexOf(step)
   const byId = id => members.find(m => m.id === id)
@@ -142,12 +216,13 @@ export function draw({ members, me }) {
     body = `<div class="card evsec"><h4>Event</h4>
         <label for="ev-name">Name</label><input id="ev-name" value="${esc(ev.name)}" maxlength="60" placeholder="e.g. Saturday Fourball Cup"${viaSeason(ev, me) ? ' disabled' : ''}>
         ${ev.style === 'ryder' && !begun(ev) ? `<div class="seg" role="group" aria-label="When"><button data-when="once" aria-pressed="${!ev.season}">One-off</button><button data-when="season" aria-pressed="${!!ev.season}">Season</button></div>` : ''}
-        <div class="tnames"><div><label for="ev-date">First day</label><input id="ev-date" type="date" value="${ev.startDate}" min="${isoDate(today())}"${begun(ev) ? ' disabled' : ''}></div>
+        <div class="tnames"><div${S.evTemplate ? ' hidden' : ''}><label for="ev-date">First day</label><input id="ev-date" type="date" value="${ev.startDate}" min="${isoDate(today())}"${begun(ev) ? ' disabled' : ''}></div>
           ${ev.season ? `<div><label for="ev-end">Season ends</label><input id="ev-end" type="date" value="${ev.endDate ?? ''}" min="${ev.startDate > isoDate(today()) ? ev.startDate : isoDate(today())}" max="${addDaysIso(ev.startDate, 365)}"></div>`
             : ev.style === 'league' ? '' : `<div><label>Days</label><div class="daychips">${[1, 2, 3].map(n => `<button data-days="${n}" aria-pressed="${ev.days === n}">${n}</button>`).join('')}</div></div>`}</div>
         ${ev.style === 'league' ? '<span class="hint">Week 1 starts on this day; each week runs seven days.</span>'
           : ev.season ? `<span class="hint">${ev.endDate ? `${eventDates(ev.startDate, 1)} to ${eventDates(ev.endDate, 1)}. ` : ''}Add match days as you go, with four-balls and singles; points add up over the season.</span>`
           : `<span class="hint">${ev.startDate ? eventDates(ev.startDate, ev.days) : ''}${ev.days > 1 ? '. Points add up across the days.' : ''}</span>`}</div>
+      ${ev.season ? '' : holesCard(ev)}
       ${ev.style === 'league' ? `<div class="card evsec"><h4>League</h4>
         ${ev.id ? '' : `<div class="seg" role="group" aria-label="Played as"><button data-lgas="singles" aria-pressed="${!pairsLeague(ev)}">Singles</button><button data-lgas="pairs" aria-pressed="${pairsLeague(ev)}">Pairs</button></div>
         <span class="hint">${pairsLeague(ev) ? 'Fixed pairs all season: each week a pair’s better-ball Stableford counts when they play together.' : 'Each player’s Stableford rounds count.'}</span>`}
@@ -169,7 +244,8 @@ export function draw({ members, me }) {
         <div class="seg" role="group" aria-label="Who plays"><button data-who="all" aria-pressed="${!!ev.selfEntry}">Anyone playing that day</button><button data-who="pick" aria-pressed="${!ev.selfEntry}">Players I pick</button></div>
         <span class="hint">${ev.selfEntry ? 'Everyone starting a round that day is asked if they want to play in it. No list of players needed.' : 'Only the players you pick next can play in it.'}</span></div>`
       : `<div class="card evsec"><div class="actrow"><span class="who"><strong>Members can enter themselves</strong><small>${ev.selfEntry ? 'On the day, members starting a round are asked if they want to play in it (not for events with a draw).' : 'Only admins add entrants.'}</small></span>
-        <button type="button" class="switch" role="switch" id="ev-self" aria-checked="${!!ev.selfEntry}" aria-label="Members can enter themselves"><span></span></button></div></div>`}`
+        <button type="button" class="switch" role="switch" id="ev-self" aria-checked="${!!ev.selfEntry}" aria-label="Members can enter themselves"><span></span></button></div></div>`}
+      ${ev.season || openToAll(ev) ? '' : signupCard(ev)}`
       : '<div class="hint">Only the players you pick will see this event.</div>'}`
   } else if (step === 2) {
     const q = (S.evQ || '').trim().toLowerCase()
@@ -268,7 +344,9 @@ export function draw({ members, me }) {
         <span>Players</span><b>${ev.players.length} of ${places} places filled</b>` : `<span>Scoring</span><b>Each player’s Stableford rounds; season total</b><span>Players</span><b>${ev.players.length}</b>`}
         ${ev.koTop ? `<span>Finish</span><b>Top ${ev.koTop} into a knockout${ev.koFinish ? `, final by ${eventDates(ev.koFinish, 1)}` : ''}</b>` : ''}
         <span>Entering</span><b>Players choose before they play; one round a week</b>
-        <span>Who sees it</span><b>${ev.everyone ? 'All members' : 'Only the league’s players (and admins)'}</b></div></div>
+        <span>Who sees it</span><b>${ev.everyone ? 'All members' : 'Only the league’s players (and admins)'}</b>
+        <span>Holes</span><b>${esc(holesSummary(ev))}</b>
+        ${ev.signup ? `<span>Sign-up</span><b>${signupLine(ev)}</b>` : ''}</div></div>
       <div class="hint">Players see it on their Leaderboard tab while it runs: a team table and an individual table.</div>
       ${ev.id ? '<button class="ghost accremove" id="ev-del">Delete league</button>' : ''}`
   } else {
@@ -280,18 +358,28 @@ export function draw({ members, me }) {
         ${ev.style !== 'individual' ? `<span>Teams</span><b>${esc(ev.A.name)} ${A.length} · ${esc(ev.B.name)} ${B.length}</b>` : ''}
         ${ev.style === 'ryder' ? `<span>Matches</span><b>${Object.values(ev.matches).flat().length}${ev.season ? ` on ${seasonDays(ev).filter(d => ev.matches[d].length).length} match days so far` : ''} · points as set for each day</b>` : ''}
         <span>Who sees it</span><b>${ev.everyone ? 'All members' : 'Only the players in it'}</b>
+        ${ev.season ? '' : `<span>Holes</span><b>${esc(holesSummary(ev))}</b>`}
+        ${ev.signup ? `<span>Sign-up</span><b>${signupLine(ev)}</b>` : ''}
         <span>Scoring</span><b>Live from each player’s own card</b></div></div>
       <div class="hint">${ev.season ? `Players see it on their Leaderboard tab on their match days. You can add match days and players until the season ends.` : `Players see it on their Leaderboard tab on the day${ev.days > 1 ? 's' : ''}. ${me.admin ? 'As an admin you can change it any time.' : 'You can change it until the first day.'}`}</div>
       ${ev.id && (!begun(ev) || me.admin) ? '<button class="ghost accremove" id="ev-del">Delete event</button>' : ''}`
   }
 
   const last = idx === steps.length - 1
+  const extras = last && !flow && !ev.id && !S.evTemplate && ev.club && me.admin && S.evScope === 'club'
+  if (extras) body += clubExtras(ev)
   $('main').innerHTML = `<div class="screen">${wiz}${body}<p class="gerr" id="ev-err" role="alert"></p></div>
-    <div class="cta"><button class="primary" id="ev-next">${flow ? flowCta(flow) : last ? (ev.id ? 'Save changes' : 'Save event') : `Next: ${stepName(ev, steps[idx + 1]).toLowerCase()}`}</button></div>`
+    <div class="cta"><button class="primary" id="ev-next"${step === 1 && holesEmpty(ev) ? ' disabled>Open at least one hole' : `>${flow ? flowCta(flow) : last ? (S.evTemplate ? 'Save template' : ev.id ? 'Save changes' : repeatDates(ev).length > 1 ? `Save ${repeatDates(ev).length} events` : 'Save event') : `Next: ${stepName(ev, steps[idx + 1]).toLowerCase()}`}`}</button></div>`
 
   const redraw = () => keepScroll(render)
   const read = () => {
     if ($('ev-name')) { ev.name = $('ev-name').value; ev.startDate = $('ev-date').value; if ($('ev-fmt')) ev.fmt = $('ev-fmt').value }
+    if ($('ev-adv')) {
+      ev.advertiseFrom = $('ev-adv').value || null; ev.entriesClose = $('ev-close').value || null
+      const max = +$('ev-max').value || null
+      if (max !== ev.maxEntries) ev.placesAuto = false // the office typed its own number: it stays
+      ev.maxEntries = max
+    }
     if ($('ev-end')) ev.endDate = $('ev-end').value
     if (ev.season && ev.endDate && ev.startDate) ev.days = dayOfDate(ev, ev.endDate)
     if ($('ev-fee')) { const f = $('ev-fee').value.trim(); ev.entryFee = f && +f > 0 ? Math.min(100000, Math.round(+f * 100)) : null }
@@ -304,10 +392,20 @@ export function draw({ members, me }) {
   document.querySelectorAll('[data-when]').forEach(b => (b.onclick = () => {
     read()
     ev.season = b.dataset.when === 'season'; ev.matches = {}; ev.dayRules = null // the days start again
+    if (ev.season) ev.holes = null // a season's match days pick their own holes
     if (ev.season) { ev.endDate ??= addDaysIso(ev.startDate, 182); ev.days = dayOfDate(ev, ev.endDate) } else { ev.days = 1; ev.endDate = null }
     redraw()
   }))
   if ($('ev-end')) $('ev-end').onchange = () => { read(); redraw() }
+  // Holes: the event's, and a day's (week's) own; a day's all 18 stays the full list (not "same as the event").
+  bindHolePicker('ev', () => ev.holes, v => { read(); ev.holes = v; redraw() })
+  const setDay = (d, rule) => { const rest = { ...(ev.dayRules?.[d] ?? {}) }; delete rest.holes
+    const next = { ...(ev.dayRules ?? {}), [d]: rule === undefined ? rest : { ...rest, holes: rule } }
+    if (!Object.keys(next[d]).length) delete next[d]
+    ev.dayRules = Object.keys(next).length ? next : null }
+  document.querySelectorAll('[data-evhd]').forEach(b => (b.onclick = () => { read(); const d = +b.dataset.evhd; S.evHoleDay = S.evHoleDay === d ? null : d; redraw() }))
+  document.querySelectorAll('[data-evhsame]').forEach(b => (b.onclick = () => { read(); setDay(+b.dataset.evhsame, undefined); redraw() }))
+  if (S.evHoleDay) bindHolePicker(`d${S.evHoleDay}`, () => ownHoles(ev, S.evHoleDay) ?? ev.holes, v => { read(); setDay(S.evHoleDay, v ?? ALL18); redraw() })
   document.querySelectorAll('[data-rmday]').forEach(b => (b.onclick = () => { const d = +b.dataset.rmday; delete ev.matches[d]; if (ev.dayRules) delete ev.dayRules[d]; redraw() }))
   on('md-new', () => { openFlow(ev); redraw() })
   document.querySelectorAll('[data-mdset]').forEach(b => (b.onclick = () => { openFlow(ev, +b.dataset.mdset); redraw() }))
@@ -411,7 +509,18 @@ export function draw({ members, me }) {
     redraw()
   }))
   if ($('ev-date')) $('ev-date').onchange = () => { read(); redraw() }
+  if ($('ev-rep')) $('ev-rep').onchange = () => { S.evRepeatUntil = $('ev-rep').value || null; redraw() }
+  on('ev-tpl', async () => {
+    read()
+    if (!ev.name.trim()) { $('ev-err').textContent = 'Give it a name.'; return }
+    try { await api.saveEventTemplate({ name: ev.name.trim(), setup: templateOf(ev) }) } catch (e) { $('ev-err').textContent = e.message; return }
+    const saved = ev.name.trim()
+    await leave()
+    toast(`${saved} saved as a template`)
+  })
   if ($('ev-self')) $('ev-self').onclick = () => { read(); ev.selfEntry = !ev.selfEntry; redraw() }
+  if ($('ev-signup')) $('ev-signup').onclick = () => { read(); ev.signup = !ev.signup; if (ev.signup && ev.maxEntries == null && ev.style === 'league' && leaguePlaces(ev)) { ev.maxEntries = leaguePlaces(ev); ev.placesAuto = true }; redraw() }
+  ;['ev-adv', 'ev-close', 'ev-max'].forEach(id => { if ($(id)) $(id).onchange = () => { read(); redraw() } })
   document.querySelectorAll('[data-who]').forEach(b => (b.onclick = () => { read(); ev.selfEntry = b.dataset.who === 'all'; if (ev.selfEntry) ev.everyone = true; redraw() }))
   document.querySelectorAll('[data-vis]').forEach(b => (b.onclick = () => { read(); ev.everyone = b.dataset.vis === 'all'; redraw() }))
   const qi = $('ev-q')
@@ -465,9 +574,20 @@ export function draw({ members, me }) {
     if (pairsLeague(ev)) { ev.players = [...new Set(ev.leaguePairs.flat())]; ev.team = {}; ev.teams = [] } // a pairs league: no teams
     $('ev-next').disabled = true
     if (!ev.season) ev.endDate = null
-    try { await (viaSeason(ev, me) ? api.saveSeason(ev) : api.saveEvent(ev)) } catch (e) { $('ev-err').textContent = e.message; $('ev-next').disabled = false; return }
+    if (!ev.season && ev.dayRules) for (const d of Object.keys(ev.dayRules)) if (+d > holeUnits(ev)) delete ev.dayRules[d] // days (weeks) no longer in it
+    if (ev.season || openToAll(ev)) ev.signup = false // no sign-up card shown for these: nothing hidden left switched on
+    const p1 = !S.evTemplate && problem(ev, 1) // the details again (a run template opens past them)
+    if (p1) { $('ev-err').textContent = p1; $('ev-next').disabled = false; return }
+    const dates = repeatDates(ev)
+    if (dates.length > MAX_REPEATS) { $('ev-err').textContent = `A weekly repeat makes at most ${MAX_REPEATS} events. Pick an earlier date.`; $('ev-next').disabled = false; return }
+    try {
+      if (S.evTemplate) await api.saveEventTemplate({ id: S.evTemplate, name: ev.name.trim(), setup: templateOf(ev) })
+      else if (dates.length > 1) await api.saveEvents(dates.map((d, i) => ({ ...ev, startDate: d, // each week's sign-up dates move with it
+        advertiseFrom: ev.advertiseFrom && addDaysIso(ev.advertiseFrom, 7 * i), entriesClose: ev.entriesClose && addDaysIso(ev.entriesClose, 7 * i) })))
+      else await (viaSeason(ev, me) ? api.saveSeason(ev) : api.saveEvent(ev))
+    } catch (e) { $('ev-err').textContent = e.message; $('ev-next').disabled = false; return }
     const saved = ev.name
     await leave()
-    toast(`${saved} saved`)
+    toast(dates.length > 1 ? `${dates.length} events saved: ${saved}` : `${saved} saved`)
   }
 }

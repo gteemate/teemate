@@ -17,7 +17,7 @@ function inspect({ min, comfy }) {
   const sheetOpen = !!document.querySelector('#modal .overlay') // a pop-up sheet is meant to cover the page behind it
   const els = [...document.querySelectorAll('#app button, #app a[href], #app [role="button"], #app input:not([type="hidden"]), #app select, #app textarea')].filter(shown)
     .filter(el => !sheetOpen || el.closest('#modal'))
-  const out = { sideways: document.scrollingElement.scrollWidth > W + 1 ? `the page is ${document.scrollingElement.scrollWidth}px wide on a ${W}px screen` : null, offEdge: [], tooSmall: [], small: [], covered: [], underAlert: [], cutOff: [] }
+  const out = { sideways: document.scrollingElement.scrollWidth > W + 1 ? `the page is ${document.scrollingElement.scrollWidth}px wide on a ${W}px screen` : null, offEdge: [], tooSmall: [], small: [], covered: [], underAlert: [], cutOff: [], squeezed: [] }
   for (const el of els) {
     if (inScroller(el)) continue // date strips, brackets: meant to scroll sideways
     let r = el.getBoundingClientRect()
@@ -35,6 +35,12 @@ function inspect({ min, comfy }) {
     const s = getComputedStyle(el)
     if (s.overflow === 'hidden' && s.textOverflow !== 'ellipsis' && el.scrollWidth > el.clientWidth + 2) out.cutOff.push(label(el))
   }
+  // A name crammed into a narrow column of a wide row (a row laid out for a badge it doesn't have, say).
+  for (const w of document.querySelectorAll('#app .who')) {
+    if (!shown(w)) continue
+    const row = w.parentElement.getBoundingClientRect(), r = w.getBoundingClientRect()
+    if (row.width > 200 && r.width < row.width * 0.3) out.squeezed.push(`${label(w)} (${Math.round(r.width)}px of a ${Math.round(row.width)}px row)`)
+  }
   window.scrollTo(0, 0); document.getElementById('main')?.scrollTo?.(0, 0)
   return out
 }
@@ -48,7 +54,7 @@ async function check(page, name, testInfo) {
   const file = `${size}/${name.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.png`
   await page.screenshot({ path: `test-results/screens/${file}`, fullPage: true })
   results.push({ size, name, file, ...found })
-  const hard = [found.sideways, ...found.offEdge, ...found.tooSmall, ...found.covered].filter(Boolean)
+  const hard = [found.sideways, ...found.offEdge, ...found.tooSmall, ...found.covered, ...found.squeezed].filter(Boolean)
   expect.soft(hard, `${name} at ${size}: ${hard.join(' · ')}`).toEqual([])
 }
 

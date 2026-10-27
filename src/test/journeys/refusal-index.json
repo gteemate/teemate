@@ -96,6 +96,13 @@
    "Only admins can set the course location.",
    "That location isn't valid."
   ],
+  "admin_set_day_board_days": [
+   "Only admins can change the club settings.",
+   "The days are Sunday (0) to Saturday (6)."
+  ],
+  "admin_set_day_board_today": [
+   "Only admins can change the club settings."
+  ],
   "admin_set_fee_payment": [
    "Only the club office can change this.",
    "Pick the pro shop or the competition purse."
@@ -120,6 +127,9 @@
    "That doesn't look like an email address.",
    "A member already uses that email. The office needs its own.",
    "Change the office login from a member’s admin account."
+  ],
+  "admin_set_paper_cards": [
+   "Only the club office can change this."
   ],
   "admin_set_plays_in": [
    "Only admins can change another member's section.",
@@ -165,6 +175,12 @@
    "You don't have enough guest points for this booking."
   ],
   "bump_version": [],
+  "can_read_paper": [
+   "Only members can read scorecards.",
+   "Paper scorecards are switched off at this club.",
+   "You've read 10 cards today. Enter the scores by hand, or try again tomorrow."
+  ],
+  "can_see_card_photo": [],
   "cancel_booking": [
    "That booking no longer exists.",
    "That isn't your booking."
@@ -183,9 +199,13 @@
   "check_guest_balance": [
    "You don't have enough guest points for this booking."
   ],
+  "club_today": [],
   "confirm_ko_result": [
    "There's no result waiting to confirm.",
    "The other side confirms the result."
+  ],
+  "confirm_paper_score": [
+   "Only the person asked to confirm this score can confirm it."
   ],
   "counter_player_event": [
    "That event no longer exists.",
@@ -257,6 +277,9 @@
   "enter_event": [
    "Only members can enter competitions.",
    "This competition isn't open for entry. Ask an admin to add you.",
+   "Entries open on %.",
+   "Entries have closed.",
+   "Sorry, it's full: someone took the last place.",
    "This competition has started, so entries are closed."
   ],
   "enter_event_round": [
@@ -310,7 +333,11 @@
    "% is already entered in %. Pick another partner.",
    "Sorry, % is full (% places)."
   ],
+  "entries_close_on": [],
   "event_is_league_ok": [],
+  "event_rules_message": [
+   "%"
+  ],
   "get_booking_rules": [],
   "get_guests": [
    "Only members can see this."
@@ -322,6 +349,7 @@
   ],
   "get_theme": [],
   "hhmm": [],
+  "holes_problem": [],
   "hook_before_user_created": [],
   "hut_orders_today": [
    "Only hut staff can see the orders."
@@ -361,6 +389,12 @@
    "Entries are locked once the first hole is saved."
   ],
   "link_member_to_user": [],
+  "mark_paper_card": [
+   "Only players on this card can do that.",
+   "This card's scores are already confirmed.",
+   "Someone else has to confirm your own score.",
+   "The person confirming your score has to be on this card."
+  ],
   "mark_tee_time_requests_seen": [],
   "match_rules_problem": [],
   "move_match_booking": [
@@ -385,9 +419,11 @@
   "my_booking_ids": [],
   "my_hut_orders": [],
   "my_ko_entry": [],
+  "my_paper_confirms": [],
   "my_request_pending": [],
   "needs_account": [],
   "not_open_message": [],
+  "notify_added": [],
   "office_take_off": [
    "Only the club office can change members' bookings.",
    "That booking no longer exists.",
@@ -395,6 +431,10 @@
    "This group has already started scoring, so the booking can't change."
   ],
   "on_card": [],
+  "paper_confirmable": [
+   "Only the person asked to confirm this score can confirm it."
+  ],
+  "paper_for_office": [],
   "place_hut_order": [
    "Sign in to order.",
    "The halfway hut isn't taking orders just now.",
@@ -417,6 +457,9 @@
   ],
   "points_problem": [],
   "release_time_label": [],
+  "remove_event_entrant": [
+   "Only the club office can take someone off."
+  ],
   "report_ko_result": [
    "That match no longer exists.",
    "You can only report your match.",
@@ -440,12 +483,20 @@
    "Every guest needs a name.",
    "You can have at most 3 requests waiting. Cancel one or wait for an answer."
   ],
+  "resend_paper_score": [
+   "Only the player who uploaded the card can send it again.",
+   "This score isn't waiting to be fixed."
+  ],
   "respond_player_event": [
    "That event no longer exists.",
    "Only a group that's been asked can answer.",
    "That invitation has already been answered or cancelled.",
    "One of you has moved tee time since this was sent. Ask for a new one.",
    "The groups have changed since this was proposed. Ask for a new invitation."
+  ],
+  "round_holes_problem": [],
+  "rounds_paper_guard": [
+   "Only the paper scorecard steps can change who confirms a score."
   ],
   "rounds_stamp_save": [],
   "save_season": [
@@ -466,11 +517,22 @@
   ],
   "season_day_started": [],
   "seen_booking_notice": [],
+  "send_back_paper_score": [
+   "Add a short note saying what isn't right.",
+   "Keep the note under 200 characters.",
+   "Only the person asked to confirm this score can confirm it."
+  ],
   "set_active_event": [],
   "set_guest_handicap": [
    "That guest is no longer on the tee time.",
    "Only players on that tee time can set their guest's handicap.",
    "Handicap index must be between +10 and 54."
+  ],
+  "set_ko_round_holes": [
+   "That knockout no longer exists.",
+   "Only the knockout's organiser (or an admin) sets its holes.",
+   "That isn't a round of this knockout.",
+   "%"
   ],
   "set_my_plays_in": [
    "Only members can set this.",
@@ -487,12 +549,19 @@
   "start_tee_time_card": [
    "A tee time is needed to start this card."
   ],
+  "take_off_event": [],
+  "take_paper_read": [
+   "Only members can read scorecards.",
+   "Paper scorecards are switched off at this club.",
+   "You've read 10 cards today. Enter the scores by hand, or try again tomorrow."
+  ],
   "tee_time_opens_at": [],
   "too_close": [],
   "undecline_signup": [],
   "withdraw_event": [
    "Only members can withdraw from competitions.",
    "This competition isn't open for entry, so ask an admin to take you off.",
+   "Entries have closed. Ask the club office to take you off.",
    "This competition has started. Ask an admin to take you off."
   ],
   "withdraw_signup": [
@@ -571,6 +640,10 @@
    ],
    "tables": []
   },
+  "cardPhotoUrl": {
+   "rpc": [],
+   "tables": []
+  },
   "changePassword": {
    "rpc": [],
    "tables": []
@@ -578,6 +651,12 @@
   "confirmKoResult": {
    "rpc": [
     "confirm_ko_result"
+   ],
+   "tables": []
+  },
+  "confirmPaperScore": {
+   "rpc": [
+    "confirm_paper_score"
    ],
    "tables": []
   },
@@ -621,6 +700,12 @@
     "events"
    ]
   },
+  "deleteEventTemplate": {
+   "rpc": [],
+   "tables": [
+    "event_templates"
+   ]
+  },
   "deleteMember": {
    "rpc": [
     "admin_delete_member"
@@ -654,6 +739,12 @@
   "disputeKoResult": {
    "rpc": [
     "dispute_ko_result"
+   ],
+   "tables": []
+  },
+  "enterEvent": {
+   "rpc": [
+    "enter_event"
    ],
    "tables": []
   },
@@ -733,6 +824,10 @@
    "rpc": [],
    "tables": []
   },
+  "getEventTemplates": {
+   "rpc": [],
+   "tables": []
+  },
   "getEvents": {
    "rpc": [],
    "tables": []
@@ -775,6 +870,10 @@
    ],
    "tables": []
   },
+  "getKoMatchOfCard": {
+   "rpc": [],
+   "tables": []
+  },
   "getLeagueEntries": {
    "rpc": [],
    "tables": []
@@ -809,6 +908,12 @@
   },
   "getMyTeeTimes": {
    "rpc": [],
+   "tables": []
+  },
+  "getPaperConfirms": {
+   "rpc": [
+    "my_paper_confirms"
+   ],
    "tables": []
   },
   "getPins": {
@@ -893,6 +998,12 @@
    ],
    "tables": []
   },
+  "markPaperCard": {
+   "rpc": [
+    "mark_paper_card"
+   ],
+   "tables": []
+  },
   "markTeeTimeRequestsSeen": {
    "rpc": [
     "mark_tee_time_requests_seen"
@@ -965,17 +1076,31 @@
     "pin_sheets"
    ]
   },
+  "readScorecard": {
+   "rpc": [],
+   "tables": []
+  },
   "removeBuddy": {
    "rpc": [],
    "tables": [
     "buddies"
    ]
   },
+  "removeCardPhotos": {
+   "rpc": [],
+   "tables": []
+  },
   "removeContact": {
    "rpc": [],
    "tables": [
     "friend_contacts"
    ]
+  },
+  "removeEventEntrant": {
+   "rpc": [
+    "remove_event_entrant"
+   ],
+   "tables": []
   },
   "removeHutItem": {
    "rpc": [],
@@ -1001,6 +1126,12 @@
    ],
    "tables": []
   },
+  "resendPaperScore": {
+   "rpc": [
+    "resend_paper_score"
+   ],
+   "tables": []
+  },
   "resetLogin": {
    "rpc": [
     "admin_reset_login"
@@ -1020,6 +1151,18 @@
    ]
   },
   "saveEvent": {
+   "rpc": [],
+   "tables": [
+    "events"
+   ]
+  },
+  "saveEventTemplate": {
+   "rpc": [],
+   "tables": [
+    "event_templates"
+   ]
+  },
+  "saveEvents": {
    "rpc": [],
    "tables": [
     "events"
@@ -1067,6 +1210,12 @@
    ],
    "tables": []
   },
+  "sendBackPaperScore": {
+   "rpc": [
+    "send_back_paper_score"
+   ],
+   "tables": []
+  },
   "setBookingRules": {
    "rpc": [
     "admin_set_booking_rules"
@@ -1082,6 +1231,18 @@
   "setCourseLocation": {
    "rpc": [
     "admin_set_course_location"
+   ],
+   "tables": []
+  },
+  "setDayBoardDays": {
+   "rpc": [
+    "admin_set_day_board_days"
+   ],
+   "tables": []
+  },
+  "setDayBoardToday": {
+   "rpc": [
+    "admin_set_day_board_today"
    ],
    "tables": []
   },
@@ -1134,6 +1295,12 @@
    ],
    "tables": []
   },
+  "setKoRoundHoles": {
+   "rpc": [
+    "set_ko_round_holes"
+   ],
+   "tables": []
+  },
   "setMyGamePref": {
    "rpc": [],
    "tables": [
@@ -1149,6 +1316,12 @@
   "setOfficeLogin": {
    "rpc": [
     "admin_set_office_login"
+   ],
+   "tables": []
+  },
+  "setPaperCards": {
+   "rpc": [
+    "admin_set_paper_cards"
    ],
    "tables": []
   },
@@ -1195,6 +1368,16 @@
   "undeclineSignup": {
    "rpc": [
     "undecline_signup"
+   ],
+   "tables": []
+  },
+  "uploadCardPhoto": {
+   "rpc": [],
+   "tables": []
+  },
+  "withdrawEvent": {
+   "rpc": [
+    "withdraw_event"
    ],
    "tables": []
   },

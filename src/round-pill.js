@@ -2,10 +2,12 @@
 // so far (net when the game gives shots). Plain function of the card, tested in round-pill.test.js.
 import { toPar } from './scoring.js'
 
-/** { done[], gross[], pars[], shots[] } are per hole for me; → 'Hole N · ±X', or null (nothing saved, or finished). */
-export function roundPill({ done, gross, pars, shots, finished }) {
+/** { done[], gross[], pars[], shots[] } are per hole for me (the holes the card plays: nums are their numbers, else
+ * 1–18); → 'Hole N · ±X', or null (nothing saved, or finished). */
+export function roundPill({ done, gross, pars, shots, nums, finished }) {
   if (finished || !done.some(Boolean)) return null
   const next = done.indexOf(false)
   const vsPar = done.reduce((t, d, i) => (d && gross[i] != null ? t + gross[i] - (shots[i] ?? 0) - pars[i] : t), 0)
-  return `Hole ${next === -1 ? done.length : next + 1} · ${toPar(vsPar)}`
+  const num = j => (nums ? nums[j] : j + 1)
+  return `Hole ${num(next === -1 ? done.length - 1 : next)} · ${toPar(vsPar)}`
 }

@@ -3,13 +3,14 @@ import { must, sb, forgetMe } from './client.js'
 /* ---------- Sign-up competitions (season competitions members put their names down for) ---------- */
 
 const toComp = c => ({ id: c.id, name: c.name, category: c.category, kind: c.kind, closesOn: c.closes_on, notes: c.notes, open: c.open,
-  drawPublished: !!c.draw_published, roundDeadlines: c.round_deadlines ?? [], maxEntries: c.max_entries ?? null, createdBy: c.created_by ?? null, finalBy: c.final_by ?? null, entryFee: c.entry_fee_pence ?? null })
+  drawPublished: !!c.draw_published, roundDeadlines: c.round_deadlines ?? [], maxEntries: c.max_entries ?? null, createdBy: c.created_by ?? null, finalBy: c.final_by ?? null, entryFee: c.entry_fee_pence ?? null,
+  roundHoles: c.round_holes ?? {} }) // each round's open holes (open-holes.js), none = all 18
 
 /** { comps: [{ id, name, category, kind, closesOn, notes, open }], entries: [{ compId, memberId, partnerId }] }
  *  Members see open competitions and their own entries; admins see everything. A published draw's entries come with
  *  getKnockout. */
 export async function getSignups() {
-  const [c, e] = await Promise.all([sb.from('signup_comps').select('id, name, category, kind, closes_on, notes, open, draw_published, round_deadlines, max_entries, created_by, final_by, entry_fee_pence').order('id'),
+  const [c, e] = await Promise.all([sb.from('signup_comps').select('id, name, category, kind, closes_on, notes, open, draw_published, round_deadlines, max_entries, created_by, final_by, entry_fee_pence, round_holes').order('id'),
     sb.from('signup_entries').select('id, comp_id, member_id, partner_id, created_at').order('created_at')])
   return { comps: must(c).map(toComp), entries: must(e).map(x => ({ id: x.id, compId: x.comp_id, memberId: x.member_id, partnerId: x.partner_id })) }
 }
@@ -63,8 +64,15 @@ export async function deleteMemberKnockout(compId) { must(await sb.rpc('delete_m
 export async function makeDraw(compId) { must(await sb.rpc('admin_make_draw', { p_comp: compId })) }
 export async function swapDraw(compId, x, y) { must(await sb.rpc('admin_swap_draw', { p_comp: compId, p_x: x, p_y: y })) }
 export async function setRoundDeadlines(compId, dates) { must(await sb.rpc('admin_set_round_deadlines', { p_comp: compId, p_dates: dates })) }
+/** A knockout round's open holes (a list of hole numbers; null = all 18): an admin or the knockout's organiser. */
+export async function setKoRoundHoles(compId, round, holes) { must(await sb.rpc('set_ko_round_holes', { p_comp: compId, p_round: round, p_holes: holes })) }
 export async function publishDraw(compId) { must(await sb.rpc('admin_publish_draw', { p_comp: compId })) }
 /** Link my scorecard to my match (Score this match). */
+/** The knockout match a card is for: { compId, round }, or null. */
+export async function getKoMatchOfCard(roundId) {
+  const m = must(await sb.from('ko_matches').select('comp_id, round').eq('round_id', roundId).limit(1))[0]
+  return m ? { compId: m.comp_id, round: m.round } : null
+}
 export async function linkKoCard(matchId, roundId) { must(await sb.rpc('ko_link_card', { p_match: matchId, p_round: roundId })) }
 export async function reportKoResult(matchId, winnerEntry, result) { must(await sb.rpc('report_ko_result', { p_match: matchId, p_winner: winnerEntry, p_result: result })) }
 export async function confirmKoResult(matchId) { must(await sb.rpc('confirm_ko_result', { p_match: matchId })) }
