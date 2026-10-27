@@ -11,13 +11,16 @@
 //   prepare:    async (app) after the app starts, before the steps (e.g. stand in for the camera)
 import member from './catalogue/member.js'
 import office from './catalogue/office.js'
+import organiser from './catalogue/organiser.js'
+import others from './catalogue/others.js'
 
 export const PEOPLE = ['member', 'organiser', 'captain', 'office', 'hut', 'newjoiner', 'visitor']
-export const JOURNEYS = [...member, ...office]
+export const JOURNEYS = [...member, ...office, ...organiser, ...others]
 // Messages no journey can meet, with why (guards for things the app never offers that person, input the screens prevent).
 export const ALSO_UNREACHABLE = {}
 // Data functions no screen calls, with why (kept for the database or a later feature).
 export const NOT_OFFERED = {
   leaveEventRound: 'no screen takes a player out of a counted event round (the card is deleted or the event changed instead)',
   undeclineSignup: 'no screen undoes No thanks: entering the competition does it',
+  setFavourite: 'the old Access page that set favourites is no longer linked (Office → Members replaced it; friends are starred under Friends)',
 }

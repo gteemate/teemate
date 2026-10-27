@@ -275,4 +275,15 @@ export default [
     setup: db => paperCard(db, { by: 3, confirmer: 1 }), steps: [{ tap: '[data-al="pback"]' }, { type: ['#pb-note', 'Hole 14 was a 6'] }, { tap: '#pb-send' }],
     action: 'sendBackPaperScore', expect: db => db.rounds.find(r => r.id === 61).paper.state === 'sent_back', refusals: 'all',
   },
+  {
+    id: 'move-match-booking', who: 'member', title: 'Rearrange my team match’s tee time',
+    setup: db => {
+      db.events.push({ id: 900, name: 'Pals Season', A: { name: 'Blues', col: '#19335A' }, B: { name: 'Reds', col: '#762A43' },
+        club: false, everyone: false, startDate: '2026-10-07', days: 176, season: true, style: 'ryder', fmt: 'bbl', entryRequired: true,
+        players: [0, 9, 10, 1], team: { 0: 'A', 9: 'A', 10: 'B', 1: 'B' }, matches: { 4: [{ a: [0, 9], b: [10, 1] }] }, createdBy: { id: 0, name: 'Gary Cochrane' } })
+      db.book(1, at(db, 570).id, [0, 9, 10])
+    },
+    steps: [{ tap: 'Competition' }, { tap: '[data-tab="entered"]' }, { tap: 'Pals Season' }, { tap: '[data-mact="move"]' }, { tap: '11:00' }, { tap: '#mv-go' }],
+    action: 'moveMatchBooking', expect: db => at(db, 660).players.length === 4, refusals: 'all',
+  },
 ]
