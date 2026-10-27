@@ -11,7 +11,7 @@ import { $, esc, header, keepScroll, render, redraw, toast, top0 } from '../ui.j
 import { addDaysIso, eventDates, eventLastDay, isoDate, leagueWeek, today } from '../dates.js'
 import { eventWhen } from '../season.js'
 import { entryName, roundName, champion } from '../knockout.js'
-import { EVENT_TYPES, fromTemplate, stepsAfterDetails } from '../screens/event-editor.js'
+import { EVENT_TYPES, fromTemplate, stepsAfterDetails, DRAW_FRESH } from '../screens/event-editor.js'
 import { clubComp, clubEvent, panel } from './shell.js'
 import { money, feeTotal } from '../fees.js'
 
@@ -88,7 +88,7 @@ export function draw({ evs, comps, kos, members, t, tpls = [] }) {
     const [what, id] = b.dataset.oGo.split(':')
     if (what === 'board') Object.assign(S, { evId: +id, evDay: 1, lgWeek: null, aview: 'evboard' })
     if (what === 'edit') Object.assign(S, { ev: null, evId: +id, evStep: 1, evScope: 'club', aview: 'event' })
-    if (what === 'teams') Object.assign(S, { ev: null, evId: +id, evStep: 6, evTeam: null, evCapMode: null, evScope: 'club', aview: 'event' }) // captains first
+    if (what === 'teams') Object.assign(S, { ev: null, evId: +id, evStep: 6, ...DRAW_FRESH, evDraw: 1, evScope: 'club', aview: 'event' }) // captains first
     if (what === 'draw') Object.assign(S, { koComp: +id, koRound: null, koFrom: 'office', aview: 'ko' })
     if (what === 'signups') Object.assign(S, { aview: 'signups', signupOnly: id ? +id : 'new', signupFromOffice: true }) // one competition's page
   })))

@@ -1077,3 +1077,29 @@ button.lrow.ci-m{width:100%;text-align:left;background:none;border:0;border-top:
 .evwin b{display:block;font-size:19px}
 .evwin .evwinv{margin-left:auto;font-size:24px;font-weight:800;white-space:nowrap}
 .evwin .evwinv small{font-size:13px;font-weight:700;text-transform:none;letter-spacing:0;display:inline}
+/* Making a league's draw (event-editor step 6): 1 captains, 2 teams, 3 check and save */
+.drawsteps{display:flex;flex-wrap:wrap;gap:8px;list-style:none;padding:0;margin:0 0 12px}
+.drawsteps li{display:flex;flex-direction:row;align-items:center;gap:8px;white-space:nowrap;padding:6px 14px 6px 6px;border-radius:999px;border:1px solid var(--line);color:var(--muted);font-weight:700;font-size:14px}
+.drawsteps li span{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--leaf);font-size:13px}
+.drawsteps li.on{background:var(--gold);border-color:var(--gold);color:var(--on-gold)}
+.drawsteps li.on span{background:var(--on-gold);color:var(--gold)}
+.drawsteps li.done{background:var(--leaf);color:var(--ink)}
+.drawsteps li.done span{background:var(--live);color:#08210f}
+.okline{color:var(--live);font-weight:700}
+.hteams{display:flex;flex-wrap:wrap;gap:8px}
+.hteams button{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:0 12px;border-radius:10px;border:1px solid var(--line);background:var(--leaf);color:var(--ink);font-weight:700;font-size:14px;cursor:pointer}
+.hteams button[aria-pressed="true"]{background:var(--gold);border-color:var(--gold);color:var(--on-gold)}
+.hteams small{font-weight:400}
+.dtiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin:4px 0 12px}
+.dtile{display:flex;flex-direction:column;gap:2px;padding:12px 14px;border-radius:14px;background:var(--surface);border:1px solid var(--line);border-top:5px solid var(--line)}
+.dtile small{font-size:12px;color:var(--muted)}
+.dtile em{font-style:normal;font-family:var(--display);font-size:24px;margin-top:4px}
+.dteam.open{border-color:var(--gold)}
+.dteamhd{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.dteambtn{flex:1;display:flex;align-items:center;gap:10px;background:none;border:0;color:var(--ink);padding:4px 0;text-align:left;font:inherit;cursor:pointer;min-height:44px}
+.dteambtn .hint{flex:1}
+.dchips{display:flex;flex-wrap:wrap;gap:6px}
+.dchip{min-height:36px;padding:0 12px;border-radius:999px;border:1px solid var(--line);background:var(--leaf);color:var(--ink);font:inherit;font-size:13px;cursor:pointer}
+.dchip.cap{border-color:var(--gold)}
+.dchip.on{background:var(--gold);border-color:var(--gold);color:var(--on-gold);font-weight:700}
+.cta .linkbtn{white-space:nowrap}

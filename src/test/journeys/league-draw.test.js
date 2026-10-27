@@ -21,19 +21,26 @@ const open = async () => { await app.tap('[data-ov="comps"]'); await app.tap('[d
 const ev = () => app.db.events.find(e => e.id === 880)
 const toSave = async () => { for (let i = 0; i < 4 && !document.getElementById('ev-next').textContent.startsWith('Save'); i++) await app.tap('#ev-next'); await app.tap('#ev-next') }
 
-describe('a sign-up league: entries in, then captains and the draw', () => {
-  it('full: a yellow box; captains come first; drawn at random from all entrants, then the teams balanced and saved', async () => {
+describe('a sign-up league: entries in, then the draw in three steps', () => {
+  const step = () => document.querySelector('.drawsteps li.on').textContent
+  it('full: a yellow box; 1 captains at random from all entrants, 2 balanced by handicap, 3 saved', async () => {
     app = await boot(league())
     await open()
     expect(document.querySelector('.ogold').textContent).toContain('Entries are in: 6 of 6')
     await app.tap('Pick captains and make the draw')
-    expect(document.querySelector('[data-team="-2"]').getAttribute('aria-pressed')).toBe('true')
+    expect(step()).toContain('Captains')
+    expect(document.getElementById('ev-next').disabled).toBe(true) // no captains yet
     expect(app.text()).toContain('Captains: one for each of the 2 teams')
     await app.tap('[data-capmode="random"]')
     await app.tap('#lg-draw')
-    await app.tap('Next: balance the teams')
+    await app.tap('Next: put the entrants on teams')
+    expect(step()).toContain('Teams')
+    expect(document.getElementById('ev-next').disabled).toBe(true) // nobody placed yet
     await app.tap('#lg-bal')
-    await toSave()
+    expect(document.querySelectorAll('.dtile')).toHaveLength(2)
+    await app.tap('Next: check the teams')
+    expect(step()).toContain('Check and save')
+    await app.tap('Save the draw')
     const e = ev()
     expect(e.teams.every(t => e.players.includes(t.captain))).toBe(true)
     expect(Object.keys(e.team)).toHaveLength(6)
@@ -46,9 +53,50 @@ describe('a sign-up league: entries in, then captains and the draw', () => {
     expect(document.querySelectorAll('[data-cand]')).toHaveLength(6) // a sign-up league's candidates are its entrants
     await app.tap('[data-cand="2"]'); await app.tap('[data-cand="5"]')
     await app.tap('#lg-draw')
-    await app.tap('Next: balance the teams'); await app.tap('#lg-bal')
-    await toSave()
+    await app.tap('Next: put the entrants on teams'); await app.tap('#lg-bal')
+    await app.tap('Next: check the teams'); await app.tap('Save the draw')
     expect(ev().teams.map(t => t.captain).sort()).toEqual([2, 5])
+  })
+  it('or assign myself: pick a team, tap entrants onto it; a full team takes no more', async () => {
+    app = await boot(league())
+    await open()
+    await app.tap('Pick captains and make the draw')
+    await app.tap('#ev-nocaps') // no captains: straight to the teams
+    await app.tap('[data-balmode="hand"]')
+    for (const id of [1, 2, 3]) await app.tap(`[data-hand="${id}"]`)
+    await app.tap('[data-hand="4"]')
+    expect(app.toast()).toContain('Blues is full')
+    await app.tap('[data-hteam="1"]')
+    for (const id of [4, 5]) await app.tap(`[data-hand="${id}"]`)
+    expect(app.text()).toContain('5 of 6 on a team · 1 still to place')
+    await app.tap('Next: check the teams')
+    expect(app.text()).toContain('Not on a team · 1')
+    await app.tap('Save the draw')
+    expect(ev().team).toEqual({ 1: 0, 2: 0, 3: 0, 4: 1, 5: 1 })
+  })
+  it('check and save: move someone by hand, make them captain, rename a team', async () => {
+    app = await boot(league({ teams: [{ name: 'Blues', col: '#6CB6FF', size: 3, captain: 1 }, { name: 'Reds', col: '#E5484D', size: 3, captain: 4 }], team: { 1: 0, 2: 0, 3: 0, 4: 1, 5: 1, 6: 1 } }))
+    await open()
+    await app.tap('[data-o-go="edit:880"]'); await app.tap('#ev-next') // a drawn league opens on Check and save
+    expect(document.querySelector('.drawsteps li.on').textContent).toContain('Check and save')
+    await app.tap('[data-topen="0"]')
+    await app.tap('[data-mv="2"]')
+    await app.tap('[data-mvto="1"]')
+    await app.tap('[data-topen="1"]')
+    await app.tap('[data-mv="2"]')
+    await app.tap('[data-mkcap="1"]')
+    await app.type('#lg-tn', 'Reds United')
+    await app.tap('Save the draw')
+    expect(ev().team[2]).toBe(1)
+    expect(ev().teams[1]).toMatchObject({ name: 'Reds United', captain: 2 })
+  })
+  it('Back goes a step back; the editor’s back arrow too', async () => {
+    app = await boot(league())
+    await open()
+    await app.tap('Pick captains and make the draw')
+    await app.tap('#ev-nocaps')
+    await app.tap('#ev-dback')
+    expect(document.querySelector('.drawsteps li.on').textContent).toContain('Captains')
   })
   it('no box while there’s room and entries are open, nor once the teams are drawn', async () => {
     app = await boot(league({ players: [1, 2, 3] }))
@@ -63,16 +111,12 @@ describe('a sign-up league: entries in, then captains and the draw', () => {
     await open()
     expect(document.querySelector('.ogold').textContent).toContain('Entries are in: 4 of 6')
   })
-  it('the office can’t add past the places', async () => {
+  it('a sign-up league’s entrants come from sign-ups: no adding in the draw', async () => {
     app = await boot(league())
     await open()
     await app.tap('Pick captains and make the draw')
-    await app.tap('[data-team="-1"]')
-    expect(app.text()).toContain('Full: 6 of 6 places')
-    expect(document.getElementById('lg-addall')).toBe(null)
-    await app.tap('[data-ent="7"]')
-    expect(app.toast()).toContain('Full: 6 places')
-    expect(document.querySelector('[data-ent="7"]').getAttribute('aria-pressed')).toBe('false')
+    expect(document.getElementById('lg-ents')).toBe(null)
+    expect(document.querySelector('[data-ent]')).toBe(null)
   })
 })
 
