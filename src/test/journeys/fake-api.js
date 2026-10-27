@@ -260,8 +260,11 @@ export function makeWorld(today, setup = () => {}, as = 'admin') {
     setHutOn: async on => { db.hut.on = on },
     setHutStaff: async (mid, on) => { db.members.find(m => m.id === mid).hutStaff = on },
     placeHutOrder: async (picks, note, roundId = null) => {
-      const items = Object.entries(picks).filter(([, q]) => q > 0).map(([i, qty]) => { const m = db.hut.menu.find(x => x.id === +i); return { id: m.id, name: m.name, qty, pricePence: m.pricePence } })
+      const items = Object.entries(picks).filter(([, q]) => q > 0).map(([i, qty]) => { const m = db.hut.menu.find(x => x.id === +i); return { id: m.id, name: m.name, qty, pricePence: m.pricePence, soldOut: m.soldOut } })
       if (!items.length) throw new Error('Pick something from the menu first.')
+      if (items.some(i => i.soldOut)) throw new Error('Something you picked has sold out or come off the menu. Have another look.')
+      if (db.orders.filter(o => o.memberId === ME && ['sent', 'making', 'ready'].includes(o.status)).length >= 3) throw new Error('You already have 3 orders waiting at the hut.')
+      items.forEach(i => delete i.soldOut)
       const o = { id: id(), memberId: ME, items, totalPence: items.reduce((t, i) => t + i.qty * i.pricePence, 0), note: note || null, status: 'sent', cancelNote: null, createdAt: new Date().toISOString(), roundId }
       db.orders.push(o); return o.id
     },
@@ -360,10 +363,17 @@ export function makeWorld(today, setup = () => {}, as = 'admin') {
       db.rules = { ...db.rules, time, days, weekendsOnly: !!weekendsOnly }
     },
     requestTeeTime: async ({ slotId, memberIds = [], guests = [], reason }) => {
+      if (!reason?.trim() || reason.length > 500) throw new Error('Give a reason for the request (up to 500 characters).')
+      if (db.requests.filter(r => r.memberId === ME && r.status === 'pending').length >= 3) throw new Error('You can have at most 3 requests waiting. Cancel one or wait for an answer.')
       const s = slotById(slotId), r = { id: id(), memberId: ME, slotId, date: s.date, time: s.time, memberIds, guests, reason, status: 'pending', note: null, decidedAt: null, seen: false, createdAt: new Date().toISOString() }
       db.requests.unshift(r); return r.id
     },
-    cancelTeeTimeRequest: async rid => { db.requests.find(r => r.id === rid).status = 'cancelled' },
+    cancelTeeTimeRequest: async rid => {
+      const r = db.requests.find(x => x.id === rid)
+      if (!r || r.memberId !== ME) throw new Error('You can only cancel your own requests.')
+      if (r.status !== 'pending') throw new Error('This request is no longer waiting.')
+      r.status = 'cancelled'
+    },
     getMyTeeTimeRequests: async () => copy(db.requests.filter(r => r.memberId === ME && !r.dismissed)),
     dismissTeeTimeRequest: async rid => { db.requests.find(r => r.id === rid).dismissed = true },
     getTeeTimeRequests: async () => copy(db.requests),
@@ -398,7 +408,10 @@ export function makeWorld(today, setup = () => {}, as = 'admin') {
     getStamps: async () => ({ ...db.stamps }),
     // As the real api/events.js: team colours visible on navy and never the same.
     deleteEvent: async eid => { db.events = db.events.filter(e => e.id !== eid) },
-    getEvents: async () => copy(db.events).map(e => { const [a, b] = visiblePair(e.A?.col, e.B?.col); return { ...e, A: e.A && { ...e.A, col: a }, B: e.B && { ...e.B, col: b } } }),
+    getEvents: async () => copy(db.events.filter(e => { // as the database: a sign-up isn't shown to members before it's advertised
+      const admin = db.asOffice || db.members.find(m => m.id === ME)?.admin
+      return admin || !e.signup || !e.advertiseFrom || e.advertiseFrom <= db.today || e.players.includes(ME) || e.createdBy?.id === ME
+    })).map(e => { const [a, b] = visiblePair(e.A?.col, e.B?.col); return { ...e, A: e.A && { ...e.A, col: a }, B: e.B && { ...e.B, col: b } } }),
     getCardsOn: async dates => copy(db.rounds.filter(r => dates.includes(r.date))),
     getCardsById: async ids => Object.fromEntries(db.rounds.filter(r => ids.includes(r.id)).map(r => [r.id, copy(r)])),
     getLeagueEntries: async eids => copy(db.leagueEntries.filter(x => eids.includes(x.eventId))),
@@ -409,8 +422,17 @@ export function makeWorld(today, setup = () => {}, as = 'admin') {
       if (r.done.some(Boolean)) throw new Error('Entries are locked once the first hole is saved.')
       db.leagueEntries = db.leagueEntries.filter(x => !(x.eventId === eid && x.roundId === rid && ids.includes(x.memberId)))
     },
-    enterLeague: async (rid, eid, ids, marker = null) => { ids.forEach(m => db.leagueEntries.push({ eventId: eid, week: 1, memberId: m, roundId: rid, marker })); return 1 },
-    enterEventRound: async (rid, eid, ids, marker = null) => { ids.forEach(m => db.entries.push({ eventId: eid, day: 1, memberId: m, roundId: rid, marker })); return 1 },
+    enterLeague: async (rid, eid, ids, marker = null) => {
+      const r = db.rounds.find(x => x.id === rid)
+      if (r && !r.lineup.some(x => x.m === ME)) throw new Error('You can only enter rounds from a card you\'re on.')
+      if (r?.done?.some(Boolean)) throw new Error('Rounds have to be entered before the first hole is saved.')
+      const twice = ids.find(m => db.leagueEntries.some(x => x.eventId === eid && x.week === 1 && x.memberId === m && x.roundId !== rid))
+      if (twice != null) throw new Error(`${member(twice).name} has already entered a round this week.`)
+      ids.forEach(m => db.leagueEntries.push({ eventId: eid, week: 1, memberId: m, roundId: rid, marker })); return 1
+    },
+    enterEventRound: async (rid, eid, ids, marker = null) => {
+      if (db.rounds.find(x => x.id === rid)?.done?.some(Boolean)) throw new Error('Rounds have to be counted before the first hole is saved.')
+      ids.forEach(m => db.entries.push({ eventId: eid, day: 1, memberId: m, roundId: rid, marker })); return 1 },
     // As the database's rules: a member sees their own entries; admins see everyone's.
     getSignups: async () => copy({ comps: db.signups, entries: me().admin ? db.signupEntries : db.signupEntries.filter(e => e.memberId === ME || e.partnerId === ME) }),
     saveSignup: async c => { if (c.id) Object.assign(db.signups.find(x => x.id === c.id), c); else db.signups.push({ ...c, id: id(), drawPublished: false, roundDeadlines: [] }) },
@@ -420,7 +442,9 @@ export function makeWorld(today, setup = () => {}, as = 'admin') {
       // As the real enter_signup: nobody in two entries of one competition.
       const taken = id => db.signupEntries.some(e => e.compId === cid && (e.memberId === id || e.partnerId === id))
       const c = db.signups.find(x => x.id === cid)
+      if (c.closesOn && c.closesOn < db.today) throw new Error(`Entries have closed for ${c.name}.`)
       if (taken(ME)) throw new Error(`You’re already entered in ${c.name}.`)
+      if (c.maxEntries && db.signupEntries.filter(e => e.compId === cid).length >= c.maxEntries) throw new Error(`Sorry, ${c.name} is full (${c.maxEntries} places).`)
       if (partnerId != null && taken(partnerId)) throw new Error(`${member(partnerId).name} is already entered in ${c.name}. Pick another partner.`)
       db.signupEntries.push({ compId: cid, memberId: ME, partnerId })
     },
@@ -446,7 +470,13 @@ export function makeWorld(today, setup = () => {}, as = 'admin') {
     },
     getKoMatchOfCard: async rid => { const m = db.koMatches.find(x => x.roundId === rid); return m ? { compId: m.compId, round: m.round } : null },
     linkKoCard: async (mid, rid) => { db.koMatches.find(m => m.id === mid).roundId = rid },
-    reportKoResult: async (mid, w, r) => Object.assign(db.koMatches.find(m => m.id === mid), { status: 'reported', winnerEntry: w, result: r, reportedEntry: db.signupEntries.find(e => e.memberId === ME || e.partnerId === ME)?.id }),
+    reportKoResult: async (mid, w, r) => {
+      const m = db.koMatches.find(x => x.id === mid)
+      if (!m) throw new Error('That match no longer exists.')
+      const mine = [m.aEntry, m.bEntry].some(e => db.signupEntries.some(x => x.id === e && (x.memberId === ME || x.partnerId === ME)))
+      if (!mine) throw new Error('You can only report your match.')
+      Object.assign(m, { status: 'reported', winnerEntry: w, result: r, reportedEntry: db.signupEntries.find(x => [m.aEntry, m.bEntry].includes(x.id) && (x.memberId === ME || x.partnerId === ME)).id })
+    },
     confirmKoResult: async mid => { const m = db.koMatches.find(x => x.id === mid); m.status = 'confirmed'; db.koAdvance(m) },
     disputeKoResult: async mid => { db.koMatches.find(m => m.id === mid).status = 'disputed' },
     // The draw, with the database's rules (admin_make_draw, admin_publish_draw, admin_swap_draw, admin_set_round_deadlines).
