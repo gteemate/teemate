@@ -49,7 +49,7 @@ export function details(b, me) {
     ${others.length ? `<span class="hint">Also on this tee time</span><div class="card list">${others.map(p => person(p, false)).join('')}</div>` : ''}
     ${scored(b) ? `<div class="card warn-box"><strong>Scores entered for ${holes(b.scoredHoles)}</strong><span>Deleting this booking also deletes the scorecard for this round.${b.guests ? ' Your guest points come back.' : ''}</span></div>`
       : `<span class="hint">${b.mine ? `${canRemove ? 'Tap Remove to take one person off. ' : ''}Deleting takes everyone in your booking off this time${b.guests ? ' and gives your guest points back' : ''}.` : 'Withdrawing takes just you off. The rest of the booking stays.'} ${!b.mine && b.scoredHoles > 0 ? 'The group’s scorecard stays.' : 'A scorecard for it goes too, unless holes have been saved.'}</span>`}
-    ${b.held ? `<span class="hint">${b.held} places held for the ${esc(b.heldFor)}</span>` : b.people.length < (b.capacity ?? 4) ? '<button class="ghost dashed" id="bk-add">+ Add a player</button>' : ''}
+    ${b.held ? `<span class="hint">${b.held} place${b.held === 1 ? '' : 's'} held for the ${esc(b.heldFor)}</span>` : b.people.length < (b.capacity ?? 4) ? '<button class="ghost dashed" id="bk-add">+ Add a player</button>' : ''}
     <div class="gm-btns"><button type="button" class="ghost" id="bk-close">${scored(b) ? 'Keep it' : 'Close'}</button><button class="primary" id="bk-act">${act}</button></div>
   </div></div>`
   const close = () => { $('modal').innerHTML = '' }

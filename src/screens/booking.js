@@ -36,7 +36,7 @@ export function draw({ date, slot: s, me, members, friends, points }) {
   const canGuest = used < max && after >= cost
 
   let slots = add ? '' : `<div class="pslot filled"><span class="av">${ini(me.name)}</span><span class="who"><strong>${esc(me.name)} (you)</strong><small>${esc(sub(me))}</small></span><span></span></div>`
-  S.picked.forEach(id => { const m = byId(id); slots += `<div class="pslot filled"><span class="av">${ini(m.name)}</span><span class="who"><strong>${esc(m.name)}</strong><small>${esc(sub(m))}</small></span><button class="x" data-rm="${id}" aria-label="Remove ${esc(m.name)}">×</button></div>` })
+  S.picked.forEach(id => { const m = byId(id); slots += `<div class="pslot filled"><span class="av">${ini(m.name)}</span><span class="who"><strong>${esc(m.name)}</strong><small>${esc(sub(m))}</small></span>${hold ? '<span></span>' : `<button class="x" data-rm="${id}" aria-label="Remove ${esc(m.name)}">×</button>`}</div>` }) // a held match's opponent stays
   S.guests.forEach((g, n) => { slots += `<div class="pslot filled guest"><span class="av gst">${ini(g.name)}</span><span class="who"><strong>${esc(g.name)} <span class="pill tag">Guest</span></strong><small>${[g.club, g.gui && 'GUI ' + g.gui, g.hcp != null ? 'HCP ' + fmtHcp(g.hcp) : 'handicap later'].filter(Boolean).map(esc).join(' · ')}</small></span><span class="gright"><span class="ptag">−${cost} pts</span><button class="x" data-rg="${n}" aria-label="Remove guest ${esc(g.name)}">×</button></span></div>` })
   if (hold) for (let k = 2; k < s.capacity; k++) slots += `<div class="pslot held"><span class="av empty">⛳</span><span class="who"><strong>Held for your ${esc(hold.label)}</strong><small>Nobody else can book this place</small></span><span></span></div>`
   else for (let k = (add ? 0 : 1) + used; k < free; k++) slots += '<button class="pslot open" data-open><span class="av empty">+</span><span class="who"><strong>Open space</strong><small>Tap to add a player or guest</small></span><span class="chev">›</span></button>'
@@ -104,6 +104,7 @@ export function draw({ date, slot: s, me, members, friends, points }) {
     S.guests = []
     S.picked = []
     S.matchHold = null
+    S.filter = 'all' // a match's "4 spaces" filter doesn't stay on the tee sheet
     S.aview = 'booked'
     S.navReset = true // done: back goes Home from here
     await render()

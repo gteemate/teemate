@@ -61,6 +61,11 @@ describe('pickerGroups: who to offer when adding players to a booking', () => {
   }
   const base = { members, friends, taken: new Set(), guestNames: new Set(), q: '', canGuest: true }
   const shape = gs => gs.map(g => [g.title, g.rows.map(r => (r.kind === 'member' ? r.m.id : `c${r.c.id}`))])
+  it('searching ignores accents: “sean” finds Seán, and “seán” finds Sean', () => {
+    const ms = [...members, { id: 5, name: 'Seán Óg Ryan' }, { id: 6, name: 'Sean Kelly' }]
+    expect(shape(pickerGroups({ ...base, members: ms, q: 'sean og' }))).toEqual([['Members', [5]]])
+    expect(shape(pickerGroups({ ...base, members: ms, q: 'seán' }))).toEqual([['Members', [5, 6]]])
+  })
   it('favourites (club and other clubs), then your friends, then friends from other clubs', () =>
     expect(shape(pickerGroups(base))).toEqual([['Favourites', [1, 'c9']], ['Your friends', [2, 3]], ['Friends from other clubs', ['c8']]]))
   it('people already in the booking are left out, and empty groups go', () =>

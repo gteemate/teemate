@@ -1,6 +1,7 @@
 // Friend links: your Account card as a link (QR, Share) that opens TeeMate's Add friend page with your details.
 // The details sit after the # so they never reach a server. Plain functions, tested in friend-link.test.js.
 import { fmtHcp } from './ui.js'
+import { fold } from './fold.js'
 
 const MAX = 600 // longer than any real name + club; anything longer isn't one of ours
 const norm = s => String(s ?? '').trim().toLowerCase().replace(/\s+/g, ' ')
@@ -56,10 +57,10 @@ export function pickerGroups({ members, friends, taken, guestNames, q, canGuest 
   const free = friends.buddies.filter(b => member(b) && !taken.has(b.id))
   const contacts = friends.contacts.filter(c => !guestNames.has(norm(c.name)))
   const mRow = m => ({ kind: 'member', m }), cRow = c => ({ kind: 'contact', c, disabled: !canGuest })
-  const words = norm(q).split(' ').filter(Boolean)
+  const words = fold(norm(q)).split(' ').filter(Boolean) // accents ignored: "sean" finds Seán
   const groups = words.length
-    ? [['Members', members.filter(m => !taken.has(m.id) && words.every(w => m.name.toLowerCase().includes(w))).slice(0, 30).map(mRow)],
-       ['Friends from other clubs', contacts.filter(c => words.every(w => c.name.toLowerCase().includes(w))).map(cRow)]]
+    ? [['Members', members.filter(m => !taken.has(m.id) && words.every(w => fold(m.name).includes(w))).slice(0, 30).map(mRow)],
+       ['Friends from other clubs', contacts.filter(c => words.every(w => fold(c.name).includes(w))).map(cRow)]]
     : [['Favourites', [...free.filter(b => b.favourite).map(b => mRow(member(b))), ...contacts.filter(c => c.favourite).map(cRow)]],
        ['Your friends', free.filter(b => !b.favourite).map(b => mRow(member(b)))],
        ['Friends from other clubs', contacts.filter(c => !c.favourite).map(cRow)]]

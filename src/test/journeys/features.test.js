@@ -1377,13 +1377,15 @@ describe('club singles matches hold the four-ball', () => {
     expect(document.querySelectorAll('.pslot.held')).toHaveLength(2)
     expect(app.text()).toContain('Held for your Men’s Match Play match')
     expect(document.querySelector('[data-open]')).toBeNull() // no open spaces to fill
+    expect(document.querySelector('[data-rm]')).toBeNull() // the opponent can't be taken off: it's their match
     await app.tap('Book Men’s Match Play match')
     const b = app.db.bookings.at(-1)
     expect(at(app.db, 600).players.map(p => p.memberId)).toEqual([0, 1])
     expect([b.held, b.heldFor]).toEqual([2, 'Men’s Match Play match'])
     // the tee sheet: the held places say what they're for, and the time can't be booked
     await app.homeFromHere()
-    await app.tap('Booking'); await app.tap('+ Add a booking'); await app.tap('[data-f="all"]')
+    await app.tap('Booking'); await app.tap('+ Add a booking')
+    expect(document.querySelector('[data-f="all"]').getAttribute('aria-pressed')).toBe('true') // the match's "4 spaces" filter is gone
     const row = document.querySelector(`[data-id="${at(app.db, 600).id}"]`)
     expect([...row.querySelectorAll('.pn.held')].map(c => c.textContent)).toEqual(['Men’s Match Play match', 'Men’s Match Play match'])
   })
@@ -1442,5 +1444,22 @@ describe('Made by TeeMate on Home', () => {
     expect(mark?.textContent).toContain('MADE BY TEEMATE')
     await app.tap('#maker')
     expect(document.querySelector('.sheet')).not.toBeNull()
+  })
+})
+
+describe('held places: the small things', () => {
+  it('one place held says “1 place”', async () => {
+    app = await boot(db => { at(db, 600).capacity = 3; const b = db.book(0, at(db, 600).id, [5]); b.held = 1; b.heldFor = 'Men’s Match Play match' })
+    await app.tap('Booking')
+    await app.tap('[data-bk]')
+    expect(app.text()).toContain('1 place held for the Men’s Match Play match')
+  })
+  it('the office moving a booking: a time with places held for a match doesn’t fit', async () => {
+    app = await boot(db => { db.book(1, at(db, 600).id, [3]); const b = db.book(5, at(db, 660).id, [7]); b.held = 2; b.heldFor = 'Men’s Match Play match' }, { as: 'office' })
+    await app.tap('[data-ov="tee"]')
+    await app.tap(`[data-o-slot="${at(app.db, 600).id}"]`)
+    await app.tap('Move to another time')
+    expect(document.querySelector(`[data-o-slot="${at(app.db, 660).id}"]`).classList.contains('nofit')).toBe(true)
+    expect(document.querySelector('.olegend').textContent).toContain('Held for a match')
   })
 })

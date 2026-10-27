@@ -6,6 +6,7 @@ import * as api from '../api.js'
 import { $, esc, ini, header, keepScroll, render, redraw, toast } from '../ui.js'
 import { openScanner } from '../scan-qr.js'
 import { memberFromCard } from '../member-card.js'
+import { fold } from '../fold.js'
 
 // the member being checked in: { id, name, cardName (from a scan, else null), guests: [{ name, club }], step: 'member' | 'staff' }
 let cur = null
@@ -25,8 +26,8 @@ export function draw({ members, points }) {
   $('app').classList.toggle('kiosk', !!cur) // handed to the member (and back): no office menu
   if (!cur) {
     header('Guests', 'Check in guests who weren’t booked in the app')
-    const q = find.trim().toLowerCase()
-    const found = q.length < 2 ? [] : members.filter(m => m.name.toLowerCase().includes(q)).slice(0, 8)
+    const q = fold(find.trim())
+    const found = q.length < 2 ? [] : members.filter(m => fold(m.name).includes(q)).slice(0, 8)
     $('main').innerHTML = `<div class="screen office">
       <button class="primary ci-scan" id="ci-scan">Scan a member’s card</button>
       <label for="ci-find">Find a member by name</label>
@@ -55,6 +56,13 @@ export function draw({ members, points }) {
     return
   }
   const n = cur.guests.length, has = left(cur.id)
+  if (cur.step === 'handback') { // the member cancelled: nothing charged; staff take it from here
+    header('Nothing charged', '')
+    $('main').innerHTML = `<div class="screen office ci-kiosk"><div class="card empty-state"><b>Please hand the iPad back to the club.</b><br>No guests were added.</div>
+      <button class="ghost" id="ci-staff">Staff: back to Guests</button></div>`
+    $('ci-staff').onclick = () => { cur = null; render() }
+    return
+  }
   if (cur.step === 'member') { // the member's turn: their points, the cost, their guests
     header(`Hello ${cur.name.split(' ')[0]}`, 'Add your guests, then hand back to the club')
     $('main').innerHTML = `<div class="screen office ci-kiosk">
@@ -70,7 +78,7 @@ export function draw({ members, points }) {
       $(`ci-c${i}`).oninput = e => { g.club = e.target.value }
     })
     if ($('ci-add')) $('ci-add').onclick = () => { cur.guests.push({ name: '', club: '' }); render().then(() => $(`ci-n${cur.guests.length - 1}`)?.focus()) }
-    $('ci-cancel').onclick = () => { cur = null; render() }
+    $('ci-cancel').onclick = () => { cur.step = 'handback'; render() } // not straight to the office: the member may still have the iPad
     $('ci-done').onclick = () => {
       if (cur.guests.some(g => !g.name.trim())) { toast('Add the guest’s name.'); return }
       cur.step = 'staff'; render()

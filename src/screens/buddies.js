@@ -4,6 +4,7 @@ import * as api from '../api.js'
 import { S } from '../state.js'
 import { $, esc, ini, header, keepScroll, top0, render, toast } from '../ui.js'
 import { scanPeople } from '../scan-people.js'
+import { fold } from '../fold.js'
 
 export async function load() {
   const [members, buddies, me, friends] = await Promise.all([api.getMembers(), api.getBuddies(), api.getMe(), api.getFriends()])
@@ -16,9 +17,9 @@ export function draw({ members, buddies, friends }) {
   const total = buddies.length + friends.contacts.length
   header('Friends', `<b>${total}</b> friend${total === 1 ? '' : 's'}`)
   const fav = new Set(friends.buddies.filter(b => b.favourite).map(b => b.id))
-  const q = S.q.trim().toLowerCase().replace(/[\s']/g, '').replace(/^gui/, '')
+  const q = fold(S.q.trim()).replace(/[\s']/g, '').replace(/^gui/, '') // accents ignored
   const mine = members.filter(m => buddies.includes(m.id))
-  const res = q ? members.filter(m => m.name.toLowerCase().replace(/[\s']/g, '').includes(q) || (m.gui || '').includes(q)) : []
+  const res = q ? members.filter(m => fold(m.name).replace(/[\s']/g, '').includes(q) || (m.gui || '').includes(q)) : []
   const row = m => {
     const on = buddies.includes(m.id)
     return `<div class="lrow"><span class="av">${ini(m.name)}</span><span class="who"><strong>${esc(m.name)}</strong><small>${m.gui ? 'GUI ' + m.gui : 'No GUI number'}</small></span><span style="display:flex;gap:12px;align-items:center">${S.bseg === 'mine' ? star(fav.has(m.id), `data-fm="${m.id}"`, m.name) : ''}<span class="hcp">${m.hcp}<small>HCP</small></span>${S.bseg === 'find' ? `<button class="add${on ? ' on' : ''}" data-b="${m.id}">${on ? 'Added' : 'Add'}</button>` : `<button class="x" data-b="${m.id}" aria-label="Remove ${esc(m.name)}">×</button>`}</span></div>`

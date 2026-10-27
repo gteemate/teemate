@@ -7,6 +7,7 @@ import { S } from '../state.js'
 import { $, esc, ini, header, keepScroll, render, redraw, toast, fmtHcp } from '../ui.js'
 import { summary, forgetSummary, panel } from './shell.js'
 import { readHandicaps } from '../handicap-csv.js'
+import { fold } from '../fold.js'
 
 export async function load() {
   const [s, access, members, points, me] = await Promise.all([summary(), api.getAccessList(), api.getMembers(), api.getGuestPoints(), api.getMe()])
@@ -24,10 +25,10 @@ const status = m => (!m.email ? 'No access' : m.signedIn ? 'Signed in' : 'Approv
 export function draw({ joins, list, allowance, me }) {
   const withAccess = list.filter(m => m.email).length
   header('Members', `<b>${list.length}</b> members · ${withAccess} can sign in${joins.length ? ` · <b>${joins.length}</b> asking to join` : ''}`)
-  const q = (S.oQ ?? '').trim().toLowerCase()
+  const q = fold((S.oQ ?? '').trim()) // accents ignored
   const none = list.filter(m => allowance - m.used <= 0) // no guest points left this year
   const pool = S.oNoPoints ? none : list
-  const matched = q ? pool.filter(m => m.name.toLowerCase().includes(q) || (m.email || '').includes(q)) : pool
+  const matched = q ? pool.filter(m => fold(m.name).includes(q) || (m.email || '').includes(q)) : pool
   const has = new Set(matched.map(m => initial(m.name)))
   const az = S.oAZ && has.has(S.oAZ) ? S.oAZ : ''
   const shown = az ? matched.filter(m => initial(m.name) === az) : matched

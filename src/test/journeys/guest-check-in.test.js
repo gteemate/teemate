@@ -144,14 +144,23 @@ describe('Club office → Guests', () => {
     await app.type('#ci-find', 'ciar')
     expect(document.querySelector('[data-ci-m="3"]')).not.toBeNull()
   })
-  it('Cancel goes back to scan or find, nothing charged', async () => {
+  it('the member’s Cancel doesn’t show the office: it says hand back, and only staff go back to Guests', async () => {
     await office()
     scans(card(CIARAN))
     await app.tap('Scan a member’s card')
     await app.tap('#ci-cancel')
+    expect(document.getElementById('ci-scan')).toBeNull()
+    expect(document.getElementById('app').classList.contains('kiosk')).toBe(true) // still no office menu
+    expect(app.text()).toContain('Please hand the iPad back to the club')
+    await app.tap('Staff: back to Guests')
     expect(document.getElementById('ci-scan')).not.toBeNull()
     expect(document.getElementById('app').classList.contains('kiosk')).toBe(false)
     expect(app.db.guestVisits).toHaveLength(0)
+  })
+  it('find by name ignores accents: “ciaran” finds Ciarán', async () => {
+    await office()
+    await app.type('#ci-find', 'ciaran')
+    expect(document.querySelector('[data-ci-m="3"]')).not.toBeNull()
   })
 })
 
@@ -305,5 +314,20 @@ describe('adding playing partners by scanning their QR code', () => {
     await app.settle(); await app.settle()
     expect(app.db.buddies.some(b => b.id === 3)).toBe(true)
     expect(app.db.calls).toContain('saveContact')
+  })
+})
+
+describe('name searches ignore accents', () => {
+  it('Club office → Members: “ciaran” finds Ciarán', async () => {
+    app = await boot(() => {}, { as: 'office' })
+    await app.tap('[data-ov="members"]')
+    await app.type('#o-q', 'ciaran')
+    expect(document.querySelector('[data-o-m="3"]')).not.toBeNull()
+  })
+  it('Friends → Find members: “ciaran” finds Ciarán', async () => {
+    app = await boot()
+    await app.tap('Friends'); await app.tap('Find members')
+    await app.type('#q', 'ciaran')
+    expect(app.text()).toContain("Ciarán O'Neill")
   })
 })
