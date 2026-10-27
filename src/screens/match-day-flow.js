@@ -2,7 +2,7 @@
 // season day), who's playing, the matches (four-balls, singles, 3-balls, or a draw), the holes, the day's points,
 // then a summary to confirm. The flow lives in S.mdFlow while it's open; the event editor draws and drives it.
 import { S } from '../state.js'
-import { esc, sur } from '../ui.js'
+import { esc, ini, sur } from '../ui.js'
 import { eventDates, isoDate, today } from '../dates.js'
 import { dayDate, dayOfDate, drawDay } from '../season.js'
 import { DEFAULT_POINTS, dayRules, matchType } from '../match-scoring.js'
@@ -56,7 +56,7 @@ export function flowHtml(ev, f, name) {
     return `${when}<div class="hint">Untick anyone who isn’t playing that day.</div>
       ${['A', 'B'].map(t => `<div class="card evsec"><b style="color:${ev[t].col}">${esc(ev[t].name)}</b><div class="pick">${ev.players.filter(id => ev.team[id] === t).map(id => {
         const on = f.playing.includes(id)
-        return `<button class="brow" data-mdp="${id}" aria-pressed="${on}"><span class="who"><strong>${esc(name(id))}</strong></span><span class="check">${on ? '✓' : ''}</span></button>` }).join('')}</div></div>`).join('')}`
+        return `<button class="brow" data-mdp="${id}" aria-pressed="${on}"><span class="av">${esc(ini(name(id)))}</span><span class="who"><strong>${esc(name(id))}</strong></span><span class="check">${on ? '✓' : ''}</span></button>` }).join('')}</div></div>`).join('')}`
   }
   if (f.step === 'matches') {
     const fA = freeOf(ev, f, 'A'), fB = freeOf(ev, f, 'B')

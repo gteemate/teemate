@@ -62,3 +62,16 @@ describe('found in review: what a template keeps', () => {
     expect(s.days).toBe(1)
   })
 })
+
+import { flowHtml } from './match-day-flow.js'
+describe('found on a phone: Who’s playing on a match day', () => {
+  it('each player row has the initials badge the row layout expects, so the name gets the full width', () => {
+    const ev = { id: 900, startDate: '2026-10-01', days: 100, season: true, players: [1, 2], team: { 1: 'A', 2: 'B' }, matches: {},
+      A: { name: 'Blues', col: '#6f8fd8' }, B: { name: 'Reds', col: '#c27a8f' } }
+    openFlow(ev); S.mdFlow.d = 12; S.mdFlow.step = 'players'; S.mdFlow.playing = [1]
+    document.body.innerHTML = flowHtml(ev, S.mdFlow, id => ({ 1: 'Aoife Brennan', 2: 'Ciarán O’Neill' })[id])
+    const rows = [...document.querySelectorAll('[data-mdp]')]
+    expect(rows.map(r => r.firstElementChild.className)).toEqual(['av', 'av'])
+    expect(rows[0].querySelector('.av').textContent).toBe('AB')
+  })
+})

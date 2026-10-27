@@ -83,6 +83,7 @@ h3{font-family:var(--display);font-size:21px;font-weight:600;letter-spacing:0;ma
 .x{background:none;border:0;color:var(--ink);cursor:pointer;padding:6px;border-radius:8px;font-size:20px;line-height:1;min-width:40px;min-height:40px;display:inline-grid;place-items:center} /* easy to tap */
 .brow{display:grid;grid-template-columns:44px 1fr auto;gap:12px;align-items:center;padding:10px 14px;border-radius:18px;background:var(--surface);border:2px solid var(--line);cursor:pointer;text-align:left;width:100%;color:var(--ink)}
 .brow[aria-pressed="true"]{border-color:var(--leaf-line);background:var(--leaf)}
+.brow>.who:first-child{grid-column:span 2} /* a row with no initials badge: the name takes the badge's column too */
 .brow:disabled{opacity:.45;cursor:not-allowed}
 .check{width:24px;height:24px;border-radius:7px;border:2px solid var(--muted);display:grid;place-items:center;background:var(--surface)}
 .brow[aria-pressed="true"] .check{background:var(--green);border-color:var(--green);color:var(--on-green)}
