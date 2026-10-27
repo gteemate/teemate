@@ -57,6 +57,13 @@ export const FEATURES = [
       { says: 'A real refusal still says why', tests: ['src/test/journeys/offline-scores.test.js › a refusal from the server (not the signal) still says why and keeps the hole open'] },
     ],
     demo: [{ who: 'live@test.com', steps: ['Start a round', 'Turn on Airplane mode, save a hole', 'Turn Airplane mode off'], see: '“Saved on your phone”, then “Your scores have been sent”.' }] },
+  { id: 'event-winner', area: 'Competitions', name: 'A finished event crowns its winner',
+    what: 'Once an individual event’s last day has passed, its leaderboard opens with a gold Winner banner: the name and points (or Tied for first).',
+    scenarios: [
+      { says: 'Day passed: the winner at the top', tests: ['src/test/journeys/event-winner.test.js › once its day has passed: the winner and their points, crowned at the top'] },
+      { says: 'On the day: no winner yet', tests: ['src/test/journeys/event-winner.test.js › on the day itself: no winner yet'] },
+    ],
+    demo: [{ who: 'live@test.com', steps: ['Leaderboard → Saturday Stableford (10 Oct)'], see: 'Winner, with their points, above the full leaderboard.' }] },
   { id: 'league-draw', area: 'Competitions', name: 'A sign-up league: captains and the draw',
     what: 'A team league open for sign-up is saved with nobody in. When it’s full or entries close, a yellow box leads to the draw: captains first (from candidates, or at random from everyone), then teams balanced by handicap. Once it’s under way only the holes stay out; the rest folds under Other settings.',
     scenarios: [
