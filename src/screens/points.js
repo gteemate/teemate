@@ -23,7 +23,7 @@ export function draw({ points: P, me, clubName }) {
    <h3>Your guests</h3>
    <div class="card list">${P.mine.length ? P.mine.slice().reverse().map(x => `<div class="lrow" style="grid-template-columns:56px 1fr auto"><span class="hint" style="font-weight:700">${dayMonth(fromIso(x.date))}</span><span class="who"><strong>${esc(x.guest)}</strong><small>${x.club ? esc(x.club) : 'No home club'} · ${x.office ? 'Checked in at the club office' : esc(x.course)}</small></span><span class="ptag">−${x.points}</span></div>`).join('') : '<div class="empty-state">No guests yet this year.</div>'}</div>
    ${me.admin ? `<h3>All members</h3><div class="hint">Admin view. Lowest balance first.</div>
-   <div class="card list">${all.map(r => `<div class="lrow ptsline"><span class="av">${ini(r.name)}</span><span class="who"><strong>${esc(r.name)}${r.id === me.id ? ' (you)' : ''}</strong><small>${r.used} of ${P.allowance} used</small>${bar(r.left, P.allowance)}</span><span class="hcp${r.left === 0 ? ' zero' : ''}">${r.left}<small>left</small></span></div>`).join('')}</div>` : ''}
+   <div class="card list">${all.map(r => `<div class="lrow ptsline"><span class="av">${ini(r.name)}</span><span class="who"><strong>${esc(r.name)}${r.id === me.id ? ' (you)' : ''}</strong><small>${r.used} of ${P.allowance} used</small>${r.guests?.length ? `<small class="ptguests">${esc(r.guests.map(g => `${g.guest} ×${g.times}`).join(' · '))}</small>` : ''}${bar(r.left, P.allowance)}</span><span class="hcp${r.left === 0 ? ' zero' : ''}">${r.left}<small>left</small></span></div>`).join('')}</div>` : ''}
   </div>`
   // My card: the QR the club office scans to check in my guests (the same friend link as on my Account card).
   if ($('mycard')) $('mycard').onclick = () => {

@@ -2,6 +2,7 @@
 // src/api.js, so the real screens run unchanged. It does what the screens need (bookings take spaces, cancelling
 // frees them, entries and orders are recorded); the database's own rules are covered by the database tests.
 // Anything not covered throws "not faked: <name>", so a gap fails the journey loudly.
+import { guestCounts } from '../../guest-counts.js'
 import { closesOn } from '../../event-signups.js'
 import { COURSE, MEMBERS, GAME_SETTINGS, PIN_SHEET } from '../../sample-data.js'
 import { isoDate, addDaysIso } from '../../dates.js'
@@ -458,7 +459,8 @@ export function makeWorld(today, setup = () => {}, as = 'admin') {
     },
     getGuestPoints: async () => ({ allowance: 36, cost: 3, course: 'Ailsa',
       mine: db.guestVisits.filter(v => v.member === ME).map(v => ({ date: v.date, guest: v.guest, club: v.club, course: 'Ailsa', points: v.points, office: v.by != null })),
-      members: db.members.map(m => ({ id: m.id, name: m.name, used: db.guestVisits.filter(v => v.member === m.id).reduce((t, v) => t + v.points, 0) })) }),
+      members: db.members.map(m => { const vs = db.guestVisits.filter(v => v.member === m.id)
+        return { id: m.id, name: m.name, used: vs.reduce((t, v) => t + v.points, 0), guests: guestCounts(vs.map(v => ({ guest: v.guest, club: v.club, points: v.points, date: v.date }))) } }) }),
     // As the database: the office only; a scanned card's name must match; 1 to 3 named guests; never over the allowance.
     chargeGuests: async (memberId, cardName, guests) => {
       if (!db.asOffice && !me()?.admin) throw new Error('Only the club office can check in guests.')

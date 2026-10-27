@@ -1,4 +1,5 @@
 import { isoDate, today } from '../dates.js'
+import { guestCounts } from '../guest-counts.js'
 import { must, myId, sb } from './client.js'
 import { getMembers } from './members.js'
 import { getCourse } from './course.js'
@@ -99,7 +100,9 @@ export async function getGuestPoints(year = String(today().getFullYear())) {
     cost: c.guestPoints,
     course: c.name,
     mine: visits.filter(v => v.member_id === meId).map(v => ({ date: v.date, guest: v.guest_name, club: v.guest_club || '', course: v.course?.name ?? c.name, points: v.points, office: v.checked_in_by != null })),
-    members: members.map(m => ({ id: m.id, name: m.name, used: visits.filter(v => v.member_id === m.id).reduce((t, v) => t + v.points, 0) })),
+    // each member's guests, counted (admins see everyone's visits; a member, only their own)
+    members: members.map(m => { const vs = visits.filter(v => v.member_id === m.id)
+      return { id: m.id, name: m.name, used: vs.reduce((t, v) => t + v.points, 0), guests: guestCounts(vs.map(v => ({ guest: v.guest_name, club: v.guest_club || '', points: v.points, date: v.date }))) } }),
   }
 }
 

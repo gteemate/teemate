@@ -178,3 +178,27 @@ describe('Club office → Members → Update handicaps (a CSV from the club’s 
     expect(document.getElementById('o-hgo')).toBeNull()
   })
 })
+
+describe('the club office sees each member’s guests, with how often each has come', () => {
+  const visits = db => db.guestVisits.push(
+    { member: 3, date: '2026-05-01', guest: 'Sam Guest', club: 'Portrush', points: 3, playerId: null },
+    { member: 3, date: '2026-08-01', guest: 'Sam Guest', club: 'Portrush', points: 3, playerId: null },
+    { member: 3, date: '2026-09-01', guest: 'Alex Moore', club: '', points: 3, playerId: null })
+  it('Members → a member: guests this year, each with ×times and points', async () => {
+    app = await boot(visits, { as: 'office' })
+    await app.tap('[data-ov="members"]')
+    await app.tap('[data-o-m="3"]')
+    const rows = [...document.querySelectorAll('.oguests .orow')].map(r => r.textContent.replace(/\s+/g, ' ').trim())
+    expect(rows[0]).toContain('Sam Guest')
+    expect(rows[0]).toContain('×2')
+    expect(rows[0]).toContain('6 pts')
+    expect(rows[1]).toContain('Alex Moore')
+    expect(rows[1]).toContain('×1')
+  })
+  it('Admin → Guest points: under each member, their guests with counts', async () => {
+    app = await boot(visits)
+    await app.tap('#account'); await app.tap('[data-a="points"]')
+    const row = [...document.querySelectorAll('.ptsline')].find(r => r.textContent.includes(app.db.members.find(m => m.id === 3).name))
+    expect(row.textContent).toContain('Sam Guest ×2 · Alex Moore ×1')
+  })
+})

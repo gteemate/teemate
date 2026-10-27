@@ -12,7 +12,7 @@ export async function load() {
   const [s, access, members, points, me] = await Promise.all([summary(), api.getAccessList(), api.getMembers(), api.getGuestPoints(), api.getMe()])
   const by = new Map(members.map(m => [m.id, m]))
   const list = access.filter(m => !m.office).map(m => ({ ...m, playsIn: by.get(m.id)?.playsIn ?? null, hutStaff: !!by.get(m.id)?.hutStaff,
-    used: points.members.find(p => p.id === m.id)?.used ?? 0 }))
+    used: points.members.find(p => p.id === m.id)?.used ?? 0, guests: points.members.find(p => p.id === m.id)?.guests ?? [] }))
   return { joins: s.joins, list, allowance: points.allowance, me }
 }
 
@@ -110,7 +110,12 @@ function addSheet(done) {
 function memberSheet(m, me, allowance, done) {
   const self = m.id === me.id, first = m.name.split(' ')[0]
   const sw = (id, on, label, sub, dis) => `<div class="actrow"><span class="who"><strong>${label}</strong><small>${sub}</small></span><button type="button" class="switch" role="switch" id="${id}" aria-checked="${on}" aria-label="${label}" ${dis ? 'disabled' : ''}><span></span></button></div>`
+  // Their guests this year, and how often each has come (the same guest again and again stands out).
+  const guests = m.guests?.length
+    ? `<h3>Guests this year</h3><div class="card olist oguests">${m.guests.map(g => `<div class="orow"><span class="ot"><b>${esc(g.guest)}</b><span>${g.club ? esc(g.club) : 'No home club'}</span></span><span class="oacts"><span class="pill${g.times >= 3 ? ' gold' : ''}">×${g.times}</span><span class="hint">${g.points} pts</span></span></div>`).join('')}</div>`
+    : '<p class="hint">No guests this year.</p>'
   panel(`<h4>${esc(m.name)}</h4><p class="hint">${status(m)} · guest points ${allowance - m.used} of ${allowance} left this year</p>
+    ${guests}
     <label for="o-name">Full name</label><input id="o-name" autocomplete="off" value="${esc(m.name)}">
     <label for="o-email">Email <span class="opt">their sign-in</span></label><input id="o-email" type="email" inputmode="email" autocomplete="off" value="${esc(m.email || '')}" placeholder="Blank: no access" ${self ? 'readonly' : ''}>
     <label for="o-plays">Plays in</label><select id="o-plays" class="plainsel"><option value="" ${!m.playsIn ? 'selected' : ''}>Not set</option><option value="men" ${m.playsIn === 'men' ? 'selected' : ''}>Men’s competitions</option><option value="ladies" ${m.playsIn === 'ladies' ? 'selected' : ''}>Ladies’ competitions</option></select>
