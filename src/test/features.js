@@ -48,6 +48,14 @@ export const FEATURES = [
     what: 'A quiet maker’s mark at the foot of Home (and sign-in and Account), which opens about us.',
     scenarios: [{ says: 'On Home, tappable', tests: ['src/test/journeys/features.test.js › a quiet maker’s mark at the foot of Home, which opens about us'] }],
     demo: [{ who: 'live@test.com', steps: ['Home → tap Made by TeeMate at the foot'], see: 'The about-us sheet, with the email to ask about TeeMate.' }] },
+  { id: 'offline-scores', area: 'Scoring and games', name: 'Scoring with no signal',
+    what: 'A hole saved in a dead spot is kept on the phone (the card says so) and sent when the signal comes back, every 20 seconds, or the next time the app opens. Only the cells you typed are sent, so the group’s scores aren’t overwritten.',
+    scenarios: [
+      { says: 'Kept on the phone, said on the card, sent when the signal is back', tests: ['src/test/journeys/offline-scores.test.js › a hole is kept on the phone, the card says so, and it’s sent when the signal comes back', 'src/test/journeys/offline-scores.test.js › it keeps trying by itself every 20 seconds'] },
+      { says: 'Closing the app loses nothing', tests: ['src/test/journeys/offline-scores.test.js › closing the app doesn’t lose them: the next time Scoring opens, they’re sent'] },
+      { says: 'A real refusal still says why', tests: ['src/test/journeys/offline-scores.test.js › a refusal from the server (not the signal) still says why and keeps the hole open'] },
+    ],
+    demo: [{ who: 'live@test.com', steps: ['Start a round', 'Turn on Airplane mode, save a hole', 'Turn Airplane mode off'], see: '“Saved on your phone”, then “Your scores have been sent”.' }] },
   { id: 'scan-partners', area: 'Booking', name: 'Add playing partners by scanning their QR code',
     what: 'In booking, Scoring → Players and Friends, scan the QR on someone’s Account card instead of searching. The camera opens again for the next person until the group is full. Club members join the group; TeeMate players from other clubs join a booking as guests. Each is kept as a friend.',
     scenarios: [

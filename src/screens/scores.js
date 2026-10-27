@@ -12,13 +12,48 @@ import { cardHoles } from './card-holes.js'
 import { openCourse, scaleHcp, holesText, allOpen } from '../open-holes.js'
 import { startPaper, startPaperRecheck } from '../paper/paper-flow.js'
 import { photosSheet } from '../paper/review.js'
+import { keep, kept, drop, isSignalError, withTimeout } from '../score-outbox.js'
 import { courseHandicap, playingHandicaps, holeCalc, gameState, upText, toPar } from '../scoring.js'
 import { buildLibrary, playable, gameSpec, resolveGame, preferredGame, teeRating, PAIRINGS, NO_GAME, SCORES_ONLY, parseGame, oneOnOneKey, oneOnOneGames, gameName } from '../games.js'
 
 // The round is kept here between redraws so unsaved stepper changes survive; api.saveRound() persists it.
 // persist(): save the card; false (with the reason shown) if the server refused, so nothing looks saved that isn't.
+// No signal (or no answer in 12 seconds) isn't a refusal: the card is kept on the phone and sent when the signal
+// comes back (score-outbox.js), so a dead spot on the course doesn't hold up the round.
+const WAIT = 12000
+let pending = false, meId = null, retry = null, sending = false
 async function persist(round) {
-  try { await api.saveRound(round); return true } catch (err) { toast(err.message); return false }
+  try { await withTimeout(api.saveRound(round), WAIT) } catch (err) {
+    if (!isSignalError(err)) { toast(err.message); return false }
+    holdOn(round)
+    return true
+  }
+  if (pending) letGo()
+  return true
+}
+function holdOn(r) {
+  pending = true
+  keep(meId, r)
+  if (!retry) { retry = setInterval(sendKept, 20000); addEventListener('online', sendKept) } // keeps trying by itself
+}
+function letGo() {
+  pending = false
+  drop(meId)
+  clearInterval(retry); retry = null
+  removeEventListener('online', sendKept)
+}
+async function sendKept() {
+  if (!pending || sending || !round) return
+  sending = true
+  try {
+    await withTimeout(api.saveRound(round), WAIT)
+    letGo()
+    if (S.tab === 'scores') await keepScroll(render)
+    toast('Your scores have been sent')
+  } catch (err) {
+    if (isSignalError(err)) keep(meId, round) // still no signal: try again later
+    else { letGo(); toast(err.message) } // the server said no (e.g. the card was deleted): say why
+  } finally { sending = false }
 }
 // round.lineup: the card's players in order, each { m: memberId } or { g: guestId }; the first is you
 // (a card someone else started comes in your view of it, see card-view.js).
@@ -40,7 +75,13 @@ export function lineupFromTeeTime(slot, meId) {
 export async function load() {
   const [course, members, games, me, teeTimes, events, allEvents, theme] = await Promise.all([api.getCourse(), api.getMembers(), api.getGameSettings(), api.getMe(), api.getMyTeeTimes(today()), api.getMyPlayerEvents(), api.getEvents(), api.getTheme()])
   S.paperCards = !!theme?.paperCards
-  round = !round ? await api.getCurrentRound() : round.id ? await latest(round) : round
+  meId = me.id
+  // Scores kept on the phone from before (no signal, then the app was closed): today's card carries on from them
+  // and is sent; an older one is just sent.
+  const k = !pending ? kept(me.id) : null
+  if (k && k.keptOn === isoDate(today()) && (!round || round.id === k.id)) { round = k; holdOn(round); sendKept() }
+  else if (k) api.saveRound(k).then(() => drop(me.id), () => {})
+  round = !round ? await api.getCurrentRound() : round.id && !pending ? await latest(round) : round
   const guests = round ? await api.getGuests(round.lineup.filter(e => e.g != null).map(e => e.g)) : []
   // The competition this card counts for (its Leaderboard tab) and the holes it plays (card-holes.js).
   const t = isoDate(today())
@@ -217,7 +258,8 @@ export function draw({ course, members, guests, L, me, teeTimes, events, leagues
       ? pp.state === 'confirmed' ? `confirmed by ${esc(conf)}` : pp.state === 'sent_back' ? '<span class="pmark">Sent back</span>' : `<span class="pmark">Awaiting confirmation</span> (${esc(conf)})`
       : `confirmed by ${esc(first(pp.by))}`}`).join(' · ')}</span>
     ${pp.state === 'sent_back' && pp.by === me.id ? `<span class="ppnote">${esc(conf === 'the club office' ? 'The club office' : conf)} says your score isn’t right: “${esc(pp.note ?? '')}”</span><button class="ghost sm" id="paper-fix">Check my scores</button>` : ''}</div>`
-  $('main').innerHTML = `<div class="screen">${eventsTop(events, me)}${grid}${checks}${paperBox}${hcpNote}
+  const keptNote = pending ? '<div class="pendnote" role="status">Saved on your phone · sending when you have signal</div>' : ''
+  $('main').innerHTML = `<div class="screen">${keptNote}${eventsTop(events, me)}${grid}${checks}${paperBox}${hcpNote}
     <div class="rstatus">${LG ? `<b>${esc(line)}</b> · <button class="gname" id="gname" aria-haspopup="dialog">${one ? `${esc(pn(duo[0]))} v ${esc(pn(duo[1]))} · ` : ''}${esc(LG.name)} ${CHEV}</button>` : '<button class="addmatch" id="gname" aria-haspopup="dialog">+ Add a match</button>'}
       <button class="linkbtn gchip" id="gchip" aria-expanded="${!!S.gmenu}" aria-controls="gmenu">${G.pairs ? 'Pairs, players &amp; shots' : 'Players &amp; shots'} ${S.gmenu ? '▴' : '›'}</button></div>
     ${gamebar}
