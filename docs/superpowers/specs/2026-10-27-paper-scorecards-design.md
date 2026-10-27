@@ -1,6 +1,6 @@
 # Paper scorecards — design
 
-**Date:** 27 Oct 2026 · **Status:** for review
+**Date:** 27 Oct 2026 · **Status:** approved 27 Oct 2026
 **Demo:** `docs/paper-scorecards-mockup.html` (published at https://claude.ai/artifact/LcjU6n4pefMLSFLRcu59QS)
 
 ## Why
@@ -159,6 +159,9 @@ alternative and not the default.
 - **Who confirms the uploader's score:** a player on the card who uses the app, or the club office.
 - **Names never leave the phone:** the cropped score grid is all that's sent or stored.
 - **Photo entry is the smaller option:** typing scores as you play stays the main way.
+- **An unconfirmed score counts straight away:** the uploader's score shows on leaderboards and in competitions at
+  once, like a typed card, marked "awaiting confirmation" until it's confirmed. A score that's sent back keeps counting
+  (marked "sent back") until it's fixed and confirmed.
 
 ## Left out (not in this version)
 
@@ -167,10 +170,3 @@ alternative and not the default.
 - Paper cards for a round that already has some scores typed in.
 - Guests on a paper card. Their columns can be matched and checked like anyone else's, but they can't confirm
   anything.
-
-## One question for review
-
-**Does the uploader's score count before it's confirmed?** I've assumed yes: it shows on leaderboards straight away,
-the same as a typed card, with a small "awaiting confirmation" mark. The alternative is to leave it off competition
-results until it's confirmed. That's stricter, but it could leave a score missing if the confirmer never opens the
-app.
