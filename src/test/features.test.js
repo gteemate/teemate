@@ -1,7 +1,7 @@
 // The feature register can't claim a test that isn't there, or fall behind the journeys.
 import { describe, it, expect } from 'vitest'
 import { readFileSync, existsSync } from 'node:fs'
-import { FEATURES, AREAS } from './features.js'
+import { FEATURES, AREAS, GENERIC } from './features.js'
 import { JOURNEYS } from './journeys/catalogue.js'
 import { RULES } from './contract/rules.js'
 
@@ -38,5 +38,9 @@ describe('the feature register', () => {
   it('every same-rules check belongs to a feature', () => {
     const named = new Set(FEATURES.flatMap(f => f.scenarios.flatMap(s => s.tests)).filter(t => t.startsWith('rule:')).map(t => t.slice(5)))
     expect(RULES.map(r => r.id).filter(id => !named.has(id))).toEqual([])
+  })
+  it('every generic test named is real', () => {
+    const bad = GENERIC.flatMap(g => g.tests.map(t => [g.name, t, missing(t)])).filter(x => x[2])
+    expect(bad).toEqual([])
   })
 })

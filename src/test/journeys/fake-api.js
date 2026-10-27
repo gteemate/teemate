@@ -151,6 +151,37 @@ export function makeWorld(today, setup = () => {}, as = 'admin') {
     return b
   }
   const unbook = b => { const s = slotById(b.slotId); s.players = s.players.filter(p => p.bookingId !== b.id); db.bookings = db.bookings.filter(x => x !== b) }
+  // As the database when a card goes: its counted rounds go (event, league), and the knockout match, hut orders and
+  // photos let go of it.
+  const dropRound = rid => {
+    db.rounds = db.rounds.filter(r => r.id !== rid)
+    db.entries = db.entries.filter(x => x.roundId !== rid)
+    db.leagueEntries = db.leagueEntries.filter(x => x.roundId !== rid)
+    db.koMatches.forEach(m => { if (m.roundId === rid) m.roundId = null })
+    db.orders.forEach(o => { if (o.roundId === rid) o.roundId = null })
+    db.photos = (db.photos ?? []).filter(x => !x.startsWith(`${rid}/`))
+  }
+  // As the database when a member goes: off every event (as withdrawing), their entries, bookings, the cards they
+  // started and everything of theirs; a paper score they were asked to confirm goes to the office. Their scores on
+  // other people's cards stay as history.
+  const dropMember = mid => {
+    for (const e of db.events) {
+      e.players = (e.players ?? []).filter(x => x !== mid)
+      if (e.team) delete e.team[mid]
+      e.captainPool = (e.captainPool ?? []).filter(x => x !== mid)
+      if (e.teams) e.teams = e.teams.map(t => (t.captain === mid ? (({ captain, ...rest }) => rest)(t) : t))
+    }
+    const gone = db.signupEntries.filter(e => e.memberId === mid || e.partnerId === mid).map(e => e.id)
+    db.signupEntries = db.signupEntries.filter(e => !gone.includes(e.id))
+    db.koMatches.forEach(m => ['aEntry', 'bEntry', 'winnerEntry', 'reportedEntry'].forEach(k => { if (gone.includes(m[k])) m[k] = null }))
+    db.bookings.filter(b => b.bookedBy === mid).forEach(unbook)
+    Object.values(db.slots).flat().forEach(s => { s.players = s.players.filter(p => p.memberId !== mid) })
+    db.rounds.filter(r => r.createdBy === mid).forEach(r => dropRound(r.id))
+    db.rounds.forEach(r => { if (r.paper?.confirmer === mid) r.paper.confirmer = null; if (r.paper?.by === mid) r.paper.by = null })
+    for (const k of ['entries', 'leagueEntries', 'requests', 'orders', 'notices']) db[k] = db[k].filter(x => x.memberId !== mid)
+    db.buddies = db.buddies.filter(b => b.id !== mid)
+    db.members = db.members.filter(m => m.id !== mid)
+  }
 
   const api = {
     // Signed in as Gary Cochrane (member 0, an admin).
@@ -297,7 +328,7 @@ export function makeWorld(today, setup = () => {}, as = 'admin') {
     },
     adminSetPlaysIn: async (mid, p) => { db.members.find(m => m.id === mid).playsIn = p },
     setOfficeLogin: async email => { db.office = email || null },
-    deleteMember: async mid => { db.members = db.members.filter(m => m.id !== mid) },
+    deleteMember: async mid => dropMember(mid),
     resetLogin: async () => {},
     getCourse: async () => ({ ...copy(COURSE), guestPoints: 3 }),
     getPins: async () => (db.pinSheet ? copy(db.pinSheet) : { ...copy(PIN_SHEET), date: db.pinsToday ? today : '2026-10-01' }),
@@ -396,7 +427,7 @@ export function makeWorld(today, setup = () => {}, as = 'admin') {
       const row = { ...copy(round), date: today, paper: db.rounds.find(r => r.id === round.id)?.paper ?? null } // as the database: only the paper steps change it
       db.rounds = [...db.rounds.filter(r => r.id !== round.id), row]
     },
-    deleteRound: async rid => { db.rounds = db.rounds.filter(r => r.id !== rid); db.photos = db.photos.filter(x => !x.startsWith(`${rid}/`)) },
+    deleteRound: async rid => dropRound(rid),
     getTodayRounds: async () => [],
     getCardsForTeeTimes: async () => ({}),
     getMyPlayerEvents: async () => copy(db.playerEvents),

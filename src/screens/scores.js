@@ -111,7 +111,7 @@ export function draw({ course, members, guests, L, me, teeTimes, events, leagues
   if (!round) { startScreen({ course, L, me, teeTimes, events }); return bindEvents(events, me) }
   // Players on the card. A guest without a handicap plays off 0 until someone sets it.
   const ps = round.lineup.map(e => {
-    if (e.m != null) { const m = members.find(x => x.id === e.m); return { name: m.name, hcp: m.hcp, guestId: null } }
+    if (e.m != null) { const m = members.find(x => x.id === e.m); return { name: m?.name ?? 'Former member', hcp: m?.hcp ?? 0, guestId: null } } // (a deleted member's scores stay as history)
     const gst = guests.find(x => x.id === e.g)
     return { name: gst?.name ?? 'Guest', hcp: gst?.hcp ?? null, guestId: e.g }
   })
