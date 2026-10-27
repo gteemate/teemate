@@ -64,6 +64,10 @@ function drawSuggest(grid, me, others) {
   const days = []
   for (let d = today; d <= m.by && days.length < 42; d = addDaysIso(d, 1)) days.push(d)
   const taken = new Set(times.map(t => `${t.day}|${t.part}`)), pick = S.ftPick, n = pick.length
+  if (!days.length) { // the play-by date has passed: nothing to suggest
+    $('main').innerHTML = `<div class="screen"><div class="card ftcard"><b>The play-by date has passed</b><span class="hint">${esc(m.compName)} had to be played by ${dayLabel(m.by)}. Have a word with the competition secretary, or book it straight away.</span></div></div>`
+    return
+  }
   $('main').innerHTML = `<div class="screen">
     <div class="card ftcard"><b>When suits you?</b><span class="hint">Pick up to ${MAX}, up to ${dayLabel(m.by)}. ${esc(others.map(p => first(p.name)).join(', '))} tick the ones they can do.</span>
       <div class="ftdays">${days.map(d => `<div class="ftday"><span class="ftd">${dayLabel(d).replace(' ', '<small>')}</small></span><div class="ftparts">${PARTS.map(([k, l]) => {

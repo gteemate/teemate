@@ -66,7 +66,8 @@ export function draw({ comp, me, members, matches = [], entries = [], mine, cour
       : cs?.finished ? '<span class="hint">All square after 18 on the card: play extra holes, then enter the result.</span><button class="primary sm" id="ko-report">Enter result</button>'
       : cs ? `<span class="hint">On the card: <b>${esc(koStateText(cs, next, name))}</b></span>${cs.card.date === date ? '<button class="primary sm" id="ko-scores">Enter scores</button>' : ''}<button class="ghost sm" data-kcard="${next.id}">Scorecard</button><button class="ghost sm" id="ko-report">Enter result</button>`
       : null
-    const act = st === 'report' ? fromCard ?? '<button class="primary sm" id="ko-find">Find a time</button><button class="ghost sm" id="ko-book">Book this match</button><button class="ghost sm" id="ko-score">Score this match</button><button class="ghost sm" id="ko-report">Enter result</button>'
+    const overdue = by(next.round) && by(next.round) < date // past its play-by date: no days left to suggest
+    const act = st === 'report' ? fromCard ?? `${overdue ? '' : '<button class="primary sm" id="ko-find">Find a time</button>'}<button class="${overdue ? 'primary' : 'ghost'} sm" id="ko-book">Book this match</button><button class="ghost sm" id="ko-score">Score this match</button><button class="ghost sm" id="ko-report">Enter result</button>`
       : st === 'confirm' ? `<span class="hint">They’ve entered: <b>${esc(name(next.winnerEntry))} won ${esc(next.result ?? '')}</b></span><button class="primary sm" id="ko-confirm">Confirm</button><button class="ghost sm" id="ko-dispute">That’s not right</button>`
       : st === 'reported' ? '<span class="hint">You’ve entered the result: waiting for them to confirm.</span>'
       : st === 'disputed' ? '<span class="hint">The result has been questioned: the competition secretary will settle it.</span>'

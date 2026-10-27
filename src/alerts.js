@@ -44,7 +44,7 @@ export function pickAlerts({ me, playerEvents, requests, date, now = Date.now(),
   }))
   // Find a time: someone suggested days for my knockout match; everyone can do one; or the play-by date is close and
   // nothing's arranged (once a day).
-  const times = notices.filter(n => n.kind === 'times' || n.kind === 'agreed').map(n => ({
+  const times = notices.filter(n => (n.kind === 'times' || n.kind === 'agreed') && n.date >= date).map(n => ({
     key: `bn:${n.id}`, kind: 'notice', ref: { noticeId: n.id, matchId: n.koMatchId },
     title: n.kind === 'times' ? `${n.byName} suggests times for your ${n.note} match` : `Everyone can do ${longDay(fromIso(n.date))} · ${n.part}`,
     detail: n.kind === 'times' ? 'Tick the days you can do.' : `Your ${n.note} match: book a tee time that ${n.part}.`,

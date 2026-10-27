@@ -59,6 +59,11 @@ describe('pickAlerts: what drops down from the header', () => {
     expect(ids(c)).toEqual(['findtime', 'later'])
   })
 
+  it('Find a time notices for a day that has passed aren’t shown', () => {
+    const old = [{ id: 10, kind: 'agreed', date: '2026-10-01', oldTime: 0, note: 'X', part: 'morning', koMatchId: 1 }]
+    expect(pickAlerts({ ...base, notices: old })).toEqual([])
+  })
+
   it('someone booked me in: who, when and who else is playing; OK or See my bookings', () => {
     const added = n => ({ id: 6, kind: 'added', date: '2026-10-24', oldTime: 480, byName: 'Pat Reid', withNames: n, note: null })
     const [a] = pickAlerts({ ...base, notices: [added(['Pat', 'Alex', 'Jo'])] })

@@ -72,6 +72,21 @@ do $$ declare r jsonb; e text; d date := public.club_today(); v_t bigint; v_n in
   perform t.act_as(999004); perform public.answer_match_time(v_t, true); r := public.get_match_times(999301); reset role;
   perform t.ok('Find a time: the last ✓ makes it agreed and everyone is told',
     (r->>'agreed')::bigint = v_t and (select count(distinct member_id) from public.booking_notices where kind = 'agreed' and member_id between 999001 and 999004) = 4, r::text);
+  -- Aoibhinn changes her mind: it isn't agreed any more, so the unseen notices go; then she can again.
+  perform t.act_as(999004); perform public.answer_match_time(v_t, false); reset role;
+  perform t.ok('Find a time: breaking the agreement takes back the notice',
+    not exists (select 1 from public.booking_notices where kind = 'agreed' and ko_match_id = 999301 and not seen));
+  perform t.act_as(999004); perform public.answer_match_time(v_t, true); reset role;
+  perform t.act_as(999005);
+  e := t.err('select public.ko_match_players(999301)');
+  reset role;
+  perform t.ok('Find a time: members can''t list who''s in other matches', e like 'permission denied%', e);
+  -- a day that has passed drops off, and doesn't count as agreed
+  insert into public.match_times (id, ko_match_id, day, part, suggested_by) values (999401, 999301, d - 1, 'morning', 999001);
+  insert into public.match_time_answers (time_id, member_id, can) select 999401, x, true from unnest(array[999001, 999002, 999003, 999004]::bigint[]) x;
+  perform t.act_as(999001); r := public.get_match_times(999301); reset role;
+  perform t.ok('Find a time: a day that has passed drops off',
+    not exists (select 1 from jsonb_array_elements(r->'times') x where (x->>'id')::bigint = 999401) and (r->>'agreed')::bigint = v_t, r::text);
 
   perform t.act_as(999001); r := public.get_match_times(999301); reset role;
   perform t.ok('Find a time: the grid says which match and its play-by date',
@@ -87,11 +102,25 @@ do $$ declare r jsonb; e text; d date := public.club_today(); v_t bigint; v_n in
   perform t.ok('Find a time: due within a week and not agreed: a reminder',
     exists (select 1 from jsonb_array_elements(r) x where (x->>'matchId')::bigint = 999301 and x->>'compName' = 'Mixed fourball' and (x->>'by')::date = d + 5), r::text);
   reset role;
+  -- booked with all four before the play-by date: no reminder
+  perform t.act_as(999001); perform public.get_tee_sheet(d + 3); reset role;
+  insert into public.bookings (id, slot_id, booked_by) values (999501, (select id from public.tee_slots where date = d + 3 order by start_time desc limit 1), 999001);
+  insert into public.booking_players (booking_id, slot_id, member_id) select 999501, b.slot_id, x from public.bookings b, unnest(array[999001, 999002, 999003, 999004]::bigint[]) x where b.id = 999501;
+  perform t.act_as(999002);
+  perform t.ok('Find a time: a booked match needs no reminder', not exists (select 1 from jsonb_array_elements(public.my_ko_due()) x where (x->>'matchId')::bigint = 999301));
+  reset role;
+  delete from public.bookings where id = 999501;
   perform t.act_as(999005);
   e := t.err('select public.get_match_times(999301)');
   v_n := (select count(*) from public.match_times);
   reset role;
   perform t.ok('Find a time: members see only their own matches', e = 'Only the players in this match can arrange it.' and v_n = 0, coalesce(e, '') || ' ' || v_n);
+  -- a result entered (not yet confirmed): the "suggests times" notices go; new players (a swap): the suggestions go
+  update public.ko_matches set status = 'reported' where id = 999301;
+  perform t.ok('Find a time: a result entered takes back the unseen notices', not exists (select 1 from public.booking_notices where kind = 'times' and ko_match_id = 999301 and not seen));
+  update public.ko_matches set status = 'open', b_entry = null where id = 999301;
+  perform t.ok('Find a time: new players clear the suggestions', not exists (select 1 from public.match_times where ko_match_id = 999301));
+  update public.ko_matches set b_entry = 999202 where id = 999301;
 
   update public.ko_matches set status = 'confirmed', winner_entry = 999201, result = '2&1' where id = 999301;
   perform t.ok('Find a time: a result clears the suggestions', not exists (select 1 from public.match_times where ko_match_id = 999301));

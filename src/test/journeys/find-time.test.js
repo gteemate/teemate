@@ -93,3 +93,26 @@ describe('Find a time', () => {
     expect(document.getElementById('alerts').textContent).not.toContain('isn’t arranged yet')
   })
 })
+
+describe('Find a time: after review', () => {
+  it('a match past its play-by date: no Find a time (it would have no days to offer)', async () => {
+    app = await boot(koMatch(['2026-10-05', '2026-11-03']))
+    await open()
+    expect(app.text()).not.toContain('Find a time')
+    expect(app.text()).toContain('Book this match')
+  })
+  it('a result clears the suggestions and their unseen notices (as the database does)', async () => {
+    app = await boot(suggested)
+    await globalThis.__world.wrapped.adminSetKoResult(1, 100, '2&1')
+    expect(app.db.matchTimes.filter(t => t.matchId === 1)).toHaveLength(0)
+    expect(app.db.notices.some(n => n.kind === 'times' && n.koMatchId === 1 && !n.seen)).toBe(false)
+  })
+  it('changing your ✓ takes back an unseen “everyone can do”', async () => {
+    app = await boot(suggested, { as: 'member' })
+    await app.tap('[data-al="times"]')
+    await app.tap('[data-t="51"]') // ✓: everyone can
+    expect(app.db.notices.some(n => n.kind === 'agreed' && !n.seen)).toBe(true)
+    await app.tap('[data-t="51"]') // ✕
+    expect(app.db.notices.some(n => n.kind === 'agreed' && !n.seen)).toBe(false)
+  })
+})

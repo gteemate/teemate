@@ -134,6 +134,11 @@ export function makeWorld(today, setup = () => {}, as = 'admin') {
   // Find a time: who's in a knockout match, and the match checked for arranging (as the database's ko_match_to_arrange).
   const koPlayers = mid => { const m = db.koMatches.find(x => x.id === mid), e = eid => db.signupEntries.find(x => x.id === eid)
     return m ? [e(m.aEntry)?.memberId, e(m.aEntry)?.partnerId, e(m.bEntry)?.memberId, e(m.bEntry)?.partnerId].filter(x => x != null) : [] }
+  // As the database's clear_match_times: a result or new players clear a match's suggestions and their unseen notices.
+  const clearTimes = (mid, onlyNotices = false) => {
+    if (!onlyNotices) db.matchTimes = db.matchTimes.filter(t => t.matchId !== mid)
+    db.notices = db.notices.filter(n => !(n.koMatchId === mid && !n.seen && (onlyNotices ? n.kind === 'times' : ['times', 'agreed'].includes(n.kind))))
+  }
   const arrange = mid => {
     const m = db.koMatches.find(x => x.id === mid)
     if (!m) throw new Error('That match no longer exists.')
@@ -423,8 +428,9 @@ export function makeWorld(today, setup = () => {}, as = 'admin') {
       if (!t) throw new Error('That day is no longer suggested.')
       const m = arrange(t.matchId), players = koPlayers(m.id)
       if (can == null) delete t.answers[ME]; else t.answers[ME] = can
-      const agreed = !!can && t.day >= db.today && players.every(p => t.answers[p] === true)
-      if (agreed && !db.notices.some(n => n.kind === 'agreed' && n.koMatchId === m.id && n.date === t.day && n.part === t.part)) {
+      const agreed = t.day >= db.today && players.every(p => t.answers[p] === true)
+      if (!agreed) db.notices = db.notices.filter(n => !(n.kind === 'agreed' && n.koMatchId === m.id && n.date === t.day && n.part === t.part && !n.seen))
+      if (agreed && can && !db.notices.some(n => n.kind === 'agreed' && n.koMatchId === m.id && n.date === t.day && n.part === t.part && players.includes(n.memberId))) {
         const name = db.signups.find(x => x.id === m.compId).name
         for (const p of players) db.notices.push({ id: id(), memberId: p, kind: 'agreed', date: t.day, oldTime: 0, newTime: null, note: name, part: t.part, koMatchId: m.id, seen: false })
       }
@@ -667,12 +673,14 @@ export function makeWorld(today, setup = () => {}, as = 'admin') {
       const mine = [m.aEntry, m.bEntry].some(e => db.signupEntries.some(x => x.id === e && (x.memberId === ME || x.partnerId === ME)))
       if (!mine) throw new Error('You can only report your match.')
       Object.assign(m, { status: 'reported', winnerEntry: w, result: r, reportedEntry: db.signupEntries.find(x => [m.aEntry, m.bEntry].includes(x.id) && (x.memberId === ME || x.partnerId === ME)).id })
+      clearTimes(mid, true) // a result entered: no more "suggests times"
     },
-    confirmKoResult: async mid => { const m = db.koMatches.find(x => x.id === mid); m.status = 'confirmed'; db.koAdvance(m) },
+    confirmKoResult: async mid => { const m = db.koMatches.find(x => x.id === mid); m.status = 'confirmed'; clearTimes(mid); db.koAdvance(m) },
     disputeKoResult: async mid => { db.koMatches.find(m => m.id === mid).status = 'disputed' },
     // The draw, with the database's rules (admin_make_draw, admin_publish_draw, admin_swap_draw, admin_set_round_deadlines).
     makeDraw: async cid => {
       if (!db.asOffice && !db.members.find(m => m.id === ME)?.admin) throw new Error('Only admins can make the draw.')
+      db.koMatches.filter(m => m.compId === cid).forEach(m => clearTimes(m.id)) // a redraw: the old matches' suggestions go with them
       const c = db.signups.find(x => x.id === cid)
       if (!c) throw new Error('That competition no longer exists.')
       if (c.drawPublished) throw new Error('The draw is already published.')
@@ -694,13 +702,17 @@ export function makeWorld(today, setup = () => {}, as = 'admin') {
     swapDraw: async (cid, x, y) => {
       if (!db.asOffice && !db.members.find(m => m.id === ME)?.admin) throw new Error('Only admins can change the draw.')
       if (db.signups.find(c => c.id === cid)?.drawPublished) throw new Error('The draw is published.')
-      for (const m of db.koMatches.filter(m => m.compId === cid && m.round === 1)) for (const k of ['aEntry', 'bEntry']) m[k] = m[k] === x ? y : m[k] === y ? x : m[k]
+      for (const m of db.koMatches.filter(m => m.compId === cid && m.round === 1)) {
+        const was = [m.aEntry, m.bEntry].join()
+        for (const k of ['aEntry', 'bEntry']) m[k] = m[k] === x ? y : m[k] === y ? x : m[k]
+        if ([m.aEntry, m.bEntry].join() !== was) clearTimes(m.id) // new players
+      }
     },
     setRoundDeadlines: async (cid, dates) => {
       if (!db.asOffice && !db.members.find(m => m.id === ME)?.admin) throw new Error('Only admins can set the dates.')
       db.signups.find(c => c.id === cid).roundDeadlines = [...dates]
     },
-    adminSetKoResult: async (mid, w, r) => { const m = db.koMatches.find(x => x.id === mid); Object.assign(m, { status: 'confirmed', winnerEntry: w, result: r }); db.koAdvance(m) },
+    adminSetKoResult: async (mid, w, r) => { const m = db.koMatches.find(x => x.id === mid); Object.assign(m, { status: 'confirmed', winnerEntry: w, result: r }); clearTimes(mid); db.koAdvance(m) },
     saveSeason: async e => { const x = db.events.find(y => y.id === e.id); Object.assign(x, copy({ days: e.days, team: e.team, players: Object.keys(e.team).map(Number), matches: e.matches, dayRules: e.dayRules ?? x.dayRules ?? null })) },
     // As the real saveEvent: points only for four-ball team match play; holes checked as the database does.
     saveEvent: async e => { e = tidyEvent(e); if (e.id) Object.assign(db.events.find(x => x.id === e.id), copy(e)); else db.events.push({ ...copy(e), id: id(), createdBy: { id: ME, name: 'Gary Cochrane' } }); return e.id ?? db.events.at(-1).id },
