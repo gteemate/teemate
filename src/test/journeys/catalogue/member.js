@@ -22,6 +22,9 @@ const challenged = db => {
 }
 // My four-ball at 09:30 (with Tom) and Peter's at 09:40 (with Liam).
 const twoGroups = db => { db.book(1, at(db, 570).id, [10]); db.book(7, at(db, 580).id, [11]) }
+// The club advertises the Frosty League for sign-up (entries close 30 Nov, 4 places); players already in it.
+const signupLeague = (players = [10, 12]) => db => db.events.push({ id: 881, name: 'Frosty League', style: 'league', fmt: 'beststab', club: true, everyone: false, startDate: '2026-12-07', days: 1, weeks: 10, bestOf: 4,
+  teams: [], team: {}, players: [...players], matches: {}, captainPool: [], signup: true, advertiseFrom: '2026-10-01', entriesClose: '2026-11-30', maxEntries: 4, createdBy: { id: 0, name: 'Gary Cochrane' } })
 const toHole9 = Array.from({ length: 8 }, (_, h) => ({ tap: `Save hole ${h + 1}` }))
 
 export default [
@@ -171,5 +174,39 @@ export default [
     steps: [...startRound, { tap: '#gname' }, { tap: '[data-am="one"]' }, { tap: db => `[data-op="t${at(db, 580).players.find(p => p.memberId === 11).id}"]` }, { tap: '[data-ok="sm2"]' }, { tap: '#am-go' }],
     keeps: { rounds: 'the card is started first (Scoring); the challenge is separate' },
     action: 'proposeSingles', expect: db => db.playerEvents.some(e => e.style === 'singles'), refusals: 'all',
+  },
+  {
+    id: 'enter-signup-league', who: 'member', title: 'Sign up for a league the club is advertising',
+    setup: signupLeague(), steps: [{ tap: 'Competition' }, { tap: '[data-tab="events"]' }, { tap: '[data-esign="881"]' }],
+    action: 'enterEvent', expect: db => db.events.find(e => e.id === 881).players.includes(1), refusals: 'all',
+  },
+  {
+    id: 'withdraw-signup-league', who: 'member', title: 'Withdraw from a league I signed up for',
+    setup: signupLeague([10, 1]), steps: [{ tap: 'Competition' }, { tap: '[data-tab="entered"]' }, { tap: '[data-ewd="881"]' }, { tap: '[data-ewd="881"]' }],
+    action: 'withdrawEvent', expect: db => !db.events.find(e => e.id === 881).players.includes(1), refusals: 'all',
+  },
+  {
+    id: 'guest-handicap', who: 'member', title: 'Set my guest’s handicap on the scorecard',
+    setup: db => db.book(1, at(db, 570).id, [], [{ name: 'Sam Visitor', club: 'Royal Portrush' }]),
+    steps: [{ tap: 'Scoring' }, { tap: '09:30' }, { tap: '#start' }, { tap: 'Set handicap' }, { type: ['#h-idx', '12.4'] }, { tap: '#hsave' }],
+    keeps: { rounds: 'the card is started first (Scoring); the handicap is separate' },
+    action: 'setGuestHandicap', expect: db => Object.values(db.slots).flat().flatMap(s => s.players).find(p => p.name === 'Sam Visitor').hcp === 12.4, refusals: 'all',
+  },
+  {
+    id: 'cancel-challenge', who: 'member', title: 'Cancel a challenge I sent',
+    setup: db => { challenged(db); Object.assign(db.playerEvents[0], { createdBy: { id: 1, name: 'Declan Murphy' }, proposedBy: { id: 1, name: 'Declan Murphy' } }) },
+    steps: [{ tap: 'Scoring' }, { tap: '[data-pe-cancel="5"]' }, { tap: '[data-pe-cancel="5"]' }],
+    action: 'cancelPlayerEvent', expect: db => db.playerEvents[0].status === 'cancelled', refusals: 'all',
+  },
+  {
+    id: 'counter-challenge', who: 'member', title: 'Suggest changes to a challenge',
+    setup: challenged, steps: [{ tap: 'Scoring' }, { tap: '#pe-counter' }, { tap: '#pe-send' }],
+    action: 'counterPlayerEvent', expect: db => db.calls.includes('counterPlayerEvent'), refusals: 'all',
+  },
+  {
+    id: 'cancel-hut-order', who: 'member', title: 'Cancel my halfway hut order before it’s made',
+    setup: db => db.orders.push({ id: 900, memberId: 1, items: [{ id: 1, name: 'Bacon roll', qty: 1, pricePence: 450 }], totalPence: 450, note: null, status: 'sent', cancelNote: null, createdAt: new Date().toISOString(), roundId: null }),
+    steps: [{ tap: '#account' }, { tap: '[data-a="hutorder"]' }, { tap: '[data-cancel="900"]' }, { tap: '[data-cancel="900"]' }],
+    action: 'cancelMyHutOrder', expect: db => db.orders[0].status === 'cancelled', refusals: 'all',
   },
 ]

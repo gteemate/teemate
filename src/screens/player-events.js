@@ -65,7 +65,7 @@ export function banners(events, me) {
 export function bindCancel() {
   document.querySelectorAll('[data-pe-cancel]').forEach(b => (b.onclick = async () => {
     if (b.dataset.armed !== '1') { b.dataset.armed = '1'; b.textContent = 'Sure?'; return }
-    await api.cancelPlayerEvent(+b.dataset.peCancel)
+    try { await api.cancelPlayerEvent(+b.dataset.peCancel) } catch (err) { toast(err.message); delete b.dataset.armed; return }
     await keepScroll(render)
     toast('Called off. Everyone in it will see it’s off')
   }))
