@@ -94,4 +94,10 @@ export const RULES = [
     setup: koMatch, act: (api, db) => api.suggestMatchTimes(1, [{ day: '2026-10-12', part: 'morning' }]), refused: /Only the players in this match/ },
   { id: 'find-time-within-round', says: 'Suggested days are up to the round’s play-by date', sql: ['find_a_time.sql', 'Find a time: days within the round'], who: 'member',
     setup: koMatch, act: api => api.suggestMatchTimes(1, [{ day: '2026-10-25', part: 'morning' }]), refused: /up to the play-by date/ },
+  { id: 'demo-office-only', says: 'Only the club office adds demo entries', sql: ['demo_fill.sql', 'Demo entries: only the office'], who: 'member',
+    act: api => api.demoFillSignup(1, 8), refused: /Only the club office/ },
+  { id: 'demo-not-after-draw', says: 'No demo entries in or out once the draw is made', sql: ['demo_fill.sql', 'Demo entries: not once the draw is made'],
+    setup: koMatch, act: api => api.demoClearSignup(1), refused: /draw has been made/ },
+  { id: 'demo-limit', says: 'Demo entries never go over the limit', sql: ['demo_fill.sql', 'Demo entries: never over the limit'],
+    setup: db => { db.signups[0].maxEntries = 4 }, act: async api => { await api.demoFillSignup(1, 32); return { ok: db => db.signupEntries.filter(e => e.compId === 1).length === 4 } } },
 ]

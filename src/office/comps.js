@@ -19,7 +19,12 @@ export async function load() {
   const [events, signups, members, tpls] = await Promise.all([api.getEvents(), api.getSignups(), api.getMembers(), api.getEventTemplates()])
   const t = isoDate(today())
   const evs = events.filter(clubEvent).map(e => ({ key: `e:${e.id}`, e, done: eventLastDay(e) < t && !(e.koTop && !e.koComp) }))
-  const comps = signups.comps.filter(clubComp).map(c => ({ key: `s:${c.id}`, c, n: signups.entries.filter(x => x.compId === c.id).length }))
+  const demo = new Set(members.filter(m => m.demo).map(m => m.id))
+  const comps = signups.comps.filter(clubComp).map(c => {
+    const es = signups.entries.filter(x => x.compId === c.id)
+    return { key: `s:${c.id}`, c, n: es.length, demo: es.filter(x => demo.has(x.memberId) || demo.has(x.partnerId)).length }
+  })
+  evs.forEach(x => { x.demo = x.e.players.filter(id => demo.has(id)).length })
   const kos = Object.fromEntries(await Promise.all(comps.filter(x => x.c.drawPublished || x.n).map(async x => [x.key, await api.getKnockout(x.c.id)])))
   return { evs, comps, kos, members, t, tpls: tpls.map(x => ({ key: `t:${x.id}`, t: x })) }
 }
@@ -108,6 +113,22 @@ export function draw({ evs, comps, kos, members, t, tpls = [] }) {
     try { await api.removeEventEntrant(sel.e.id, mid) } catch (er) { toast(er.message); return }
     await keepScroll(render); toast(`${who} taken off ${sel.e.name}`)
   }))
+  // Demo entries: fill to a number (or the limit), or take them all out (tap twice).
+  document.querySelectorAll('[data-o-demo]').forEach(b => (b.onclick = async () => {
+    const count = b.dataset.oDemo === 'max' ? null : +b.dataset.oDemo
+    b.disabled = true
+    let r
+    try { r = await (sel.c ? api.demoFillSignup(sel.c.id, count) : api.demoFillEvent(sel.e.id, count)) } catch (er) { toast(er.message); b.disabled = false; return }
+    await keepScroll(render); toast(`${r.added} demo ${sel.c?.kind === 'pairs' ? 'pairs' : 'entries'} added`)
+  }))
+  if ($('o-demox')) $('o-demox').onclick = async () => {
+    const b = $('o-demox')
+    if (b.dataset.armed !== '1') { b.dataset.armed = '1'; b.textContent = 'Tap again: demo entries go'; return }
+    b.disabled = true
+    let r
+    try { r = await (sel.c ? api.demoClearSignup(sel.c.id) : api.demoClearEvent(sel.e.id)) } catch (er) { toast(er.message); b.disabled = false; return }
+    await keepScroll(render); toast(`${r.removed} demo ${sel.c?.kind === 'pairs' ? 'pairs' : 'entries'} removed`)
+  }
   // Delete the selected competition (a club event or league, or a sign-up competition and its draw): tap twice.
   if ($('o-del')) $('o-del').onclick = async () => {
     const b = $('o-del'), x = sel, name = x.c?.name ?? x.e.name
@@ -132,6 +153,13 @@ export function draw({ evs, comps, kos, members, t, tpls = [] }) {
 }
 
 const rounds = ko => Math.max(0, ...ko.matches.map(m => m.round))
+
+// For a demo: fill with made-up players up to a number (or the limit), and take them out again. Real entries stay.
+function demoBar(n, max, demo, what) {
+  const sizes = [8, 16, 32].filter(k => k > n && (!max || k < max))
+  return `<div class="orow odemo"><span class="ot"><b>Demo</b><span>${demo ? `${demo} demo ${demo === 1 ? what.replace(/s$/, '') : what} in. ` : ''}Fill with made-up players to show it off; real entries stay.</span></span>
+    <span class="oacts">${sizes.map(k => `<button class="ghost sm" data-o-demo="${k}">Fill to ${k}</button>`).join('')}${max && max > n ? `<button class="ghost sm" data-o-demo="max">Fill all ${max}</button>` : ''}${demo ? '<button class="ghost sm accremove" id="o-demox">Remove demo entries</button>' : ''}</span></div>`
+}
 
 // A club event template: what it keeps, and Run on a day.
 function tplForm(tp, t) {
@@ -169,14 +197,15 @@ function detail(x, ko, members, t) {
         <div class="orow"><span class="ot"><b>Settings</b><span>Dates, format, who plays</span></span><span class="oacts"><button class="ghost sm" data-o-go="edit:${e.id}">Edit</button></span></div>
         ${e.signup ? `<div class="orow"><span class="ot"><b>Sign-up · ${e.players.length}${e.maxEntries ? ` of ${e.maxEntries} places` : ' entered'}</b><span>${signupLine(e)}</span></span>
             ${e.players.length ? `<span class="oacts"><button class="ghost sm" data-o-ents="${e.id}" aria-expanded="${S.oEnts === e.id}">${S.oEnts === e.id ? 'Hide entrants' : `Show entrants (${e.players.length})`}</button></span>` : ''}</div>
-          ${S.oEnts !== e.id ? '' : [...e.players].sort((a, b) => sur(name(a)).localeCompare(sur(name(b)))).map(id => `<div class="orow"><span class="ot"><b>${esc(name(id))}</b></span><span class="oacts"><button class="ghost sm accremove" data-o-rment="${id}">Remove</button></span></div>`).join('')}` : ''}
+          ${S.oEnts !== e.id ? '' : [...e.players].sort((a, b) => sur(name(a)).localeCompare(sur(name(b)))).map(id => `<div class="orow"><span class="ot"><b>${esc(name(id))}</b></span><span class="oacts"><button class="ghost sm accremove" data-o-rment="${id}">Remove</button></span></div>`).join('')}
+          ${demoBar(e.players.length, e.maxEntries, x.demo, 'entrants')}` : ''}
         ${e.koComp ? `<div class="orow"><span class="ot"><b>The knockout finish</b><span>The top ${e.koTop} from the table</span></span><span class="oacts"><button class="ghost sm" data-o-go="draw:${e.koComp}">Open the draw</button></span></div>` : ''}
       </div>`
   }
   const c = x.c
   const head = `<div class="ohead"><div><h4>${esc(c.name)}</h4><p class="hint">${CAT[c.category]} ${c.kind === 'pairs' ? 'pairs' : 'singles'} · ${x.n}${c.maxEntries ? ` of ${c.maxEntries}` : ''} entered${c.closesOn ? ` · entries ${c.closesOn >= t ? 'close' : 'closed'} ${eventDates(c.closesOn, 1)}` : ''}</p>${c.entryFee ? `<p class="hint">Entry ${money(c.entryFee)}${c.kind === 'pairs' ? ' each' : ''} · ${feeTotal(c.kind === 'pairs' ? c.entryFee * 2 : c.entryFee, x.n).split(' · ')[1]}</p>` : ''}</div>
     <span class="oacts"><button class="ghost sm accremove" id="o-del">Delete</button><button class="ghost sm" data-o-go="signups:${c.id}">Entries and settings</button>${ko?.matches.length ? `<button class="primary sm" data-o-go="draw:${c.id}">${c.drawPublished ? 'Set results' : 'Make the draw'}</button>` : x.n > 1 ? `<button class="primary sm" data-o-go="draw:${c.id}">Make the draw</button>` : ''}</span></div>`
-  if (!ko?.matches.length) return `${head}<div class="empty-state">${x.n ? 'No draw yet. Make it once entries close.' : 'Nobody has entered yet.'}</div>`
+  if (!ko?.matches.length) return `${head}${demoBar(x.n, c.maxEntries, x.demo, c.kind === 'pairs' ? 'pairs' : 'entries')}<div class="empty-state">${x.n ? 'No draw yet. Make it once entries close.' : 'Nobody has entered yet.'}</div>`
   const n = rounds(ko), name = id => entryName(id, ko.entries, members)
   const champ = champion(ko.matches, n)
   const side = (m, id, bye) => `<div class="obk${m.winnerEntry === id && id != null && ['confirmed', 'bye'].includes(m.status) ? ' w' : ''}">${esc(entryName(id, ko.entries, members, bye))}</div>`

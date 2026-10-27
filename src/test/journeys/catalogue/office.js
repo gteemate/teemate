@@ -204,6 +204,31 @@ export default [
     action: 'removeEventEntrant', expect: db => db.events.find(e => e.id === 880).players.length === 0, refusals: 'all',
   },
   {
+    id: 'office-demo-fill-signup', who: 'office', title: 'For a demo: fill a mixed pairs competition with made-up pairs',
+    steps: [{ tap: '[data-ov="comps"]' }, { tap: '[data-o-comp="s:4"]' }, { tap: '[data-o-demo="8"]' }],
+    action: 'demoFillSignup', expect: db => db.signupEntries.filter(e => e.compId === 4).length === 8, refusals: 'all',
+  },
+  {
+    id: 'office-demo-clear-signup', who: 'office', title: 'After a demo: take the made-up entries out again',
+    setup: db => { db.members.push({ id: 900, name: 'Demo Player', gui: null, hcp: 12, admin: false, hutStaff: false, playsIn: 'men', demo: true }); db.signupEntries.push({ id: 901, compId: 1, memberId: 900, partnerId: null }, { id: 902, compId: 1, memberId: 3, partnerId: null }) },
+    steps: [{ tap: '[data-ov="comps"]' }, { tap: '[data-o-comp="s:1"]' }, { tap: '#o-demox' }, { tap: '#o-demox' }],
+    action: 'demoClearSignup', expect: db => db.signupEntries.filter(e => e.compId === 1).map(e => e.memberId).join() === '3', refusals: 'all',
+  },
+  {
+    id: 'office-demo-fill-event', who: 'office', title: 'For a demo: fill a league open for sign-up to its places',
+    setup: db => db.events.push({ id: 880, name: 'Frosty League', style: 'league', fmt: 'beststab', club: true, everyone: false, startDate: '2026-12-07', days: 1, weeks: 10, bestOf: 4,
+      teams: [], team: {}, players: [10], matches: {}, captainPool: [], signup: true, advertiseFrom: '2026-10-01', entriesClose: '2026-11-30', maxEntries: 12, createdBy: { id: 0, name: 'Gary Cochrane' } }),
+    steps: [{ tap: '[data-ov="comps"]' }, { tap: '[data-o-comp="e:880"]' }, { tap: '[data-o-demo="max"]' }],
+    action: 'demoFillEvent', expect: db => db.events.find(e => e.id === 880).players.length === 12, refusals: 'all',
+  },
+  {
+    id: 'office-demo-clear-event', who: 'office', title: 'After a demo: take the made-up players off the league',
+    setup: db => { db.members.push({ id: 900, name: 'Demo Player', gui: null, hcp: 12, admin: false, hutStaff: false, playsIn: 'men', demo: true }); db.events.push({ ...{ id: 880, name: 'Frosty League', style: 'league', fmt: 'beststab', club: true, everyone: false, startDate: '2026-12-07', days: 1, weeks: 10, bestOf: 4,
+      teams: [], team: {}, players: [10], matches: {}, captainPool: [], signup: true, advertiseFrom: '2026-10-01', entriesClose: '2026-11-30', maxEntries: 12, createdBy: { id: 0, name: 'Gary Cochrane' } }, players: [10, 900] }) },
+    steps: [{ tap: '[data-ov="comps"]' }, { tap: '[data-o-comp="e:880"]' }, { tap: '#o-demox' }, { tap: '#o-demox' }],
+    action: 'demoClearEvent', expect: db => db.events.find(e => e.id === 880).players.join() === '10', refusals: 'all',
+  },
+  {
     id: 'office-save-signup', who: 'office', title: 'Change a sign-up competition’s settings',
     steps: [{ tap: '[data-ov="comps"]' }, { tap: '[data-o-comp="s:1"]' }, { tap: 'Entries and settings' }, { type: ['#sc-name', 'Men’s Match Play Cup'] }, { tap: 'Save' }],
     action: 'saveSignup', expect: db => db.signups[0].name === 'Men’s Match Play Cup', refusals: 'all',

@@ -60,6 +60,10 @@ export async function enterEvent(id) { must(await sb.rpc('enter_event', { p_id: 
 export async function withdrawEvent(id) { must(await sb.rpc('withdraw_event', { p_id: id })) }
 /** The club office takes someone off an event. */
 export async function removeEventEntrant(eventId, memberId) { must(await sb.rpc('remove_event_entrant', { p_event: eventId, p_member: memberId })) }
+/** For a demo: top a league or event open for sign-up up to `count` entrants (null: to its places) with demo players. → { added } */
+export async function demoFillEvent(eventId, count) { return must(await sb.rpc('demo_fill_event', { p_event: eventId, p_count: count })) }
+/** Take the demo players off it again (and off its teams and captains). → { removed } */
+export async function demoClearEvent(eventId) { return must(await sb.rpc('demo_clear_event', { p_event: eventId })) }
 
 /** Make several new events at once (a weekly repeat): all or none. Returns their ids. */
 export async function saveEvents(list) {

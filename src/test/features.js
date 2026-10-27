@@ -57,6 +57,14 @@ export const FEATURES = [
       { says: 'A real refusal still says why', tests: ['src/test/journeys/offline-scores.test.js › a refusal from the server (not the signal) still says why and keeps the hole open'] },
     ],
     demo: [{ who: 'live@test.com', steps: ['Start a round', 'Turn on Airplane mode, save a hole', 'Turn Airplane mode off'], see: '“Saved on your phone”, then “Your scores have been sent”.' }] },
+  { id: 'demo-entries', area: 'Competitions', name: 'Demo entries for a competition',
+    what: 'For a demo, the club office fills a sign-up competition or league with made-up players, and takes them out again.',
+    scenarios: [
+      { says: 'Fill to 8, 16, 32 or the limit, in the right sections (one man and one lady per mixed pair); real entries stay', tests: ['journey:office-demo-fill-signup', 'journey:office-demo-fill-event', 'rule:demo-limit', 'supabase/tests/demo_fill.sql › Demo entries: a mixed pair is one man and one lady, all demo', 'supabase/tests/demo_fill.sql › Demo entries: men’s singles get men; ladies’ pairs get two ladies, nobody twice'] },
+      { says: 'Remove demo entries takes out only the made-up players', tests: ['journey:office-demo-clear-signup', 'journey:office-demo-clear-event', 'supabase/tests/demo_fill.sql › Demo entries: Remove takes out only the demo ones'] },
+      { says: 'Office only, and not once the draw is made', tests: ['rule:demo-office-only', 'rule:demo-not-after-draw'] },
+    ],
+    demo: [{ who: 'admin@test.com', steps: ['Competitions → a sign-up competition with no draw yet', 'Fill to 32'], see: '32 entries, ready to make the draw; Remove demo entries takes them out again.' }] },
   { id: 'find-a-time', area: 'Competitions', name: 'Find a time for a knockout match',
     what: 'The players in a knockout match suggest days (Morning, Afternoon or Evening) up to the play-by date and tick which they can do. When everyone can, they’re told and Book a tee time opens the tee sheet on that day. A reminder a week before the play-by date if nothing’s arranged.',
     scenarios: [

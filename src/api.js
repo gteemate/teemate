@@ -15,7 +15,7 @@ setStampSource(raw.getStamps)
 const w = wrapApi(raw)
 export { cache }
 export const {
-  getMembers, getAccessList, getCourse, getPins, getGameSettings, getEvents, getEventTemplates, saveEvents, enterEvent, withdrawEvent, removeEventEntrant, saveEventTemplate, deleteEventTemplate, setKoRoundHoles,
+  getMembers, getAccessList, getCourse, getPins, getGameSettings, getEvents, getEventTemplates, saveEvents, enterEvent, withdrawEvent, removeEventEntrant, demoFillEvent, demoClearEvent, saveEventTemplate, deleteEventTemplate, setKoRoundHoles,
   getTheme, getSignups, getSignupCounts, getKnockout, getAccessRequests, getTeeTimeRequests,
   getBuddies, getFriends, getFavourites, setTheme, setClubName, setFeePayment, setPaperCards,
   setHutOn, setBookingRules, setDayBoardDays, setDayBoardToday, setCourseLocation, setGreenWidth,
@@ -25,7 +25,7 @@ export const {
   setFriendFavourite, setFavourite, setMyPlaysIn, adminSetPlaysIn, declineSignup, undeclineSignup,
   runSignup, enterSignup, withdrawSignup, saveSignup, createMemberKnockout, deleteMemberKnockout,
   makeDraw, swapDraw, setRoundDeadlines, publishDraw, linkKoCard, reportKoResult,
-  confirmKoResult, disputeKoResult, adminSetKoResult, deleteSignup, deleteRound, cancelBooking, removeFromBooking,
+  confirmKoResult, disputeKoResult, adminSetKoResult, deleteSignup, demoFillSignup, demoClearSignup, deleteRound, cancelBooking, removeFromBooking,
   adminCancelBooking, adminMoveBooking, requestTeeTime, cancelTeeTimeRequest, dismissTeeTimeRequest, decideTeeTimeRequest,
   markTeeTimeRequestsSeen,
 } = w

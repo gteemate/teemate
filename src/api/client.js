@@ -12,8 +12,8 @@ export const must = ({ data, error }) => {
 }
 export const todayIso = () => isoDate(today())
 
-export const MEMBER_COLS = 'id, name, gui, hcp_index, admin, hut_staff, plays_in, office'
-export const toMember = m => ({ id: m.id, name: m.name, gui: m.gui, hcp: Number(m.hcp_index), admin: m.admin, hutStaff: !!m.hut_staff, playsIn: m.plays_in ?? null, office: !!m.office })
+export const MEMBER_COLS = 'id, name, gui, hcp_index, admin, hut_staff, plays_in, office, demo'
+export const toMember = m => ({ id: m.id, name: m.name, gui: m.gui, hcp: Number(m.hcp_index), admin: m.admin, hutStaff: !!m.hut_staff, playsIn: m.plays_in ?? null, office: !!m.office, demo: !!m.demo })
 
 let me // cached for the session; undefined = not loaded, null = signed in but not a member
 let meLoading = null // asked twice at once (on opening): one trip, not two

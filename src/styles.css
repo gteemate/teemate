@@ -873,6 +873,7 @@ h4,.sheet h4{font-family:var(--display);font-weight:600;letter-spacing:0}
 .ost .linkbtn{font-size:12px;padding:0;color:var(--gold)}
 
 /* Club office: running a template */
+.odemo{border:1px dashed var(--gold);border-radius:10px;margin:8px 0}
 .orun{display:flex;flex-direction:column;gap:8px;padding-bottom:16px}
 .orun label{display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:700;color:var(--muted)}
 .orun label .opt{font-weight:500}

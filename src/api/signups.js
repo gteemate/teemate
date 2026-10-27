@@ -44,6 +44,10 @@ export async function saveSignup(c) {
   else must(await sb.from('signup_comps').insert(row))
 }
 export async function deleteSignup(id) { must(await sb.from('signup_comps').delete().eq('id', id)) }
+/** For a demo: top a competition up to `count` entries (null: to its limit) with demo players. → { added } */
+export async function demoFillSignup(compId, count) { return must(await sb.rpc('demo_fill_signup', { p_comp: compId, p_count: count })) }
+/** Take the demo players' entries out again; real entries stay. → { removed } */
+export async function demoClearSignup(compId) { return must(await sb.rpc('demo_clear_signup', { p_comp: compId })) }
 
 /* ---------- Knockout draw ---------- */
 

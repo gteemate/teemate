@@ -24,9 +24,9 @@ export const API_NAMES = ['getMe', 'forgetMe', 'getSession', 'signIn', 'needsAcc
   'getGuestPoints', 'getBookingRules', 'setBookingRules', 'requestTeeTime', 'cancelTeeTimeRequest', 'getMyTeeTimeRequests', 'getTeeTimeRequests',
   'decideTeeTimeRequest', 'markTeeTimeRequestsSeen', 'dismissTeeTimeRequest', 'getGameSettings', 'setMyGamePref', 'getCurrentRound', 'getRound', 'deleteRound', 'saveRound',
   'getTodayRounds', 'getCardsForTeeTimes', 'getMyPlayerEvents', 'proposePlayerEvent', 'proposeSingles', 'counterPlayerEvent', 'answerPlayerEvent', 'cancelPlayerEvent',
-  'getStamps', 'getEvents', 'saveEvent', 'saveEvents', 'enterEvent', 'withdrawEvent', 'removeEventEntrant', 'getEventTemplates', 'saveEventTemplate', 'deleteEventTemplate', 'saveSeason', 'deleteEvent', 'getCardsOn', 'getLeagueEntries', 'getCardsById', 'enterLeague', 'leaveLeague', 'enterEventToday',
+  'getStamps', 'getEvents', 'saveEvent', 'saveEvents', 'enterEvent', 'withdrawEvent', 'removeEventEntrant', 'demoFillEvent', 'demoClearEvent', 'getEventTemplates', 'saveEventTemplate', 'deleteEventTemplate', 'saveSeason', 'deleteEvent', 'getCardsOn', 'getLeagueEntries', 'getCardsById', 'enterLeague', 'leaveLeague', 'enterEventToday',
   'getEventEntries', 'enterEventRound', 'leaveEventRound', 'startLeagueKnockout',
-  'getSignups', 'getSignupCounts', 'getSignupDeclines', 'declineSignup', 'undeclineSignup', 'runSignup', 'enterSignup', 'withdrawSignup', 'setMyPlaysIn', 'adminSetPlaysIn', 'saveSignup', 'deleteSignup',
+  'getSignups', 'getSignupCounts', 'getSignupDeclines', 'declineSignup', 'undeclineSignup', 'runSignup', 'enterSignup', 'withdrawSignup', 'setMyPlaysIn', 'adminSetPlaysIn', 'saveSignup', 'deleteSignup', 'demoFillSignup', 'demoClearSignup',
   'getKnockout', 'createMemberKnockout', 'deleteMemberKnockout', 'makeDraw', 'swapDraw', 'setRoundDeadlines', 'setKoRoundHoles', 'publishDraw', 'getKoMatchOfCard', 'linkKoCard', 'reportKoResult', 'confirmKoResult', 'disputeKoResult', 'adminSetKoResult',
   'setPaperCards', 'readScorecard', 'markPaperCard', 'confirmPaperScore', 'sendBackPaperScore', 'resendPaperScore', 'getPaperConfirms', 'uploadCardPhoto', 'cardPhotoUrl', 'removeCardPhotos']
 
@@ -94,6 +94,37 @@ export function makeWorld(today, setup = () => {}, as = 'admin') {
   let nextId = 5000
   const id = () => nextId++
   const me = () => db.members.find(m => m.id === ME)
+  // Demo entries, as the database: office only; demo members first, then new ones in the section; no change after a draw.
+  const isDemo = mid => mid != null && !!db.members.find(m => m.id === mid)?.demo
+  const demoOffice = () => { if (!db.asOffice && !me()?.admin) throw new Error('Only the club office can add or remove demo entries.') }
+  const demoTarget = (count, max) => {
+    const n = Math.min(count ?? max ?? NaN, max ?? count ?? NaN)
+    if (!(n >= 1)) throw new Error('Pick how many entries.')
+    if (n > 128) throw new Error('At most 128 demo entries.')
+    return n
+  }
+  const demoComp = cid => {
+    demoOffice()
+    const c = db.signups.find(x => x.id === cid)
+    if (!c) throw new Error('That competition no longer exists.')
+    if (db.koMatches.some(m => m.compId === cid)) throw new Error("The draw has been made, so the entries can't change.")
+    return c
+  }
+  const demoEvent = eid => {
+    demoOffice()
+    const e = db.events.find(x => x.id === eid)
+    if (!e) throw new Error('That competition no longer exists.')
+    if (!e.signup) throw new Error('Only competitions open for sign-up take demo entries.')
+    return e
+  }
+  const demoPick = (sec, taken, n) => {
+    const got = db.members.filter(m => m.demo && (!sec || m.playsIn === sec) && !taken.includes(m.id)).slice(0, n).map(m => m.id)
+    while (got.length < n) {
+      const playsIn = sec ?? (got.length % 2 ? 'ladies' : 'men'), m = { id: id(), name: `Demo ${playsIn === 'men' ? 'Man' : 'Lady'} ${nextId}`, gui: null, hcp: 2 + (nextId % 26), admin: false, hutStaff: false, playsIn, demo: true }
+      db.members.push(m); got.push(m.id)
+    }
+    return got
+  }
   const db = {
     me: ME, today, calls: [],
     stamps: Object.fromEntries(['members', 'course', 'pins', 'games', 'events', 'club', 'comps', 'requests', 'friends', 'templates'].map(k => [k, '1'])),
@@ -649,6 +680,23 @@ export function makeWorld(today, setup = () => {}, as = 'admin') {
       ids.forEach(m => db.entries.push({ eventId: eid, day: 1, memberId: m, roundId: rid, marker })); return 1 },
     // As the database's rules: a member sees their own entries; admins see everyone's.
     getSignups: async () => copy({ comps: db.signups, entries: me().admin ? db.signupEntries : db.signupEntries.filter(e => e.memberId === ME || e.partnerId === ME) }),
+    demoFillSignup: async (cid, count) => {
+      const c = demoComp(cid), es = db.signupEntries.filter(e => e.compId === cid), taken = es.flatMap(e => [e.memberId, e.partnerId]).filter(x => x != null)
+      const need = demoTarget(count, c.maxEntries) - es.length
+      if (need <= 0) return { added: 0 }
+      const sec = ['men', 'ladies'].includes(c.category) ? c.category : null
+      let a, b = []
+      if (c.kind === 'pairs' && c.category === 'mixed') { a = demoPick('men', taken, need); b = demoPick('ladies', taken, need) }
+      else if (c.kind === 'pairs') { const p = demoPick(sec, taken, need * 2); a = p.slice(0, need); b = p.slice(need) }
+      else a = demoPick(sec, taken, need)
+      db.signupEntries.push(...a.map((mid, i) => ({ id: id(), compId: cid, memberId: mid, partnerId: b[i] ?? null }))); return { added: need }
+    },
+    demoClearSignup: async cid => {
+      demoComp(cid)
+      const n = db.signupEntries.length
+      db.signupEntries = db.signupEntries.filter(e => !(e.compId === cid && (isDemo(e.memberId) || isDemo(e.partnerId))))
+      return { removed: n - db.signupEntries.length }
+    },
     saveSignup: async c => { if (c.id) Object.assign(db.signups.find(x => x.id === c.id), c); else db.signups.push({ ...c, id: id(), drawPublished: false, roundDeadlines: [] }) },
     deleteSignup: async cid => { db.signups = db.signups.filter(c => c.id !== cid) },
     getSignupCounts: async () => Object.fromEntries(db.signups.map(c => [c.id, db.signupEntries.filter(e => e.compId === c.id).length])),
@@ -756,6 +804,15 @@ export function makeWorld(today, setup = () => {}, as = 'admin') {
     removeEventEntrant: async (eid, mid) => {
       if (!db.members.find(m => m.id === ME)?.admin) throw new Error('Only the club office can take someone off.')
       takeOff(db.events.find(x => x.id === eid), mid)
+    },
+    demoFillEvent: async (eid, count) => {
+      const e = demoEvent(eid), need = demoTarget(count, e.maxEntries) - e.players.length
+      if (need <= 0) return { added: 0 }
+      e.players.push(...demoPick(null, e.players, need)); return { added: need }
+    },
+    demoClearEvent: async eid => {
+      const e = demoEvent(eid), gone = e.players.filter(isDemo)
+      gone.forEach(mid => takeOff(e, mid)); return { removed: gone.length }
     },
     getEventTemplates: async () => { if (!db.members.find(m => m.id === ME)?.admin) return []; return copy(db.eventTemplates).sort((a, b) => a.name.localeCompare(b.name)) },
     saveEventTemplate: async ({ id: tid, name, setup }) => {

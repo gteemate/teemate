@@ -34,6 +34,8 @@ export const RULES = {
     'createMemberKnockout', 'deleteMemberKnockout', 'makeDraw', 'swapDraw', 'setRoundDeadlines', 'setKoRoundHoles', 'publishDraw', 'linkKoCard',
     'reportKoResult', 'confirmKoResult', 'disputeKoResult', 'adminSetKoResult'].map(n => [n, changes('comps')])),
   deleteSignup: changes('comps', 'events'), // a league's knockout link goes with it
+  demoFillSignup: changes('comps', 'members'), demoClearSignup: changes('comps', 'members'), // may add demo members
+  demoFillEvent: changes('events', 'members'), demoClearEvent: changes('events', 'members'),
   // Bookings and cards aren't kept, but losing one clears a tee time request's booking or a knockout's scorecard link.
   deleteRound: changes('comps'), cancelBooking: changes('requests', 'comps'), removeFromBooking: changes('requests', 'comps'), adminCancelBooking: changes('requests'), adminMoveBooking: changes('requests'),
   ...Object.fromEntries(['requestTeeTime', 'cancelTeeTimeRequest', 'dismissTeeTimeRequest', 'decideTeeTimeRequest', 'markTeeTimeRequestsSeen']

@@ -328,6 +328,45 @@
   "delete_member_knockout": [
    "Only the organiser can delete it."
   ],
+  "demo_clear_event": [
+   "Only the club office can add or remove demo entries.",
+   "That competition no longer exists.",
+   "Only competitions open for sign-up take demo entries."
+  ],
+  "demo_clear_signup": [
+   "Only the club office can add or remove demo entries.",
+   "That competition no longer exists.",
+   "The draw has been made, so the entries can't change."
+  ],
+  "demo_fill_event": [
+   "Only the club office can add or remove demo entries.",
+   "That competition no longer exists.",
+   "Only competitions open for sign-up take demo entries.",
+   "Pick how many entries.",
+   "At most 128 demo entries."
+  ],
+  "demo_fill_signup": [
+   "Only the club office can add or remove demo entries.",
+   "That competition no longer exists.",
+   "The draw has been made, so the entries can't change.",
+   "Pick how many entries.",
+   "At most 128 demo entries."
+  ],
+  "demo_pick": [],
+  "demo_signup_comp": [
+   "Only the club office can add or remove demo entries.",
+   "That competition no longer exists.",
+   "The draw has been made, so the entries can't change."
+  ],
+  "demo_signup_event": [
+   "Only the club office can add or remove demo entries.",
+   "That competition no longer exists.",
+   "Only competitions open for sign-up take demo entries."
+  ],
+  "demo_target": [
+   "Pick how many entries.",
+   "At most 128 demo entries."
+  ],
   "dismiss_tee_time_request": [
    "That request isn't yours.",
    "It's still waiting for an admin: cancel it instead."
@@ -860,6 +899,30 @@
    "tables": [
     "signup_comps"
    ]
+  },
+  "demoClearEvent": {
+   "rpc": [
+    "demo_clear_event"
+   ],
+   "tables": []
+  },
+  "demoClearSignup": {
+   "rpc": [
+    "demo_clear_signup"
+   ],
+   "tables": []
+  },
+  "demoFillEvent": {
+   "rpc": [
+    "demo_fill_event"
+   ],
+   "tables": []
+  },
+  "demoFillSignup": {
+   "rpc": [
+    "demo_fill_signup"
+   ],
+   "tables": []
   },
   "dismissTeeTimeRequest": {
    "rpc": [
