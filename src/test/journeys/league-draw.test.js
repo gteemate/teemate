@@ -91,6 +91,13 @@ describe('unfinished league cards, for the office', () => {
     expect(document.querySelector('.odetail').textContent).toContain('Unfinished cards · 2')
     expect(document.querySelector('.odetail').textContent).toContain('Week 2 · Fri 9 Oct · thru 3 of 18')
   })
+  it('a card the player deleted: still listed, to take them out (no card to delete)', async () => {
+    app = await boot(db => { played(db); db.leagueEntries.push({ eventId: 880, week: 1, memberId: 3, roundId: null }) })
+    await open()
+    expect(document.querySelector('.odetail').textContent).toContain('Week 1 · card deleted')
+    expect(document.querySelector('[data-o-lgout="3:1"]')).not.toBe(null)
+    expect(document.querySelectorAll('[data-o-lgdel]')).toHaveLength(2) // only the real card's two rows
+  })
   it('none unfinished: no section', async () => {
     app = await boot(db => { played(db); db.rounds[db.rounds.length - 2].done = Array(18).fill(true) })
     await open()

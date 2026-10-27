@@ -274,13 +274,6 @@ export default [
     action: 'enterEventRound', expect: db => db.entries.some(x => x.eventId === 950 && x.memberId === 1), refusals: 'all',
   },
   {
-    id: 'leave-league', who: 'member', title: 'Stop my round counting for the league before hole 1',
-    setup: db => { const b = teeTime(db); db.rounds.push({ id: 71, date: db.today, slotId: b.slotId, createdBy: 1, lineup: [{ m: 1 }, { m: 3 }], game: 'stab', pairing: 0, submitted: {}, scores: Array.from({ length: 18 }, () => [4, 4]), done: Array(18).fill(false) }); db.leagueEntries.push({ eventId: 2, week: 1, memberId: 1, roundId: 71 }, { eventId: 2, week: 1, memberId: 3, roundId: 71 }) },
-    prepare: () => { try { localStorage.setItem('teemate.lgAsked.71', '1') } catch { /* none */ } },
-    steps: [{ tap: 'Scoring' }, { tap: '.wlpill' }, { tap: '[data-yn="2:1"][data-v="0"]' }, { tap: '[data-yn="2:3"][data-v="1"]' }, { tap: '#lg-done' }],
-    action: 'leaveLeague', expect: db => !db.leagueEntries.some(x => x.memberId === 1), refusals: 'all',
-  },
-  {
     id: 'booked-you-in', who: 'member', title: 'See that someone booked me in, and OK it',
     setup: db => { const b = db.book(7, at(db, 600).id, [1]); db.notices.push({ id: 900, memberId: 1, kind: 'added', date: db.today, oldTime: 600, newTime: null, note: null, byName: 'Peter Walsh', withNames: ['Peter'], bookingId: b.id, seen: false }) },
     steps: [{ tap: '[data-al="ok"]' }],

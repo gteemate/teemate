@@ -123,10 +123,6 @@ export async function enterLeague(roundId, eventId, memberIds, marker = null) {
   return must(await sb.rpc('enter_league', { p_round: roundId, p_event: eventId, p_members: memberIds, p_marker: marker }))
 }
 
-export async function leaveLeague(roundId, eventId, memberIds) {
-  must(await sb.rpc('leave_league', { p_round: roundId, p_event: eventId, p_members: memberIds }))
-}
-
 /** On the day: enter a club competition open for entry and count this card for me, with my marker, in one step. */
 export async function enterEventToday(roundId, eventId, marker) {
   return must(await sb.rpc('enter_event_today', { p_round: roundId, p_event: eventId, p_marker: marker }))

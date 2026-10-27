@@ -33,7 +33,7 @@ do $$ declare e text; begin
   perform t.act_as(997002);
   e := t.err('select public.leave_league(997201, 997101, array[997002]::bigint[])');
   reset role;
-  perform t.ok('League cards: a player can''t leave once a hole is saved', e = 'Entries are locked once the first hole is saved.', e);
+  perform t.ok('League cards: a player can''t leave once entered', e = 'Once you''re entered, that''s your round for the week. Ask the club office if it needs to change.', e);
 
   perform t.act_as(997003);
   e := t.err('select public.office_take_out_league(997101, 997002, 1)');
@@ -52,6 +52,16 @@ do $$ declare e text; begin
   e := t.err('select public.office_take_out_league(997101, 997002, 1)');
   reset role;
   perform t.ok('League cards: taking out twice says so', e = 'They aren''t entered in that week any more.', e);
+
+  -- taken out: they can enter a new card that week
+  insert into public.rounds (id, date, created_by, game, pairing, scores, done, submitted, lineup) values
+    (997203, public.club_today(), 997002, 'stab', 0, (select jsonb_agg('[4]'::jsonb) from generate_series(1, 18)), (select jsonb_agg(false) from generate_series(1, 18)), '{}', '[{"m": 997002}]');
+  update public.rounds set date = public.club_today() - 1 where id = 997203; -- the same week (week 1 started 3 days ago)
+  perform t.act_as(997002);
+  perform public.enter_league(997203, 997101, array[997002]::bigint[]);
+  reset role;
+  perform t.ok('League cards: taken out, they can enter a new card that week', exists (select 1 from public.league_entries where member_id = 997002 and round_id = 997203));
+  delete from public.league_entries where round_id = 997203; delete from public.rounds where id = 997203;
 
   perform t.act_as(997003);
   e := t.err('select public.office_delete_league_card(997201)');

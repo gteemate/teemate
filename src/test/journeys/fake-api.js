@@ -24,7 +24,7 @@ export const API_NAMES = ['getMe', 'forgetMe', 'getSession', 'signIn', 'needsAcc
   'getGuestPoints', 'getBookingRules', 'setBookingRules', 'requestTeeTime', 'cancelTeeTimeRequest', 'getMyTeeTimeRequests', 'getTeeTimeRequests',
   'decideTeeTimeRequest', 'markTeeTimeRequestsSeen', 'dismissTeeTimeRequest', 'getGameSettings', 'setMyGamePref', 'getCurrentRound', 'getRound', 'deleteRound', 'saveRound',
   'getTodayRounds', 'getCardsForTeeTimes', 'getMyPlayerEvents', 'proposePlayerEvent', 'proposeSingles', 'counterPlayerEvent', 'answerPlayerEvent', 'cancelPlayerEvent',
-  'getStamps', 'getEvents', 'saveEvent', 'saveEvents', 'enterEvent', 'withdrawEvent', 'removeEventEntrant', 'demoFillEvent', 'demoClearEvent', 'officeTakeOutLeague', 'officeDeleteLeagueCard', 'getEventTemplates', 'saveEventTemplate', 'deleteEventTemplate', 'saveSeason', 'deleteEvent', 'getCardsOn', 'getLeagueEntries', 'getCardsById', 'enterLeague', 'leaveLeague', 'enterEventToday',
+  'getStamps', 'getEvents', 'saveEvent', 'saveEvents', 'enterEvent', 'withdrawEvent', 'removeEventEntrant', 'demoFillEvent', 'demoClearEvent', 'officeTakeOutLeague', 'officeDeleteLeagueCard', 'getEventTemplates', 'saveEventTemplate', 'deleteEventTemplate', 'saveSeason', 'deleteEvent', 'getCardsOn', 'getLeagueEntries', 'getCardsById', 'enterLeague', 'enterEventToday',
   'getEventEntries', 'enterEventRound', 'leaveEventRound', 'startLeagueKnockout',
   'getSignups', 'getSignupCounts', 'getSignupDeclines', 'declineSignup', 'undeclineSignup', 'runSignup', 'enterSignup', 'withdrawSignup', 'setMyPlaysIn', 'adminSetPlaysIn', 'saveSignup', 'deleteSignup', 'demoFillSignup', 'demoClearSignup',
   'getKnockout', 'createMemberKnockout', 'deleteMemberKnockout', 'makeDraw', 'swapDraw', 'setRoundDeadlines', 'setKoRoundHoles', 'publishDraw', 'getKoMatchOfCard', 'linkKoCard', 'reportKoResult', 'confirmKoResult', 'disputeKoResult', 'adminSetKoResult',
@@ -199,12 +199,12 @@ export function makeWorld(today, setup = () => {}, as = 'admin') {
     return b
   }
   const unbook = b => { const s = slotById(b.slotId); s.players = s.players.filter(p => p.bookingId !== b.id); db.bookings = db.bookings.filter(x => x !== b) }
-  // As the database when a card goes: its counted rounds go (event, league), and the knockout match, hut orders and
-  // photos let go of it.
+  // As the database when a card goes: its event entries go; league entries stay with no card (that week's go is used);
+  // the knockout match, hut orders and photos let go of it.
   const dropRound = rid => {
     db.rounds = db.rounds.filter(r => r.id !== rid)
     db.entries = db.entries.filter(x => x.roundId !== rid)
-    db.leagueEntries = db.leagueEntries.filter(x => x.roundId !== rid)
+    db.leagueEntries.forEach(x => { if (x.roundId === rid) x.roundId = null })
     db.koMatches.forEach(m => { if (m.roundId === rid) m.roundId = null })
     db.orders.forEach(o => { if (o.roundId === rid) o.roundId = null })
     db.photos = (db.photos ?? []).filter(x => !x.startsWith(`${rid}/`))
@@ -654,6 +654,7 @@ export function makeWorld(today, setup = () => {}, as = 'admin') {
       if (!r) throw new Error('That card has already gone.')
       if (!db.leagueEntries.some(x => x.roundId === rid)) throw new Error('Only league cards can be deleted here.')
       if (r.done.every(Boolean)) throw new Error('That card is finished. Take a player out of the week instead.')
+      db.leagueEntries = db.leagueEntries.filter(x => x.roundId !== rid) // the office gives those players their go back
       dropRound(rid)
     },
     getTodayRounds: async () => [],
@@ -675,18 +676,12 @@ export function makeWorld(today, setup = () => {}, as = 'admin') {
     getCardsById: async ids => Object.fromEntries(db.rounds.filter(r => ids.includes(r.id)).map(r => [r.id, copy(r)])),
     getLeagueEntries: async eids => copy(db.leagueEntries.filter(x => eids.includes(x.eventId))),
     getEventEntries: async eids => copy(db.entries.filter(x => eids.includes(x.eventId))),
-    leaveLeague: async (rid, eid, ids) => {
-      const r = db.rounds.find(x => x.id === rid)
-      if (!r || !r.lineup.some(x => x.m === ME)) throw new Error('You can only change entries on a card you\'re on.')
-      if (r.done.some(Boolean)) throw new Error('Entries are locked once the first hole is saved.')
-      db.leagueEntries = db.leagueEntries.filter(x => !(x.eventId === eid && x.roundId === rid && ids.includes(x.memberId)))
-    },
     enterLeague: async (rid, eid, ids, marker = null) => {
       const r = db.rounds.find(x => x.id === rid)
       if (r && !r.lineup.some(x => x.m === ME)) throw new Error('You can only enter rounds from a card you\'re on.')
       if (r?.done?.some(Boolean)) throw new Error('Rounds have to be entered before the first hole is saved.')
       const twice = ids.find(m => db.leagueEntries.some(x => x.eventId === eid && x.week === 1 && x.memberId === m && x.roundId !== rid))
-      if (twice != null) throw new Error(`${member(twice).name} has already entered a round this week.`)
+      if (twice != null) throw new Error(`${member(twice).name} has already entered a round this week. The club office can give them another go.`)
       ids.forEach(m => db.leagueEntries.push({ eventId: eid, week: 1, memberId: m, roundId: rid, marker })); return 1
     },
     enterEventRound: async (rid, eid, ids, marker = null) => {

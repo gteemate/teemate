@@ -256,7 +256,7 @@ export const FEATURES = [
     scenarios: [
       { says: 'Count my round as I start; a captain counts theirs', tests: ['journey:count-for-league', 'journey:captain-counts-round'] },
       { says: 'Locked after hole 1; one round a week', tests: ['rule:league-locked-after-hole-1', 'rule:league-one-a-week'] },
-      { says: 'Take my round out of the league before hole 1', tests: ['journey:leave-league'] },
+      { says: 'Entering is final: deleting the card leaves the week used; only the club office gives another go', tests: ['rule:league-entry-final', 'supabase/tests/leagues.sql › Enter: final once entered: a player can\'t take themselves off', 'supabase/tests/leagues.sql › Enter: deleting the card keeps the week\'s entry', 'supabase/tests/office_league_cards.sql › League cards: taken out, they can enter a new card that week'] },
       { says: 'The organiser starts the seeded knockout', tests: ['journey:start-league-knockout', `${J} › 17. At the end of a league, the organiser starts the seeded knockout`] },
     ],
     demo: [{ who: 'winter.league@test.com', steps: ['Scoring → tee time → tick Winter League → Start round'], see: 'The card shows the league badge.' }] },

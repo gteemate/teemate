@@ -305,7 +305,8 @@ export function draw({ course, members, guests, L, me, teeTimes, events, leagues
   // Delete the scorecard (anyone on it). The booking stays.
   if ($('delcard')) $('delcard').onclick = async () => {
     const b = $('delcard')
-    if (b.dataset.armed !== '1') { b.dataset.armed = '1'; b.textContent = P ? `Tap again to delete the scorecard and its ${P} hole${P === 1 ? '' : 's'} of scores` : 'Tap again to delete the scorecard'; return }
+    const inLeague = entries.some(x => x.roundId === round.id) // entered: the week's go stays used without the card
+    if (b.dataset.armed !== '1') { b.dataset.armed = '1'; b.textContent = `${P ? `Tap again to delete the scorecard and its ${P} hole${P === 1 ? '' : 's'} of scores` : 'Tap again to delete the scorecard'}${inLeague ? '. The league round this week stays used: only the club office can give another go' : ''}`; return }
     b.disabled = true
     try { await api.deleteRound(round.id) } catch (err) { toast(err.message); b.disabled = false; return }
     const booked = round.slotId != null // (the card is cleared next)

@@ -417,7 +417,7 @@
    "Your marker has to be someone else on this card.",
    "One of those players isn't in the league.",
    "One of those players isn't on this card.",
-   "% has already entered a round this week."
+   "% has already entered a round this week. The club office can give them another go."
   ],
   "enter_signup": [
    "Only members can enter.",
@@ -495,8 +495,7 @@
    "Rounds can only be changed before the first hole is saved."
   ],
   "leave_league": [
-   "You can only change entries on a card you're on.",
-   "Entries are locked once the first hole is saved."
+   "Once you're entered, that's your round for the week. Ask the club office if it needs to change."
   ],
   "link_member_to_user": [],
   "mark_paper_card": [
@@ -1199,12 +1198,6 @@
   "leaveEventRound": {
    "rpc": [
     "leave_event_round"
-   ],
-   "tables": []
-  },
-  "leaveLeague": {
-   "rpc": [
-    "leave_league"
    ],
    "tables": []
   },

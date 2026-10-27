@@ -56,16 +56,19 @@ do $$ declare e text; lg bigint; r1 bigint; r2 bigint; w int; begin
   insert into public.rounds (lineup, scores, done) values ('[{"m":1}]', '[]', (select jsonb_agg(false) from generate_series(1,18))) returning id into r2;
   e := t.err(format('select public.enter_league(%s, %s, ''{1}'')', r2, lg));
   perform t.ok('Enter: only one entered round per player per week', e like '%already entered a round this week%', e);
-  -- change of mind before teeing off
-  perform public.leave_league(r1, lg, '{2}');
-  perform t.ok('Enter: can take a player off before the first hole', (select count(*) from public.league_entries where round_id = r1) = 1);
-  perform public.enter_league(r1, lg, '{2}');
-  update public.rounds set done = jsonb_set(done, '{0}', 'true') where id = r1;
+  -- entered is final: no taking yourself off, even before teeing off
   e := t.err(format('select public.leave_league(%s, %s, ''{2}'')', r1, lg));
-  perform t.ok('Enter: locked once the first hole is saved', e like '%locked%', e);
+  perform t.ok('Enter: final once entered: a player can''t take themselves off', e like '%that''s your round for the week%' and (select count(*) from public.league_entries where round_id = r1) = 2, e);
+  update public.rounds set done = jsonb_set(done, '{0}', 'true') where id = r1;
   insert into public.rounds (lineup, scores, done) values ('[{"m":1},{"m":2}]', '[]', (select jsonb_agg(n = 1) from generate_series(1,18) n)) returning id into r2;
   e := t.err(format('select public.enter_league(%s, %s, ''{1}'')', r2, lg));
   perform t.ok('Enter: a card that has started cannot be entered', e like '%before the first hole%', e);
+  -- deleting the card keeps the week's entries (no card), so there's no second go
+  delete from public.rounds where id = r1;
+  perform t.ok('Enter: deleting the card keeps the week''s entry', (select count(*) from public.league_entries where event_id = lg and member_id in (1, 2) and round_id is null) = 2);
+  insert into public.rounds (lineup, scores, done) values ('[{"m":1},{"m":2}]', '[]', (select jsonb_agg(false) from generate_series(1,18))) returning id into r2;
+  e := t.err(format('select public.enter_league(%s, %s, ''{1}'')', r2, lg));
+  perform t.ok('Enter: no second go after deleting the card', e like '%already entered a round this week%', e);
   perform t.done();
 
   perform t.act_as(3);

@@ -32,8 +32,9 @@ export async function load() {
   if (leagues.length) {
     const [entries, course] = await Promise.all([api.getLeagueEntries(leagues.map(x => x.e.id)), api.getCourse()])
     const cards = await api.getCardsById([...new Set(entries.map(x => x.roundId))])
-    for (const x of leagues) x.unfinished = entries.filter(en => en.eventId === x.e.id && cards[en.roundId]).map(en => {
+    for (const x of leagues) x.unfinished = entries.filter(en => en.eventId === x.e.id).map(en => {
       const card = cards[en.roundId], wh = openCourse(course.holes, holesFor(x.e, en.week))
+      if (!card) return { ...en, gone: true, date: '', thru: 0, of: wh.length, on: 0 } // the player deleted the card: the week's go is still used
       return { ...en, date: card.date, thru: wh.filter(h => card.done[h.i]).length, of: wh.length, on: entries.filter(o => o.roundId === en.roundId).length }
     }).filter(u => u.thru < u.of).sort((a, b) => a.week - b.week || a.date.localeCompare(b.date))
   }
@@ -235,8 +236,8 @@ function detail(x, ko, members, t) {
           ${S.oEnts !== e.id ? '' : `<div class="opad">${ents.bar}</div>` + ents.shown.map(id => `<div class="orow"><span class="ot"><b>${esc(name(id))}</b></span><span class="oacts"><button class="ghost sm accremove" data-o-rment="${id}">Remove</button></span></div>`).join('')}
           ${demoBar(e.players.length, e.maxEntries, x.demo, 'entrants')}` : ''}
         ${x.unfinished?.length ? `<div class="orow"><span class="ot"><b>Unfinished cards · ${x.unfinished.length}</b><span>League cards not finished. Take a player out of that week (their scores stay) so they can enter a new card, e.g. after withdrawing ill; or delete a card nobody needs.</span></span></div>
-          ${x.unfinished.map(u => `<div class="orow"><span class="ot"><b>${esc(name(u.memberId))}</b><span>Week ${u.week} · ${u.date === t ? 'today' : eventDates(u.date, 1)} · thru ${u.thru} of ${u.of}${e.team?.[u.memberId] != null && e.teams?.[e.team[u.memberId]] ? ` · ${esc(e.teams[e.team[u.memberId]].name)}` : ''}</span></span>
-            <span class="oacts"><button class="ghost sm" data-o-lgout="${u.memberId}:${u.week}">Take out of week ${u.week}</button><button class="ghost sm accremove" data-o-lgdel="${u.roundId}" data-on="${u.on}">Delete card</button></span></div>`).join('')}` : ''}
+          ${x.unfinished.map(u => `<div class="orow"><span class="ot"><b>${esc(name(u.memberId))}</b><span>Week ${u.week} · ${u.gone ? 'card deleted' : `${u.date === t ? 'today' : eventDates(u.date, 1)} · thru ${u.thru} of ${u.of}`}${e.team?.[u.memberId] != null && e.teams?.[e.team[u.memberId]] ? ` · ${esc(e.teams[e.team[u.memberId]].name)}` : ''}</span></span>
+            <span class="oacts"><button class="ghost sm" data-o-lgout="${u.memberId}:${u.week}">Take out of week ${u.week}</button>${u.gone ? '' : `<button class="ghost sm accremove" data-o-lgdel="${u.roundId}" data-on="${u.on}">Delete card</button>`}</span></div>`).join('')}` : ''}
         ${e.koComp ? `<div class="orow"><span class="ot"><b>The knockout finish</b><span>The top ${e.koTop} from the table</span></span><span class="oacts"><button class="ghost sm" data-o-go="draw:${e.koComp}">Open the draw</button></span></div>` : ''}
       </div>`
   }
