@@ -71,15 +71,15 @@ export default [
     action: 'suggestMatchTimes', expect: db => db.matchTimes.length === 1, refusals: 'all',
   },
   {
-    id: 'answer-match-time', who: 'member', title: 'Find a time: tick a day I can do',
+    id: 'answer-match-time', who: 'member', title: 'Find a time: tick a day I can do and confirm',
     setup: db => {
       Object.assign(db.signups[0], { closesOn: '2026-10-01', drawPublished: true, roundDeadlines: ['2026-10-20', '2026-11-03'] })
       db.signupEntries.push(...[1, 0].map((m, i) => ({ id: 100 + i, compId: 1, memberId: m, partnerId: null })))
       db.koMatches.push({ id: 1, compId: 1, round: 1, slot: 0, aEntry: 100, bEntry: 101, winnerEntry: null, result: null, status: 'open', reportedEntry: null })
       db.matchTimes.push({ id: 51, matchId: 1, day: '2026-10-12', part: 'morning', by: 0, answers: { 0: true } })
     },
-    steps: [{ tap: 'Competition' }, { tap: 'Men’s Match Play' }, { tap: 'Find a time' }, { tap: '[data-t="51"]' }],
-    action: 'answerMatchTime', expect: db => db.matchTimes[0].answers[1] === true, refusals: 'all',
+    steps: [{ tap: 'Competition' }, { tap: 'Men’s Match Play' }, { tap: 'Find a time' }, { tap: '[data-t="51"]' }, { tap: '#ft-confirm' }],
+    action: 'confirmMatchTimes', expect: db => db.matchTimes[0].answers[1] === true, refusals: 'all',
   },
   {
     id: 'book-club-match', who: 'member', title: 'Book my club knockout match (the other two places are held for it)',

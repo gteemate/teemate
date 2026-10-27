@@ -1055,3 +1055,9 @@ button.lrow.ci-m{width:100%;text-align:left;background:none;border:0;border-top:
 .ftline b{color:var(--ink)}
 .ftcard{display:grid;gap:10px}
 .ftcard>b{font-size:18px}
+.ftgrid th small{display:block;font-weight:600;font-size:10px;color:var(--muted)}
+.ftsame{display:flex;align-items:center;gap:10px;font:inherit;font-weight:700;color:var(--ink);background:none;border:0;padding:6px 0;cursor:pointer;text-align:left}
+.ftsame .box{width:26px;height:26px;border-radius:8px;border:2px solid var(--gold);display:grid;place-items:center;color:var(--on-gold);font-weight:800}
+.ftsame[aria-checked="true"] .box{background:var(--gold)}
+.ftnotes{display:grid;gap:4px;font-size:14px;color:var(--muted)}
+.ftnotes b{color:var(--ink)}

@@ -1,9 +1,10 @@
 // Find a time (a knockout match, S.ftMatch): suggest days with Morning / Afternoon / Evening up to the play-by date, and
-// a grid of who can do which (each player taps their own column: ✓, ✕, blank). When everyone can do one, Book a tee
+// a grid of who can do which (each player ticks their own column ✓, ✕ or blank, plus their partner's "the same" in pairs,
+// and an "anything else" note, then Confirm saves the lot). When everyone can do one, Book a tee
 // time opens the tee sheet on that day with the others ready to add, as Book this match does.
 import * as api from '../api.js'
 import { S } from '../state.js'
-import { $, esc, header, keepScroll, render, toast, top0, goBack } from '../ui.js'
+import { $, esc, header, keepScroll, render, redraw, toast, top0, goBack } from '../ui.js'
 import { fromIso, longDay, isoDate, addDaysIso, nextDays } from '../dates.js'
 
 const PARTS = [['morning', 'Morning'], ['afternoon', 'Afternoon'], ['evening', 'Evening']]
@@ -17,10 +18,17 @@ export async function load() {
   return { grid, me }
 }
 
-const back = () => { S.ftPick = null; return goBack(async () => { S.aview = 'ko'; S.koComp = S.ftComp ?? S.koComp; await render(); top0() }) }
+// Leaving with ticks not confirmed: say so once; Back again leaves (and drops them).
+const back = () => {
+  if (S.ftDraft?.dirty && !S.ftDraft.warned) { S.ftDraft.warned = true; toast('You haven’t confirmed your answers'); return }
+  S.ftPick = null; S.ftDraft = null
+  return goBack(async () => { S.aview = 'ko'; S.koComp = S.ftComp ?? S.koComp; await render(); top0() })
+}
 const first = n => n.split(' ')[0]
 const dayLabel = iso => longDay(fromIso(iso))
 const partLabel = p => PARTS.find(x => x[0] === p)?.[1] ?? p
+const cycle = v => (v === true ? false : v === false ? null : true) // ✓, ✕, blank
+const mark = v => (v === true ? '✓' : v === false ? '✕' : '·')
 
 export function draw({ grid, me }) {
   const { match: m, players, times } = grid
@@ -28,32 +36,53 @@ export function draw({ grid, me }) {
   const others = players.filter(p => p.id !== me.id)
   header('Find a time', `${esc(m.compName)} · play by ${dayLabel(m.by)}`, back)
   if (S.ftPick) return drawSuggest(grid, me, others)
+  // My partner in a pairs match: the other player on my side (the players come side by side: A, A's partner, B, B's partner).
+  const i = players.findIndex(p => p.id === me.id), partner = players.length === 4 ? players[i ^ 1] : null
+  // What I've ticked on screen, saved only by Confirm.
+  if (S.ftDraft?.match !== m.id) S.ftDraft = { match: m.id, mine: Object.fromEntries(times.map(t => [t.id, t.answers[me.id] ?? null])), same: false, note: grid.notes?.[me.id] ?? '', dirty: false }
+  const d = S.ftDraft
+  const shown = (t, p) => (p.id === me.id ? d.mine[t.id] : partner && p.id === partner.id && d.same ? d.mine[t.id] : t.answers[p.id] ?? null)
   const agreed = times.find(t => t.id === grid.agreed)
   const answered = p => times.some(t => t.answers[p.id] != null)
+  const byName = id => first(players.find(p => p.id === id)?.name ?? 'someone')
   const cell = (t, p) => {
-    const a = t.answers[p.id], cls = a === true ? 'y' : a === false ? 'n' : ''
-    return `<td><button class="tick ${cls}" ${p.id === me.id ? `data-t="${t.id}"` : 'disabled'} aria-label="${esc(p.name)}, ${dayLabel(t.day)} ${t.part}: ${a === true ? 'can' : a === false ? 'can’t' : 'not answered'}">${a === true ? '✓' : a === false ? '✕' : '·'}</button></td>`
+    const a = shown(t, p), cls = a === true ? 'y' : a === false ? 'n' : ''
+    return `<td><button class="tick ${cls}" data-tt="${t.id}" data-p="${p.id}" ${p.id === me.id ? `data-t="${t.id}"` : 'disabled'} aria-label="${esc(p.name)}, ${dayLabel(t.day)} ${t.part}: ${a === true ? 'can' : a === false ? 'can’t' : 'not answered'}">${mark(a)}</button></td>`
   }
+  const head = p => p.id === me.id ? 'You' : `${esc(first(p.name))}${grid.answeredBy?.[p.id] && grid.answeredBy[p.id] !== me.id ? `<small>answered by ${esc(byName(grid.answeredBy[p.id]))}</small>` : grid.answeredBy?.[p.id] === me.id ? '<small>answered by you</small>' : ''}`
+  const notes = players.filter(p => grid.notes?.[p.id]).map(p => `<span><b>${p.id === me.id ? 'You' : esc(first(p.name))}:</b> ${esc(grid.notes[p.id])}</span>`).join('')
   $('main').innerHTML = `<div class="screen">
     ${agreed ? `<div class="card ftcard ftagreed"><b>Everyone can do ${dayLabel(agreed.day)} · ${agreed.part}</b>
       <span class="hint">Book a tee time that ${agreed.part}: the tee sheet opens on that day with ${esc(others.map(p => first(p.name)).join(' and '))} ready to add.</span>
       <button class="primary" id="ft-book">Book a tee time · ${dayLabel(agreed.day)}</button></div>` : ''}
     <div class="card ftcard"><b>Who can do which?</b>
-      ${times.length ? `<div class="ftwrap"><table class="ftgrid"><thead><tr><th></th>${players.map(p => `<th class="${p.id === me.id ? 'me' : ''}">${p.id === me.id ? 'You' : esc(first(p.name))}</th>`).join('')}</tr></thead>
+      ${times.length ? `<div class="ftwrap"><table class="ftgrid"><thead><tr><th></th>${players.map(p => `<th class="${p.id === me.id ? 'me' : ''}">${head(p)}</th>`).join('')}</tr></thead>
         <tbody>${times.map(t => `<tr data-row="${t.id}" class="${t.id === grid.agreed ? 'all' : ''}"><td>${dayLabel(t.day)}<small>${partLabel(t.part)}</small></td>${players.map(p => cell(t, p)).join('')}</tr>`).join('')}</tbody></table></div>
-        <span class="hint">${players.filter(answered).length} of ${players.length} have answered. Tap your column: ✓ you can, again for ✕, again to clear.</span>`
+        <span class="hint">${players.filter(answered).length} of ${players.length} have answered. Tap your column: ✓ you can, again for ✕, again to clear.</span>
+        ${partner ? `<button type="button" class="ftsame" id="ft-same" role="checkbox" aria-checked="${d.same}"><span class="box">${d.same ? '✓' : ''}</span>${esc(first(partner.name))} can do the same</button>` : ''}`
         : '<span class="hint">No days suggested yet.</span>'}
+      ${notes ? `<div class="ftnotes">${notes}</div>` : ''}
+      <label for="ft-note" class="hint">Anything else?</label>
+      <input id="ft-note" class="plainsel" maxlength="120" autocomplete="off" placeholder="e.g. any weekday after 5pm" value="${esc(d.note)}">
+      <button class="primary" id="ft-confirm" ${sending ? 'disabled' : ''}>Confirm my answers</button>
       <button class="ghost" id="ft-more">Suggest other days</button></div>
     <p class="hint">Nothing agreed a week before ${dayLabel(m.by)}? Everyone gets a reminder.</p></div>`
-  document.querySelectorAll('[data-t]').forEach(b => (b.onclick = async () => {
-    const t = times.find(x => x.id === +b.dataset.t), cur = t.answers[me.id]
-    const next = cur === true ? false : cur === false ? null : true
-    b.disabled = true
+  const dirty = () => { d.dirty = true; d.warned = false }
+  document.querySelectorAll('[data-t]').forEach(b => (b.onclick = () => { d.mine[b.dataset.t] = cycle(d.mine[b.dataset.t]); dirty(); keepScroll(redraw) }))
+  if ($('ft-same')) $('ft-same').onclick = () => { d.same = !d.same; dirty(); keepScroll(redraw) }
+  $('ft-note').oninput = e => { d.note = e.target.value; dirty() }
+  $('ft-confirm').onclick = async () => {
+    if (sending) return
+    sending = true
+    $('ft-confirm').disabled = true
+    const answers = Object.fromEntries(times.map(t => [t.id, d.mine[t.id] ?? null]))
+    const note = d.note.trim() === (grid.notes?.[me.id] ?? '') ? null : d.note
     let r
-    try { r = await api.answerMatchTime(t.id, next) } catch (err) { toast(err.message); b.disabled = false; return }
+    try { r = await api.confirmMatchTimes(m.id, answers, partner && d.same ? answers : null, note) } catch (err) { toast(err.message); return } finally { sending = false; if ($('ft-confirm')) $('ft-confirm').disabled = false }
+    S.ftDraft = null
     await keepScroll(render)
-    if (r.agreed && !agreed) toast('Everyone can make it: book a tee time')
-  }))
+    toast(r.agreed && !agreed ? 'Everyone can make it: book a tee time' : 'Your answers are in')
+  }
   $('ft-more').onclick = () => { S.ftPick = []; keepScroll(render) }
   if ($('ft-book')) $('ft-book').onclick = () => book(m, me, others, agreed)
 }

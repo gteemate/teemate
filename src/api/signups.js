@@ -74,11 +74,13 @@ export async function publishDraw(compId) { must(await sb.rpc('admin_publish_dra
 export async function suggestMatchTimes(matchId, times) {
   return must(await sb.rpc('suggest_match_times', { p_match: matchId, p_times: times }))
 }
-/** My answer to a suggested day: true (can), false (can't) or null (not answered). → { agreed } (everyone can) */
-export async function answerMatchTime(timeId, can) {
-  return must(await sb.rpc('answer_match_time', { p_time: timeId, p_can: can }))
+/** Confirm my answers in one go: { [timeId]: true (can) | false (can't) | null (clear) }, the same for my partner (pairs:
+ *  null leaves theirs), and an "anything else" note (null leaves it, '' clears it). → { agreed: timeId | null } */
+export async function confirmMatchTimes(matchId, answers, partner = null, note = null) {
+  return must(await sb.rpc('confirm_match_times', { p_match: matchId, p_answers: answers, p_partner: partner, p_note: note }))
 }
-/** The grid: { players: [{ id, name }], times: [{ id, day, part, by, answers: { [memberId]: true | false } }], agreed: timeId | null } */
+/** The grid: { match, players: [{ id, name }], times: [{ id, day, part, by, answers: { [memberId]: true | false } }], agreed: timeId | null,
+ *  notes: { [memberId]: text }, answeredBy: { [memberId]: who answered for them } } */
 export async function getMatchTimes(matchId) {
   return must(await sb.rpc('get_match_times', { p_match: matchId }))
 }

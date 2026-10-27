@@ -257,6 +257,14 @@
    "There's no result waiting to confirm.",
    "The other side confirms the result."
   ],
+  "confirm_match_times": [
+   "Only your own partner can be answered for.",
+   "Keep the note to 120 characters.",
+   "That day is no longer suggested.",
+   "That match no longer exists.",
+   "Only the players in this match can arrange it.",
+   "That match has been played."
+  ],
   "confirm_paper_score": [
    "Only the person asked to confirm this score can confirm it."
   ],
@@ -709,12 +717,6 @@
    ],
    "tables": []
   },
-  "answerMatchTime": {
-   "rpc": [
-    "answer_match_time"
-   ],
-   "tables": []
-  },
   "answerPlayerEvent": {
    "rpc": [
     "respond_player_event"
@@ -774,6 +776,12 @@
   "confirmKoResult": {
    "rpc": [
     "confirm_ko_result"
+   ],
+   "tables": []
+  },
+  "confirmMatchTimes": {
+   "rpc": [
+    "confirm_match_times"
    ],
    "tables": []
   },

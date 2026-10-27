@@ -52,6 +52,8 @@ describe('Find a time', () => {
     await app.tap('[data-al="times"]')
     expect(app.text()).toContain('Who can do which?')
     await app.tap('[data-t="51"]')
+    expect(app.db.matchTimes.find(t => t.id === 51).answers[1]).toBeUndefined() // not saved until Confirm
+    await app.tap('Confirm my answers')
     expect(app.db.matchTimes.find(t => t.id === 51).answers[1]).toBe(true)
     expect(app.text()).toContain('Everyone can do Mon 12 Oct · morning')
     expect(app.db.notices.filter(n => n.kind === 'agreed').map(n => n.memberId).sort()).toEqual([0, 1])
@@ -60,13 +62,33 @@ describe('Find a time', () => {
     expect(document.querySelector('.day[aria-pressed="true"]').textContent).toContain('12')
     expect(app.text()).toContain('Booking your match')
   })
-  it('my column cycles ✓, ✕, blank', async () => {
+  it('my column cycles ✓, ✕, blank on screen; Confirm saves what it shows', async () => {
     app = await boot(suggested, { as: 'member' })
     await app.tap('[data-al="times"]')
-    const t = () => app.db.matchTimes.find(x => x.id === 52).answers[1]
-    await app.tap('[data-t="52"]'); expect(t()).toBe(true)
-    await app.tap('[data-t="52"]'); expect(t()).toBe(false)
-    await app.tap('[data-t="52"]'); expect(t()).toBeUndefined()
+    const cell = () => document.querySelector('[data-t="52"]').className
+    await app.tap('[data-t="52"]'); expect(cell()).toContain('y')
+    await app.tap('[data-t="52"]'); expect(cell()).toContain('n')
+    await app.tap('Confirm my answers')
+    expect(app.db.matchTimes.find(x => x.id === 52).answers[1]).toBe(false)
+    expect(app.toast()).toBe('Your answers are in')
+  })
+  it('leaving with ticks not confirmed says so once; Back again leaves', async () => {
+    app = await boot(suggested, { as: 'member' })
+    await app.tap('[data-al="times"]')
+    await app.tap('[data-t="52"]')
+    await app.tap('#back')
+    expect(app.toast()).toBe('You haven’t confirmed your answers')
+    expect(app.screen()).toBe('Find a time')
+    await app.tap('#back')
+    expect(app.screen()).not.toBe('Find a time')
+  })
+  it('an “anything else” note, shown to the others with my name', async () => {
+    app = await boot(suggested, { as: 'member' })
+    await app.tap('[data-al="times"]')
+    await app.type('#ft-note', 'any weekday after 5pm')
+    await app.tap('Confirm my answers')
+    expect(app.db.matchNotes[1][1]).toBe('any weekday after 5pm')
+    expect(app.text()).toContain('You: any weekday after 5pm') // the others see “Declan: …”
   })
   it('Suggest other days adds to the same grid', async () => {
     app = await boot(suggested, { as: 'member' })
@@ -110,9 +132,37 @@ describe('Find a time: after review', () => {
   it('changing your ✓ takes back an unseen “everyone can do”', async () => {
     app = await boot(suggested, { as: 'member' })
     await app.tap('[data-al="times"]')
-    await app.tap('[data-t="51"]') // ✓: everyone can
+    await app.tap('[data-t="51"]'); await app.tap('Confirm my answers') // ✓: everyone can
     expect(app.db.notices.some(n => n.kind === 'agreed' && !n.seen)).toBe(true)
-    await app.tap('[data-t="51"]') // ✕
+    await app.tap('[data-t="51"]'); await app.tap('Confirm my answers') // ✕
     expect(app.db.notices.some(n => n.kind === 'agreed' && !n.seen)).toBe(false)
+  })
+})
+
+describe('Find a time: pairs', () => {
+  // Men's Fourball (pairs): Gary (0) & Declan (1) v Ciarán (3) & Siobhán (5); Ciarán suggested Mon 12 Oct morning.
+  const pairs = db => {
+    Object.assign(db.signups[1], { closesOn: '2026-10-01', drawPublished: true, roundDeadlines: ['2026-10-20', '2026-11-03'] })
+    db.signupEntries.push({ id: 200, compId: 2, memberId: 0, partnerId: 1 }, { id: 201, compId: 2, memberId: 3, partnerId: 5 })
+    db.koMatches.push({ id: 9, compId: 2, round: 1, slot: 0, aEntry: 200, bEntry: 201, winnerEntry: null, result: null, status: 'open', reportedEntry: null })
+    db.matchTimes.push({ id: 91, matchId: 9, day: '2026-10-12', part: 'morning', by: 3, answers: { 3: true } })
+  }
+  it('the same for my partner: my ticks copied to Declan’s column, saved with mine, marked as answered by me', async () => {
+    app = await boot(pairs)
+    await app.tap('Competition'); await app.tap('Men’s Fourball')
+    await app.tap('Find a time')
+    await app.tap('[data-t="91"]')
+    await app.tap('#ft-same')
+    expect(document.querySelector('[data-p="1"][data-tt="91"]').className).toContain('y') // shown in Declan's column before Confirm
+    await app.tap('Confirm my answers')
+    const t = app.db.matchTimes.find(x => x.id === 91)
+    expect([t.answers[0], t.answers[1]]).toEqual([true, true])
+    expect(app.text()).toContain('answered by you') // Declan sees “answered by Gary”
+  })
+  it('no “same for my partner” in a singles match', async () => {
+    app = await boot(suggested)
+    await app.tap('Competition'); await app.tap('Men’s Match Play')
+    await app.tap('Find a time')
+    expect(document.getElementById('ft-same')).toBeNull()
   })
 })

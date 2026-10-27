@@ -19,7 +19,7 @@ export const API_NAMES = ['getMe', 'forgetMe', 'getSession', 'signIn', 'needsAcc
   'getHutStaff', 'setHutStaff', 'placeHutOrder', 'cancelMyHutOrder', 'myHutOrders', 'hutOrdersToday', 'setHutOrderStatus', 'getMembers', 'getBuddies',
   'addBuddy', 'removeBuddy', 'getFriends', 'saveContact', 'removeContact', 'setFriendFavourite', 'getAccessList', 'saveMember', 'getFavourites',
   'setFavourite', 'setOfficeLogin', 'getAccessRequests', 'declineRequest', 'deleteMember', 'resetLogin', 'getCourse', 'getPins', 'setGreenWidth', 'publishPins',
-  'getTeeSheet', 'bookTeeTime', 'getMyTeeTimes', 'getGuests', 'setGuestHandicap', 'setHandicaps', 'suggestMatchTimes', 'answerMatchTime', 'getMatchTimes', 'getMyKoDue', 'cancelBooking', 'removeFromBooking', 'addToBooking', 'bookClubMatch', 'chargeGuests', 'removeGuestCharge', 'getGuestChargesToday', 'moveMatchBooking', 'adminCancelBooking', 'adminMoveBooking',
+  'getTeeSheet', 'bookTeeTime', 'getMyTeeTimes', 'getGuests', 'setGuestHandicap', 'setHandicaps', 'suggestMatchTimes', 'confirmMatchTimes', 'getMatchTimes', 'getMyKoDue', 'cancelBooking', 'removeFromBooking', 'addToBooking', 'bookClubMatch', 'chargeGuests', 'removeGuestCharge', 'getGuestChargesToday', 'moveMatchBooking', 'adminCancelBooking', 'adminMoveBooking',
   'getBookingNotices', 'seenBookingNotice', 'getMyBookings',
   'getGuestPoints', 'getBookingRules', 'setBookingRules', 'requestTeeTime', 'cancelTeeTimeRequest', 'getMyTeeTimeRequests', 'getTeeTimeRequests',
   'decideTeeTimeRequest', 'markTeeTimeRequestsSeen', 'dismissTeeTimeRequest', 'getGameSettings', 'setMyGamePref', 'getCurrentRound', 'getRound', 'deleteRound', 'saveRound',
@@ -104,7 +104,7 @@ export function makeWorld(today, setup = () => {}, as = 'admin') {
       { id: 3, name: 'Ladies Singles', category: 'ladies', kind: 'singles', closesOn: '2026-10-31', notes: null, open: true },
       { id: 4, name: 'Mixed Foursome', category: 'mixed', kind: 'pairs', closesOn: '2026-10-31', notes: null, open: true }],
     eventTemplates: [], // club event templates: { id, name, setup }
-    signupEntries: [], koMatches: [], declines: [], matchTimes: [], // matchTimes: Find a time { id, matchId, day, part, by, answers: { [memberId]: bool } } // declines: compIds I've said No thanks to
+    signupEntries: [], koMatches: [], declines: [], matchTimes: [], matchNotes: {}, // matchNotes: { [matchId]: { [memberId]: note } }; matchTimes: Find a time { id, matchId, day, part, by, answers: { [memberId]: bool } } // declines: compIds I've said No thanks to
     buddies: [{ id: 1, favourite: false }, { id: 3, favourite: true }, { id: 5, favourite: false }, { id: 7, favourite: false }, { id: 11, favourite: false }],
     contacts: [{ id: 1, name: 'Sam Visitor', club: 'Royal Portrush GC', hcp: '12.0', gui: '1234567', sharedOn: today, favourite: false, updatedAt: `${today}T08:00:00Z` }],
     slots: {}, bookings: [], guestVisits: [], rounds: [], requests: [], playerEvents: [],
@@ -423,18 +423,32 @@ export function makeWorld(today, setup = () => {}, as = 'admin') {
       for (const p of koPlayers(mid).filter(p => p !== ME)) db.notices.push({ id: id(), memberId: p, kind: 'times', date: first, oldTime: 0, newTime: null, byName: member(ME).name, note: c.name, koMatchId: mid, seen: false })
       return { added: times.length }
     },
-    answerMatchTime: async (tid, can) => {
-      const t = db.matchTimes.find(x => x.id === tid)
-      if (!t) throw new Error('That day is no longer suggested.')
-      const m = arrange(t.matchId), players = koPlayers(m.id)
-      if (can == null) delete t.answers[ME]; else t.answers[ME] = can
-      const agreed = t.day >= db.today && players.every(p => t.answers[p] === true)
-      if (!agreed) db.notices = db.notices.filter(n => !(n.kind === 'agreed' && n.koMatchId === m.id && n.date === t.day && n.part === t.part && !n.seen))
-      if (agreed && can && !db.notices.some(n => n.kind === 'agreed' && n.koMatchId === m.id && n.date === t.day && n.part === t.part && players.includes(n.memberId))) {
-        const name = db.signups.find(x => x.id === m.compId).name
-        for (const p of players) db.notices.push({ id: id(), memberId: p, kind: 'agreed', date: t.day, oldTime: 0, newTime: null, note: name, part: t.part, koMatchId: m.id, seen: false })
+    confirmMatchTimes: async (mid, answers, partner = null, note = null) => { // as the database: mine, my own partner's, a note; then who's agreed
+      const m = arrange(mid), players = koPlayers(mid)
+      const mine = db.signupEntries.find(e => [m.aEntry, m.bEntry].includes(e.id) && (e.memberId === ME || e.partnerId === ME))
+      const mate = mine ? (mine.memberId === ME ? mine.partnerId : mine.memberId) : null
+      if (partner && Object.keys(partner).length && mate == null) throw new Error('Only your own partner can be answered for.')
+      const n = note == null ? null : String(note).trim()
+      if (n && n.length > 120) throw new Error('Keep the note to 120 characters.')
+      for (const [who, set] of [[ME, answers ?? {}], [mate, partner ?? {}]]) {
+        if (who == null) continue
+        for (const [k, v] of Object.entries(set)) {
+          const t = db.matchTimes.find(x => x.id === +k && x.matchId === mid)
+          if (!t || t.day < db.today) throw new Error('That day is no longer suggested.')
+          if (v == null) { delete t.answers[who]; delete (t.by2 ??= {})[who] } else { t.answers[who] = v; (t.by2 ??= {})[who] = ME }
+        }
       }
-      return { agreed }
+      if (note != null) { db.matchNotes[mid] ??= {}; if (n) db.matchNotes[mid][ME] = n; else delete db.matchNotes[mid][ME] }
+      const name = db.signups.find(x => x.id === m.compId).name
+      const all = t => t.day >= db.today && players.every(p => t.answers[p] === true)
+      for (const t of db.matchTimes.filter(x => x.matchId === mid)) {
+        if (!all(t)) db.notices = db.notices.filter(n2 => !(n2.kind === 'agreed' && n2.koMatchId === mid && n2.date === t.day && n2.part === t.part && !n2.seen))
+        else if (!db.notices.some(n2 => n2.kind === 'agreed' && n2.koMatchId === mid && n2.date === t.day && n2.part === t.part && players.includes(n2.memberId))) {
+          for (const p of players) db.notices.push({ id: id(), memberId: p, kind: 'agreed', date: t.day, oldTime: 0, newTime: null, note: name, part: t.part, koMatchId: mid, seen: false })
+        }
+      }
+      const order = ['morning', 'afternoon', 'evening']
+      return { agreed: db.matchTimes.filter(x => x.matchId === mid && all(x)).sort((x, y) => x.day.localeCompare(y.day) || order.indexOf(x.part) - order.indexOf(y.part))[0]?.id ?? null }
     },
     getMyKoDue: async () => db.koMatches.filter(m => ['open', 'disputed'].includes(m.status) && m.aEntry != null && m.bEntry != null && koPlayers(m.id).includes(ME)).flatMap(m => {
       const c = db.signups.find(x => x.id === m.compId), by = c?.drawPublished ? c.roundDeadlines?.[m.round - 1] : null, players = koPlayers(m.id)
@@ -451,7 +465,10 @@ export function makeWorld(today, setup = () => {}, as = 'admin') {
         .map(t => ({ id: t.id, day: t.day, part: t.part, by: t.by, answers: Object.fromEntries(Object.entries(t.answers).filter(([k]) => players.includes(+k))) }))
       const m = db.koMatches.find(x => x.id === mid), c = db.signups.find(x => x.id === m.compId)
       const match = { id: m.id, compId: c.id, compName: c.name, kind: c.kind, club: c.createdBy == null, round: m.round, by: c.roundDeadlines?.[m.round - 1] ?? addDaysIso(db.today, 21), status: m.status }
-      return copy({ match, players: players.map(p => ({ id: p, name: member(p).name })), times, agreed: times.find(t => players.every(p => t.answers[p] === true))?.id ?? null })
+      const answeredBy = {}
+      for (const t of db.matchTimes.filter(x => x.matchId === mid)) for (const [who, by] of Object.entries(t.by2 ?? {})) if (+who !== by && players.includes(+who)) answeredBy[who] = by
+      const notes = Object.fromEntries(Object.entries(db.matchNotes[mid] ?? {}).filter(([k]) => players.includes(+k)))
+      return copy({ match, notes, answeredBy, players: players.map(p => ({ id: p, name: member(p).name })), times, agreed: times.find(t => players.every(p => t.answers[p] === true))?.id ?? null })
     },
     // As the database: a club singles match (a club knockout, or a club event's 1 v 1) holds the other places.
     bookClubMatch: async ({ slotId, opponent, kind, ref }) => {
