@@ -397,6 +397,7 @@
   ],
   "mark_tee_time_requests_seen": [],
   "match_rules_problem": [],
+  "members_take_off_events": [],
   "move_match_booking": [
    "That booking no longer exists.",
    "You can only move a booking you're on.",
