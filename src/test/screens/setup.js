@@ -27,8 +27,8 @@ function gallery() {
   const sizes = [...new Set(rows.map(r => r.size))], names = [...new Set(rows.map(r => r.name))].sort()
   const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
   const notes = r => {
-    const bad = [r.sideways, ...r.offEdge.map(x => `off the edge: ${x}`), ...r.tooSmall.map(x => `too small to tap: ${x}`), ...r.covered.map(x => `covered: ${x}`)].filter(Boolean)
-    const meh = [...(r.underAlert ?? []).map(x => `under the alert until it's answered: ${x}`), ...r.small.map(x => `small: ${x}`), ...r.cutOff.map(x => `text cut off: ${x}`)]
+    const bad = [r.sideways, ...(r.offEdge ?? []).map(x => `off the edge: ${x}`), ...(r.tooSmall ?? []).map(x => `too small to tap: ${x}`), ...(r.covered ?? []).map(x => `covered: ${x}`)].filter(Boolean) // (?? []: a result from another run)
+    const meh = [...(r.underAlert ?? []).map(x => `under the alert until it's answered: ${x}`), ...(r.small ?? []).map(x => `small: ${x}`), ...(r.cutOff ?? []).map(x => `text cut off: ${x}`)]
     return `${bad.map(x => `<li class="bad">${esc(x)}</li>`).join('')}${meh.map(x => `<li>${esc(x)}</li>`).join('')}` || '<li class="ok">✓ all fine</li>'
   }
   writeFileSync(`${dir}/index.html`, `<!doctype html><meta charset="utf-8"><title>TeeMate screens</title>

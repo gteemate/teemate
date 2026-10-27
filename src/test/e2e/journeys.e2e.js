@@ -58,7 +58,7 @@ describe('journeys against the test database', () => {
     await app.tap('[data-tile="booking"]')
     await app.tap('+ Add a booking')
     await app.tap('[data-d="1"]') // tomorrow
-    const open = [...document.querySelectorAll('.slot:not(.full)')].find(b => b.querySelectorAll('.pn.free').length === 4) // an open tee
+    const open = [...document.querySelectorAll('.slot:not(.full)')].find(b => b.querySelector('.pn.whole')) // an open tee: "Available"
     expect(open, 'a free tee time tomorrow').toBeTruthy()
     await app.tap(`.slot[data-id="${open.dataset.id}"]`)
     await app.tap('[data-open]')
@@ -102,12 +102,12 @@ describe('journeys against the test database', () => {
     await app.tap('#ev-next') // Matches
     await app.tap('[data-add1="41"]') // day 41 of the season (it started 30 days ago)
     await app.tap('#ev-next') // Holes
-    await app.tap('[data-holes="12"]')
+    await app.tap('[data-hpq="md:front"]') // the front nine
     for (let i = 0; i < 3; i++) await app.tap('#ev-next') // Points, Confirm, Add match day
     await app.tap('#ev-next') // Review
     await app.tap('#ev-next') // Save changes: through save_season
     const [e] = await sql(`select matches->'41' as day, matches->'3' as played, day_rules->'41'->>'holes' as holes from public.events where name = 'Pals Ryder Season'`)
-    expect(e.holes).toBe('12')
+    expect(JSON.parse(e.holes)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9])
     expect(e.day).toHaveLength(1)
     expect(e.day[0].a).toHaveLength(1)
     expect(e.played).toHaveLength(2) // the played day as it was

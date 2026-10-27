@@ -301,7 +301,8 @@ table.lb td small{color:var(--muted);font-size:12px}
 .tnames>div{min-width:0}
 .trowin{display:flex;gap:6px}
 .trowin input[type=color]{width:46px;height:46px;flex-shrink:0;border:1px solid var(--line);border-radius:12px;background:var(--surface);padding:4px;cursor:pointer}
-.actrow{display:flex;justify-content:space-between;align-items:center;margin:6px 0}
+.actrow{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:6px 0}
+.actrow>.who{flex:1;min-width:0}
 .steps{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .steps button{padding:12px 6px;border-radius:14px;border:1px solid var(--line);background:var(--surface);font-weight:700;font-size:14px;color:var(--ink);cursor:pointer}
 .steps button[aria-pressed="true"]{background:var(--green);color:var(--on-green);border-color:var(--green)}
@@ -798,8 +799,8 @@ h4,.sheet h4{font-family:var(--display);font-weight:600;letter-spacing:0}
 .oic{width:40px;height:40px;border-radius:12px;background:var(--leaf);display:grid;place-items:center;flex:none;font-size:18px}
 .otags{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
 .pill.warn{background:#3b2533;color:var(--loss)}
-.obar{display:flex;gap:12px;align-items:center}
-.obar .search{flex:1;margin:0}
+.obar{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.obar .search{flex:1 1 240px;margin:0}
 .odays{display:flex;gap:6px;overflow-x:auto}
 .osheetwrap{padding:14px;overflow-x:auto}
 .osheet{display:grid;gap:6px;min-width:560px}

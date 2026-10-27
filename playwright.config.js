@@ -14,6 +14,7 @@ export const SIZES = {
 export default defineConfig({
   testDir: 'src/test/screens',
   testMatch: '**/*.pw.js', // (not *.spec.js, which the quick `npm test` would pick up)
+  testIgnore: '**/*.slow.pw.js', // the slow-network timings: npm run test:slow, with their own built app
   timeout: 120000,
   workers: 1, // one shared test database
   reporter: [['list']],
