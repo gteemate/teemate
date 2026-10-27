@@ -35,5 +35,5 @@ export const S = {
   compTab: 'entered', showDeclined: false, // Competitions: entered | open | events | history; the Declined list open on Events
   evScope: 'player', // events area: 'player' (Admin → Events) or 'club' (Club admin → Club events)
   evId: null, evStep: 1, evNew: null, // evNew: 'league' when starting a new league
-  ev: null, evQ: '', evSwap: null, evTeam: null, // event draft, player search, pending swap; league setup: null = entrants, 0.. = a team
+  ev: null, evQ: '', evSwap: null, evTeam: null, evMore: false, evCapMode: null, // event draft, player search, pending swap; league setup: null = captains until drawn, then entrants; -1 entrants, -2 captains, 0.. a team; Other settings open; captains picked from candidates or all entrants
 }

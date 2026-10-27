@@ -2,7 +2,8 @@
 // competitions and their knockouts). Pick one to see it beside the list: a knockout shows its whole bracket.
 // Members' own events, leagues and knockouts stay with them.
 import { holesText } from '../open-holes.js'
-import { signupLine } from '../event-signups.js'
+import { signupLine, closesOn } from '../event-signups.js'
+import { azList, wireAz } from '../az.js'
 import * as api from '../api.js'
 import { S } from '../state.js'
 import { $, esc, header, keepScroll, render, redraw, toast, top0 } from '../ui.js'
@@ -75,6 +76,7 @@ export function draw({ evs, comps, kos, members, t, tpls = [] }) {
     const [what, id] = b.dataset.oGo.split(':')
     if (what === 'board') Object.assign(S, { evId: +id, evDay: 1, lgWeek: null, aview: 'evboard' })
     if (what === 'edit') Object.assign(S, { ev: null, evId: +id, evStep: 1, evScope: 'club', aview: 'event' })
+    if (what === 'teams') Object.assign(S, { ev: null, evId: +id, evStep: 6, evTeam: null, evCapMode: null, evScope: 'club', aview: 'event' }) // captains first
     if (what === 'draw') Object.assign(S, { koComp: +id, koRound: null, koFrom: 'office', aview: 'ko' })
     if (what === 'signups') Object.assign(S, { aview: 'signups', signupOnly: id ? +id : null }) // one competition's page
   })))
@@ -105,6 +107,7 @@ export function draw({ evs, comps, kos, members, t, tpls = [] }) {
     await keepScroll(render); toast(`${sel.t.name} template deleted`)
   }
   // An event's entrants: shown on a tap (a long list would swamp the page), A–Z by surname.
+  wireAz(() => keepScroll(redraw))
   document.querySelectorAll('[data-o-ents]').forEach(b => (b.onclick = () => { S.oEnts = S.oEnts === +b.dataset.oEnts ? null : +b.dataset.oEnts; keepScroll(redraw) }))
   // Take someone off an event open for sign-up: tap twice.
   document.querySelectorAll('[data-o-rment]').forEach(b => (b.onclick = async () => {
@@ -146,7 +149,7 @@ export function draw({ evs, comps, kos, members, t, tpls = [] }) {
         <button class="orow obtn" data-o-kind="signup"><span class="ot"><b>A sign-up competition or knockout</b><span>Members enter in advance, with a limit; then a random draw</span></span></button>
       </div>`)
     document.querySelectorAll('[data-o-kind]').forEach(b => (b.onclick = () => go(() => {
-      if (b.dataset.oKind === 'signup') Object.assign(S, { signupNew: true, aview: 'signups' })
+      if (b.dataset.oKind === 'signup') Object.assign(S, { signupOnly: 'new', aview: 'signups' }) // its own page; saved, back here
       else Object.assign(S, { ev: null, evId: null, evStep: 1, evNew: b.dataset.oKind === 'league' ? 'league' : null, evScope: 'club', aview: 'event' })
     })))
   }
@@ -191,13 +194,18 @@ function detail(x, ko, members, t) {
   if (x.e) {
     const name = id => members.find(m => m.id === id)?.name ?? 'Former member', sur = n => n.split(' ').pop()
     const e = x.e, wk = e.style === 'league' ? leagueWeek(e, t) : 0
+    // A team league open for sign-up, full or closed, with no teams yet: time to pick captains and make the draw.
+    const ready = e.style === 'league' && e.signup && (e.teams?.length ?? 0) > 0 && e.players.length >= 2 && !Object.keys(e.team ?? {}).length
+      && ((e.maxEntries && e.players.length >= e.maxEntries) || t > closesOn(e))
+    const ents = azList([...e.players].sort((a, b) => sur(name(a)).localeCompare(sur(name(b)))), name, `ents${e.id}`)
     return `<div class="ohead"><div><h4>${esc(e.name)}</h4><p class="hint">${e.style === 'league' ? `${e.weeks}-week league from ${eventDates(e.startDate, 1)}${wk > 0 && wk <= e.weeks ? ` · week ${wk}` : ''}` : eventWhen(e)}${holesText(e.holes) ? ` · ${holesText(e.holes)}` : ''}</p></div><span class="oacts"><button class="ghost sm accremove" id="o-del">Delete</button></span></div>
+      ${ready ? `<div class="ogold"><b>Entries are in: ${e.players.length}${e.maxEntries ? ` of ${e.maxEntries}` : ''}</b><span>Next, pick the captains and make the draw: teams balanced by handicap.</span><button class="primary sm" data-o-go="teams:${e.id}">Pick captains and make the draw</button></div>` : ''}
       <div class="olist">
         <div class="orow"><span class="ot"><b>${e.style === 'league' ? 'Table and results' : 'Leaderboard'}</b><span>${e.players.length} player${e.players.length === 1 ? '' : 's'}${e.everyone ? ' · everyone can play' : ''}${e.entryFee ? ` · entry ${money(e.entryFee)}` : ''}</span></span><span class="oacts"><button class="ghost sm" data-o-go="board:${e.id}">Open</button></span></div>
         <div class="orow"><span class="ot"><b>Settings</b><span>Dates, format, who plays</span></span><span class="oacts"><button class="ghost sm" data-o-go="edit:${e.id}">Edit</button></span></div>
         ${e.signup ? `<div class="orow"><span class="ot"><b>Sign-up · ${e.players.length}${e.maxEntries ? ` of ${e.maxEntries} places` : ' entered'}</b><span>${signupLine(e)}</span></span>
             ${e.players.length ? `<span class="oacts"><button class="ghost sm" data-o-ents="${e.id}" aria-expanded="${S.oEnts === e.id}">${S.oEnts === e.id ? 'Hide entrants' : `Show entrants (${e.players.length})`}</button></span>` : ''}</div>
-          ${S.oEnts !== e.id ? '' : [...e.players].sort((a, b) => sur(name(a)).localeCompare(sur(name(b)))).map(id => `<div class="orow"><span class="ot"><b>${esc(name(id))}</b></span><span class="oacts"><button class="ghost sm accremove" data-o-rment="${id}">Remove</button></span></div>`).join('')}
+          ${S.oEnts !== e.id ? '' : `<div class="opad">${ents.bar}</div>` + ents.shown.map(id => `<div class="orow"><span class="ot"><b>${esc(name(id))}</b></span><span class="oacts"><button class="ghost sm accremove" data-o-rment="${id}">Remove</button></span></div>`).join('')}
           ${demoBar(e.players.length, e.maxEntries, x.demo, 'entrants')}` : ''}
         ${e.koComp ? `<div class="orow"><span class="ot"><b>The knockout finish</b><span>The top ${e.koTop} from the table</span></span><span class="oacts"><button class="ghost sm" data-o-go="draw:${e.koComp}">Open the draw</button></span></div>` : ''}
       </div>`

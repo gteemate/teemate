@@ -57,6 +57,18 @@ export const FEATURES = [
       { says: 'A real refusal still says why', tests: ['src/test/journeys/offline-scores.test.js › a refusal from the server (not the signal) still says why and keeps the hole open'] },
     ],
     demo: [{ who: 'live@test.com', steps: ['Start a round', 'Turn on Airplane mode, save a hole', 'Turn Airplane mode off'], see: '“Saved on your phone”, then “Your scores have been sent”.' }] },
+  { id: 'league-draw', area: 'Competitions', name: 'A sign-up league: captains and the draw',
+    what: 'A team league open for sign-up is saved with nobody in. When it’s full or entries close, a yellow box leads to the draw: captains first (from candidates, or at random from everyone), then teams balanced by handicap. Once it’s under way only the holes stay out; the rest folds under Other settings.',
+    scenarios: [
+      { says: 'With sign-up on, Save event straight away; League comes before Holes', tests: ['src/test/journeys/league-draw.test.js › a new league: League comes before Holes; with sign-up on, Save event straight away'] },
+      { says: 'Full or closed: the yellow box; captains at random from all entrants, then balanced', tests: ['src/test/journeys/league-draw.test.js › full: a yellow box; captains come first; drawn at random from all entrants, then the teams balanced and saved', 'src/test/journeys/league-draw.test.js › entries closed but not full: the box too', 'src/test/journeys/league-draw.test.js › no box while there’s room and entries are open, nor once the teams are drawn'] },
+      { says: 'Or captains from candidates', tests: ['src/test/journeys/league-draw.test.js › or pick candidates: only they can be drawn'] },
+      { says: 'The office can’t add past the places', tests: ['src/test/journeys/league-draw.test.js › the office can’t add past the places'] },
+      { says: 'Under way: holes out, the rest under Other settings', tests: ['src/test/journeys/league-draw.test.js › under way: only the holes are out; the rest folds under Other settings, and still saves'] },
+      { says: 'A sign-up competition’s page goes back to office Competitions', tests: ['src/test/journeys/league-draw.test.js › Entries and settings, then Back: to Competitions, not a second list', 'src/test/journeys/league-draw.test.js › New competition → a sign-up one: its own page; saved, back to Competitions'] },
+      { says: 'Over 25 entrants: a surname letter bar', tests: ['src/test/journeys/league-draw.test.js › over 25 entrants: tap a letter for just those surnames', 'src/test/journeys/league-draw.test.js › 25 or fewer: no letters'] },
+    ],
+    demo: [{ who: 'admin@test.com', steps: ['Competitions → a sign-up league → Demo: Fill all', 'Pick captains and make the draw → Random from all entrants → Draw captains', 'Next: balance the teams → Balance teams by handicap → Save'], see: 'Teams with similar average handicaps, each with its captain.' }] },
   { id: 'demo-entries', area: 'Competitions', name: 'Demo entries for a competition',
     what: 'For a demo, the club office fills a sign-up competition or league with made-up players, and takes them out again.',
     scenarios: [

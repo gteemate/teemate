@@ -12,6 +12,7 @@ import { drawDay, dayDate, dayOfDate, playedIds } from '../season.js'
 import { holesText } from '../open-holes.js'
 import { signupLine } from '../event-signups.js'
 import { holePickerHtml, bindHolePicker, noneOpen } from './hole-picker.js'
+import { azList, wireAz } from '../az.js'
 
 export const EVENT_TYPES = {
   ryder: { name: 'Four-ball team match play', desc: 'Two teams play four-balls, singles and 3-balls for points.', formats: [['bbl', 'Better ball · off the low'], ['bbstab', 'Better ball · Stableford'], ['bbscr', 'Better ball · scratch'], ['stabtot', 'Stableford total over the holes']] },
@@ -42,6 +43,8 @@ function dayCard(ev, d, name, canChange) {
 }
 const stepName = (ev, s) => (s === 4 && ev.season ? 'Match days' : STEPS[s])
 // A season that has begun: changes go through save_season (teams fixed, played match days locked).
+// A league under way: its teams are drawn or week 1 has started.
+const liveLeague = ev => ev.style === 'league' && !!ev.id && (ev.startDate <= isoDate(today()) || Object.keys(ev.team ?? {}).length > 0)
 const begun = ev => !!ev.id && !!ev.season && ev.startDate <= isoDate(today())
 // …and the organiser (not an admin) changes it only through save_season: end date, teams and match days.
 const viaSeason = (ev, me) => begun(ev) && !me.admin
@@ -120,7 +123,9 @@ const repeatDates = ev => (S.evRepeatUntil && !(ev.style === 'league' || ev.seas
 
 // A club event open for sign-up with nobody in yet: players come from the sign-ups (teams and draw are set later by Edit).
 const fromSignups = ev => ev.club && ev.signup && ev.style !== 'league' && !ev.players.length
-const stepsFor = ev => S.evTemplate || fromSignups(ev) ? [1, 5] : (ev.style === 'ryder' ? [1, 2, 3, 4, 5] : ev.style === 'teams' ? [1, 2, 3, 5] : pairsLeague(ev) ? [1, 7, 5] : teamLeague(ev) ? [1, 6, 5]
+// A team or singles league open for sign-up with nobody in yet: save it now; captains and teams come once entries are in.
+const signupLeague = ev => ev.club && ev.signup && ev.style === 'league' && !pairsLeague(ev) && !ev.players.length
+const stepsFor = ev => S.evTemplate || fromSignups(ev) ? [1, 5] : signupLeague(ev) ? [1] : (ev.style === 'ryder' ? [1, 2, 3, 4, 5] : ev.style === 'teams' ? [1, 2, 3, 5] : pairsLeague(ev) ? [1, 7, 5] : teamLeague(ev) ? [1, 6, 5]
   : ev.style === 'league' ? [1, 2, 5] : openToAll(ev) ? [1, 5] : [1, 2, 5])
 
 // Members and events are loaded once when the wizard opens, so each tap redraws instantly
@@ -143,7 +148,7 @@ export async function load() {
 
 // Done (saved or cancelled): back the way you came. Deleted: to Competitions (its leaderboard has gone).
 const leave = async (deleted = false) => {
-  S.ev = null; S.evQ = ''; S.evSwap = null; S.evTeam = null; S.mdFlow = null; S.evTemplate = null; S.evRepeatUntil = null; cache = null
+  S.ev = null; S.evQ = ''; S.evSwap = null; S.evTeam = null; S.evMore = false; S.evCapMode = null; S.mdFlow = null; S.evTemplate = null; S.evRepeatUntil = null; cache = null
   if (deleted) { S.aview = 'comp'; await render(); top0(); return }
   await goBack(async () => { S.aview = 'comp'; await render(); top0() })
 }
@@ -213,7 +218,7 @@ export function draw({ members, me }) {
   let body = ''
 
   if (step === 1) {
-    body = `<div class="card evsec"><h4>Event</h4>
+    const evCard = `<div class="card evsec"><h4>Event</h4>
         <label for="ev-name">Name</label><input id="ev-name" value="${esc(ev.name)}" maxlength="60" placeholder="e.g. Saturday Fourball Cup"${viaSeason(ev, me) ? ' disabled' : ''}>
         ${ev.style === 'ryder' && !begun(ev) ? `<div class="seg" role="group" aria-label="When"><button data-when="once" aria-pressed="${!ev.season}">One-off</button><button data-when="season" aria-pressed="${!!ev.season}">Season</button></div>` : ''}
         <div class="tnames"><div${S.evTemplate ? ' hidden' : ''}><label for="ev-date">First day</label><input id="ev-date" type="date" value="${ev.startDate}" min="${isoDate(today())}"${begun(ev) ? ' disabled' : ''}></div>
@@ -221,16 +226,16 @@ export function draw({ members, me }) {
             : ev.style === 'league' ? '' : `<div><label>Days</label><div class="daychips">${[1, 2, 3].map(n => `<button data-days="${n}" aria-pressed="${ev.days === n}">${n}</button>`).join('')}</div></div>`}</div>
         ${ev.style === 'league' ? '<span class="hint">Week 1 starts on this day; each week runs seven days.</span>'
           : ev.season ? `<span class="hint">${ev.endDate ? `${eventDates(ev.startDate, 1)} to ${eventDates(ev.endDate, 1)}. ` : ''}Add match days as you go, with four-balls and singles; points add up over the season.</span>`
-          : `<span class="hint">${ev.startDate ? eventDates(ev.startDate, ev.days) : ''}${ev.days > 1 ? '. Points add up across the days.' : ''}</span>`}</div>
-      ${ev.season ? '' : holesCard(ev)}
-      ${ev.style === 'league' ? `<div class="card evsec"><h4>League</h4>
+          : `<span class="hint">${ev.startDate ? eventDates(ev.startDate, ev.days) : ''}${ev.days > 1 ? '. Points add up across the days.' : ''}</span>`}</div>`
+    const holes = ev.season ? '' : holesCard(ev)
+    const lgCard = ev.style === 'league' ? `<div class="card evsec"><h4>League</h4>
         ${ev.id ? '' : `<div class="seg" role="group" aria-label="Played as"><button data-lgas="singles" aria-pressed="${!pairsLeague(ev)}">Singles</button><button data-lgas="pairs" aria-pressed="${pairsLeague(ev)}">Pairs</button></div>
         <span class="hint">${pairsLeague(ev) ? 'Fixed pairs all season: each week a pair’s better-ball Stableford counts when they play together.' : 'Each player’s Stableford rounds count.'}</span>`}
         ${(teamLeague(ev) ? [['weeks', 'Weeks', 1, 26], ['bestOf', 'Scores that count per team each week', 1, 30], ['nteams', 'Number of teams', 2, 20], ['size', 'Players per team', 1, 30]] : [['weeks', 'Weeks', 1, 26]]).map(([k, l, lo, hi]) => `<div class="gedit"><span class="hint">${l}</span><span class="stepper sm"><button data-lg="${k}" data-d="-1" data-lo="${lo}" aria-label="Fewer">−</button><output>${k === 'nteams' ? ev.teams.length : k === 'size' ? ev.teams[0]?.size ?? 12 : ev[k]}</output><button data-lg="${k}" data-d="1" data-hi="${hi}" aria-label="More">+</button></span></div>`).join('')}
         <span class="hint">${ev.weeks} weeks from ${eventDates(ev.startDate, 1)} to ${eventDates(addDaysIso(ev.startDate, ev.weeks * 7 - 1), 1)}. ${teamLeague(ev) ? `Each week a team’s best ${ev.bestOf} Stableford rounds count; the season table is the total. ` : ''}Players choose before they play whether a round is entered, one per week.</span>
         <label for="ev-ko">Knockout finish</label><select id="ev-ko" class="plainsel"><option value="">None: the table decides it</option>${[4, 8, 16].map(n => `<option value="${n}" ${ev.koTop === n ? 'selected' : ''}>Top ${n} ${pairsLeague(ev) ? 'pairs' : 'players'} go into a knockout</option>`).join('')}</select>
-        ${ev.koTop ? `<label for="ev-kof">Knockout final played by</label><input id="ev-kof" type="date" class="plainsel" value="${ev.koFinish ?? ''}"><span class="hint">After the last week, the organiser starts the knockout: seeded from the table (1st plays the lowest qualifier).</span>` : ''}</div>` : ''}
-      <h3>Format</h3>
+        ${ev.koTop ? `<label for="ev-kof">Knockout final played by</label><input id="ev-kof" type="date" class="plainsel" value="${ev.koFinish ?? ''}"><span class="hint">After the last week, the organiser starts the knockout: seeded from the table (1st plays the lowest qualifier).</span>` : ''}</div>` : ''
+    const rest = `<h3>Format</h3>
       ${begun(ev) ? `<div class="hint">${EVENT_TYPES.ryder.name} over a season. The first day and format stay as they are once it has started${me.admin ? '' : ', and the name and team names can be changed by the club office'}.</div>` : `<div class="games">${Object.entries(EVENT_TYPES).filter(([, t]) => !t.adminOnly || (me.admin && S.evScope === 'club')).map(([k, t]) => `<button class="gamecard" role="radio" aria-checked="${ev.style === k}" data-style="${k}"><span class="radio"></span><span class="who"><strong>${t.name}</strong><small>${t.desc}</small></span></button>`).join('')}</div>`}
       ${EVENT_TYPES[ev.style].formats.length > 1 ? `<div class="card evsec"><label for="ev-fmt">${ev.style === 'ryder' ? 'Match format' : 'Scoring'}</label><select id="ev-fmt" class="plainsel"${begun(ev) ? ' disabled' : ''}>${EVENT_TYPES[ev.style].formats.map(([k, n]) => `<option value="${k}" ${ev.fmt === k ? 'selected' : ''}>${n}</option>`).join('')}</select></div>` : ''}
       ${ev.style === 'ryder' ? `<div class="card evsec"><b>Points</b><span class="hint">What a win is worth (a halve is half). Each match day starts with these, and can change them.</span>
@@ -247,6 +252,9 @@ export function draw({ members, me }) {
         <button type="button" class="switch" role="switch" id="ev-self" aria-checked="${!!ev.selfEntry}" aria-label="Members can enter themselves"><span></span></button></div></div>`}
       ${ev.season || openToAll(ev) ? '' : signupCard(ev)}`
       : '<div class="hint">Only the players you pick will see this event.</div>'}`
+    // A league that's under way: the holes change week to week; everything else was settled when it was made.
+    body = liveLeague(ev) ? `${holes}<details class="card evsec evmore"${S.evMore ? ' open' : ''}><summary><b>Other settings</b><span class="hint">Name, dates, teams, format and sign-up: set when the league was made.</span></summary>${evCard}${lgCard}${rest}</details>`
+      : `${evCard}${lgCard}${holes}${rest}`
   } else if (step === 2) {
     const q = (S.evQ || '').trim().toLowerCase()
     const list = members.filter(m => !q || m.name.toLowerCase().includes(q) || (m.gui || '').includes(q))
@@ -284,46 +292,48 @@ export function draw({ members, me }) {
       : `<div class="hint">Players book a tee time together as usual; the board scores each match from their cards.</div>
         ${days.map(d => dayCard(ev, d, name, !ev.id || !lockedDay(ev, d) || me.admin)).join('')}`
   } else if (step === 6) {
-    // S.evTeam: -1 = the entrants list; -2 = captain candidates; 0.. = a team.
-    const t = S.evTeam == null ? -1 : Math.min(S.evTeam, ev.teams.length - 1), team = ev.teams[t]
+    // S.evTeam: -2 = captains (first, until they're drawn); -1 = the entrants and balancing; 0.. = a team (the back-up: pick by hand).
+    const t = S.evTeam == null ? (ev.teams.some(x => x.captain != null) || !ev.players.length ? -1 : -2) : Math.min(S.evTeam, ev.teams.length - 1), team = ev.teams[t]
     const pool = ev.captainPool ?? []
     const inTeam = k => ev.players.filter(id => ev.team[id] === k)
     const avg = ids => (ids.length ? (ids.reduce((x, id) => x + (byId(id)?.hcp ?? 0), 0) / ids.length).toFixed(1) : '–')
     const q = (S.evQ || '').trim().toLowerCase()
-    const list = members.filter(m => !q || m.name.toLowerCase().includes(q) || (m.gui || '').includes(q))
+    const found = members.filter(m => !q || m.name.toLowerCase().includes(q) || (m.gui || '').includes(q))
+    const az = azList(found, m => m.name, `lg${t}`), list = az.shown
     const places = (ev.teams ?? []).reduce((s2, x) => s2 + (x.size ?? 12), 0)
     const assigned = ev.players.filter(id => ev.team[id] != null).length, unassigned = ev.players.length - assigned
     const captains = ev.teams.filter(x => x.captain != null && ev.players.includes(x.captain)).length
     const capOf = id => ev.teams.findIndex(x => x.captain === id)
     const capTag = '<span class="pill tag">Captain</span>'
-    const tabs = `<div class="tabs-pill" role="group" aria-label="Team"><button data-team="-1" aria-pressed="${t === -1}">Entrants ${ev.players.length}</button><button data-team="-2" aria-pressed="${t === -2}">Captains ${pool.length}</button>${ev.teams.map((x, k) => `<button data-team="${k}" aria-pressed="${k === t}"><i class="fl" style="background:${x.col}"></i>${esc(x.name)} ${inTeam(k).length}/${x.size ?? 12}</button>`).join('')}</div>`
+    const tabs = `<div class="tabs-pill" role="group" aria-label="Team"><button data-team="-2" aria-pressed="${t === -2}">Captains ${captains}/${ev.teams.length}</button><button data-team="-1" aria-pressed="${t === -1}">Entrants ${ev.players.length}</button>${ev.teams.map((x, k) => `<button data-team="${k}" aria-pressed="${k === t}"><i class="fl" style="background:${x.col}"></i>${esc(x.name)} ${inTeam(k).length}/${x.size ?? 12}</button>`).join('')}</div>`
     const search = `<div class="search"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="ev-q" type="search" placeholder="Name or GUI number" value="${esc(S.evQ || '')}" autocomplete="off"></div>`
     const summary = `<div class="hint"><b>${ev.players.length} entrants · ${assigned} of ${places} team places filled${unassigned ? ` · ${unassigned} not on a team yet` : ''}.</b> You can save now and add more as members join.</div>`
     if (t === -1) {
-      const notIn = list.filter(m => !ev.players.includes(m.id))
+      const notIn = list.filter(m => !ev.players.includes(m.id)), full = ev.signup && ev.maxEntries && ev.players.length >= ev.maxEntries
       body = `${summary}${tabs}
-        <div class="card evsec"><b>Entrants</b><span class="hint">Add everyone who has entered below. Then:</span>
-          <b>1 · Draw captains</b>
-          <span class="hint">${captains ? `${captains} of ${ev.teams.length} teams have a captain.` : 'No captains yet.'} List the candidates on the Captains tab and draw one for each team.</span>
-          <button class="ghost" data-team="-2">${captains ? 'Change captains' : 'Choose captains'}</button>
-          <b>2 · Balance the teams</b>
-          <span class="hint">Captains stay with their teams. Everyone else is dealt out at random so every team ends up with a similar average handicap. Balance again for a different mix; you can move players afterwards.</span>
-          <button class="primary" id="lg-bal" ${ev.players.length ? '' : 'disabled'}>${assigned ? 'Rebalance teams' : 'Balance teams'}${captains ? ` around ${captains} captain${captains === 1 ? '' : 's'}` : ' by handicap'}</button>
+        <div class="card evsec"><b>Balance the teams</b>
+          <span class="hint">${captains ? 'Captains stay with their teams. Everyone else' : 'Everyone'} is dealt out so every team ends up with a similar average handicap. Balance again for a different mix. To put someone on a particular team, use that team’s tab.</span>
+          <button class="primary" id="lg-bal" ${ev.players.length ? '' : 'disabled'}>${assigned > captains ? 'Balance again' : 'Balance teams by handicap'}${captains ? ` around ${captains} captain${captains === 1 ? '' : 's'}` : ''}</button>
+          ${captains ? '' : '<span class="hint">No captains yet. <button class="linkbtn" data-team="-2">Pick captains first</button></span>'}
           ${ev.players.length > places ? `<span class="gerr">${ev.players.length - places} more entrants than places: they’ll stay off the teams. Add teams or places in Details.</span>` : ''}</div>
+        <b>Entrants</b>
         ${search}
-        ${notIn.length ? `<button class="ghost" id="lg-addall">Add all ${notIn.length} listed</button>` : ''}
+        ${notIn.length && !full ? `<button class="ghost" id="lg-addall">Add all ${notIn.length} listed</button>` : ''}${full ? `<span class="hint">Full: ${ev.players.length} of ${ev.maxEntries} places. Raise the places in Details to add more.</span>` : ''}${az.bar}
         <div class="pick">${list.map(m2 => { const on = ev.players.includes(m2.id), k = ev.team[m2.id]; return `<button class="brow" data-ent="${m2.id}" aria-pressed="${on}"><span class="av">${ini(m2.name)}</span><span class="who"><strong>${esc(m2.name)}</strong><small>Index ${fmtHcp(m2.hcp)}${on ? (k != null ? ` · ${esc(ev.teams[k].name)}${capOf(m2.id) === k ? ' captain' : ''}` : ' · not on a team') : ''}</small></span><span class="check">${on ? '✓' : ''}</span></button>` }).join('')}</div>`
     } else if (t === -2) {
-      const drawn = ev.teams.filter(x => x.captain != null).length
+      const drawn = ev.teams.filter(x => x.captain != null).length, mode = S.evCapMode ?? 'pick'
+      const cands = ev.signup ? list.filter(m2 => ev.players.includes(m2.id)) : list // a sign-up league: captains come from its entrants
       body = `${summary}${tabs}
-        <div class="card evsec"><b>Captain candidates</b>
-          <span class="hint">Tap members below to list them. Draw captains picks one at random for each team; anyone not picked plays as an ordinary entrant. You can list more people than there are teams.</span>
+        <div class="card evsec"><b>Captains: one for each of the ${ev.teams.length} teams</b>
+          <div class="seg" role="group" aria-label="How to choose captains"><button data-capmode="pick" aria-pressed="${mode === 'pick'}">Pick candidates</button><button data-capmode="random" aria-pressed="${mode === 'random'}">Random from all entrants</button></div>
+          <span class="hint">${mode === 'pick' ? 'Tap the people willing to captain below. Draw captains then picks one at random for each team; anyone not picked plays as an ordinary entrant.' : `One captain is drawn at random for each team from all ${ev.players.length} entrants.`}</span>
           <div class="capdraw">${ev.teams.map(x => `<div><i class="fl" style="background:${x.col}"></i><span>${esc(x.name)}</span><b>${x.captain != null ? esc(name(x.captain)) : '–'}</b></div>`).join('')}</div>
-          ${pool.length && pool.length < ev.teams.length ? `<span class="gerr">${pool.length} candidate${pool.length === 1 ? '' : 's'} for ${ev.teams.length} teams: ${ev.teams.length - pool.length} team${ev.teams.length - pool.length === 1 ? '' : 's'} won’t have a captain.</span>` : ''}
-          <button class="primary" id="lg-draw" ${pool.length ? '' : 'disabled'}>${drawn ? 'Draw captains again' : 'Draw captains'}</button>
-          ${assigned ? '<span class="hint">Drawing captains clears the teams. Balance them again on Entrants afterwards.</span>' : ''}</div>
-        ${search}
-        <div class="pick">${list.map(m2 => { const on = pool.includes(m2.id), k = capOf(m2.id); return `<button class="brow" data-cand="${m2.id}" aria-pressed="${on}"><span class="av">${ini(m2.name)}</span><span class="who"><strong>${esc(m2.name)}${k >= 0 ? ` ${capTag}` : ''}</strong><small>Index ${fmtHcp(m2.hcp)}${k >= 0 ? ` · ${esc(ev.teams[k].name)} captain` : on ? ' · candidate' : ''}</small></span><span class="check">${on ? '✓' : ''}</span></button>` }).join('')}</div>`
+          ${mode === 'pick' && pool.length && pool.length < ev.teams.length ? `<span class="gerr">${pool.length} candidate${pool.length === 1 ? '' : 's'} for ${ev.teams.length} teams: ${ev.teams.length - pool.length} team${ev.teams.length - pool.length === 1 ? '' : 's'} won’t have a captain.</span>` : ''}
+          <button class="primary" id="lg-draw" ${(mode === 'pick' ? pool.length : ev.players.length) ? '' : 'disabled'}>${drawn ? 'Draw captains again' : mode === 'pick' ? `Draw captains from ${pool.length} candidate${pool.length === 1 ? '' : 's'}` : 'Draw captains from all entrants'}</button>
+          ${assigned ? '<span class="hint">Drawing captains clears the teams. Balance them again afterwards.</span>' : ''}
+          ${drawn ? '<button class="ghost" data-team="-1">Next: balance the teams</button>' : ''}</div>
+        ${mode === 'pick' ? `${search}${az.bar}
+        <div class="pick">${cands.map(m2 => { const on = pool.includes(m2.id), k = capOf(m2.id); return `<button class="brow" data-cand="${m2.id}" aria-pressed="${on}"><span class="av">${ini(m2.name)}</span><span class="who"><strong>${esc(m2.name)}${k >= 0 ? ` ${capTag}` : ''}</strong><small>Index ${fmtHcp(m2.hcp)}${k >= 0 ? ` · ${esc(ev.teams[k].name)} captain` : on ? ' · candidate' : ''}</small></span><span class="check">${on ? '✓' : ''}</span></button>` }).join('')}</div>` : ''}`
     } else {
       const others = pool.filter(id => capOf(id) < 0 && ev.players.includes(id)) // candidates not already captaining a team
       body = `${summary}${tabs}
@@ -331,7 +341,7 @@ export function draw({ members, me }) {
           <span class="hint">${inTeam(t).length ? `${inTeam(t).length} player${inTeam(t).length === 1 ? '' : 's'} · average index ${avg(inTeam(t))}: ${inTeam(t).map(id => esc(name(id)) + (team.captain === id ? ' (captain)' : '')).join(', ')}` : 'No players yet. Pick members below, or draw captains and balance the teams from Entrants.'}</span>
           <b>Captain: ${team.captain != null ? esc(name(team.captain)) : 'none'}</b>
           ${others.length ? `<span class="hint">Tap a candidate to make them this team’s captain instead:</span><div class="capchips">${others.map(id => `<button class="pill tag" data-setcap="${id}">${esc(name(id))}</button>`).join('')}</div>` : ''}</div>
-        ${search}
+        ${search}${az.bar}
         <div class="pick">${list.map(m2 => { const k = ev.team[m2.id], on = k === t; return `<button class="brow" data-lgp="${m2.id}" aria-pressed="${on}"><span class="av">${ini(m2.name)}</span><span class="who"><strong>${esc(m2.name)}${on && team.captain === m2.id ? ` ${capTag}` : ''}</strong><small>Index ${fmtHcp(m2.hcp)}${k != null && !on ? ` · in ${esc(ev.teams[k].name)} (tap to move)` : ''}</small></span><span class="check">${on ? '✓' : ''}</span></button>` }).join('')}</div>`
     }
   } else if (ev.style === 'league') {
@@ -459,14 +469,19 @@ export function draw({ members, me }) {
     redraw()
   }))
   document.querySelectorAll('[data-team]').forEach(b => (b.onclick = () => { read(); S.evTeam = +b.dataset.team; redraw() }))
+  document.querySelectorAll('[data-capmode]').forEach(b => (b.onclick = () => { S.evCapMode = b.dataset.capmode; redraw() }))
+  wireAz(redraw)
   document.querySelectorAll('[data-ent]').forEach(b => (b.onclick = () => {
     const id = +b.dataset.ent
-    if (ev.players.includes(id)) { ev.players = ev.players.filter(x => x !== id); ev.captainPool = (ev.captainPool ?? []).filter(x => x !== id); delete ev.team[id]; fixCaptains() } else ev.players = [...ev.players, id]
+    if (ev.players.includes(id)) { ev.players = ev.players.filter(x => x !== id); ev.captainPool = (ev.captainPool ?? []).filter(x => x !== id); delete ev.team[id]; fixCaptains() }
+    else if (ev.signup && ev.maxEntries && ev.players.length >= ev.maxEntries) { toast(`Full: ${ev.maxEntries} places. Raise the places in Details to add more.`); return }
+    else ev.players = [...ev.players, id]
     redraw()
   }))
   on('lg-addall', () => {
     const q = (S.evQ || '').trim().toLowerCase()
-    const add = members.filter(m => (!q || m.name.toLowerCase().includes(q) || (m.gui || '').includes(q)) && !ev.players.includes(m.id)).map(m => m.id)
+    const room = ev.signup && ev.maxEntries ? Math.max(0, ev.maxEntries - ev.players.length) : Infinity // a sign-up league stops at its places
+    const add = members.filter(m => (!q || m.name.toLowerCase().includes(q) || (m.gui || '').includes(q)) && !ev.players.includes(m.id)).map(m => m.id).slice(0, room)
     ev.players = [...ev.players, ...add]
     redraw()
     toast(`${add.length} entrants added`)
@@ -493,12 +508,13 @@ export function draw({ members, me }) {
     redraw()
   }))
   on('lg-draw', () => {
-    const picks = drawCaptains(ev.captainPool ?? [], ev.players, ev.teams.length)
+    const picks = drawCaptains(S.evCapMode === 'random' ? ev.players : ev.captainPool ?? [], ev.players, ev.teams.length)
     ev.team = {} // a new set of captains: the teams are dealt again around them
     ev.teams = ev.teams.map((x, k) => ({ ...x, captain: picks[k] }))
     picks.forEach((id, k) => { if (id != null) ev.team[id] = k })
+    S.evTeam = -2 // stay to see who was drawn; Next: balance the teams
     redraw()
-    toast(`${picks.filter(id => id != null).length} captains drawn. Now balance the teams on Entrants`)
+    toast(`${picks.filter(id => id != null).length} captains drawn. Next: balance the teams`)
   })
   document.querySelectorAll('[data-setcap]').forEach(b => (b.onclick = () => {
     read()
@@ -508,6 +524,7 @@ export function draw({ members, me }) {
     fixCaptains()
     redraw()
   }))
+  if (document.querySelector('.evmore')) document.querySelector('.evmore').ontoggle = e => { S.evMore = e.target.open }
   if ($('ev-date')) $('ev-date').onchange = () => { read(); redraw() }
   if ($('ev-rep')) $('ev-rep').onchange = () => { S.evRepeatUntil = $('ev-rep').value || null; redraw() }
   on('ev-tpl', async () => {

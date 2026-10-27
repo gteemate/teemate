@@ -1019,8 +1019,7 @@ describe('club office: leagues and events open for sign-up', () => {
     await app.type('#ev-close', '2026-11-30')
     await app.type('#ev-max', '4')
     expect(app.main()).toContain('Members see it from Sun 1 Nov · entries close Mon 30 Nov · 4 places')
-    for (let i = 0; i < 4 && !$ev('#ev-next').textContent.startsWith('Save'); i++) await app.tap('#ev-next')
-    expect(app.main()).toContain('Sign-up')
+    expect($ev('#ev-next').textContent).toBe('Save event') // nobody in yet: save now; captains and teams come once entries are in
     await app.tap('#ev-next')
     expect(app.db.events.find(e => e.name === 'Frosty League')).toMatchObject({ signup: true, advertiseFrom: '2026-11-01', entriesClose: '2026-11-30', maxEntries: 4 })
   })

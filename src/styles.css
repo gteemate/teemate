@@ -1062,3 +1062,12 @@ button.lrow.ci-m{width:100%;text-align:left;background:none;border:0;border-top:
 .ftsame[aria-checked="true"] .box{background:var(--gold)}
 .ftnotes{display:grid;gap:4px;font-size:14px;color:var(--muted)}
 .ftnotes b{color:var(--ink)}
+.evmore>summary{list-style:none;cursor:pointer;display:flex;flex-direction:column;gap:2px}
+.evmore>summary::-webkit-details-marker{display:none}
+.evmore>summary b::after{content:' ▸';color:var(--muted)}
+.evmore[open]>summary b::after{content:' ▾'}
+.evmore[open]>summary{margin-bottom:10px}
+.evmore>.card{box-shadow:none}
+.ogold{display:flex;flex-direction:column;gap:6px;align-items:flex-start;background:var(--gold);color:var(--on-gold);border-radius:12px;padding:12px 14px;margin:8px 0}
+.ogold span{font-size:13px}
+.ogold .primary{background:var(--on-gold);color:var(--gold)}

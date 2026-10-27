@@ -1,12 +1,13 @@
 // Club admin → Sign-up competitions: the season competitions members put their names down for. Add or change one
 // (name, Men's / Ladies' / Mixed / Open, Singles / Pairs, entries close, notes, open), see and share who has
 // entered, and delete. Hidden ones (not open) members don't see. From the club office, one competition opens on its
-// own page (S.signupOnly): its settings and entries, with Back to the office.
+// own page (S.signupOnly; 'new' to add one): its settings and entries, and Back, Save or Cancel go to the office.
 import * as api from '../api.js'
 import { S } from '../state.js'
-import { $, esc, header, keepScroll, render, toast, goBack, top0 } from '../ui.js'
+import { $, esc, header, keepScroll, render, toast, top0 } from '../ui.js'
 import { toAdmin } from './nav.js'
 import { eventDates } from '../dates.js'
+import { azList, wireAz } from '../az.js'
 
 const CAT = { men: 'Men’s', ladies: 'Ladies’', mixed: 'Mixed', open: 'Open' }
 
@@ -17,11 +18,11 @@ export async function load() {
 }
 
 export function draw({ comps, entries, members, open, only }) {
-  const one = only != null && comps.find(c => c.id === only)
-  if (one) { // just this competition, as a page
-    const back = () => goBack(async () => { S.signupOnly = null; S.aview = 'office'; await render(); top0() })
-    header(one.name, 'Entries and settings', () => { S.signupOnly = null; back() })
-    sheet(one, entries, members, () => { S.signupOnly = null; back() })
+  const one = only === 'new' ? null : only != null && comps.find(c => c.id === only)
+  if (one || only === 'new') { // from the office: just this competition (or a new one), as a page, and back to the office
+    const back = async (pick = null) => { S.signupOnly = null; S.aview = 'office'; if (pick) S.oComp = pick; await render(); top0() }
+    header(one ? one.name : 'New sign-up competition', 'Entries and settings', () => back())
+    sheet(one || null, entries, members, back)
     return
   }
   header('Sign-up competitions', 'Season competitions members enter in advance', toAdmin)
@@ -44,7 +45,8 @@ export function draw({ comps, entries, members, open, only }) {
 // The competition's settings and entries: a pop-up over the list, or (with leave) the whole page.
 function sheet(c, entries, members, leave = null) {
   const name = id => members.find(m => m.id === id)?.name ?? 'Former member'
-  const list = c ? entries.filter(e => e.compId === c.id).map(e => (e.partnerId ? `${name(e.memberId)} & ${name(e.partnerId)}` : name(e.memberId))) : []
+  const rows = c ? entries.filter(e => e.compId === c.id) : [], label = e => (e.partnerId ? `${name(e.memberId)} & ${name(e.partnerId)}` : name(e.memberId))
+  const list = rows.map(label), az = azList(rows, e => name(e.memberId), `sc${c?.id}`) // over 25: by the (first) player's surname
   const v = c ?? { name: '', category: 'men', kind: 'singles', closesOn: '', notes: '', open: false }
   const form = `<form class="${leave ? 'card evsec' : 'sheet'}" id="sc-form" novalidate aria-labelledby="sct">
     <h4 id="sct">${c ? esc(c.name) : 'Add a competition'}</h4>
@@ -57,16 +59,17 @@ function sheet(c, entries, members, leave = null) {
     <div class="actrow"><span class="who"><strong>Open for entries</strong><small>Members see it under Events</small></span><button type="button" class="switch" role="switch" id="sc-open" aria-checked="${!!v.open}" aria-label="Open for entries"><span></span></button></div>
     <p class="gerr" id="sc-err" role="alert"></p>
     <div class="gm-btns"><button type="button" class="ghost" id="sc-cancel">Cancel</button><button type="submit" class="primary">${c ? 'Save' : 'Add'}</button></div>
-    ${c ? `<span class="kicker">Entered (${list.length})</span><div class="card list">${list.map(n => `<div class="lrow hutrow"><span class="who"><strong>${esc(n)}</strong></span><span></span></div>`).join('') || '<div class="empty-state">Nobody yet.</div>'}</div>
+    ${c ? `<span class="kicker">Entered (${list.length})</span>${az.bar}<div class="card list">${az.shown.map(label).map(n => `<div class="lrow hutrow"><span class="who"><strong>${esc(n)}</strong></span><span></span></div>`).join('') || '<div class="empty-state">Nobody yet.</div>'}</div>
       ${list.length ? '<button type="button" class="ghost" id="sc-share">Share the entry list</button>' : ''}
       <button type="button" class="primary" id="sc-draw">${c.drawPublished ? 'The draw' : 'Make or see the draw'}</button>
       <button type="button" class="ghost accremove" id="sc-del">Delete competition</button>` : ''}
   </form>`
   if (leave) $('main').innerHTML = `<div class="screen">${form}</div>`
   else $('modal').innerHTML = `<div class="overlay" id="ovl">${form}</div>`
+  wireAz(() => sheet(c, entries, members, leave))
   let open = !!v.open
   const close = () => { $('modal').innerHTML = '' }
-  $('sc-cancel').onclick = leave ?? close
+  $('sc-cancel').onclick = leave ? () => leave() : close
   if ($('ovl')) $('ovl').onclick = e => { if (e.target.id === 'ovl') close() }
   $('sc-open').onclick = () => { open = !open; $('sc-open').setAttribute('aria-checked', open) }
   $('sc-form').onsubmit = async e => {
@@ -76,6 +79,7 @@ function sheet(c, entries, members, leave = null) {
     const err = !row.name.trim() ? 'Give it a name.' : open && !row.closesOn ? 'Set when entries close before opening it.' : max && !(+max >= 2) ? 'Maximum entries is a number, 2 or more.' : ''
     if (err) { $('sc-err').textContent = err; return }
     try { await api.saveSignup(row) } catch (er) { $('sc-err').textContent = er.message; return }
+    if (leave) { await leave(c ? `s:${c.id}` : null); toast(`${row.name.trim()} saved`); return }
     close(); await keepScroll(render); toast(`${row.name.trim()} saved`)
   }
   if ($('sc-share')) $('sc-share').onclick = async () => {
