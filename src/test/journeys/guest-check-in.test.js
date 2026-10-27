@@ -226,3 +226,23 @@ describe('the club office sees each member’s guests, with how often each has c
     expect(row.textContent).toContain('Sam Guest ×2 · Alex Moore ×1')
   })
 })
+
+describe('the member is told when the office charges their guests', () => {
+  it('the office charges; the member’s drop-down says the points used and what’s left; OK clears it', async () => {
+    app = await boot(() => {}, { as: 'office' })
+    await app.tap('[data-ov="guests"]')
+    await app.type('#ci-find', 'declan')
+    await app.tap('[data-ci-m="1"]')
+    await guest(0, 'Sam Guest'); await app.tap('+ Add another guest'); await guest(1, 'Alex Moore')
+    await app.tap('Done: hand back to the club')
+    await app.tap('Charge 6 points · 2 guests')
+    const notice = app.db.notices.find(n => n.memberId === 1 && n.kind === 'guests')
+    app.done()
+    app = await boot(db => db.notices.push({ ...notice }), { as: 'member' }) // Declan opens the app
+    const drop = document.getElementById('alerts').textContent
+    expect(drop).toContain('6 guest points used today · 30 of 36 left')
+    expect(drop).toContain('Checked in at the club office: Sam Guest, Alex Moore')
+    await app.tap('[data-al="ok"]')
+    expect(app.db.notices.find(n => n.kind === 'guests').seen).toBe(true)
+  })
+})

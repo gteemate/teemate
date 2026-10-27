@@ -40,6 +40,14 @@ describe('pickAlerts: what drops down from the header', () => {
       .toMatchObject({ title: 'Your 10:00 tee time on Sat 17 Oct was cancelled', detail: 'The club office cancelled it. Everyone on the booking has been told.' })
   })
 
+  it('the club office charged my guests: points used today and how many are left; OK only', () => {
+    const n = { id: 7, kind: 'guests', date: '2026-10-10', oldTime: 0, withNames: ['Sam Guest', 'Alex Moore'], points: 6, pointsLeft: 24, allowance: 36, note: null }
+    const [a] = pickAlerts({ ...base, notices: [n] })
+    expect(a).toMatchObject({ key: 'bn:7', kind: 'notice', ref: { noticeId: 7 }, title: '6 guest points used today · 24 of 36 left',
+      detail: 'Checked in at the club office: Sam Guest, Alex Moore' })
+    expect(ids(a)).toEqual(['ok'])
+  })
+
   it('someone booked me in: who, when and who else is playing; OK or See my bookings', () => {
     const added = n => ({ id: 6, kind: 'added', date: '2026-10-24', oldTime: 480, byName: 'Pat Reid', withNames: n, note: null })
     const [a] = pickAlerts({ ...base, notices: [added(['Pat', 'Alex', 'Jo'])] })

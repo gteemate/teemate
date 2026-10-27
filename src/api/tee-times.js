@@ -74,8 +74,8 @@ export async function adminMoveBooking(bookingId, slotId, note = '') {
 }
 /** The office changed one of my bookings: [{ id, kind: 'cancelled' | 'moved', date, oldTime, newTime, note, createdAt }], not yet OK'd. */
 export async function getBookingNotices() {
-  return must(await sb.from('booking_notices').select('id, kind, date, old_time, new_time, note, by_name, with_names, created_at').eq('seen', false).order('created_at'))
-    .map(n => ({ id: n.id, kind: n.kind, date: n.date, oldTime: n.old_time, newTime: n.new_time, note: n.note, byName: n.by_name, withNames: n.with_names ?? [], createdAt: n.created_at }))
+  return must(await sb.from('booking_notices').select('id, kind, date, old_time, new_time, note, by_name, with_names, points, points_left, allowance, created_at').eq('seen', false).order('created_at'))
+    .map(n => ({ id: n.id, kind: n.kind, date: n.date, oldTime: n.old_time, newTime: n.new_time, note: n.note, byName: n.by_name, withNames: n.with_names ?? [], points: n.points, pointsLeft: n.points_left, allowance: n.allowance, createdAt: n.created_at }))
 }
 export async function seenBookingNotice(id) { must(await sb.rpc('seen_booking_notice', { p_id: id })) }
 

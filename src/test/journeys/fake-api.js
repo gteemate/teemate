@@ -475,6 +475,8 @@ export function makeWorld(today, setup = () => {}, as = 'admin') {
       const used = db.guestVisits.filter(v => v.member === memberId).reduce((t, v) => t + v.points, 0)
       if (used + guests.length * 3 > 36) throw new Error(`Not enough guest points: ${m.name.split(' ')[0]} has ${36 - used} left.`)
       for (const g of guests) db.guestVisits.push({ id: id(), member: memberId, date: db.today, guest: g.name.trim(), club: (g.club ?? '').trim(), points: 3, playerId: null, by: ME })
+      db.notices.push({ id: id(), memberId, kind: 'guests', date: db.today, oldTime: 0, newTime: null, note: null, withNames: guests.map(g => g.name.trim()),
+        points: guests.length * 3, pointsLeft: 36 - used - guests.length * 3, allowance: 36, seen: false }) // as the database: the member is told
       return { charged: guests.length * 3, pointsLeft: 36 - used - guests.length * 3 }
     },
     removeGuestCharge: async vid => {
@@ -482,6 +484,7 @@ export function makeWorld(today, setup = () => {}, as = 'admin') {
       const v = db.guestVisits.find(x => x.id === vid)
       if (!v || v.by == null || v.date !== db.today) throw new Error('Only today’s check-ins at the office can be removed here.')
       db.guestVisits = db.guestVisits.filter(x => x !== v)
+      db.notices = db.notices.filter(n => !(n.kind === 'guests' && n.memberId === v.member && n.date === v.date && !n.seen))
       return { pointsBack: v.points }
     },
     getGuestChargesToday: async () => {

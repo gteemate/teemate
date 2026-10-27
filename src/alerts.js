@@ -49,7 +49,14 @@ export function pickAlerts({ me, playerEvents, requests, date, now = Date.now(),
     actions: [{ id: 'pconfirm', label: 'Confirm', primary: true }, { id: 'pback', label: 'Not right' }, { id: 'pholes', label: 'See the holes' }, later],
   }))
   // The club office cancelled or moved one of my tee times.
-  const office = notices.filter(n => n.kind !== 'added').map(n => ({
+  // The club office checked in my guests: the points used today and what's left.
+  const guests = notices.filter(n => n.kind === 'guests').map(n => ({
+    key: `bn:${n.id}`, kind: 'notice', ref: { noticeId: n.id },
+    title: `${n.points} guest point${n.points === 1 ? '' : 's'} used today · ${n.pointsLeft} of ${n.allowance} left`,
+    detail: `Checked in at the club office: ${(n.withNames ?? []).join(', ')}`,
+    actions: [{ id: 'ok', label: 'OK', primary: true }],
+  }))
+  const office = notices.filter(n => n.kind === 'moved' || n.kind === 'cancelled').map(n => ({
     key: `bn:${n.id}`, kind: 'notice', ref: { noticeId: n.id },
     title: n.kind === 'moved' ? `Your ${hhmm(n.oldTime)} tee time on ${longDay(fromIso(n.date))} has moved to ${hhmm(n.newTime)}` : `Your ${hhmm(n.oldTime)} tee time on ${longDay(fromIso(n.date))} was cancelled`,
     detail: n.note ? `The club office: “${n.note}”` : n.kind === 'moved' ? 'The club office moved it. Everyone on the booking has been told.' : 'The club office cancelled it. Everyone on the booking has been told.',
@@ -65,7 +72,7 @@ export function pickAlerts({ me, playerEvents, requests, date, now = Date.now(),
     title: 'Halfway hut is open', detail: 'Would you like to place an order?',
     actions: [{ id: 'order', label: 'Order', primary: true }, { id: 'nothanks', label: 'No thanks' }],
   }] : []
-  return [...office, ...added, ...confirm, ...challenges, ...answered, ...ready, ...prompt].filter(a => !hidden.has(a.key))
+  return [...office, ...guests, ...added, ...confirm, ...challenges, ...answered, ...ready, ...prompt].filter(a => !hidden.has(a.key))
 }
 
 /** Look for alerts on a new screen, or at most once a minute while the same screen redraws (a scorecard redraws on every tap). */
