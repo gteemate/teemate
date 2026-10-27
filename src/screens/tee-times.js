@@ -54,12 +54,12 @@ export function draw({ days, sheet, points, me, rules, req, skew }) {
     if (!gs.length) continue
     h += `<div class="period">${g}${g === 'Afternoon' ? " · 12:20–13:00 held for Ladies' Comp" : ''}</div>`
     gs.forEach(s => {
-      // Who's out on each time, so members can join friends. A time they can't book (full, or within 2 hours of
+      // Who's out on each time, so members can join friends. A free place is a solid gold "+ Free" box (easy to spot at any age). A time they can't book (full, or within 2 hours of
       // their own) shows its names greyed, and tapping it says why.
       const f = free(s), near = mv ? null : tooClose(s), mineHere = isMine(s), off = !mineHere && (!f || !!near)
       const name = p => (p.memberId === me.id ? 'You' : p.guest ? `${p.name} (guest)` : p.name)
       const cells = [...s.players.map(p => `<span class="pn${p.guest ? ' g' : ''}${p.memberId === me.id ? ' me' : ''}">${esc(name(p))}</span>`),
-        ...Array.from({ length: Math.max(0, s.capacity - s.players.length) }, () => (off || locked ? '<span class="pn empty"></span>' : '<span class="pn free">Space</span>'))]
+        ...Array.from({ length: Math.max(0, s.capacity - s.players.length) }, () => (off || locked ? '<span class="pn empty"></span>' : '<span class="pn free">Free</span>'))]
       const said = mineHere ? 'you’re booked on this' : near ? `within 2 hours of your ${hhmm(near.time)}` : !f ? 'full' : `${f} space${f > 1 ? 's' : ''} free`
       h += `<button class="slot names${off ? ' full' : ''}${locked ? ' notyet' : ''}${mineHere ? ' minebk' : ''}" data-id="${s.id}" ${off ? 'aria-disabled="true"' : ''}
         aria-label="${hhmm(s.time)}: ${esc([...s.players.map(name), said].join(', '))}"><span class="time">${hhmm(s.time)}${s.twilight ? '<span class="pill tag">Twilight</span>' : ''}</span>

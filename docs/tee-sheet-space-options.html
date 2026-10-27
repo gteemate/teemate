@@ -1,0 +1,75 @@
+<title>Tee Sheet Space Options</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* The app's colours. Three ways to make a place you can book stand out, for players of every age. */
+:root{ --sunk:#0f1830; --bg:#141f3b; --surface:#1b2a4b; --leaf:#22325a; --line:#2b3c63; --ink:#e8ecf5; --muted:#9aa7c4; --gold:#e3c375; --on-gold:#1a1606;
+  --sys:"Source Sans 3",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; color-scheme:dark }
+*{box-sizing:border-box}
+body{margin:0;background:var(--sunk);color:var(--ink);font-family:var(--sys);padding-block:24px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1{font-size:26px;margin:0 auto 6px;max-width:1240px;font-weight:700}
+.lead{color:var(--muted);font-size:16px;line-height:1.5;margin:0 auto 22px;max-width:1240px}
+.opts{display:flex;flex-wrap:wrap;gap:28px;justify-content:center;max-width:1240px;margin:0 auto}
+.opt{width:380px;max-width:100%}
+.opt h2{font-size:20px;margin:0 0 4px;color:var(--gold)}
+.opt p{color:var(--muted);font-size:15px;line-height:1.45;margin:0 0 14px;min-height:66px}
+.slot{display:grid;grid-template-columns:76px 1fr;background:var(--surface);border:1px solid var(--line);border-radius:18px;overflow:hidden;margin-bottom:12px}
+.time{display:grid;place-items:center;font-size:24px;font-weight:800;border-right:1px solid var(--line);font-variant-numeric:tabular-nums}
+.grid{display:grid;grid-template-columns:1fr 1fr}
+.pn{min-height:48px;padding:10px 12px;font-size:16px;font-weight:600;display:flex;align-items:center;border-bottom:1px solid var(--line);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pn:nth-child(odd){border-right:1px solid var(--line)}
+.pn:nth-last-child(-n+2){border-bottom:0}
+.pn.g{color:var(--muted);font-weight:500}
+.slot.full{background:transparent}.slot.full .pn,.slot.full .time{color:var(--muted)}
+
+/* A: solid gold places */
+.a .free{background:var(--gold);color:var(--on-gold);font-weight:800;justify-content:center;font-size:17px;border-color:#c9a95a}
+.a .free::before{content:"+";font-size:22px;margin-right:6px;line-height:1}
+
+/* B: gold row edge, outlined places */
+.b .slot.can{border:2px solid var(--gold);background:var(--leaf)}
+.b .slot.can .time{color:var(--gold)}
+.b .free{justify-content:center}
+.b .free span{border:2px dashed var(--gold);color:var(--gold);border-radius:12px;padding:6px 14px;font-weight:800;font-size:16px}
+
+/* C: a Book button under the names */
+.c .slot.can{grid-template-rows:auto auto}
+.c .free{color:var(--muted);font-weight:500;font-style:italic}
+.c .book{grid-column:1 / -1;display:flex;align-items:center;justify-content:center;gap:8px;background:var(--gold);color:var(--on-gold);font-size:18px;font-weight:800;padding:12px;border-top:1px solid var(--line)}
+.c .slot.can{grid-template-columns:76px 1fr}
+</style>
+
+<h1>Making a free place stand out</h1>
+<p class="lead">The same five tee times in three styles. Full times stay greyed in all three. Pick the one that’s easiest to read at a glance, or mix them.</p>
+
+<div class="opts">
+  <div class="opt a">
+    <h2>A · Solid gold places</h2>
+    <p>Every free place is a bright gold box saying “+ Free”: it looks like something to press. Names stay plain.</p>
+    <div class="slot"><div class="time">13:20</div><div class="grid"><div class="pn">Eamon Regan</div><div class="pn">Declan Murphy</div><div class="pn">Paul Hughes</div><div class="pn free">Free</div></div></div>
+    <div class="slot"><div class="time">13:30</div><div class="grid"><div class="pn free">Free</div><div class="pn free">Free</div><div class="pn free">Free</div><div class="pn free">Free</div></div></div>
+    <div class="slot"><div class="time">14:10</div><div class="grid"><div class="pn">Cathal Tierney</div><div class="pn">Sean O'Reilly</div><div class="pn g">Chris Byrne (guest)</div><div class="pn free">Free</div></div></div>
+    <div class="slot full"><div class="time">14:20</div><div class="grid"><div class="pn">Brian O'Connor</div><div class="pn">Jacqueline Cochrane</div><div class="pn">Fiona Collins</div><div class="pn g">Sam Visitor (guest)</div></div></div>
+    <div class="slot full"><div class="time">14:30</div><div class="grid"><div class="pn">Kevin Moran</div><div class="pn">Una Hayes</div><div class="pn">Una Nolan</div><div class="pn">Donal Doyle</div></div></div>
+  </div>
+
+  <div class="opt b">
+    <h2>B · Gold edge on bookable times</h2>
+    <p>A time you can book gets a thick gold border and a gold time; each free place is a dashed gold “+ Free” button. Full times have no border colour.</p>
+    <div class="slot can"><div class="time">13:20</div><div class="grid"><div class="pn">Eamon Regan</div><div class="pn">Declan Murphy</div><div class="pn">Paul Hughes</div><div class="pn free"><span>+ Free</span></div></div></div>
+    <div class="slot can"><div class="time">13:30</div><div class="grid"><div class="pn free"><span>+ Free</span></div><div class="pn free"><span>+ Free</span></div><div class="pn free"><span>+ Free</span></div><div class="pn free"><span>+ Free</span></div></div></div>
+    <div class="slot can"><div class="time">14:10</div><div class="grid"><div class="pn">Cathal Tierney</div><div class="pn">Sean O'Reilly</div><div class="pn g">Chris Byrne (guest)</div><div class="pn free"><span>+ Free</span></div></div></div>
+    <div class="slot full"><div class="time">14:20</div><div class="grid"><div class="pn">Brian O'Connor</div><div class="pn">Jacqueline Cochrane</div><div class="pn">Fiona Collins</div><div class="pn g">Sam Visitor (guest)</div></div></div>
+    <div class="slot full"><div class="time">14:30</div><div class="grid"><div class="pn">Kevin Moran</div><div class="pn">Una Hayes</div><div class="pn">Una Nolan</div><div class="pn">Donal Doyle</div></div></div>
+  </div>
+
+  <div class="opt c">
+    <h2>C · A “Book” bar on each time</h2>
+    <p>Names as now, free places say “free” quietly, and a big gold bar underneath says exactly what tapping does: “Book 1 place” or “Book up to 4”.</p>
+    <div class="slot can"><div class="time">13:20</div><div class="grid"><div class="pn">Eamon Regan</div><div class="pn">Declan Murphy</div><div class="pn">Paul Hughes</div><div class="pn free">free</div><div class="book">Book 1 place ›</div></div></div>
+    <div class="slot can"><div class="time">13:30</div><div class="grid"><div class="pn free">free</div><div class="pn free">free</div><div class="pn free">free</div><div class="pn free">free</div><div class="book">Book up to 4 ›</div></div></div>
+    <div class="slot can"><div class="time">14:10</div><div class="grid"><div class="pn">Cathal Tierney</div><div class="pn">Sean O'Reilly</div><div class="pn g">Chris Byrne (guest)</div><div class="pn free">free</div><div class="book">Book 1 place ›</div></div></div>
+    <div class="slot full"><div class="time">14:20</div><div class="grid"><div class="pn">Brian O'Connor</div><div class="pn">Jacqueline Cochrane</div><div class="pn">Fiona Collins</div><div class="pn g">Sam Visitor (guest)</div></div></div>
+    <div class="slot full"><div class="time">14:30</div><div class="grid"><div class="pn">Kevin Moran</div><div class="pn">Una Hayes</div><div class="pn">Una Nolan</div><div class="pn">Donal Doyle</div></div></div>
+  </div>
+</div>

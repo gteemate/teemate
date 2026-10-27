@@ -1192,13 +1192,14 @@ describe('found in review: the pretend server saves several events as the real o
 
 describe('the tee sheet shows who’s out', () => {
   const sheet = async () => { await app.tap('Booking'); await app.tap('+ Add a booking') }
-  it('each time shows the names booked on it, and a gold + Space for each place you can take', async () => {
+  it('each time shows the names booked on it, and a solid gold + Free for each place you can take', async () => {
     app = await boot(db => { db.book(3, at(db, 600).id, [5]); db.book(9, at(db, 660).id, [], [{ name: 'Sam Reid', club: 'Portrush' }]) })
     await sheet()
     const row = document.querySelector(`[data-id="${at(app.db, 600).id}"]`)
     expect(row.textContent).toContain("Ciarán O'Neill")
     expect(row.textContent).toContain(app.db.members.find(m => m.id === 5).name)
     expect(row.querySelectorAll('.free')).toHaveLength(2)
+    expect(row.querySelector('.free').textContent).toBe('Free')
     expect(document.querySelector(`[data-id="${at(app.db, 660).id}"]`).textContent).toContain('Sam Reid (guest)')
   })
   it('a time within 2 hours of mine shows its names greyed; tapping it says why', async () => {

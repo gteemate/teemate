@@ -973,17 +973,17 @@ details.oboard[open] > summary::before{transform:rotate(90deg)}
 .pphoto{display:block;width:100%;border-radius:10px;margin-top:10px}
 
 /* The tee sheet: who's out on each time (tee-times.js). Names in a 2×2 grid; a gold + Space where you can join. */
-.slot.names{grid-template-columns:72px 1fr;padding:0;gap:0;overflow:hidden;align-items:stretch}
+.slot.names{grid-template-columns:76px 1fr;padding:0;gap:0;overflow:hidden;align-items:stretch}
 .slot.names .time{display:flex;flex-direction:column;justify-content:center;align-items:center;gap:4px;border-right:1px solid var(--line);padding:12px 6px}
 .slot.names .time .tag{font-size:10px}
 .pgrid4{display:grid;grid-template-columns:1fr 1fr;min-width:0}
-.pgrid4 .pn{display:flex;align-items:center;min-height:40px;padding:8px 10px;font-size:14px;font-weight:600;color:var(--ink);border-bottom:1px solid var(--line);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pgrid4 .pn{display:flex;align-items:center;min-height:48px;padding:10px 12px;font-size:16px;font-weight:600;color:var(--ink);border-bottom:1px solid var(--line);min-width:0;overflow-wrap:anywhere;line-height:1.2} /* long names wrap: never cut off */
 .pgrid4 .pn:nth-child(odd){border-right:1px solid var(--line)}
 .pgrid4 .pn:nth-last-child(-n+2){border-bottom:0}
 .pgrid4 .pn.g{color:var(--muted);font-weight:500}
 .pgrid4 .pn.me{color:var(--gold)}
-.pgrid4 .pn.free{color:var(--gold);font-weight:600}
-.pgrid4 .pn.free::before{content:"+ ";white-space:pre}
+.pgrid4 .pn.free{background:var(--gold);color:var(--on-gold);font-weight:800;font-size:17px;justify-content:center;border-color:rgba(26,22,6,.25)}
+.pgrid4 .pn.free::before{content:"+";font-size:22px;line-height:1;margin-right:6px}
 .slot.names.full .pn,.slot.names.full .time{color:var(--muted)}
 .slot.names.full{background:transparent}
 .slot.names.minebk{border-color:var(--gold)}
