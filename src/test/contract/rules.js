@@ -76,4 +76,11 @@ export const RULES = [
     act: api => api.markPaperCard(75, 1, 5), refused: /on this card/ },
   { id: 'booked-you-in', says: 'Everyone else on a new booking is told who booked them in', sql: ['booked_you_in.sql', 'Chris is told Pat booked him in, for that day and time'], who: 'member',
     act: async (api, db) => { await api.bookTeeTime({ slotId: at(db, 620).id, memberIds: [3] }); return { ok: d => d.notices.some(n => n.memberId === 3 && n.kind === 'added' && n.byName === 'Declan Murphy') } } },
+  { id: 'checkin-admin-only', says: 'Only the club office can check in guests', sql: ['guest_check_in.sql', 'Check-in: only admins can charge'], who: 'member',
+    act: api => api.chargeGuests(3, null, [{ name: 'Sam Guest' }]), refused: /Only the club office/ },
+  { id: 'checkin-over-allowance', says: 'Checking in more guests than the points left is refused, nothing charged', sql: ['guest_check_in.sql', 'Check-in: over the allowance is refused, nothing charged'], who: 'office',
+    setup: db => db.guestVisits.push({ member: 3, date: db.today, guest: 'Earlier', club: '', points: 33, playerId: null }),
+    act: api => api.chargeGuests(3, null, [{ name: 'One' }, { name: 'Two' }]), refused: /Not enough guest points: \S+ has 3 left/ },
+  { id: 'checkin-card-name', says: 'A scanned card’s name must match the member', sql: ['guest_check_in.sql', 'Check-in: the card\'s name must match the member'], who: 'office',
+    act: api => api.chargeGuests(3, 'Someone Else', [{ name: 'Sam Guest' }]), refused: /isn’t a TeeMate member card|isn't a TeeMate member card/ },
 ]

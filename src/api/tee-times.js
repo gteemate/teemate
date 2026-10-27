@@ -77,7 +77,7 @@ export async function getGuestPoints(year = String(today().getFullYear())) {
     getCourse(),
     sb.from('club_settings').select('guest_allowance').single().then(must),
     // RLS returns only my visits, or everyone's for an admin.
-    sb.from('guest_visits').select('member_id, date, guest_name, guest_club, points, course:course_id(name)')
+    sb.from('guest_visits').select('member_id, date, guest_name, guest_club, points, checked_in_by, course:course_id(name)')
       .gte('date', `${year}-01-01`).lte('date', `${year}-12-31`).order('date').then(must),
     getMembers(),
     myId(),
@@ -86,9 +86,24 @@ export async function getGuestPoints(year = String(today().getFullYear())) {
     allowance: settings.guest_allowance,
     cost: c.guestPoints,
     course: c.name,
-    mine: visits.filter(v => v.member_id === meId).map(v => ({ date: v.date, guest: v.guest_name, club: v.guest_club || '', course: v.course?.name ?? c.name, points: v.points })),
+    mine: visits.filter(v => v.member_id === meId).map(v => ({ date: v.date, guest: v.guest_name, club: v.guest_club || '', course: v.course?.name ?? c.name, points: v.points, office: v.checked_in_by != null })),
     members: members.map(m => ({ id: m.id, name: m.name, used: visits.filter(v => v.member_id === m.id).reduce((t, v) => t + v.points, 0) })),
   }
+}
+
+/** The club office checks in guests who weren't booked in the app, charging the member's guest points. cardName: the
+ *  name on a scanned card (it must match), or null when found by name. guests: [{ name, club? }], 1 to 3.
+ *  → { charged, pointsLeft } */
+export async function chargeGuests(memberId, cardName, guests) {
+  return must(await sb.rpc('office_charge_guests', { p_member: memberId, p_name: cardName, p_guests: guests }))
+}
+/** Today's office check-ins can be removed again. → { pointsBack } */
+export async function removeGuestCharge(visitId) {
+  return must(await sb.rpc('office_remove_guest_charge', { p_visit: visitId }))
+}
+/** Today's office check-ins, newest first: [{ id, memberId, memberName, guest, club, points }] */
+export async function getGuestChargesToday() {
+  return must(await sb.rpc('office_guest_charges_today'))
 }
 
 /* ---------- Release: when tee times open for booking ---------- */

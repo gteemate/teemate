@@ -425,6 +425,20 @@
   "needs_account": [],
   "not_open_message": [],
   "notify_added": [],
+  "office_charge_guests": [
+   "Only the club office can check in guests.",
+   "That isn't a TeeMate member card.",
+   "Check in 1 to 3 guests at a time.",
+   "Add the guest's name.",
+   "Not enough guest points: % has % left."
+  ],
+  "office_guest_charges_today": [
+   "Only the club office can check in guests."
+  ],
+  "office_remove_guest_charge": [
+   "Only the club office can check in guests.",
+   "Only today's check-ins at the office can be removed here."
+  ],
   "office_take_off": [
    "Only the club office can change members' bookings.",
    "That booking no longer exists.",
@@ -655,6 +669,12 @@
    "rpc": [],
    "tables": []
   },
+  "chargeGuests": {
+   "rpc": [
+    "office_charge_guests"
+   ],
+   "tables": []
+  },
   "confirmKoResult": {
    "rpc": [
     "confirm_ko_result"
@@ -849,6 +869,12 @@
   },
   "getGameSettings": {
    "rpc": [],
+   "tables": []
+  },
+  "getGuestChargesToday": {
+   "rpc": [
+    "office_guest_charges_today"
+   ],
    "tables": []
   },
   "getGuestPoints": {
@@ -1112,6 +1138,12 @@
   "removeFromBooking": {
    "rpc": [
     "remove_from_booking"
+   ],
+   "tables": []
+  },
+  "removeGuestCharge": {
+   "rpc": [
+    "office_remove_guest_charge"
    ],
    "tables": []
   },

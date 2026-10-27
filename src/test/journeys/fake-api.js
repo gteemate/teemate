@@ -18,7 +18,7 @@ export const API_NAMES = ['getMe', 'forgetMe', 'getSession', 'signIn', 'needsAcc
   'getHutStaff', 'setHutStaff', 'placeHutOrder', 'cancelMyHutOrder', 'myHutOrders', 'hutOrdersToday', 'setHutOrderStatus', 'getMembers', 'getBuddies',
   'addBuddy', 'removeBuddy', 'getFriends', 'saveContact', 'removeContact', 'setFriendFavourite', 'getAccessList', 'saveMember', 'getFavourites',
   'setFavourite', 'setOfficeLogin', 'getAccessRequests', 'declineRequest', 'deleteMember', 'resetLogin', 'getCourse', 'getPins', 'setGreenWidth', 'publishPins',
-  'getTeeSheet', 'bookTeeTime', 'getMyTeeTimes', 'getGuests', 'setGuestHandicap', 'cancelBooking', 'removeFromBooking', 'moveMatchBooking', 'adminCancelBooking', 'adminMoveBooking',
+  'getTeeSheet', 'bookTeeTime', 'getMyTeeTimes', 'getGuests', 'setGuestHandicap', 'cancelBooking', 'removeFromBooking', 'chargeGuests', 'removeGuestCharge', 'getGuestChargesToday', 'moveMatchBooking', 'adminCancelBooking', 'adminMoveBooking',
   'getBookingNotices', 'seenBookingNotice', 'getMyBookings',
   'getGuestPoints', 'getBookingRules', 'setBookingRules', 'requestTeeTime', 'cancelTeeTimeRequest', 'getMyTeeTimeRequests', 'getTeeTimeRequests',
   'decideTeeTimeRequest', 'markTeeTimeRequestsSeen', 'dismissTeeTimeRequest', 'getGameSettings', 'setMyGamePref', 'getCurrentRound', 'getRound', 'deleteRound', 'saveRound',
@@ -400,8 +400,32 @@ export function makeWorld(today, setup = () => {}, as = 'admin') {
       return db.book(b.bookedBy, sid, ids.filter(m => m !== b.bookedBy))
     },
     getGuestPoints: async () => ({ allowance: 36, cost: 3, course: 'Ailsa',
-      mine: db.guestVisits.filter(v => v.member === ME).map(v => ({ date: v.date, guest: v.guest, club: v.club, course: 'Ailsa', points: v.points })),
+      mine: db.guestVisits.filter(v => v.member === ME).map(v => ({ date: v.date, guest: v.guest, club: v.club, course: 'Ailsa', points: v.points, office: v.by != null })),
       members: db.members.map(m => ({ id: m.id, name: m.name, used: db.guestVisits.filter(v => v.member === m.id).reduce((t, v) => t + v.points, 0) })) }),
+    // As the database: the office only; a scanned card's name must match; 1 to 3 named guests; never over the allowance.
+    chargeGuests: async (memberId, cardName, guests) => {
+      if (!db.asOffice && !me()?.admin) throw new Error('Only the club office can check in guests.')
+      const norm = x => String(x ?? '').trim().toLowerCase().replace(/\s+/g, ' '), m = db.members.find(x => x.id === memberId)
+      if (!m || (cardName != null && norm(cardName) !== norm(m.name))) throw new Error('That isn’t a TeeMate member card.')
+      if (!Array.isArray(guests) || guests.length < 1 || guests.length > 3) throw new Error('Check in 1 to 3 guests at a time.')
+      if (guests.some(g => !(g.name ?? '').trim() || g.name.trim().length > 100)) throw new Error('Add the guest’s name.')
+      const used = db.guestVisits.filter(v => v.member === memberId).reduce((t, v) => t + v.points, 0)
+      if (used + guests.length * 3 > 36) throw new Error(`Not enough guest points: ${m.name.split(' ')[0]} has ${36 - used} left.`)
+      for (const g of guests) db.guestVisits.push({ id: id(), member: memberId, date: db.today, guest: g.name.trim(), club: (g.club ?? '').trim(), points: 3, playerId: null, by: ME })
+      return { charged: guests.length * 3, pointsLeft: 36 - used - guests.length * 3 }
+    },
+    removeGuestCharge: async vid => {
+      if (!db.asOffice && !me()?.admin) throw new Error('Only the club office can check in guests.')
+      const v = db.guestVisits.find(x => x.id === vid)
+      if (!v || v.by == null || v.date !== db.today) throw new Error('Only today’s check-ins at the office can be removed here.')
+      db.guestVisits = db.guestVisits.filter(x => x !== v)
+      return { pointsBack: v.points }
+    },
+    getGuestChargesToday: async () => {
+      if (!db.asOffice && !me()?.admin) throw new Error('Only the club office can check in guests.')
+      return db.guestVisits.filter(v => v.by != null && v.date === db.today).reverse()
+        .map(v => ({ id: v.id, memberId: v.member, memberName: member(v.member).name, guest: v.guest, club: v.club || null, points: v.points }))
+    },
     getBookingRules: async () => ({ ...db.rules, now: new Date() }),
     setBookingRules: async ({ time, days, weekendsOnly }) => {
       if (!db.asOffice && !db.members.find(m => m.id === ME)?.admin) throw new Error('Only admins can change the booking rules.')
