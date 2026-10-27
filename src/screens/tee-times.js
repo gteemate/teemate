@@ -6,6 +6,7 @@ import { $, esc, header, top0, render, toast } from '../ui.js'
 import { DN, isoDate, nextDays, longDay, hhmm, today, addDaysIso, fromIso } from '../dates.js'
 import { opensAt, openLabel, countdown } from '../release.js'
 import { showNotice } from '../alert-bar.js'
+import { details } from './bookings.js'
 
 export async function load() {
   const rules = await api.getBookingRules()
@@ -77,7 +78,11 @@ export function draw({ days, sheet, points, me, rules, req, skew }) {
   document.querySelectorAll('.slot').forEach(b => (b.onclick = async () => {
     const s = sheet.find(x => x.id === +b.dataset.id)
     if (locked) { toast(`${openLabel(iso, rules)}`); return }
-    if (isMine(s)) { Object.assign(S, { aview: 'mine' }); await render(); top0(); return } // see it in Bookings
+    if (isMine(s)) { // open it here, as in My bookings: who's playing, delete or withdraw
+      const b = (await api.getMyBookings()).find(x => x.date === iso && x.time === s.time)
+      if (b) details(b, me)
+      return
+    }
     if (mv) return moveSheet(s, mv) // the old time goes when the new one is booked, so the 2-hour gap doesn't apply here
     const near = tooClose(s)
     if (near) {

@@ -1238,6 +1238,17 @@ describe('the tee sheet shows who’s out', () => {
     expect(document.getElementById('alerts').textContent).toContain('Within 2 hours of your 10:00 tee time')
     expect(document.querySelector(`[data-id="${at(app.db, 480).id}"]`).classList.contains('full')).toBe(false) // 08:00 is exactly 2 hours: fine
   })
+  it('tapping my own time opens that booking (who’s playing, delete or withdraw) right there, not My bookings', async () => {
+    app = await boot(db => db.book(0, at(db, 600).id, [5]))
+    await sheet()
+    await app.tap(`[data-id="${at(app.db, 600).id}"]`)
+    expect(document.getElementById('bkt').textContent).toContain('10:00')
+    expect(document.querySelector('.sheet').textContent).toContain(app.db.members.find(m => m.id === 5).name)
+    expect(document.querySelector('[data-id]')).not.toBeNull() // still on the tee sheet underneath
+    await app.tap('#bk-act'); await app.tap('#bk-act') // tap twice to delete
+    expect(app.toast()).toContain('10:00 booking deleted')
+    expect(document.querySelector(`[data-id="${at(app.db, 600).id}"]`).classList.contains('open')).toBe(true) // the time is free again on the sheet
+  })
   it('a full time shows all four names greyed; tapping says it’s full', async () => {
     app = await boot(db => db.book(3, at(db, 720).id, [5, 7, 9]))
     await sheet()

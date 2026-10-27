@@ -34,8 +34,8 @@ async function cancel(b) {
   return true
 }
 
-// Booking details: everyone on the tee time, and delete / withdraw.
-function details(b, me) {
+// Booking details: everyone on the tee time, and delete / withdraw. The tee sheet opens it too, when you tap your own time.
+export function details(b, me) {
   const person = p => `<div class="lrow"><span class="av${p.guest ? ' gst' : ''}">${ini(p.name)}</span><span class="who"><strong>${esc(p.name)}${p.memberId === me.id ? ' (you)' : ''}</strong><small>${p.guest ? `Guest${p.club ? ' · ' + esc(p.club) : ''}` : 'Member'}</small></span><span class="hcp">${fmtHcp(p.hcp == null ? null : Number(p.hcp))}<small>HI</small></span></div>`
   const ours = b.people.filter(p => p.inBooking), others = b.people.filter(p => !p.inBooking)
   const act = scored(b) ? 'Delete booking and scores' : b.mine ? 'Delete booking' : 'Withdraw from this booking'
