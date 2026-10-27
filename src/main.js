@@ -187,6 +187,7 @@ async function render() {
   $('app').classList.toggle('onhome', screen === home) // Home fills the screen, no scroll (a remote)
   $('app').classList.toggle('office', !!S.office && !$('app').classList.contains('signed-out'))
   lastScreen = screen; lastData = data
+  $('app').classList.remove('kiosk') // Guests sets it again while the iPad is with a member
   screen.draw(data)
   if (S.office && !$('app').classList.contains('signed-out')) {
     const me = await api.getMe(), [s, theme] = await Promise.all([summary(), api.getTheme().catch(() => null)])

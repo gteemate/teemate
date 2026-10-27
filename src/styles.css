@@ -1020,3 +1020,8 @@ button.lrow.ci-m{width:100%;text-align:left;background:none;border:0;border-top:
 .hchg{max-height:44vh;overflow:auto}
 .ptguests{display:block;color:var(--muted);font-size:13px;margin-top:2px;overflow-wrap:anywhere}
 .oguests .oacts{display:flex;align-items:center;gap:8px}
+/* Guests: the iPad handed to a member (and back to staff): no office menu, just their check-in */
+#app.office.kiosk{grid-template-columns:minmax(0,1fr)}
+#app.office.kiosk .oside,#app.kiosk #side{display:none}
+#app.office.kiosk #hdr,#app.office.kiosk #alerts,#app.office.kiosk #dateWrap,#app.office.kiosk main{grid-column:1}
+#app.office.kiosk main .screen.ci-kiosk{max-width:640px;margin:0 auto}

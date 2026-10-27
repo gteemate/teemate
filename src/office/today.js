@@ -7,16 +7,17 @@ import { eventDates, eventLastDay, fromIso, hhmm, isoDate, longDay, today, addDa
 import { entryName, roundName } from '../knockout.js'
 import { summary, forgetSummary, clubComp, clubEvent, panel } from './shell.js'
 import { confirmLine, noteSheet, reviewSheet } from '../paper/review.js'
+import { checkedInToday, bindCheckedIn } from './guests.js'
 
 export async function load() {
   const date = isoDate(today())
-  const [s, sheet, hut, pins, events, signups, members, paper] = await Promise.all([summary(), api.getTeeSheet(date), api.getHut(), api.getPins(), api.getEvents(), api.getSignups(), api.getMembers(),
-    api.getPaperConfirms().catch(() => [])])
+  const [s, sheet, hut, pins, events, signups, members, paper, charges] = await Promise.all([summary(), api.getTeeSheet(date), api.getHut(), api.getPins(), api.getEvents(), api.getSignups(), api.getMembers(),
+    api.getPaperConfirms().catch(() => []), api.getGuestChargesToday().catch(() => [])])
   const orders = hut.on ? await api.hutOrdersToday() : []
-  return { ...s, date, sheet: sheet ?? [], hut, orders, pinsToday: pins.date === date, events, signups, members, paper: paper.filter(c => c.forOffice) } // left for the office (or the player asked has left the card)
+  return { ...s, date, sheet: sheet ?? [], hut, orders, pinsToday: pins.date === date, events, signups, members, paper: paper.filter(c => c.forOffice), charges } // left for the office (or the player asked has left the card)
 }
 
-export function draw({ joins, treqs, disputes, date, sheet, hut, orders, pinsToday, events, signups, members, paper = [] }) {
+export function draw({ joins, treqs, disputes, date, sheet, hut, orders, pinsToday, events, signups, members, paper = [], charges = [] }) {
   const n = joins.length + treqs.length + disputes.length + paper.length
   header(longDay(fromIso(date)), n ? `<b>${n}</b> thing${n === 1 ? '' : 's'} waiting for you` : 'Nothing waiting for you')
   const name = id => members.find(m => m.id === id)?.name ?? 'A member'
@@ -50,7 +51,9 @@ export function draw({ joins, treqs, disputes, date, sheet, hut, orders, pinsTod
     </div>` : '<div class="card empty-state">All done. Nothing needs you right now.</div>'}
     <h3>Coming up</h3>
     ${coming.length ? `<div class="card olist">${coming.map(c => `<div class="orow"><span class="oic">🏆</span><span class="ot">${c.html}</span>${c.live ? '<span class="pill live">Live</span>' : ''}</div>`).join('')}</div>` : '<div class="card empty-state">No club competitions in the next two weeks.</div>'}
+  ${checkedInToday(charges)}
   </div>`
+  bindCheckedIn(charges)
 
   const done = async msg => { forgetSummary(); await keepScroll(render); toast(msg) }
   if ($('o-pins')) $('o-pins').onclick = async () => { S.aview = 'pins'; await render(); top0() }

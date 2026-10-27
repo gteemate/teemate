@@ -53,13 +53,13 @@ export default [
   },
   {
     id: 'office-charge-guests', who: 'office', title: 'Check in a walk-in guest and charge the member’s guest points',
-    steps: [{ tap: '[data-ov="guests"]' }, { type: ['#ci-find', 'ciar'] }, { tap: '[data-ci-m="3"]' }, { type: ['#ci-n0', 'Sam Guest'] }, { tap: '#ci-go' }],
+    steps: [{ tap: '[data-ov="guests"]' }, { type: ['#ci-find', 'ciar'] }, { tap: '[data-ci-m="3"]' }, { type: ['#ci-n0', 'Sam Guest'] }, { tap: '#ci-done' }, { tap: '#ci-go' }],
     action: 'chargeGuests', expect: db => db.guestVisits.some(v => v.member === 3 && v.guest === 'Sam Guest' && v.by != null), refusals: 'all',
   },
   {
     id: 'office-remove-guest-charge', who: 'office', title: 'Remove a guest checked in at the office today',
     setup: db => db.guestVisits.push({ id: 77, member: 3, date: db.today, guest: 'Sam Guest', club: '', points: 3, playerId: null, by: 0 }),
-    steps: [{ tap: '[data-ov="guests"]' }, { tap: '[data-ci-rm="77"]' }, { tap: 'Sure?' }],
+    steps: [{ tap: '[data-ov="today"]' }, { tap: '[data-ci-rm="77"]' }, { tap: 'Sure?' }],
     action: 'removeGuestCharge', expect: db => db.guestVisits.length === 0, refusals: 'all',
   },
   {
