@@ -47,6 +47,11 @@ export default [
     action: 'adminCancelBooking', expect: db => db.bookings.length === 0, refusals: 'all',
   },
   {
+    id: 'office-set-handicaps', who: 'office', title: 'Update handicaps from a CSV file',
+    steps: [{ tap: '[data-ov="members"]' }, { tap: 'Update handicaps' }, { file: ['#o-hfile', 'handicaps.csv', 'Name,Handicap Index\nCiarán O\'Neill,11.9\n'] }, { tap: '#o-hgo' }],
+    action: 'setHandicaps', expect: db => db.members.find(m => m.id === 3).hcp === 11.9, refusals: 'all',
+  },
+  {
     id: 'office-charge-guests', who: 'office', title: 'Check in a walk-in guest and charge the member’s guest points',
     steps: [{ tap: '[data-ov="guests"]' }, { type: ['#ci-find', 'ciar'] }, { tap: '[data-ci-m="3"]' }, { type: ['#ci-n0', 'Sam Guest'] }, { tap: '#ci-go' }],
     action: 'chargeGuests', expect: db => db.guestVisits.some(v => v.member === 3 && v.guest === 'Sam Guest' && v.by != null), refusals: 'all',

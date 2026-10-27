@@ -44,6 +44,9 @@ export const FEATURES = [
     ],
     demo: [{ who: 'live@test.com', steps: ['Booking → tap a booking → Delete booking → tap again'], see: 'It’s gone from Booking and the tee sheet.' },
       { who: 'live@test.com', steps: ['Book a time with a friend', 'Booking → tap it → Remove next to your friend → Sure?'], see: 'Your friend is off; you keep the time.' }] },
+  { id: 'maker-mark', area: 'Booking', name: 'Made by TeeMate on Home',
+    what: 'A quiet maker’s mark at the foot of Home (and sign-in and Account), which opens about us.',
+    scenarios: [{ says: 'On Home, tappable', tests: ['src/test/journeys/features.test.js › a quiet maker’s mark at the foot of Home, which opens about us'] }] },
   { id: 'guest-check-in', area: 'Booking', name: 'Guest check-in at the club office',
     what: 'For guests who weren’t booked in the app, the office scans the member’s card (or finds them by name), adds up to 3 guests and charges their guest points. Today’s check-ins can be removed again.',
     scenarios: [
@@ -57,6 +60,14 @@ export const FEATURES = [
     ],
     demo: [{ who: 'admin@test.com', steps: ['Club office → Guests → Find a member by name → pick Live Tester', 'Add a guest name → Charge 3 points · 1 guest'], see: 'The guest is under Checked in today; Live Tester has 3 fewer points.' },
       { who: 'live@test.com', steps: ['Account → Guest points → Show my card'], see: 'Your QR code, for the office to scan.' }] },
+  { id: 'handicap-file', area: 'Booking', name: 'Handicaps from a file (club office)',
+    what: 'The office exports handicap indexes from the club’s own system as a CSV and uploads it. Members match by GUI number or name; the office sees what changes, and who wasn’t found, before confirming.',
+    scenarios: [
+      { says: 'Upload, see the changes and who wasn’t found, then update', tests: ['journey:office-set-handicaps', `src/test/journeys/guest-check-in.test.js › upload, see what changes and who wasn’t found, then update them all`, 'src/handicap-csv.test.js'] },
+      { says: 'A file without a handicap column says so; nothing changes', tests: [`src/test/journeys/guest-check-in.test.js › a file without a handicap column says so, and nothing is updated`] },
+      { says: 'Office only; one bad row refuses the lot', tests: ['supabase/tests/handicap_import.sql › Handicaps: only the club office can update them', 'supabase/tests/handicap_import.sql › Handicaps: one out of range refuses the lot, nothing changed'] },
+    ],
+    demo: [{ who: 'admin@test.com', steps: ['Club office → Members → Update handicaps', 'Choose a CSV with Name and Handicap Index columns'], see: 'The changes listed; Update N handicaps saves them.' }] },
   { id: 'requests', area: 'Booking', name: 'Tee time requests further ahead',
     what: 'For days not open yet, members ask the club office for a time with a reason. The office books it or declines with a note; the member is told.',
     scenarios: [

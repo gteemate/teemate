@@ -1422,3 +1422,13 @@ describe('club singles matches hold the four-ball', () => {
     expect(document.querySelector('[data-open]')).not.toBeNull()
   })
 })
+
+describe('Made by TeeMate on Home', () => {
+  it('a quiet maker’s mark at the foot of Home, which opens about us', async () => {
+    app = await boot()
+    const mark = document.querySelector('.screen.home .maker')
+    expect(mark?.textContent).toContain('MADE BY TEEMATE')
+    await app.tap('#maker')
+    expect(document.querySelector('.sheet')).not.toBeNull()
+  })
+})

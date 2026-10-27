@@ -5,7 +5,11 @@ export async function runSteps(app, steps) {
     else if (s.tap) await app.tap(s.tap)
     else if (s.type) await app.type(...s.type)
     else if (s.pick) { const el = document.querySelector(s.pick[0]); el.value = s.pick[1]; el.dispatchEvent(new Event('change', { bubbles: true })); await app.settle() }
-    else if (s.back) await app.back()
+    else if (s.file) { // choose a file: [input selector, file name, its text]
+      const el = document.querySelector(s.file[0])
+      Object.defineProperty(el, 'files', { value: [new File([s.file[2]], s.file[1], { type: 'text/csv' })], configurable: true })
+      el.dispatchEvent(new Event('change', { bubbles: true })); await app.settle()
+    } else if (s.back) await app.back()
   }
 }
 

@@ -68,6 +68,11 @@ export async function saveMember(m) {
   return id
 }
 
+/** The club office: update handicap indexes in one go (from a file). rows: [{ id, hcp }]. All or nothing. → { updated } */
+export async function setHandicaps(rows) {
+  return must(await sb.rpc('admin_set_handicaps', { p_rows: rows }))
+}
+
 /** The club office login's email ('' to remove the login). Admins only. */
 export async function setOfficeLogin(email) {
   must(await sb.rpc('admin_set_office_login', { p_email: email ?? '' }))

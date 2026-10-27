@@ -148,3 +148,33 @@ describe('the member’s Guest points page', () => {
     expect(row.textContent).toContain('−3')
   })
 })
+
+describe('Club office → Members → Update handicaps (a CSV from the club’s system)', () => {
+  const upload = async text => {
+    const input = document.getElementById('o-hfile')
+    Object.defineProperty(input, 'files', { value: [new File([text], 'handicaps.csv', { type: 'text/csv' })], configurable: true })
+    input.dispatchEvent(new Event('change'))
+    await app.settle()
+  }
+  it('upload, see what changes and who wasn’t found, then update them all', async () => {
+    app = await boot(() => {}, { as: 'office' })
+    await app.tap('[data-ov="members"]')
+    await app.tap('Update handicaps')
+    const ciaran = app.db.members.find(m => m.id === 3)
+    await upload(`Name,Handicap Index\n${ciaran.name},+1.2\nSean Nobody,8.0\n`)
+    expect(app.text()).toContain(`${ciaran.name}`)
+    expect(app.text()).toContain('+1.2')
+    expect(app.text()).toContain('Not found (1): Sean Nobody')
+    await app.tap('Update 1 handicap')
+    expect(app.toast()).toBe('1 handicap updated')
+    expect(app.db.members.find(m => m.id === 3).hcp).toBe(-1.2)
+  })
+  it('a file without a handicap column says so, and nothing is updated', async () => {
+    app = await boot(() => {}, { as: 'office' })
+    await app.tap('[data-ov="members"]')
+    await app.tap('Update handicaps')
+    await upload('Name,Email\nPat Reid,p@x.ie\n')
+    expect(app.text()).toContain('Couldn’t find a handicap column')
+    expect(document.getElementById('o-hgo')).toBeNull()
+  })
+})

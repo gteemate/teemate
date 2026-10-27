@@ -6,7 +6,7 @@ import { openCourse, scaleHcp } from '../open-holes.js'
 import { cardHoles } from './card-holes.js'
 import * as api from '../api.js'
 import { S } from '../state.js'
-import { $, esc, render, top0, fmtHcp } from '../ui.js'
+import { $, esc, render, top0, fmtHcp, makerMark, makerSheet } from '../ui.js'
 import { isoDate, today, hhmm } from '../dates.js'
 import { needsMyAnswer } from '../home-today.js'
 import { roundPill } from '../round-pill.js'
@@ -75,7 +75,9 @@ export function draw({ me, clubName, card, pill, tee, friendCount, invites, answ
         <span class="hi num">${fmtHcp(me.hcp)}</span><span class="gu">HI · ${me.gui ? `GUI ${esc(me.gui)}` : 'GUI not added'}</span>
       </button>
     </div>
+  ${makerMark(true)}
   </div>`
+  $('maker').onclick = makerSheet
   fitRemote()
   const go = async f => { f(); await render(); top0() }
   $('account').onclick = () => go(() => { S.aview = 'account' })

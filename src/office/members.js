@@ -4,8 +4,9 @@
 // points used, and reset login, remove access or delete. Handicaps and scores belong to the player app.
 import * as api from '../api.js'
 import { S } from '../state.js'
-import { $, esc, ini, header, keepScroll, render, redraw, toast } from '../ui.js'
+import { $, esc, ini, header, keepScroll, render, redraw, toast, fmtHcp } from '../ui.js'
 import { summary, forgetSummary, panel } from './shell.js'
+import { readHandicaps } from '../handicap-csv.js'
 
 export async function load() {
   const [s, access, members, points, me] = await Promise.all([summary(), api.getAccessList(), api.getMembers(), api.getGuestPoints(), api.getMe()])
@@ -33,6 +34,7 @@ export function draw({ joins, list, allowance, me }) {
   $('main').innerHTML = `<div class="screen office">
     <div class="obar"><div class="search"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="o-q" type="search" placeholder="Search by name or email" value="${esc(S.oQ ?? '')}" autocomplete="off"></div>
       <button class="ghost sm" id="o-nopts" aria-pressed="${!!S.oNoPoints}">No points left (${none.length})</button>
+      <button class="ghost sm" id="o-hcp">Update handicaps</button>
       <button class="primary sm" id="o-add">Add a member</button></div>
     ${joins.length ? `<h3>Asking to join</h3><div class="card olist">${joins.map(r => `<div class="orow"><span class="av">${esc(ini(r.name))}</span><span class="ot"><b>${esc(r.name)}</b><span>${esc(r.email)} · asked ${new Date(r.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span></span>
       <span class="oacts"><button class="ghost sm" data-o-refuse="${r.id}">Refuse</button><button class="primary sm" data-o-letin="${r.id}">Let in</button></span></div>`).join('')}</div>` : ''}
@@ -44,6 +46,33 @@ export function draw({ joins, list, allowance, me }) {
 
   const done = async msg => { forgetSummary(); $('modal').innerHTML = ''; await keepScroll(render); toast(msg) }
   document.querySelectorAll('[data-o-az]').forEach(b => (b.onclick = () => { S.oAZ = b.dataset.oAz; keepScroll(redraw) }))
+  // Update handicaps: a CSV exported from the club's own system (which has Golf Ireland's). Shows what changes first.
+  $('o-hcp').onclick = () => {
+    const close = panel(`<h4>Update handicaps</h4>
+      <p class="hint">Export members’ handicap indexes from the club’s system as a CSV file, then choose it here. Members are matched by GUI number, or by name. Nothing changes until you confirm.</p>
+      <label class="primary filebtn" for="o-hfile">Choose a CSV file</label><input id="o-hfile" type="file" accept=".csv,text/csv,text/plain" hidden>
+      <div id="o-hout"></div>`)
+    $('o-hfile').onchange = async e => {
+      const file = e.target.files?.[0]
+      if (!file) return
+      const r = readHandicaps(await file.text(), list)
+      const out = $('o-hout')
+      if (r.error) { out.innerHTML = `<p class="gerr" role="alert">${esc(r.error)}</p>`; return }
+      const n = r.changes.length, show = h => (h == null ? '–' : fmtHcp(h))
+      out.innerHTML = `<p><b>${n ? `${n} handicap${n === 1 ? '' : 's'} to update` : 'No handicaps to update'}</b>${r.same ? ` · ${r.same} already up to date` : ''}</p>
+        ${n ? `<div class="card olist hchg">${r.changes.map(c => `<div class="orow"><span class="ot"><b>${esc(c.name)}</b></span><span class="num">${show(c.from)} → <b>${show(c.to)}</b></span></div>`).join('')}</div>` : ''}
+        ${r.unmatched.length ? `<p class="hint">Not found (${r.unmatched.length}): ${esc(r.unmatched.join(', '))}</p>` : ''}
+        ${r.problems.length ? `<p class="hint owarn">Not used: ${esc(r.problems.join('; '))}</p>` : ''}
+        ${n ? `<div class="gm-btns"><button class="primary" id="o-hgo">Update ${n} handicap${n === 1 ? '' : 's'}</button></div>` : ''}`
+      if ($('o-hgo')) $('o-hgo').onclick = async () => {
+        const btn = $('o-hgo')
+        if (btn.disabled) return
+        btn.disabled = true
+        try { await api.setHandicaps(r.changes.map(c => ({ id: c.id, hcp: c.to }))) } catch (err) { toast(err.message); btn.disabled = false; return }
+        close(); await keepScroll(render); toast(`${n} handicap${n === 1 ? '' : 's'} updated`)
+      }
+    }
+  }
   $('o-nopts').onclick = () => { S.oNoPoints = !S.oNoPoints; keepScroll(redraw) } // filter: members with no guest points left
   const qi = $('o-q')
   qi.oninput = () => { S.oQ = qi.value; const p = qi.selectionStart; render().then(() => { const n = $('o-q'); n.focus(); n.setSelectionRange(p, p) }) }

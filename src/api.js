@@ -20,7 +20,7 @@ export const {
   getBuddies, getFriends, getFavourites, setTheme, setClubName, setFeePayment, setPaperCards,
   setHutOn, setBookingRules, setDayBoardDays, setDayBoardToday, setCourseLocation, setGreenWidth,
   publishPins, saveEvent, saveSeason, deleteEvent, enterEventToday, startLeagueKnockout,
-  setMyGamePref, setHutStaff, saveMember, setOfficeLogin, deleteMember, resetLogin,
+  setMyGamePref, setHutStaff, saveMember, setHandicaps, setOfficeLogin, deleteMember, resetLogin,
   declineRequest, requestAccess, addBuddy, removeBuddy, saveContact, removeContact,
   setFriendFavourite, setFavourite, setMyPlaysIn, adminSetPlaysIn, declineSignup, undeclineSignup,
   runSignup, enterSignup, withdrawSignup, saveSignup, createMemberKnockout, deleteMemberKnockout,

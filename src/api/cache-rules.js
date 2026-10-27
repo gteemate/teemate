@@ -23,7 +23,7 @@ export const RULES = {
   saveSeason: changes('events'), deleteEvent: changes('events'), enterEventToday: changes('events'),
   startLeagueKnockout: changes('events', 'comps'),
   setMyGamePref: changes('games'),
-  setHutStaff: changes('members'), saveMember: changes('members', 'requests'), setOfficeLogin: changes('members', 'requests'),
+  setHutStaff: changes('members'), saveMember: changes('members', 'requests'), setHandicaps: changes('members'), setOfficeLogin: changes('members', 'requests'),
   deleteMember: changes('members', 'friends', 'games', 'comps', 'requests', 'events'), // its rows elsewhere go with it, and it's taken off every event
   resetLogin: changes('members'),
   declineRequest: changes('requests'), requestAccess: changes('requests'),

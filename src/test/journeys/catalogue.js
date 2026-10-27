@@ -4,6 +4,7 @@
 //               sends `action` (a function in src/api) to the server
 //   refusals:   'all' (every message the action's database functions can give, from refusal-index.json) |
 //               [messages] | { none: 'why it can't be refused' }
+//   steps: { tap } | { type: [selector, text] } | { pick: [select, value] } | { file: [input, name, text] } | { back: true }
 //   unreachable: { [message]: 'why the app never meets it' } — taken out of 'all'
 //   keeps:      { [db key]: why } — what may change even when the action is refused (left out of 'nothing half-saved')
 //   hash:       start from a link (e.g. a shared friend card)

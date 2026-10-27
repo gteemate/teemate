@@ -128,6 +128,12 @@
    "Only admins can change green sizes.",
    "Green width must be between 8 and 80 yards."
   ],
+  "admin_set_handicaps": [
+   "Only the club office can update handicaps.",
+   "There are no handicaps to update.",
+   "Handicap index must be between +10 and 54.",
+   "One of those isn't a member any more."
+  ],
   "admin_set_hut_on": [
    "Only admins can switch the halfway hut on or off."
   ],
@@ -1372,6 +1378,12 @@
   "setGuestHandicap": {
    "rpc": [
     "set_guest_handicap"
+   ],
+   "tables": []
+  },
+  "setHandicaps": {
+   "rpc": [
+    "admin_set_handicaps"
    ],
    "tables": []
   },

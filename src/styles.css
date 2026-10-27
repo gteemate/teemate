@@ -1016,3 +1016,5 @@ button.lrow.ci-m{width:100%;text-align:left;background:none;border:0;border-top:
 .pgrid4 .pn.held{color:var(--muted);font-style:italic;font-weight:500;font-size:14px}
 .pslot.held{opacity:.75;border-style:dashed}
 .ocell.held{font-style:italic;opacity:.75}
+.filebtn{display:flex;align-items:center;justify-content:center;min-height:48px;border-radius:14px;cursor:pointer;margin:8px 0 12px}
+.hchg{max-height:44vh;overflow:auto}
