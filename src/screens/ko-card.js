@@ -9,11 +9,12 @@ import { courseHandicap, shotsOnHole } from '../scoring.js'
 import { buildLibrary, gameSpec, teeRating } from '../games.js'
 import { entryName, entryPlayers, koCardState, koSpec, roundName } from '../knockout.js'
 import { openCourse } from '../open-holes.js'
+import { isoDate, today as todayDate } from '../dates.js'
 
 const COL = ['var(--gold)', 'var(--flag-back)'] // side A, side B
 
 /** The state of every fixture with a scorecard: { [matchId]: koCardState + { card } }, each on its round's open holes. */
-export function koStates({ matches, entries, members, course, games, cards, roundHoles = {} }) {
+export function koStates({ matches, entries, members, course, games, cards, roundHoles = {}, today = isoDate(todayDate()) }) {
   const L = buildLibrary(games), ch = id => courseHandicap(members.find(m => m.id === id)?.hcp ?? 0, teeRating(course))
   const out = {}
   for (const m of matches) {
@@ -21,7 +22,7 @@ export function koStates({ matches, entries, members, course, games, cards, roun
     if (!card) continue
     const sides = [entryPlayers(m.aEntry, entries), entryPlayers(m.bEntry, entries)]
     const lib = L.lib[card.game], st = koCardState(card, openCourse(course.holes, roundHoles[m.round]), sides, ch, koSpec(lib?.play ? gameSpec(lib) : null, sides[0].length === 2))
-    if (st) out[m.id] = { ...st, card }
+    if (st && (st.finished || card.date >= today)) out[m.id] = { ...st, card } // an earlier day's card left unfinished isn't the match any more
   }
   return out
 }
