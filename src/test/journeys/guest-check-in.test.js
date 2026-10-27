@@ -103,3 +103,21 @@ describe('Club office → Guests', () => {
     expect(app.db.guestVisits).toHaveLength(0)
   })
 })
+
+describe('the member’s Guest points page', () => {
+  const points = async setup => { app = await boot(setup, { as: 'member' }); await app.tap('#account'); await app.tap('[data-a="points"]') }
+  it('Guest points: Show my card shows my QR code', async () => {
+    await points()
+    await app.tap('Show my card')
+    const sheet = document.querySelector('.sheet')
+    expect(sheet.querySelector('.qr svg')).not.toBeNull()
+    expect(sheet.textContent).toContain(app.db.members.find(m => m.id === 1).name)
+    expect(sheet.textContent).toContain('Show this at the club office to check in your guests')
+  })
+  it('a guest checked in at the office shows in my guest list', async () => {
+    await points(db => db.guestVisits.push({ id: 78, member: 1, date: db.today, guest: 'Sam Guest', club: 'Portrush', points: 3, playerId: null, by: 9000 }))
+    const row = [...document.querySelectorAll('.lrow')].find(r => r.textContent.includes('Sam Guest'))
+    expect(row.textContent).toContain('Checked in at the club office')
+    expect(row.textContent).toContain('−3')
+  })
+})

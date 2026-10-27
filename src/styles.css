@@ -1009,3 +1009,6 @@ details.oboard[open] > summary::before{transform:rotate(90deg)}
 .ci-who{display:grid;grid-template-columns:44px 1fr;gap:12px;align-items:center;padding:14px}
 .ci-g{display:grid;gap:6px;padding:14px;margin-bottom:10px}
 button.lrow.ci-m{width:100%;text-align:left;background:none;border:0;border-top:1px solid var(--line);color:var(--ink);cursor:pointer}
+.mycard{text-align:center}
+.mycard .qr.big{background:#fff;padding:16px;border-radius:18px;width:min(78vw,320px);margin:14px auto}
+.mypts #mycard{margin-top:12px;width:100%}
