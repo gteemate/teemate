@@ -24,7 +24,7 @@ export const API_NAMES = ['getMe', 'forgetMe', 'getSession', 'signIn', 'needsAcc
   'getGuestPoints', 'getBookingRules', 'setBookingRules', 'requestTeeTime', 'cancelTeeTimeRequest', 'getMyTeeTimeRequests', 'getTeeTimeRequests',
   'decideTeeTimeRequest', 'markTeeTimeRequestsSeen', 'dismissTeeTimeRequest', 'getGameSettings', 'setMyGamePref', 'getCurrentRound', 'getRound', 'deleteRound', 'saveRound',
   'getTodayRounds', 'getCardsForTeeTimes', 'getMyPlayerEvents', 'proposePlayerEvent', 'proposeSingles', 'counterPlayerEvent', 'answerPlayerEvent', 'cancelPlayerEvent',
-  'getStamps', 'getEvents', 'saveEvent', 'saveEvents', 'enterEvent', 'withdrawEvent', 'removeEventEntrant', 'demoFillEvent', 'demoClearEvent', 'getEventTemplates', 'saveEventTemplate', 'deleteEventTemplate', 'saveSeason', 'deleteEvent', 'getCardsOn', 'getLeagueEntries', 'getCardsById', 'enterLeague', 'leaveLeague', 'enterEventToday',
+  'getStamps', 'getEvents', 'saveEvent', 'saveEvents', 'enterEvent', 'withdrawEvent', 'removeEventEntrant', 'demoFillEvent', 'demoClearEvent', 'officeTakeOutLeague', 'officeDeleteLeagueCard', 'getEventTemplates', 'saveEventTemplate', 'deleteEventTemplate', 'saveSeason', 'deleteEvent', 'getCardsOn', 'getLeagueEntries', 'getCardsById', 'enterLeague', 'leaveLeague', 'enterEventToday',
   'getEventEntries', 'enterEventRound', 'leaveEventRound', 'startLeagueKnockout',
   'getSignups', 'getSignupCounts', 'getSignupDeclines', 'declineSignup', 'undeclineSignup', 'runSignup', 'enterSignup', 'withdrawSignup', 'setMyPlaysIn', 'adminSetPlaysIn', 'saveSignup', 'deleteSignup', 'demoFillSignup', 'demoClearSignup',
   'getKnockout', 'createMemberKnockout', 'deleteMemberKnockout', 'makeDraw', 'swapDraw', 'setRoundDeadlines', 'setKoRoundHoles', 'publishDraw', 'getKoMatchOfCard', 'linkKoCard', 'reportKoResult', 'confirmKoResult', 'disputeKoResult', 'adminSetKoResult',
@@ -642,6 +642,20 @@ export function makeWorld(today, setup = () => {}, as = 'admin') {
       db.rounds = [...db.rounds.filter(r => r.id !== round.id), row]
     },
     deleteRound: async rid => dropRound(rid),
+    officeTakeOutLeague: async (eid, mid, week) => {
+      if (!db.asOffice && !me()?.admin) throw new Error('Only the club office can take a player out of a league week.')
+      const n = db.leagueEntries.length
+      db.leagueEntries = db.leagueEntries.filter(x => !(x.eventId === eid && x.memberId === mid && x.week === week))
+      if (n === db.leagueEntries.length) throw new Error("They aren't entered in that week any more.")
+    },
+    officeDeleteLeagueCard: async rid => {
+      if (!db.asOffice && !me()?.admin) throw new Error("Only the club office can delete a player's card.")
+      const r = db.rounds.find(x => x.id === rid)
+      if (!r) throw new Error('That card has already gone.')
+      if (!db.leagueEntries.some(x => x.roundId === rid)) throw new Error('Only league cards can be deleted here.')
+      if (r.done.every(Boolean)) throw new Error('That card is finished. Take a player out of the week instead.')
+      dropRound(rid)
+    },
     getTodayRounds: async () => [],
     getCardsForTeeTimes: async () => ({}),
     getMyPlayerEvents: async () => copy(db.playerEvents),

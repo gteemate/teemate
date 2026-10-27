@@ -76,6 +76,28 @@ describe('a sign-up league: entries in, then captains and the draw', () => {
   })
 })
 
+describe('unfinished league cards, for the office', () => {
+  const played = db => {
+    league({ startDate: '2026-10-01', signup: false, team: { 1: 0, 2: 0, 3: 1 } })(db)
+    db.rounds.push({ id: 871, date: '2026-10-09', lineup: [{ m: 1 }, { m: 2 }], scores: Array.from({ length: 18 }, () => [4, 4]), done: Array.from({ length: 18 }, (_, i) => i < 3), updated_at: '2026-10-09T12:00:00Z' },
+      { id: 872, date: '2026-10-08', lineup: [{ m: 3 }], scores: Array.from({ length: 18 }, () => [4]), done: Array(18).fill(true), updated_at: '2026-10-08T12:00:00Z' })
+    db.leagueEntries.push({ eventId: 880, week: 2, memberId: 1, roundId: 871 }, { eventId: 880, week: 2, memberId: 2, roundId: 871 }, { eventId: 880, week: 2, memberId: 3, roundId: 872 })
+  }
+  it('lists only the cards not finished, with the week, day and how far they got', async () => {
+    app = await boot(played)
+    await open()
+    const rows = [...document.querySelectorAll('[data-o-lgout]')].map(b => b.dataset.oLgout)
+    expect(rows).toEqual(['1:2', '2:2']) // Ciarán's finished card isn't listed
+    expect(document.querySelector('.odetail').textContent).toContain('Unfinished cards · 2')
+    expect(document.querySelector('.odetail').textContent).toContain('Week 2 · Fri 9 Oct · thru 3 of 18')
+  })
+  it('none unfinished: no section', async () => {
+    app = await boot(db => { played(db); db.rounds[db.rounds.length - 2].done = Array(18).fill(true) })
+    await open()
+    expect(document.querySelector('[data-o-lgout]')).toBe(null)
+  })
+})
+
 describe('league settings', () => {
   it('a new league: League comes before Holes; with sign-up on, Save event straight away', async () => {
     app = await boot(db => { db.asOffice = true })

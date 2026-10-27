@@ -15,7 +15,7 @@ setStampSource(raw.getStamps)
 const w = wrapApi(raw)
 export { cache }
 export const {
-  getMembers, getAccessList, getCourse, getPins, getGameSettings, getEvents, getEventTemplates, saveEvents, enterEvent, withdrawEvent, removeEventEntrant, demoFillEvent, demoClearEvent, saveEventTemplate, deleteEventTemplate, setKoRoundHoles,
+  getMembers, getAccessList, getCourse, getPins, getGameSettings, getEvents, getEventTemplates, saveEvents, enterEvent, withdrawEvent, removeEventEntrant, demoFillEvent, demoClearEvent, officeTakeOutLeague, officeDeleteLeagueCard, saveEventTemplate, deleteEventTemplate, setKoRoundHoles,
   getTheme, getSignups, getSignupCounts, getKnockout, getAccessRequests, getTeeTimeRequests,
   getBuddies, getFriends, getFavourites, setTheme, setClubName, setFeePayment, setPaperCards,
   setHutOn, setBookingRules, setDayBoardDays, setDayBoardToday, setCourseLocation, setGreenWidth,

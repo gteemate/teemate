@@ -544,6 +544,12 @@
    "Add the guest's name.",
    "Not enough guest points: % has % left."
   ],
+  "office_delete_league_card": [
+   "Only the club office can delete a player's card.",
+   "That card has already gone.",
+   "Only league cards can be deleted here.",
+   "That card is finished. Take a player out of the week instead."
+  ],
   "office_guest_charges_today": [
    "Only the club office can check in guests."
   ],
@@ -556,6 +562,10 @@
    "That booking no longer exists.",
    "That tee time has passed.",
    "This group has already started scoring, so the booking can't change."
+  ],
+  "office_take_out_league": [
+   "Only the club office can take a player out of a league week.",
+   "They aren't entered in that week any more."
   ],
   "on_card": [],
   "paper_confirmable": [
@@ -1251,6 +1261,18 @@
   "needsAccount": {
    "rpc": [
     "needs_account"
+   ],
+   "tables": []
+  },
+  "officeDeleteLeagueCard": {
+   "rpc": [
+    "office_delete_league_card"
+   ],
+   "tables": []
+  },
+  "officeTakeOutLeague": {
+   "rpc": [
+    "office_take_out_league"
    ],
    "tables": []
   },

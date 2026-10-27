@@ -204,6 +204,24 @@ export default [
     action: 'removeEventEntrant', expect: db => db.events.find(e => e.id === 880).players.length === 0, refusals: 'all',
   },
   {
+    id: 'office-league-take-out', who: 'office', title: 'Take a player out of a league week (an unfinished card), so they can enter a new one',
+    setup: db => { db.events.push({ id: 870, name: 'Winter League', style: 'league', fmt: 'beststab', club: true, everyone: false, startDate: '2026-10-01', days: 1, weeks: 6, bestOf: 4,
+      teams: [{ name: 'Blues', col: '#6CB6FF', size: 6 }], team: { 1: 0, 3: 0 }, players: [1, 3], matches: {}, captainPool: [], createdBy: { id: 0, name: 'Gary Cochrane' } })
+    db.rounds.push({ id: 871, date: '2026-10-09', lineup: [{ m: 1 }, { m: 3 }], scores: Array.from({ length: 18 }, () => [4, 4]), done: Array.from({ length: 18 }, (_, i) => i === 0), updated_at: '2026-10-09T12:00:00Z' })
+    db.leagueEntries.push({ eventId: 870, week: 2, memberId: 1, roundId: 871 }, { eventId: 870, week: 2, memberId: 3, roundId: 871 }) },
+    steps: [{ tap: '[data-ov="comps"]' }, { tap: '[data-o-comp="e:870"]' }, { tap: '[data-o-lgout="1:2"]' }, { tap: '[data-o-lgout="1:2"]' }],
+    action: 'officeTakeOutLeague', expect: db => !db.leagueEntries.some(x => x.memberId === 1) && db.leagueEntries.some(x => x.memberId === 3) && db.rounds.some(r => r.id === 871), refusals: 'all',
+  },
+  {
+    id: 'office-league-delete-card', who: 'office', title: 'Delete an unfinished league card nobody needs',
+    setup: db => { db.events.push({ id: 870, name: 'Winter League', style: 'league', fmt: 'beststab', club: true, everyone: false, startDate: '2026-10-01', days: 1, weeks: 6, bestOf: 4,
+      teams: [{ name: 'Blues', col: '#6CB6FF', size: 6 }], team: { 1: 0, 3: 0 }, players: [1, 3], matches: {}, captainPool: [], createdBy: { id: 0, name: 'Gary Cochrane' } })
+    db.rounds.push({ id: 871, date: '2026-10-09', lineup: [{ m: 1 }, { m: 3 }], scores: Array.from({ length: 18 }, () => [4, 4]), done: Array.from({ length: 18 }, (_, i) => i === 0), updated_at: '2026-10-09T12:00:00Z' })
+    db.leagueEntries.push({ eventId: 870, week: 2, memberId: 1, roundId: 871 }, { eventId: 870, week: 2, memberId: 3, roundId: 871 }) },
+    steps: [{ tap: '[data-ov="comps"]' }, { tap: '[data-o-comp="e:870"]' }, { tap: '[data-o-lgdel="871"]' }, { tap: '[data-o-lgdel="871"]' }],
+    action: 'officeDeleteLeagueCard', expect: db => !db.rounds.some(r => r.id === 871) && !db.leagueEntries.some(x => x.roundId === 871), refusals: 'all',
+  },
+  {
     id: 'office-demo-fill-signup', who: 'office', title: 'For a demo: fill a mixed pairs competition with made-up pairs',
     steps: [{ tap: '[data-ov="comps"]' }, { tap: '[data-o-comp="s:4"]' }, { tap: '[data-o-demo="8"]' }],
     action: 'demoFillSignup', expect: db => db.signupEntries.filter(e => e.compId === 4).length === 8, refusals: 'all',

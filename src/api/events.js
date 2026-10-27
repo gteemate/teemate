@@ -101,6 +101,10 @@ export async function getCardsOn(dates) {
 /* ---------- Leagues ---------- */
 
 /** League entries: [{ eventId, week, memberId, roundId }] (only leagues I can see). */
+/** The office: take a player out of a league week (their scores on the card stay; they can enter a new card). */
+export async function officeTakeOutLeague(eventId, memberId, week) { must(await sb.rpc('office_take_out_league', { p_event: eventId, p_member: memberId, p_week: week })) }
+/** The office: delete an unfinished league card (its league entries go with it). */
+export async function officeDeleteLeagueCard(roundId) { must(await sb.rpc('office_delete_league_card', { p_round: roundId })) }
 export async function getLeagueEntries(eventIds) {
   if (!eventIds.length) return []
   return must(await sb.from('league_entries').select('event_id, week, member_id, round_id').in('event_id', eventIds))

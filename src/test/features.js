@@ -57,6 +57,15 @@ export const FEATURES = [
       { says: 'A real refusal still says why', tests: ['src/test/journeys/offline-scores.test.js › a refusal from the server (not the signal) still says why and keeps the hole open'] },
     ],
     demo: [{ who: 'live@test.com', steps: ['Start a round', 'Turn on Airplane mode, save a hole', 'Turn Airplane mode off'], see: '“Saved on your phone”, then “Your scores have been sent”.' }] },
+  { id: 'league-unfinished-cards', area: 'Competitions', name: 'Unfinished league cards, sorted out by the office',
+    what: 'A running league’s page in office Competitions lists entered cards not finished. The office can take a player out of that week (their scores stay; they can enter a new card, e.g. after withdrawing ill) or delete a card nobody needs.',
+    scenarios: [
+      { says: 'Only unfinished cards, with the week, day and how far they got', tests: ['src/test/journeys/league-draw.test.js › lists only the cards not finished, with the week, day and how far they got', 'src/test/journeys/league-draw.test.js › none unfinished: no section'] },
+      { says: 'Take a player out of the week; the card and the others stay', tests: ['journey:office-league-take-out', 'supabase/tests/office_league_cards.sql › League cards: taken out of the week, the card and the others stay'] },
+      { says: 'Delete an unfinished card; a finished one stays', tests: ['journey:office-league-delete-card', 'supabase/tests/office_league_cards.sql › League cards: a finished card isn\'t deleted'] },
+      { says: 'Office only', tests: ['rule:league-take-out-office-only', 'rule:league-delete-card-office-only'] },
+    ],
+    demo: [{ who: 'admin@test.com', steps: ['Competitions → Winter League Live', 'Unfinished cards → Take out of week 3'], see: 'The player can start a new card and enter it for the league that week.' }] },
   { id: 'event-winner', area: 'Competitions', name: 'A finished event crowns its winner',
     what: 'Once an individual event’s last day has passed, its leaderboard opens with a gold Winner banner: the name and points (or Tied for first).',
     scenarios: [

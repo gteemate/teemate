@@ -4,6 +4,7 @@
 import { holesText } from '../open-holes.js'
 import { signupLine, closesOn } from '../event-signups.js'
 import { azList, wireAz } from '../az.js'
+import { openCourse, holesFor } from '../open-holes.js'
 import * as api from '../api.js'
 import { S } from '../state.js'
 import { $, esc, header, keepScroll, render, redraw, toast, top0 } from '../ui.js'
@@ -26,6 +27,16 @@ export async function load() {
     return { key: `s:${c.id}`, c, n: es.length, demo: es.filter(x => demo.has(x.memberId) || demo.has(x.partnerId)).length }
   })
   evs.forEach(x => { x.demo = x.e.players.filter(id => demo.has(id)).length })
+  // Running leagues: their entered cards not finished over the week's holes (the office can take a player out, or delete).
+  const leagues = evs.filter(x => x.e.style === 'league' && x.e.startDate <= t && !x.done)
+  if (leagues.length) {
+    const [entries, course] = await Promise.all([api.getLeagueEntries(leagues.map(x => x.e.id)), api.getCourse()])
+    const cards = await api.getCardsById([...new Set(entries.map(x => x.roundId))])
+    for (const x of leagues) x.unfinished = entries.filter(en => en.eventId === x.e.id && cards[en.roundId]).map(en => {
+      const card = cards[en.roundId], wh = openCourse(course.holes, holesFor(x.e, en.week))
+      return { ...en, date: card.date, thru: wh.filter(h => card.done[h.i]).length, of: wh.length, on: entries.filter(o => o.roundId === en.roundId).length }
+    }).filter(u => u.thru < u.of).sort((a, b) => a.week - b.week || a.date.localeCompare(b.date))
+  }
   const kos = Object.fromEntries(await Promise.all(comps.filter(x => x.c.drawPublished || x.n).map(async x => [x.key, await api.getKnockout(x.c.id)])))
   return { evs, comps, kos, members, t, tpls: tpls.map(x => ({ key: `t:${x.id}`, t: x })) }
 }
@@ -115,6 +126,22 @@ export function draw({ evs, comps, kos, members, t, tpls = [] }) {
     const mid = +b.dataset.oRment, who = members.find(m => m.id === mid)?.name ?? 'They'
     try { await api.removeEventEntrant(sel.e.id, mid) } catch (er) { toast(er.message); return }
     await keepScroll(render); toast(`${who} taken off ${sel.e.name}`)
+  }))
+  // Unfinished league cards: take a player out of the week, or delete the card (tap twice each).
+  const twice = (b, label) => { if (b.dataset.armed === '1') return true; b.dataset.armed = '1'; b.textContent = label; return false }
+  document.querySelectorAll('[data-o-lgout]').forEach(b => (b.onclick = async () => {
+    const [mid, week] = b.dataset.oLgout.split(':').map(Number), who = members.find(m => m.id === mid)?.name ?? 'They'
+    if (!twice(b, `Tap again: out of week ${week}`)) return
+    b.disabled = true
+    try { await api.officeTakeOutLeague(sel.e.id, mid, week) } catch (er) { toast(er.message); b.disabled = false; return }
+    await keepScroll(render); toast(`${who} is out of week ${week}: they can enter a new card`)
+  }))
+  document.querySelectorAll('[data-o-lgdel]').forEach(b => (b.onclick = async () => {
+    const on = +b.dataset.on
+    if (!twice(b, on > 1 ? `Tap again: the card and its ${on} players’ entries go` : 'Tap again: the card goes')) return
+    b.disabled = true
+    try { await api.officeDeleteLeagueCard(+b.dataset.oLgdel) } catch (er) { toast(er.message); b.disabled = false; return }
+    await keepScroll(render); toast('Card deleted')
   }))
   // Demo entries: fill to a number (or the limit), or take them all out (tap twice).
   document.querySelectorAll('[data-o-demo]').forEach(b => (b.onclick = async () => {
@@ -207,6 +234,9 @@ function detail(x, ko, members, t) {
             ${e.players.length ? `<span class="oacts"><button class="ghost sm" data-o-ents="${e.id}" aria-expanded="${S.oEnts === e.id}">${S.oEnts === e.id ? 'Hide entrants' : `Show entrants (${e.players.length})`}</button></span>` : ''}</div>
           ${S.oEnts !== e.id ? '' : `<div class="opad">${ents.bar}</div>` + ents.shown.map(id => `<div class="orow"><span class="ot"><b>${esc(name(id))}</b></span><span class="oacts"><button class="ghost sm accremove" data-o-rment="${id}">Remove</button></span></div>`).join('')}
           ${demoBar(e.players.length, e.maxEntries, x.demo, 'entrants')}` : ''}
+        ${x.unfinished?.length ? `<div class="orow"><span class="ot"><b>Unfinished cards · ${x.unfinished.length}</b><span>League cards not finished. Take a player out of that week (their scores stay) so they can enter a new card, e.g. after withdrawing ill; or delete a card nobody needs.</span></span></div>
+          ${x.unfinished.map(u => `<div class="orow"><span class="ot"><b>${esc(name(u.memberId))}</b><span>Week ${u.week} · ${u.date === t ? 'today' : eventDates(u.date, 1)} · thru ${u.thru} of ${u.of}${e.team?.[u.memberId] != null && e.teams?.[e.team[u.memberId]] ? ` · ${esc(e.teams[e.team[u.memberId]].name)}` : ''}</span></span>
+            <span class="oacts"><button class="ghost sm" data-o-lgout="${u.memberId}:${u.week}">Take out of week ${u.week}</button><button class="ghost sm accremove" data-o-lgdel="${u.roundId}" data-on="${u.on}">Delete card</button></span></div>`).join('')}` : ''}
         ${e.koComp ? `<div class="orow"><span class="ot"><b>The knockout finish</b><span>The top ${e.koTop} from the table</span></span><span class="oacts"><button class="ghost sm" data-o-go="draw:${e.koComp}">Open the draw</button></span></div>` : ''}
       </div>`
   }
