@@ -443,6 +443,36 @@ export function makeWorld(today, setup = () => {}, as = 'admin') {
     reportKoResult: async (mid, w, r) => Object.assign(db.koMatches.find(m => m.id === mid), { status: 'reported', winnerEntry: w, result: r, reportedEntry: db.signupEntries.find(e => e.memberId === ME || e.partnerId === ME)?.id }),
     confirmKoResult: async mid => { const m = db.koMatches.find(x => x.id === mid); m.status = 'confirmed'; db.koAdvance(m) },
     disputeKoResult: async mid => { db.koMatches.find(m => m.id === mid).status = 'disputed' },
+    // The draw, with the database's rules (admin_make_draw, admin_publish_draw, admin_swap_draw, admin_set_round_deadlines).
+    makeDraw: async cid => {
+      if (!db.asOffice && !db.members.find(m => m.id === ME)?.admin) throw new Error('Only admins can make the draw.')
+      const c = db.signups.find(x => x.id === cid)
+      if (!c) throw new Error('That competition no longer exists.')
+      if (c.drawPublished) throw new Error('The draw is already published.')
+      const ents = db.signupEntries.filter(e => e.compId === cid).map(e => e.id)
+      if (ents.length < 2) throw new Error('A draw needs at least two entries.')
+      const rounds = Math.ceil(Math.log2(ents.length)), size = 2 ** rounds
+      db.koMatches = db.koMatches.filter(m => m.compId !== cid)
+      for (let r = 1; r <= rounds; r++) for (let k = 0; k < size / 2 ** r; k++) {
+        const a = r === 1 ? ents[2 * k] ?? null : null, b = r === 1 ? ents[2 * k + 1] ?? null : null, bye = r === 1 && a != null && b == null
+        db.koMatches.push({ id: id(), compId: cid, round: r, slot: k, aEntry: a, bEntry: b, winnerEntry: bye ? a : null, result: null, status: bye ? 'bye' : 'open', reportedEntry: null })
+      }
+      db.koMatches.filter(m => m.compId === cid && m.status === 'bye').forEach(db.koAdvance)
+    },
+    publishDraw: async cid => {
+      if (!db.asOffice && !db.members.find(m => m.id === ME)?.admin) throw new Error('Only admins can publish the draw.')
+      if (!db.koMatches.some(m => m.compId === cid)) throw new Error('Make the draw first.')
+      db.signups.find(x => x.id === cid).drawPublished = true
+    },
+    swapDraw: async (cid, x, y) => {
+      if (!db.asOffice && !db.members.find(m => m.id === ME)?.admin) throw new Error('Only admins can change the draw.')
+      if (db.signups.find(c => c.id === cid)?.drawPublished) throw new Error('The draw is published.')
+      for (const m of db.koMatches.filter(m => m.compId === cid && m.round === 1)) for (const k of ['aEntry', 'bEntry']) m[k] = m[k] === x ? y : m[k] === y ? x : m[k]
+    },
+    setRoundDeadlines: async (cid, dates) => {
+      if (!db.asOffice && !db.members.find(m => m.id === ME)?.admin) throw new Error('Only admins can set the dates.')
+      db.signups.find(c => c.id === cid).roundDeadlines = [...dates]
+    },
     adminSetKoResult: async (mid, w, r) => { const m = db.koMatches.find(x => x.id === mid); Object.assign(m, { status: 'confirmed', winnerEntry: w, result: r }); db.koAdvance(m) },
     saveSeason: async e => { const x = db.events.find(y => y.id === e.id); Object.assign(x, copy({ days: e.days, team: e.team, players: Object.keys(e.team).map(Number), matches: e.matches, dayRules: e.dayRules ?? x.dayRules ?? null })) },
     // As the real saveEvent: points only for four-ball team match play; holes checked as the database does.

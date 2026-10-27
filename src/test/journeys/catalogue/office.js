@@ -5,6 +5,25 @@ const join = db => db.joins.push({ id: 1, name: 'Sean Byrne', email: 'sean@examp
 const request = db => db.requests.push({ id: 7, memberId: 1, slotId: at(db, 540, LATER).id, date: LATER, time: 540, memberIds: [], guests: [], reason: 'Visitors from Boston', status: 'pending', bookingId: null, note: null, seen: true, createdAt: '2026-10-09T18:00:00Z' })
 const booked = db => db.book(1, at(db, 600).id, [3])
 const member = id => [{ tap: '[data-ov="members"]' }, { tap: `[data-o-m="${id}"]` }]
+// Men's Match Play: four entries (Gary 100, Declan 101, Ciarán 102, Siobhán 103), entries closed.
+const entered = () => db => {
+  Object.assign(db.signups[0], { closesOn: '2026-10-01', drawPublished: false, roundDeadlines: [] })
+  db.signupEntries.push(...[0, 1, 3, 5].map((m, i) => ({ id: 100 + i, compId: 1, memberId: m, partnerId: null })))
+}
+const drawn = published => db => {
+  entered()(db)
+  Object.assign(db.signups[0], { drawPublished: published, roundDeadlines: published ? ['2026-11-15', '2026-12-06'] : [] })
+  db.koMatches.push({ id: 1, compId: 1, round: 1, slot: 0, aEntry: 100, bEntry: 101, winnerEntry: null, result: null, status: 'open', reportedEntry: null },
+    { id: 2, compId: 1, round: 1, slot: 1, aEntry: 102, bEntry: 103, winnerEntry: null, result: null, status: 'open', reportedEntry: null },
+    { id: 3, compId: 1, round: 2, slot: 0, aEntry: null, bEntry: null, winnerEntry: null, result: null, status: 'open', reportedEntry: null })
+}
+const openDraw = [{ tap: '[data-ov="comps"]' }, { tap: '[data-o-comp="s:1"]' }, { tap: db => (db.koMatches.length ? (db.signups[0].drawPublished ? 'Set results' : 'Make the draw') : 'Make the draw') }]
+// A card read from paper today, left for the office to confirm (Tom uploaded it).
+const paperCard = db => {
+  const b = db.book(10, at(db, 570).id, [1])
+  db.rounds.push({ id: 61, date: db.today, slotId: b.slotId, createdBy: 10, lineup: [{ m: 10 }, { m: 1 }], game: 'stab', pairing: 0, submitted: {},
+    scores: Array.from({ length: 18 }, () => [4, 5]), done: Array(18).fill(true), paper: { by: 10, confirmer: null, state: 'waiting', note: null, photos: 1 } })
+}
 
 export default [
   {
@@ -123,5 +142,89 @@ export default [
     id: 'office-hut-remove', who: 'office', title: 'Take something off the halfway hut menu',
     steps: [{ tap: '[data-ov="club"]' }, { tap: '[data-o-open="hutadmin"]' }, { tap: '[data-item="1"]' }, { tap: '#hut-rm' }, { tap: '#hut-rm' }],
     action: 'removeHutItem', expect: db => !db.hut.menu.some(i => i.id === 1), refusals: 'all',
+  },
+  {
+    id: 'office-run-signup', who: 'office', title: 'Open a sign-up competition again for this year',
+    setup: db => { Object.assign(db.signups[1], { open: false, closesOn: '2025-09-01' }) },
+    steps: [{ tap: '[data-ov="comps"]' }, { tap: '[data-o-comp="s:2"]' }, { type: ['#o-rclose', '2026-11-01'] }, { type: ['#o-rfinal', '2027-03-01'] }, { tap: '#o-run' }],
+    action: 'runSignup', expect: db => db.signups[1].open && db.signups[1].closesOn === '2026-11-01', refusals: 'all',
+  },
+  {
+    id: 'office-delete-signup', who: 'office', title: 'Delete a sign-up competition',
+    steps: [{ tap: '[data-ov="comps"]' }, { tap: '[data-o-comp="s:2"]' }, { tap: '#o-del' }, { tap: '#o-del' }],
+    action: 'deleteSignup', expect: db => !db.signups.some(c => c.id === 2), refusals: 'all',
+  },
+  {
+    id: 'office-delete-event', who: 'office', title: 'Delete a club event',
+    steps: [{ tap: '[data-ov="comps"]' }, { tap: db => `[data-o-comp="e:${db.events.find(e => e.club && e.style !== 'league').id}"]` }, { tap: '#o-del' }, { tap: '#o-del' }],
+    action: 'deleteEvent', expect: db => db.events.filter(e => e.club && e.style !== 'league').length === 0, refusals: 'all',
+  },
+  {
+    id: 'office-save-template', who: 'office', title: 'Save a club event as a template',
+    steps: [{ tap: '[data-ov="comps"]' }, { tap: '#o-new' }, { tap: '[data-o-kind="event"]' }, { type: ['#ev-name', 'Turkey Trot'] }, { tap: '[data-style="individual"]' }, { tap: '[data-who="all"]' }, { tap: '#ev-next' }, { tap: '#ev-tpl' }],
+    action: 'saveEventTemplate', expect: db => db.eventTemplates.some(t => t.name === 'Turkey Trot'), refusals: 'all',
+  },
+  {
+    id: 'office-delete-template', who: 'office', title: 'Delete a club event template',
+    setup: db => db.eventTemplates.push({ id: 77, name: 'Turkey Trot', setup: { name: 'Turkey Trot', style: 'individual', fmt: 'stab', days: 1, club: true, everyone: true, selfEntry: true, holes: null } }),
+    steps: [{ tap: '[data-ov="comps"]' }, { tap: '[data-o-comp="t:77"]' }, { tap: '#o-tdel' }, { tap: '#o-tdel' }],
+    action: 'deleteEventTemplate', expect: db => db.eventTemplates.length === 0, refusals: 'all',
+  },
+  {
+    id: 'office-new-event', who: 'office', title: 'Make a club event',
+    steps: [{ tap: '[data-ov="comps"]' }, { tap: '#o-new' }, { tap: '[data-o-kind="event"]' }, { type: ['#ev-name', 'Captain’s Day'] }, { tap: '[data-style="individual"]' }, { tap: '[data-who="all"]' }, { tap: '#ev-next' }, { tap: '#ev-next' }],
+    action: 'saveEvent', expect: db => db.events.some(e => e.name === 'Captain’s Day'), refusals: 'all',
+  },
+  {
+    id: 'office-weekly-repeat', who: 'office', title: 'Make a club event every week until a date',
+    steps: [{ tap: '[data-ov="comps"]' }, { tap: '#o-new' }, { tap: '[data-o-kind="event"]' }, { type: ['#ev-name', 'Sunday Stableford'] }, { tap: '[data-style="individual"]' }, { tap: '[data-who="all"]' }, { type: ['#ev-date', '2026-12-06'] }, { tap: '#ev-next' }, { type: ['#ev-rep', '2027-01-10'] }, { tap: '#ev-next' }],
+    action: 'saveEvents', expect: db => db.events.filter(e => e.name === 'Sunday Stableford').length === 6, refusals: 'all',
+  },
+  {
+    id: 'office-remove-entrant', who: 'office', title: 'Take someone off a league they signed up for',
+    setup: db => db.events.push({ id: 880, name: 'Frosty League', style: 'league', fmt: 'beststab', club: true, everyone: false, startDate: '2026-12-07', days: 1, weeks: 10, bestOf: 4,
+      teams: [], team: {}, players: [10], matches: {}, captainPool: [], signup: true, advertiseFrom: '2026-10-01', entriesClose: '2026-11-30', maxEntries: 4, createdBy: { id: 0, name: 'Gary Cochrane' } }),
+    steps: [{ tap: '[data-ov="comps"]' }, { tap: '[data-o-comp="e:880"]' }, { tap: '[data-o-ents="880"]' }, { tap: '[data-o-rment="10"]' }, { tap: '[data-o-rment="10"]' }],
+    action: 'removeEventEntrant', expect: db => db.events.find(e => e.id === 880).players.length === 0, refusals: 'all',
+  },
+  {
+    id: 'office-save-signup', who: 'office', title: 'Change a sign-up competition’s settings',
+    steps: [{ tap: '[data-ov="comps"]' }, { tap: '[data-o-comp="s:1"]' }, { tap: 'Entries and settings' }, { type: ['#sc-name', 'Men’s Match Play Cup'] }, { tap: 'Save' }],
+    action: 'saveSignup', expect: db => db.signups[0].name === 'Men’s Match Play Cup', refusals: 'all',
+  },
+  {
+    id: 'office-make-draw', who: 'office', title: 'Make a knockout draw',
+    setup: entered(), steps: [...openDraw, { tap: '#ko-make' }],
+    action: 'makeDraw', expect: db => db.koMatches.length > 0, refusals: 'all',
+  },
+  {
+    id: 'office-publish-draw', who: 'office', title: 'Publish a knockout draw',
+    setup: drawn(false), steps: [...openDraw, { tap: '#ko-pub' }, { tap: '#ko-pub' }],
+    action: 'publishDraw', expect: db => db.signups[0].drawPublished, refusals: 'all',
+  },
+  {
+    id: 'office-swap-draw', who: 'office', title: 'Swap two names in a draft draw',
+    setup: drawn(false), steps: [...openDraw, { tap: '[data-km="1"] .kos' }, { tap: '[data-km="2"] .kos' }],
+    action: 'swapDraw', expect: db => db.koMatches[0].aEntry === 102, refusals: 'all',
+  },
+  {
+    id: 'office-round-dates', who: 'office', title: 'Spread a knockout’s play-by dates to the final',
+    setup: drawn(false), steps: [...openDraw, { type: ['#ko-fin', '2027-03-01'] }, { tap: '#ko-spread' }],
+    action: 'setRoundDeadlines', expect: db => db.signups[0].roundDeadlines.at(-1) === '2027-03-01', refusals: 'all',
+  },
+  {
+    id: 'office-set-result', who: 'office', title: 'Set a knockout result as the competition secretary',
+    setup: drawn(true), steps: [...openDraw, { tap: '[data-kset="1"]' }, { tap: '[data-kw="101"]' }, { tap: '3&2' }, { tap: 'Save result' }],
+    action: 'adminSetKoResult', expect: db => db.koMatches[0].status === 'confirmed', refusals: 'all',
+  },
+  {
+    id: 'office-confirm-paper', who: 'office', title: 'Confirm a paper score left for the office',
+    setup: paperCard, steps: [{ tap: '[data-o-pconf="61"]' }],
+    action: 'confirmPaperScore', expect: db => db.rounds.find(r => r.id === 61).paper.state === 'confirmed', refusals: 'all',
+  },
+  {
+    id: 'office-send-back-paper', who: 'office', title: 'Send a paper score back with a note',
+    setup: paperCard, steps: [{ tap: '[data-o-pback="61"]' }, { type: ['#pb-note', 'Hole 14 was a 6'] }, { tap: '#pb-send' }],
+    action: 'sendBackPaperScore', expect: db => db.rounds.find(r => r.id === 61).paper.state === 'sent_back', refusals: 'all',
   },
 ]

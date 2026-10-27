@@ -44,7 +44,7 @@ describe.each(JOURNEYS.map(j => [j.id, j]))('%s', (_, j) => {
     await runSteps(app, j.steps.slice(-1))
     expect(whereSeen(text), 'the refusal should be seen where the person is looking').toMatch(/^(modal|notice|page)$/)
     const last = j.steps.at(-1).tap, el = last && (/^[#.[]/.test(last) ? document.querySelector(last) : [...document.querySelectorAll('button')].find(b => b.textContent.trim() === last))
-    if (el) expect(el.disabled, 'the button should work again').toBe(false)
+    if (el && 'disabled' in el) expect(el.disabled, 'the button should work again').toBe(false) // (a tapped name can't be disabled)
     expect(snapshot(app.db, j.keeps), 'nothing should be half-saved').toBe(before)
   })
 })
