@@ -79,4 +79,49 @@ export default [
     steps: [{ tap: '[data-ov="club"]' }, { tap: '[data-o-paper="on"]' }],
     action: 'setPaperCards', expect: db => db.theme.paperCards, refusals: 'all',
   },
+  {
+    id: 'office-club-name', who: 'office', title: 'Rename the club',
+    steps: [{ tap: '[data-ov="club"]' }, { tap: '[data-o-open="colours"]' }, { type: ['#club-name', 'Royal Portrush Test Club'] }, { tap: '#csave' }],
+    action: 'setClubName', expect: db => db.theme.name === 'Royal Portrush Test Club', refusals: 'all',
+  },
+  {
+    id: 'office-colours', who: 'office', title: 'Change the club’s colours',
+    steps: [{ tap: '[data-ov="club"]' }, { tap: '[data-o-open="colours"]' }, { type: ['#main-hex', '#224466'] }, { tap: '#csave' }],
+    action: 'setTheme', expect: db => db.theme.main?.toLowerCase() === '#224466', refusals: 'all',
+  },
+  {
+    id: 'office-course-location', who: 'office', title: 'Set where the course is (for the weather)',
+    steps: [{ tap: '[data-ov="club"]' }, { tap: '[data-o-open="colours"]' }, { type: ['#loc-q', '55.2, -6.65'] }, { tap: '#loc-find' }],
+    action: 'setCourseLocation', expect: db => db.theme.coursePlace === 'Pinned point', refusals: 'all',
+  },
+  {
+    id: 'office-publish-pins', who: 'office', title: 'Set today’s flags',
+    steps: [{ tap: '[data-ov="club"]' }, { tap: '[data-o-open="pins"]' }, { tap: '#pub' }],
+    action: 'publishPins', expect: db => db.pinSheet?.pins?.length === 18, refusals: 'all',
+  },
+  {
+    id: 'office-green-width', who: 'office', title: 'Correct a green’s width',
+    steps: [{ tap: '[data-ov="club"]' }, { tap: '[data-o-open="pins"]' }, { tap: '[data-w="1"]' }, { tap: '[data-wd="1"]' }, { tap: '#wsave' }],
+    action: 'setGreenWidth', expect: db => db.calls.includes('setGreenWidth'), refusals: 'all',
+  },
+  {
+    id: 'office-booking-rules', who: 'office', title: 'Change when tee times open',
+    steps: [{ tap: '[data-ov="tee"]' }, { tap: '#o-rules' }, { tap: '#br-save' }],
+    action: 'setBookingRules', expect: db => db.calls.includes('setBookingRules'), refusals: 'all',
+  },
+  {
+    id: 'office-hut-on', who: 'office', title: 'Switch the halfway hut on or off',
+    steps: [{ tap: '[data-ov="club"]' }, { tap: '[data-o-open="hutadmin"]' }, { tap: '#hut-on' }],
+    action: 'setHutOn', expect: db => db.calls.includes('setHutOn'), refusals: 'all',
+  },
+  {
+    id: 'office-hut-add', who: 'office', title: 'Add something to the halfway hut menu',
+    steps: [{ tap: '[data-ov="club"]' }, { tap: '[data-o-open="hutadmin"]' }, { tap: '#hut-add' }, { type: ['#hut-name', 'Soup of the day'] }, { type: ['#hut-price', '4.50'] }, { tap: '#hut-form button[type="submit"]' }],
+    action: 'saveHutItem', expect: db => db.hut.menu.some(i => i.name === 'Soup of the day'), refusals: 'all',
+  },
+  {
+    id: 'office-hut-remove', who: 'office', title: 'Take something off the halfway hut menu',
+    steps: [{ tap: '[data-ov="club"]' }, { tap: '[data-o-open="hutadmin"]' }, { tap: '[data-item="1"]' }, { tap: '#hut-rm' }, { tap: '#hut-rm' }],
+    action: 'removeHutItem', expect: db => !db.hut.menu.some(i => i.id === 1), refusals: 'all',
+  },
 ]

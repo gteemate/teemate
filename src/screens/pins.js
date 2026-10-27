@@ -56,7 +56,7 @@ export function draw({ course, sheet }) {
   const ws = $('wsave')
   if (ws) ws.onclick = async () => {
     const n = widthOpen, w = +$('wv').textContent, i = n - 1, p = draft[i], h = course.holes[i]
-    await api.setGreenWidth(n, w)
+    try { await api.setGreenWidth(n, w) } catch (err) { toast(err.message); return }
     // Keep the pin where it was measured from: "1 yd from the right" stays 1 from the right.
     const side = Math.min(shownSide(p, h), w - 1)
     Object.assign(p, pinFrom({ ...h, greenWidth: w }, p.depthRef, shownDepth(p, h), p.sideRef, side))
@@ -65,7 +65,8 @@ export function draw({ course, sheet }) {
     toast(`Hole ${n} green is ${w} yds wide`)
   }
   $('pub').onclick = async () => {
-    await api.publishPins(draft)
+    $('pub').disabled = true
+    try { await api.publishPins(draft) } catch (err) { toast(err.message); $('pub').disabled = false; return }
     draft = null
     await toAdmin()
     toast('Pins published to the Course tab')

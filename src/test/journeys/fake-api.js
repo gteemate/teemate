@@ -354,6 +354,11 @@ export function makeWorld(today, setup = () => {}, as = 'admin') {
       mine: db.guestVisits.filter(v => v.member === ME).map(v => ({ date: v.date, guest: v.guest, club: v.club, course: 'Ailsa', points: v.points })),
       members: db.members.map(m => ({ id: m.id, name: m.name, used: db.guestVisits.filter(v => v.member === m.id).reduce((t, v) => t + v.points, 0) })) }),
     getBookingRules: async () => ({ ...db.rules, now: new Date() }),
+    setBookingRules: async ({ time, days, weekendsOnly }) => {
+      if (!db.asOffice && !db.members.find(m => m.id === ME)?.admin) throw new Error('Only admins can change the booking rules.')
+      if (!(days >= 1 && days <= 13)) throw new Error('Days ahead must be between 1 and 13.')
+      db.rules = { ...db.rules, time, days, weekendsOnly: !!weekendsOnly }
+    },
     requestTeeTime: async ({ slotId, memberIds = [], guests = [], reason }) => {
       const s = slotById(slotId), r = { id: id(), memberId: ME, slotId, date: s.date, time: s.time, memberIds, guests, reason, status: 'pending', note: null, decidedAt: null, seen: false, createdAt: new Date().toISOString() }
       db.requests.unshift(r); return r.id
