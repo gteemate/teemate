@@ -1260,3 +1260,20 @@ describe('the tee sheet shows who’s out', () => {
     expect(app.toast()).toBe('That time is full')
   })
 })
+
+describe('My bookings: each booking laid out like the tee sheet', () => {
+  it('date with the time under it, then everyone on the time in the 2×2 grid; no “Booked by”', async () => {
+    app = await boot(db => db.book(3, at(db, 600).id, [0, 5])) // someone else booked me in
+    await app.tap('Booking')
+    const card = document.querySelector('[data-bk]')
+    expect(card.querySelector('.bk-d').textContent).toContain('10:00')
+    const names = [...card.querySelectorAll('.pgrid4 .pn')]
+    expect(names).toHaveLength(4)
+    expect(names.map(n => n.textContent)).toContain('You')
+    expect(card.querySelector('.pn.me').textContent).toBe('You')
+    expect(card.textContent).toContain(app.db.members.find(m => m.id === 5).name)
+    expect(card.textContent).not.toContain('Booked by')
+    await app.tap('[data-bk]')
+    expect(document.querySelector('.sheet').textContent).toContain('Booked by') // still in the details
+  })
+})
