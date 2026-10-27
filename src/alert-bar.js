@@ -104,6 +104,13 @@ async function act(a, id, btn) {
     S.tab = 'home'; S.aview = 'hutorder'; S.hutFrom = 'card' // Back returns to the scorecard
     return render()
   }
+  if (id === 'bookings') { // "booked you in": seen, and open my bookings
+    done.add(a.key)
+    shown = shown.filter(x => x.key !== a.key)
+    api.seenBookingNotice(a.ref.noticeId).catch(() => {})
+    S.tab = 'home'; S.aview = 'mine'
+    return render()
+  }
   if (id === 'ok' && a.kind === 'notice') {
     done.add(a.key)
     shown = shown.filter(x => x.key !== a.key)

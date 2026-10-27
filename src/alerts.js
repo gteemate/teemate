@@ -10,7 +10,7 @@ const later = { id: 'later', label: 'Later' }
 
 /**
  * → [{ key, kind: 'notice' | 'challenge' | 'request' | 'hutready' | 'hut', title, detail, actions: [{ id, label, primary? }], ref: { peId? , reqId? } }],
- * the club office's changes to my tee times first, then challenges, then answered requests (oldest answer first), then halfway hut orders ready to collect, then the
+ * the club office's changes to my tee times first, then bookings someone made for me, then challenges, then answered requests (oldest answer first), then halfway hut orders ready to collect, then the
  * hut's "would you like to order?" after hole 8. Keys in `hidden` (Later) are left out.
  * hut = { on, card, asked: cardIds, orders: my orders today, seen: ready orders already OK'd }
  */
@@ -34,8 +34,16 @@ export function pickAlerts({ me, playerEvents, requests, date, now = Date.now(),
       detail: r.status === 'approved' ? 'Booked. It’s in your bookings.' : r.note || 'No reason given',
       actions: [{ id: 'ok', label: 'OK', primary: true }, later],
     }))
+  // Someone booked me onto a tee time (not shown once the day has passed).
+  const names = l => (l.length > 1 ? `${l.slice(0, -1).join(', ')} and ${l.at(-1)}` : l[0])
+  const added = notices.filter(n => n.kind === 'added' && n.date >= date).map(n => ({
+    key: `bn:${n.id}`, kind: 'notice', ref: { noticeId: n.id },
+    title: `${n.byName} has booked you in`,
+    detail: `${longDay(fromIso(n.date))} at ${hhmm(n.oldTime)}${n.withNames?.length ? ` · with ${names(n.withNames)}` : ''}`,
+    actions: [{ id: 'ok', label: 'OK', primary: true }, { id: 'bookings', label: 'See my bookings' }],
+  }))
   // The club office cancelled or moved one of my tee times.
-  const office = notices.map(n => ({
+  const office = notices.filter(n => n.kind !== 'added').map(n => ({
     key: `bn:${n.id}`, kind: 'notice', ref: { noticeId: n.id },
     title: n.kind === 'moved' ? `Your ${hhmm(n.oldTime)} tee time on ${longDay(fromIso(n.date))} has moved to ${hhmm(n.newTime)}` : `Your ${hhmm(n.oldTime)} tee time on ${longDay(fromIso(n.date))} was cancelled`,
     detail: n.note ? `The club office: “${n.note}”` : n.kind === 'moved' ? 'The club office moved it. Everyone on the booking has been told.' : 'The club office cancelled it. Everyone on the booking has been told.',
@@ -51,7 +59,7 @@ export function pickAlerts({ me, playerEvents, requests, date, now = Date.now(),
     title: 'Halfway hut is open', detail: 'Would you like to place an order?',
     actions: [{ id: 'order', label: 'Order', primary: true }, { id: 'nothanks', label: 'No thanks' }],
   }] : []
-  return [...office, ...challenges, ...answered, ...ready, ...prompt].filter(a => !hidden.has(a.key))
+  return [...office, ...added, ...challenges, ...answered, ...ready, ...prompt].filter(a => !hidden.has(a.key))
 }
 
 /** Look for alerts on a new screen, or at most once a minute while the same screen redraws (a scorecard redraws on every tap). */

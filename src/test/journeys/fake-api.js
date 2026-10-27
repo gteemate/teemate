@@ -97,7 +97,7 @@ export function makeWorld(today, setup = () => {}) {
       { id: 2, section: 'Food', name: 'Toastie', pricePence: 500, soldOut: false, sort: 2 },
       { id: 3, section: 'Drinks', name: 'Tea', pricePence: 250, soldOut: false, sort: 1 }] },
     orders: [], entries: [], leagueEntries: [],
-    notices: [], // the office changed a booking: { id, memberId, kind, date, oldTime, newTime, note, seen }
+    notices: [], // the office changed a booking, or someone booked me in: { id, memberId, kind, date, oldTime, newTime, note, byName?, withNames?, bookingId?, seen }
     joins: [], emails: { 0: 'gary@example.invalid' }, office: null, asOffice: false, pinsToday: false, // club office: asking to join, sign-in emails, the office login
     events: [
       { id: 2, name: 'Winter League', style: 'league', fmt: 'beststab', club: true, everyone: false, startDate: addDaysIso(today, -5), days: 1, weeks: 6, bestOf: 4,
@@ -229,11 +229,14 @@ export function makeWorld(today, setup = () => {}) {
       db.book(b.bookedBy, sid, ids.filter(m => m !== b.bookedBy), mine.filter(p => p.guest).map(p => ({ name: p.name, club: p.club, hcp: p.hcp })))
       ids.forEach(m => db.notices.push({ id: id(), memberId: m, kind: 'moved', date: to.date, oldTime: s.time, newTime: to.time, note: note || null, seen: false }))
     },
-    getBookingNotices: async () => copy(db.notices.filter(n => n.memberId === ME && !n.seen)),
+    getBookingNotices: async () => copy(db.notices.filter(n => n.memberId === ME && !n.seen && (n.kind !== 'added' || db.bookings.some(b => b.id === n.bookingId)))),
     seenBookingNotice: async nid => { const n = db.notices.find(x => x.id === nid); if (n?.memberId === ME) n.seen = true },
     getMyTeeTimes: async date => copy(sheet(isoDate(date)).filter(s => s.players.some(p => p.memberId === ME))),
     bookTeeTime: async ({ slotId, memberIds = [], guests = [] }) => {
       const b = db.book(ME, slotId, memberIds, guests), s = slotById(slotId)
+      const on = s.players.filter(p => p.bookingId === b.id) // as the database: everyone else on it is told who booked them in
+      on.filter(p => p.memberId != null && p.memberId !== ME).forEach(p => db.notices.push({ id: id(), memberId: p.memberId, kind: 'added', date: s.date, oldTime: s.time,
+        newTime: null, note: null, byName: member(ME).name, withNames: on.filter(o => o !== p).map(o => o.name.split(' ')[0]), bookingId: b.id, seen: false }))
       return { id: b.id, date: s.date, time: s.time, players: s.players.filter(p => p.bookingId === b.id).map(p => p.name), guests: guests.length, pointsUsed: guests.length * 3 }
     },
     getGuests: async ids => Object.values(db.slots).flat().flatMap(s => s.players).filter(p => p.guest && ids.includes(p.id)).map(p => ({ id: p.id, name: p.name, club: p.club, hcp: p.hcp })),

@@ -438,6 +438,29 @@ describe('the pretend server', () => {
     await app.homeFromHere()
   })
 
+  it("20b. Another member books me in: I'm told who, when and with whom, and See my bookings opens them", async () => {
+    let slot
+    app = await boot(db => {
+      slot = at(db, 480)
+      const b = db.book(1, slot.id, [0])
+      db.notices.push({ id: 900, memberId: 0, kind: 'added', date: slot.date, oldTime: 480, newTime: null, note: null, byName: 'Pat Reid', withNames: ['Pat'], bookingId: b.id, seen: false })
+    })
+    await app.settle()
+    expect(document.getElementById('alerts').textContent).toContain('Pat Reid has booked you in')
+    expect(document.getElementById('alerts').textContent).toContain('at 08:00 · with Pat')
+    await app.tap('See my bookings')
+    expect(app.db.notices.find(n => n.id === 900).seen).toBe(true)
+    expect(app.text()).toContain('08:00')
+    await app.homeFromHere()
+  })
+
+  it('20c. When I book others in, each of them gets a "booked you in" notice (and I do not)', async () => {
+    app = await boot()
+    const slot = app.db.slotsOn(app.db.today).findLast(s => !s.players.length)
+    await (await import('../../api.js')).bookTeeTime({ slotId: slot.id, memberIds: [1, 3] })
+    expect(app.db.notices.filter(n => n.kind === 'added').map(n => [n.memberId, n.withNames.length])).toEqual([[1, 2], [3, 2]])
+  })
+
   it('21. The club office cancels a booking, with a note', async () => {
     let slot
     app = await boot(db => { db.asOffice = true; slot = at(db, 600); db.book(1, slot.id, [3]) })

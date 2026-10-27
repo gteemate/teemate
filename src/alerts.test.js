@@ -40,6 +40,19 @@ describe('pickAlerts: what drops down from the header', () => {
       .toMatchObject({ title: 'Your 10:00 tee time on Sat 17 Oct was cancelled', detail: 'The club office cancelled it. Everyone on the booking has been told.' })
   })
 
+  it('someone booked me in: who, when and who else is playing; OK or See my bookings', () => {
+    const added = n => ({ id: 6, kind: 'added', date: '2026-10-24', oldTime: 480, byName: 'Pat Reid', withNames: n, note: null })
+    const [a] = pickAlerts({ ...base, notices: [added(['Pat', 'Alex', 'Jo'])] })
+    expect(a).toMatchObject({ key: 'bn:6', kind: 'notice', title: 'Pat Reid has booked you in', detail: 'Sat 24 Oct at 08:00 · with Pat, Alex and Jo', ref: { noticeId: 6 } })
+    expect(ids(a)).toEqual(['ok', 'bookings'])
+    expect(pickAlerts({ ...base, notices: [added(['Pat'])] })[0].detail).toBe('Sat 24 Oct at 08:00 · with Pat')
+    expect(pickAlerts({ ...base, notices: [added([])] })[0].detail).toBe('Sat 24 Oct at 08:00')
+  })
+
+  it('a "booked you in" for a day that has passed is not shown', () => {
+    expect(pickAlerts({ ...base, notices: [{ id: 7, kind: 'added', date: '2026-10-08', oldTime: 480, byName: 'Pat Reid', withNames: [] }] })).toEqual([])
+  })
+
   it('a request approved: OK or Later', () => {
     const [a] = pickAlerts({ ...base, requests: [req()] })
     expect(a).toMatchObject({ key: 'rq:3', kind: 'request', title: 'Request approved: Sat 14 Nov 08:10', detail: 'Booked. It’s in your bookings.', ref: { reqId: 3 } })
