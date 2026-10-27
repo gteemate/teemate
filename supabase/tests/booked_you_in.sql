@@ -45,7 +45,8 @@ do $$ declare r jsonb; v_b bigint; v_req bigint; v_n public.booking_notices; s1 
   r := public.admin_move_booking(v_b, s2, '');
   reset role;
   perform t.ok('A move sends no "booked you in" notice',
-    not exists (select 1 from public.booking_notices where kind = 'added'), (select string_agg(kind || ':' || member_id, ',') from public.booking_notices));
+    not exists (select 1 from public.booking_notices where kind = 'added' and member_id between 991001 and 991004), -- only these tests' members: live has real notices
+    (select string_agg(kind || ':' || member_id, ',') from public.booking_notices where member_id between 991001 and 991004));
   perform t.ok('Chris is told about the move as before', exists (select 1 from public.booking_notices where member_id = 991003 and kind = 'moved'));
 
   -- Jo asks for a time with Chris; the office approves it.
