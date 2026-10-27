@@ -751,8 +751,9 @@ h4,.sheet h4{font-family:var(--display);font-weight:600;letter-spacing:0}
 .kobracket .kos{overflow-wrap:anywhere}
 .kochamp{text-align:center;display:grid;gap:4px;padding:14px 16px;border-color:var(--gold)}
 .kochamp b{font-family:var(--display);font-size:24px;font-weight:400;color:var(--gold)}
-.kofin{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap}
+.kofin{display:grid;gap:10px;margin:6px 0 4px} /* the final's date, then Spread the rounds evenly on its own line under it */
 .kofin label{display:grid;gap:4px;font-size:13px;color:var(--muted)}
+.kofin #ko-spread{justify-self:start;min-height:44px;padding:10px 16px}
 #newko small{display:block;font-weight:400;font-size:12px;opacity:.8}
 
 /* The club office: an iPad- or computer-wide page, a sidebar of sections beside the page; on a phone the sections
