@@ -5,6 +5,7 @@ import { S } from '../state.js'
 import { $, esc, header, top0, render, toast } from '../ui.js'
 import { DN, isoDate, nextDays, longDay, hhmm, today, addDaysIso, fromIso } from '../dates.js'
 import { opensAt, openLabel, countdown } from '../release.js'
+import { showNotice } from '../alert-bar.js'
 
 export async function load() {
   const rules = await api.getBookingRules()
@@ -79,8 +80,8 @@ export function draw({ days, sheet, points, me, rules, req, skew }) {
     const near = tooClose(s)
     if (near) {
       const who = near.players.find(p => !isMine(near) && S.matchPick?.includes(p.memberId))?.name
-      toast(isMine(near) ? `Within 2 hours of your ${hhmm(near.time)} tee time. Tee times have to be at least 2 hours apart.`
-        : `${who ?? 'Someone in your match'} is booked at ${hhmm(near.time)}. Tee times have to be at least 2 hours apart.`); return
+      showNotice(isMine(near) ? `Within 2 hours of your ${hhmm(near.time)} tee time` : `${who ?? 'Someone in your match'} is booked at ${hhmm(near.time)}`,
+        'Tee times have to be at least 2 hours apart, before or after.'); return
     }
     if (!free(s)) { toast('That time is full'); return }
     Object.assign(S, { slotId: s.id, picked: S.matchPick ?? [], guests: [], aview: 'book', matchPick: null }) // Book this match: the other three already added

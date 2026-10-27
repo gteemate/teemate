@@ -67,7 +67,17 @@ async function run() {
 function clear() { showAlerts([]) }
 
 /** Show these alerts (from pickAlerts), first one dropped down. */
-export function showAlerts(list) { shown = list; draw() }
+export function showAlerts(list) { shown = [...notes, ...list]; draw() }
+
+// A one-off message in the same drop-down (e.g. why a tee time can't be booked), with OK. Shown first, until OK'd.
+let notes = []
+export function showNotice(title, detail) {
+  const n = { key: `note:${Date.now()}`, kind: 'note', title, detail, actions: [{ id: 'ok', label: 'OK', primary: true }] }
+  notes = [n]
+  shown = [n, ...shown.filter(a => a.kind !== 'note')]
+  hidden.delete(n.key)
+  draw()
+}
 
 function draw() {
   const box = $('alerts')
@@ -96,6 +106,7 @@ function drawDot(on) {
 }
 
 async function act(a, id, btn) {
+  if (a.kind === 'note') { notes = []; shown = shown.filter(x => x.key !== a.key); return draw() }
   if (id === 'later') { hidden.add(a.key); return draw() }
   if (a.kind === 'paperconfirm') { // a score read from a paper card, for me to confirm
     const c = paperWaiting.find(x => x.id === a.ref.roundId), name = c ? confirmLine(c, paperMembers).byName.split(' ')[0] : 'them'

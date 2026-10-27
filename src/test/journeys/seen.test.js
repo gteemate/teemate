@@ -43,3 +43,12 @@ describe('found in review: a notice is on the screen at every width', () => {
     expect(base).toMatch(/position:fixed/)
   })
 })
+
+describe('found in use: a long notice fits on a phone', () => {
+  it('wraps onto more lines and never runs off the screen', async () => {
+    const { readFileSync } = await import('node:fs')
+    const base = readFileSync(`${process.cwd()}/src/styles.css`, 'utf8').match(/\n\.toast\{([^}]*)\}/)?.[1] ?? ''
+    expect(base).not.toMatch(/white-space:nowrap/)
+    expect(base).toMatch(/max-width:/)
+  })
+})
