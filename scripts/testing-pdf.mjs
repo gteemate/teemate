@@ -34,7 +34,7 @@ if (existsSync(dir)) {
 }
 
 const date = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
-const html = buildReport({ vitest, db, root, features: FEATURES, areas: AREAS, generic: GENERIC, foundFixed: FOUND_FIXED, date, journeys: JOURNEYS.length, rules: RULES.length, screens })
+const html = buildReport({ vitest, db, dbRan: dbRun.status === 0 && db.length > 0, root, features: FEATURES, areas: AREAS, generic: GENERIC, foundFixed: FOUND_FIXED, date, journeys: JOURNEYS.length, rules: RULES.length, screens })
 writeFileSync(`${out}/TeeMate-testing.html`, html)
 const browser = await chromium.launch()
 const page = await browser.newPage()

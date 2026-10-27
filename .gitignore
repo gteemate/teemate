@@ -14,3 +14,4 @@ supabase/seed.sql
 test-results/
 playwright-report/
 src/test/**/*.tmp.test.js
+supabase/.temp/

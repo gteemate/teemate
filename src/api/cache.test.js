@@ -113,7 +113,7 @@ describe('found in review', () => {
   it('changes clear everything they touch', () => {
     const has = (n, ...kinds) => expect(RULES[n]?.changes, n).toEqual(expect.arrayContaining(kinds))
     has('setCourseLocation', 'club')
-    has('deleteMember', 'members', 'friends', 'games', 'comps', 'requests')
+    has('deleteMember', 'members', 'friends', 'games', 'comps', 'requests', 'events') // found in review: deleting a member takes them off events
     has('setOfficeLogin', 'members', 'requests')
     has('deleteSignup', 'comps', 'events')
     has('deleteRound', 'comps')

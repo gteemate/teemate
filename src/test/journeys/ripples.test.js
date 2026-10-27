@@ -55,6 +55,26 @@ describe('ripples: a deleted scorecard goes everywhere, for everyone on it', () 
   })
 })
 
+describe('ripples: a deleted finished card comes off the results', () => {
+  it('Declan deletes a finished card that counted for Pals Medal: Peter’s board no longer has its scores', async () => {
+    const finished = db => { shared(db); db.rounds[0].done = Array(18).fill(true) }
+    const board = async () => { await app.homeFromHere(); await app.tap('Competition'); await app.tap('[data-tab="entered"]'); await app.tap('Pals Medal'); const t = app.main(); await app.homeFromHere(); return t }
+    app = await boot(finished, { as: 'organiser' })
+    const before = await board()
+    app.done()
+    app = await boot(finished, { as: 'member' })
+    expect(app.screen()).toMatch(/^Hole/) // the app opens on the card
+    await app.tap('#delcard'); await app.tap('#delcard')
+    const saved = keep(app.db)
+    app.done()
+    app = await boot(restore(saved), { as: 'organiser' })
+    const after = await board()
+    expect(before).toMatch(/Declan Murphy\s*Finished\s*\d+/)
+    expect(after).toMatch(/Declan Murphy\s*not started/)
+    expect(after).not.toContain('Finished')
+  })
+})
+
 describe('ripples: a deleted member', () => {
   it('the office deletes Declan: he’s off the event, the league and the knockout, and Peter’s screens all still draw', async () => {
     app = await boot(db => {

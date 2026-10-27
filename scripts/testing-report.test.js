@@ -50,4 +50,25 @@ describe('the report', () => {
   it('lists what the testing found and fixed', () => {
     expect(html).toContain('A thing')
   })
+  it('found in review: a test file that failed to load is a failure, not “Everything passed”', () => {
+    const broken = { testResults: [...vitest.testResults.slice(1), { name: `${root}/src/broken.test.js`, status: 'failed', message: 'SyntaxError: oops', assertionResults: [] }] }
+    const h = buildReport({ vitest: broken, db, root, features: [], areas: [], generic: [], foundFixed: [], date: 'x', journeys: 0, rules: 0, screens: null })
+    expect(h).toContain('class="failbox"')
+    expect(h).toContain('src/broken.test.js')
+    expect(h).not.toContain('Everything passed')
+  })
+  it('found in review: database tests that didn’t run are a failure', () => {
+    const h = buildReport({ vitest: { testResults: [] }, db: [], dbRan: false, root, features: [], areas: [], generic: [], foundFixed: [], date: 'x', journeys: 0, rules: 0, screens: null })
+    expect(h).toContain('The database tests didn’t run')
+    expect(h).not.toContain('Everything passed')
+  })
 })
+
+describe('found in review: names match exactly', () => {
+  it('a test whose name only starts the same, or that was skipped, isn’t counted as passing', () => {
+    const v = { testResults: [{ name: `${root}/src/a.test.js`, assertionResults: [{ ancestorTitles: [], title: 'Sun too far', status: 'passed' }, { ancestorTitles: [], title: 'Skipped one', status: 'skipped' }] }] }
+    expect(resolveRef('src/a.test.js › Sun too', { vitest: v, db: [], root })).toMatchObject({ notRun: true })
+    expect(resolveRef('src/a.test.js › Skipped one', { vitest: v, db: [], root })).toMatchObject({ notRun: true })
+  })
+})
+

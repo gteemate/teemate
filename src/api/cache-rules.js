@@ -24,7 +24,7 @@ export const RULES = {
   startLeagueKnockout: changes('events', 'comps'),
   setMyGamePref: changes('games'),
   setHutStaff: changes('members'), saveMember: changes('members', 'requests'), setOfficeLogin: changes('members', 'requests'),
-  deleteMember: changes('members', 'friends', 'games', 'comps', 'requests'), // its rows elsewhere go with it
+  deleteMember: changes('members', 'friends', 'games', 'comps', 'requests', 'events'), // its rows elsewhere go with it, and it's taken off every event
   resetLogin: changes('members'),
   declineRequest: changes('requests'), requestAccess: changes('requests'),
   addBuddy: changes('friends'), removeBuddy: changes('friends'), saveContact: changes('friends'), removeContact: changes('friends'),

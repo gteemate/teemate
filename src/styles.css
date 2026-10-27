@@ -116,7 +116,7 @@ h3{font-family:var(--display);font-size:21px;font-weight:600;letter-spacing:0;ma
 .flagmark{width:76px;height:76px;border-radius:50%;background:var(--leaf);border:3px solid var(--leaf-line);display:grid;place-items:center;color:var(--ink);font-size:34px}
 .done h4{font-size:30px;font-weight:800;letter-spacing:-.02em;margin:6px 0 0}
 .done p{color:var(--muted);margin:0;line-height:1.5}
-.toast{position:absolute;z-index:40;left:50%;bottom:90px;transform:translateX(-50%);background:var(--ink);color:var(--bg);font-size:14px;font-weight:600;padding:11px 16px;border-radius:12px;white-space:nowrap}
+.toast{position:fixed;z-index:40;left:50%;bottom:calc(90px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);font-size:14px;font-weight:600;padding:11px 16px;border-radius:12px;white-space:nowrap}
 /* competitions */
 .darkcard{background:var(--green);color:var(--on-green);border-radius:22px;padding:18px 18px;display:flex;justify-content:space-between;align-items:center;gap:12px}
 .darkcard small{display:block;font-size:14px;opacity:.8}

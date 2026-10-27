@@ -16,7 +16,9 @@ export function missing(ref) {
   if (!existsSync(`${root}/${path}`)) return 'no such file'
   if (name == null) return null
   if (path.endsWith('.sql')) return text(path).includes(`t.ok('${name.replace(/'/g, "''")}`) ? null : 'no such database check'
-  return text(path).includes(name) ? null : 'no such test'
+  // Exactly that name, in an it() or test() that isn't skipped (a longer name that starts the same doesn't count).
+  const quoted = ['\'', '"', '`'].map(q => `${q}${name}${q}`)
+  return text(path).split('\n').some(l => /\b(it|test)(\.each\([^)]*\))?\(/.test(l) && !/\.skip\(/.test(l) && quoted.some(q => l.includes(q))) ? null : 'no such test'
 }
 
 describe('the feature register', () => {

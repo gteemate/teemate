@@ -28,14 +28,14 @@ export function resolveRef(ref, { vitest, db, root }) {
     const [path, name] = ref.split(' › ')
     if (path.endsWith('.sql')) {
       const file = path.split('/').pop()
-      const rows = db.filter(d => d.file === file && (name == null || d.name.replace(/''/g, "'") === name || d.name.startsWith(name)))
+      const rows = db.filter(d => d.file === file && (name == null || d.name.replace(/''/g, "'") === name))
       if (!rows.length) return { passed: 0, failed: 0, failures: [], notRun: true }
       return { passed: rows.filter(r => r.ok).length, failed: rows.filter(r => !r.ok).length, failures: rows.filter(r => !r.ok).map(r => `${file}: ${r.name}`) }
     }
-    picked = inFile(path).filter(a => name == null || a.title === name || a.title.startsWith(name) || label(a).includes(name))
+    picked = inFile(path).filter(a => name == null || a.title === name || label(a) === name)
   }
-  if (!picked.length) return { passed: 0, failed: 0, failures: [], notRun: true }
   const failed = picked.filter(a => a.status === 'failed')
+  if (!picked.some(a => a.status === 'passed') && !failed.length) return { passed: 0, failed: 0, failures: [], notRun: true } // missing or skipped
   return { passed: picked.filter(a => a.status === 'passed').length, failed: failed.length, failures: failed.map(label) }
 }
 
@@ -81,13 +81,15 @@ td.r { white-space: nowrap; text-align: right; width: 34mm; }
  * The report's HTML. features: the register; generic: the generic tests; foundFixed: [{ date, what, test }];
  * screens: { when, sizes, problems } from the last real-browser run, or null.
  */
-export function buildReport({ vitest, db, root, features, areas, generic, foundFixed, date, journeys, rules, screens }) {
+export function buildReport({ vitest, db, dbRan = true, root, features, areas, generic, foundFixed, date, journeys, rules, screens }) {
   const ctx = { vitest, db, root }
   const rows = features.map(f => ({ f, scen: f.scenarios.map(s => ({ s, r: sum(s.tests.map(t => resolveRef(t, ctx))) })) }))
   const gen = generic.map(g => ({ g, r: sum(g.tests.map(t => resolveRef(t, ctx))) }))
   const allVitest = vitest.testResults.flatMap(f => f.assertionResults)
   const vFail = allVitest.filter(a => a.status === 'failed'), dbFail = db.filter(d => !d.ok)
-  const failures = [...vFail.map(a => `${label(a)}`), ...dbFail.map(d => `${d.file}: ${d.name}`)]
+  // A file that failed to load has no tests to count; database tests that didn't run have no checks: both are failures.
+  const broken = vitest.testResults.filter(f => f.status === 'failed' && !f.assertionResults.length).map(f => `${rel(f.name, root)} didn’t load: ${String(f.message ?? '').split('\n')[0]}`)
+  const failures = [...broken, ...vFail.map(a => `${label(a)}`), ...dbFail.map(d => `${d.file}: ${d.name}`), ...(!dbRan || !db.length ? ['The database tests didn’t run (is the test database reachable?)'] : [])]
   const scenarios = rows.reduce((n, x) => n + x.scen.length, 0)
 
   const featureHtml = f => {

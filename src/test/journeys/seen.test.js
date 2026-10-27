@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs'
 import { whereSeen } from './seen.js'
 
 const CSS = readFileSync(`${process.cwd()}/src/styles.css`, 'utf8')
-const OLD_CSS = CSS.replace(/\.toast\{position:absolute;z-index:\d+;/, '.toast{position:absolute;') // before the fix
+const OLD_CSS = CSS.replace(/\.toast\{position:(absolute|fixed);z-index:\d+;/, '.toast{position:absolute;') // before the fix (no z-index)
 const MSG = 'Jacqueline Cochrane is already entered in Mixed Fourball. Pick another partner.'
 
 describe('is a refusal seen where the person is looking?', () => {
@@ -32,5 +32,14 @@ describe('is a refusal seen where the person is looking?', () => {
   })
   it('nowhere: not seen', () => {
     expect(whereSeen(MSG, CSS)).toBeNull()
+  })
+})
+
+describe('found in review: a notice is on the screen at every width', () => {
+  it('the notice is fixed to the screen (not the bottom of a long page), at every width', async () => {
+    const { readFileSync } = await import('node:fs')
+    const css = readFileSync(`${process.cwd()}/src/styles.css`, 'utf8')
+    const base = css.match(/\n\.toast\{([^}]*)\}/)?.[1] ?? '' // the rule for every width (not the phone-only one inside @media)
+    expect(base).toMatch(/position:fixed/)
   })
 })

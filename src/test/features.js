@@ -50,8 +50,8 @@ export const FEATURES = [
   { id: 'booked-you-in', area: 'Booking', name: 'Booked you in',
     what: 'When someone books you onto a tee time, a notice drops down saying who booked you in, when, and who else is playing.',
     scenarios: [
-      { says: 'Everyone else on the booking is told; the booker isn’t', tests: ['rule:booked-you-in', 'supabase/tests/booked_you_in.sql › Chris is told Pat booked him in, for that day and time', `${J} › 20c. When I book others in, each of them gets a`] },
-      { says: 'OK, or See my bookings', tests: ['journey:booked-you-in', `${J} › 20b. Another member books me in: I`, 'src/alerts.test.js › someone booked me in: who, when and who else is playing; OK or See my bookings'] },
+      { says: 'Everyone else on the booking is told; the booker isn’t', tests: ['rule:booked-you-in', 'supabase/tests/booked_you_in.sql › Chris is told Pat booked him in, for that day and time', `${J} › 20c. When I book others in, each of them gets a "booked you in" notice (and I do not)`] },
+      { says: 'OK, or See my bookings', tests: ['journey:booked-you-in', `${J} › 20b. Another member books me in: I'm told who, when and with whom, and See my bookings opens them`, 'src/alerts.test.js › someone booked me in: who, when and who else is playing; OK or See my bookings'] },
       { says: 'Not shown once the day has passed; gone if the booking is cancelled', tests: ['src/alerts.test.js › a \"booked you in\" for a day that has passed is not shown', 'supabase/tests/booked_you_in.sql › A cancelled booking takes its \"booked you in\" notice with it'] },
       { says: 'Moving a booking sends no new notice', tests: ['supabase/tests/booked_you_in.sql › A move sends no \"booked you in\" notice'] },
     ],
@@ -271,8 +271,9 @@ export const FEATURES = [
 const R = 'src/test/journeys/ripples.test.js'
 export const GENERIC = [
   { name: 'A deleted scorecard goes everywhere, for everyone on it', group: 'Ripples',
-    says: 'Deleting an unfinished card: it stops counting for the event, the league and the knockout, for every player on it; the other player’s Scores tab starts fresh.',
+    says: 'Deleting a card (unfinished or finished): it stops counting for the event, the league and the knockout, for every player on it; the results go back to “not started”; the other player’s Scores tab starts fresh.',
     tests: [`${R} › Declan deletes the unfinished card: it no longer counts for the event, the league or the knockout, and Peter’s Scores tab starts fresh`,
+      `${R} › Declan deletes a finished card that counted for Pals Medal: Peter’s board no longer has its scores`,
       'supabase/tests/ripples.sql › A deleted card: no longer counts for the event, for anyone on it', 'supabase/tests/ripples.sql › A deleted card: no longer counts for the league, for anyone on it', 'supabase/tests/ripples.sql › A deleted card: the knockout match no longer points at it',
       'supabase/tests/card_delete.sql › Delete confirmed: the scorecard goes too'] },
   { name: 'A deleted member goes from everything, and every screen still draws', group: 'Ripples',
