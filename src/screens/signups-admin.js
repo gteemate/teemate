@@ -1,48 +1,32 @@
-// Club admin → Sign-up competitions: the season competitions members put their names down for. Add or change one
-// (name, Men's / Ladies' / Mixed / Open, Singles / Pairs, entries close, notes, open), see and share who has
-// entered, and delete. Hidden ones (not open) members don't see. From the club office, one competition opens on its
-// own page (S.signupOnly; 'new' to add one): its settings and entries, and Back, Save or Cancel go to the office.
+// A sign-up competition's own page: its settings and entries (S.signupOnly: its id, or 'new' to add one) — the season
+// competitions members put their names down for (Men's / Ladies' / Mixed / Open, Singles / Pairs, entries close,
+// notes, open), who has entered, share, the draw and delete. Opened from office Competitions (back there afterwards)
+// or the phone's + New knockout competition (back the way you came). There's no list page: office Competitions is it.
 import * as api from '../api.js'
 import { S } from '../state.js'
-import { $, esc, header, keepScroll, render, toast, top0 } from '../ui.js'
+import { $, esc, header, keepScroll, render, toast, top0, goBack } from '../ui.js'
 import { toAdmin } from './nav.js'
-import { eventDates } from '../dates.js'
 import { azList, wireAz } from '../az.js'
 
 const CAT = { men: 'Men’s', ladies: 'Ladies’', mixed: 'Mixed', open: 'Open' }
 
 export async function load() {
   const [signups, members] = await Promise.all([api.getSignups(), api.getMembers()])
-  const open = S.signupNew; S.signupNew = false // from Club events → + New knockout competition: the add form, open
-  return { ...signups, members, open, only: S.signupOnly ?? null }
+  return { ...signups, members, only: S.signupOnly ?? 'new' }
 }
 
-export function draw({ comps, entries, members, open, only }) {
-  const one = only === 'new' ? null : only != null && comps.find(c => c.id === only)
-  if (one || only === 'new') { // from the office: just this competition (or a new one), as a page, and back to the office
-    const back = async (pick = null) => { S.signupOnly = null; S.aview = 'office'; if (pick) S.oComp = pick; await render(); top0() }
-    header(one ? one.name : 'New sign-up competition', 'Entries and settings', () => back())
-    sheet(one || null, entries, members, back)
-    return
+export function draw({ comps, entries, members, only }) {
+  const one = only === 'new' ? null : comps.find(c => c.id === only) ?? null // gone (deleted elsewhere): a new one
+  const back = async (pick = null) => {
+    S.signupOnly = null
+    if (S.signupFromOffice) { S.signupFromOffice = false; S.aview = 'office'; if (pick) S.oComp = pick; await render(); top0() }
+    else await goBack(toAdmin)
   }
-  header('Sign-up competitions', 'Season competitions members enter in advance', toAdmin)
-  const count = id => entries.filter(e => e.compId === id).length
-  $('main').innerHTML = `<div class="screen">
-    <span class="hint">Members see a competition under Competitions → Events once it’s open and has an entries close date. Men’s ones show to men, Ladies’ to ladies; a Mixed pair is one of each.</span>
-    <div class="card list">${comps.map(c => `<div class="lrow linkrow hutrow" data-sc="${c.id}" role="button" tabindex="0"><span class="who"><strong>${esc(c.name)}</strong>
-      <small>${CAT[c.category]} · ${c.kind === 'pairs' ? 'Pairs' : 'Singles'} · ${c.open && c.closesOn ? `Open: entries close ${eventDates(c.closesOn, 1)}` : 'Hidden'}</small></span>
-      <b class="num">${count(c.id)}${c.maxEntries ? ` / ${c.maxEntries}` : ''} <small>${c.kind === 'pairs' ? 'pairs' : 'entered'}</small></b></div>`).join('') || '<div class="empty-state">None yet.</div>'}</div>
-    <button class="ghost dashed" id="sc-add">+ Add a competition</button>
-  </div>`
-  document.querySelectorAll('[data-sc]').forEach(r => {
-    r.onclick = () => sheet(comps.find(c => c.id === +r.dataset.sc), entries, members)
-    r.onkeydown = e => { if ((e.key === 'Enter' || e.key === ' ') && e.target === r) { e.preventDefault(); r.click() } }
-  })
-  $('sc-add').onclick = () => sheet(null, entries, members)
-  if (open) sheet(null, entries, members)
+  header(one ? one.name : 'New sign-up competition', one ? 'Entries and settings' : 'Members enter in advance; then a random draw', () => back())
+  sheet(one, entries, members, back)
 }
 
-// The competition's settings and entries: a pop-up over the list, or (with leave) the whole page.
+// The competition's settings and entries, as the page; leave goes back.
 function sheet(c, entries, members, leave = null) {
   const name = id => members.find(m => m.id === id)?.name ?? 'Former member'
   const rows = c ? entries.filter(e => e.compId === c.id) : [], label = e => (e.partnerId ? `${name(e.memberId)} & ${name(e.partnerId)}` : name(e.memberId))

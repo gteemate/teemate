@@ -78,7 +78,7 @@ export function draw({ evs, comps, kos, members, t, tpls = [] }) {
     if (what === 'edit') Object.assign(S, { ev: null, evId: +id, evStep: 1, evScope: 'club', aview: 'event' })
     if (what === 'teams') Object.assign(S, { ev: null, evId: +id, evStep: 6, evTeam: null, evCapMode: null, evScope: 'club', aview: 'event' }) // captains first
     if (what === 'draw') Object.assign(S, { koComp: +id, koRound: null, koFrom: 'office', aview: 'ko' })
-    if (what === 'signups') Object.assign(S, { aview: 'signups', signupOnly: id ? +id : null }) // one competition's page
+    if (what === 'signups') Object.assign(S, { aview: 'signups', signupOnly: id ? +id : 'new', signupFromOffice: true }) // one competition's page
   })))
   document.querySelectorAll('[data-o-card]').forEach(b => (b.onclick = () => go(() => { const [mid, cid] = b.dataset.oCard.split(':'); Object.assign(S, { koCard: +mid, koComp: +cid, kcFrom: 'office', aview: 'kocard' }) })))
   if ($('o-run')) $('o-run').onclick = async () => {
@@ -149,7 +149,7 @@ export function draw({ evs, comps, kos, members, t, tpls = [] }) {
         <button class="orow obtn" data-o-kind="signup"><span class="ot"><b>A sign-up competition or knockout</b><span>Members enter in advance, with a limit; then a random draw</span></span></button>
       </div>`)
     document.querySelectorAll('[data-o-kind]').forEach(b => (b.onclick = () => go(() => {
-      if (b.dataset.oKind === 'signup') Object.assign(S, { signupOnly: 'new', aview: 'signups' }) // its own page; saved, back here
+      if (b.dataset.oKind === 'signup') Object.assign(S, { signupOnly: 'new', signupFromOffice: true, aview: 'signups' }) // its own page; saved, back here
       else Object.assign(S, { ev: null, evId: null, evStep: 1, evNew: b.dataset.oKind === 'league' ? 'league' : null, evScope: 'club', aview: 'event' })
     })))
   }

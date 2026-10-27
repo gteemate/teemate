@@ -60,7 +60,7 @@ export function draw({ events: all, me, matches, todayCard: tc }) {
   $('newev').onclick = () => start(null)
   const lg = $('newlg')
   if (lg) lg.onclick = () => start('league')
-  if ($('newko')) $('newko').onclick = async () => { S.signupNew = true; S.aview = 'signups'; await render(); top0() } // Sign-up competitions, add form open
+  if ($('newko')) $('newko').onclick = async () => { S.signupOnly = 'new'; S.aview = 'signups'; await render(); top0() } // a new sign-up competition's page
   document.querySelectorAll('[data-edit]').forEach(b => (b.onclick = async () => { S.ev = null; S.evId = +b.dataset.edit; S.evStep = 1; S.aview = 'event'; await render(); top0() }))
   bindCancel()
   if ($('card-open')) $('card-open').onclick = async () => { S.tab = 'scores'; S.sview = 'card'; await render(); top0() }
