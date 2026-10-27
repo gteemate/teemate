@@ -56,6 +56,11 @@ do $$ declare r jsonb; v_b bigint; s1 bigint; s2 bigint; s3 bigint; s4 bigint; e
   perform t.ok('Hold: the opponent is told who booked them in',
     exists (select 1 from public.booking_notices where member_id = 996003 and kind = 'added' and booking_id = v_b));
 
+  perform t.act_as(996003);
+  e := t.err(format('select public.book_club_match(%s, 996002, ''ko'', 996101)', s2));
+  reset role;
+  perform t.ok('Hold: a match can only hold one tee time', e like 'Your Autumn Knockout match is already booked%', e);
+
   perform t.act_as(996004);
   v_sheet := (select x from jsonb_array_elements(public.get_tee_sheet(current_date + 23)) x where (x->>'id')::bigint = s1);
   e := t.err(format('select public.book_tee_time(%s)', s1));

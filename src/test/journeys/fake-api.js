@@ -321,6 +321,7 @@ export function makeWorld(today, setup = () => {}, as = 'admin') {
     setHandicaps: async rows => { // as the database: the office; all in range and all members, or nothing
       if (!db.asOffice && !me()?.admin) throw new Error('Only the club office can update handicaps.')
       if (!rows?.length) throw new Error('There are no handicaps to update.')
+      if (new Set(rows.map(r => r.id)).size !== rows.length) throw new Error('A member is listed twice.')
       if (rows.some(r => !(r.hcp >= -10 && r.hcp <= 54))) throw new Error('Handicap index must be between +10 and 54.')
       if (rows.some(r => !db.members.some(m => m.id === r.id))) throw new Error('One of those isn’t a member any more.')
       for (const r of rows) db.members.find(m => m.id === r.id).hcp = Math.round(r.hcp * 10) / 10
@@ -397,7 +398,7 @@ export function makeWorld(today, setup = () => {}, as = 'admin') {
       if (kind === 'ko') {
         const c = db.signups.find(x => x.id === ref), es = db.signupEntries.filter(e => e.compId === ref)
         const ent = mid => es.find(e => e.memberId === mid)
-        ok = !!c && db.koMatches.some(m => m.compId === ref && ['open', 'reported', 'disputed'].includes(m.status)
+        ok = !!c && db.koMatches.some(m => m.compId === ref && ['open', 'disputed'].includes(m.status)
           && [m.aEntry, m.bEntry].includes(ent(ME)?.id) && [m.aEntry, m.bEntry].includes(ent(opponent)?.id))
         club = ok && c.createdBy == null && c.kind === 'singles'; label = c?.name
       } else if (kind === 'event') {
@@ -407,6 +408,9 @@ export function makeWorld(today, setup = () => {}, as = 'admin') {
       }
       if (!ok) throw new Error('That isn’t your match.')
       if (!club) throw new Error('Only club singles matches hold the other places.')
+      const again = db.bookings.find(b => b.held && b.heldFor === `${label} match` && slotById(b.slotId).date >= db.today
+        && [ME, opponent].every(m => slotById(b.slotId).players.some(p => p.bookingId === b.id && p.memberId === m)))
+      if (again) throw new Error(`Your ${label} match is already booked.`) // one tee time per match
       const s = slotById(slotId)
       if (s.players.length || heldOn(slotId)) throw new Error('There isn’t room for the whole match on that time. Pick an empty time.')
       const b = db.book(ME, slotId, [opponent])

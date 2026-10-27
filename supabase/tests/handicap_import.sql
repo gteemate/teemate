@@ -43,6 +43,10 @@ do $$ declare r jsonb; e text; begin
   e := t.err($q$select public.admin_set_handicaps('[{"id": 123456789, "hcp": 12}]')$q$);
   reset role;
   perform t.ok('Handicaps: someone who isn''t a member is refused', e = 'One of those isn''t a member any more.', e);
+  perform t.act_as(997001);
+  e := t.err($q$select public.admin_set_handicaps('[{"id": 997002, "hcp": 9}, {"id": 997002, "hcp": 28}]')$q$);
+  reset role;
+  perform t.ok('Handicaps: a member listed twice refuses the lot', e = 'A member is listed twice.' and (select hcp_index from public.members where id = 997002) = 13.8, e);
 end $$;
 
 select test, ok, detail from t.results order by n;

@@ -56,7 +56,7 @@ export function details(b, me) {
   $('bk-close').onclick = close
   if ($('bk-add')) $('bk-add').onclick = async () => { // the booking screen, adding to this booking (a fourth player, say)
     close()
-    Object.assign(S, { addTo: { id: b.id, date: b.date, time: b.time }, picked: [], guests: [], gmodal: false, aview: 'book' })
+    Object.assign(S, { addTo: { id: b.id, date: b.date, time: b.time }, picked: [], guests: [], gmodal: false, aview: 'book', matchHold: null })
     await render(); top0()
   }
   $('ovl').onclick = e => { if (e.target.id === 'ovl') close() }

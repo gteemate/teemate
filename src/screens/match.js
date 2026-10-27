@@ -52,7 +52,7 @@ export function bindMatchAction(st) {
       const hold = st.club && st.ids.length === 2 && i >= 0 ? { kind: 'event', ref: st.eventId, opp: others[0], label: `${st.eventName} match` } : null
       Object.assign(S, { tab: 'home', aview: 'tee', matchPick: others, matchHold: hold, filter: '4', reqMode: i < 0, ...(i < 0 ? { reqDate: st.date, reqReason: `Match in ${st.eventName}` } : { day: i }) })
     } else if (b.dataset.mact === 'add') {
-      Object.assign(S, { tab: 'home', aview: 'book', slotId: st.slot.id, picked: st.missing, guests: [], reqMode: false })
+      Object.assign(S, { tab: 'home', aview: 'book', slotId: st.slot.id, picked: st.missing, guests: [], reqMode: false, matchHold: null })
       const days = nextDays(((await api.getBookingRules()).days) + 1).map(isoDate)
       S.day = Math.max(0, days.indexOf(st.date))
     } else {

@@ -131,6 +131,7 @@
   "admin_set_handicaps": [
    "Only the club office can update handicaps.",
    "There are no handicaps to update.",
+   "A member is listed twice.",
    "Handicap index must be between +10 and 54.",
    "One of those isn't a member any more."
   ],
@@ -186,6 +187,7 @@
   "book_club_match": [
    "That isn't your match.",
    "Only club singles matches hold the other places.",
+   "Your % match is already booked for % at %.",
    "There isn’t room for the whole match on that time. Pick an empty time.",
    "Only members can book tee times.",
    "That tee time no longer exists.",
@@ -393,6 +395,7 @@
   ],
   "get_theme": [],
   "hhmm": [],
+  "hhmm_of": [],
   "holes_problem": [],
   "hook_before_user_created": [],
   "hut_orders_today": [

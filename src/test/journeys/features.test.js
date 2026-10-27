@@ -1387,6 +1387,18 @@ describe('club singles matches hold the four-ball', () => {
     const row = document.querySelector(`[data-id="${at(app.db, 600).id}"]`)
     expect([...row.querySelectorAll('.pn.held')].map(c => c.textContent)).toEqual(['Men’s Match Play match', 'Men’s Match Play match'])
   })
+  it('leaving a club match booking by the tabs forgets the match (a later booking isn’t taken as it)', async () => {
+    app = await boot(draw)
+    await app.tap('Competition')
+    await app.tap('Men’s Match Play')
+    await app.tap('Book this match')
+    await app.tap(`[data-id="${at(app.db, 600).id}"]`)
+    const { S } = await import('../../state.js') // the app's own (boot loads it afresh)
+    expect(S.matchHold).not.toBeNull()
+    S.tab = 'scores'; S.sview = 'card' // away without Back (e.g. the round bar or an alert)
+    await (await import('../../ui.js')).render()
+    expect(S.matchHold).toBeNull()
+  })
   it('someone else sees the held time as full; tapping says what it’s held for', async () => {
     app = await boot(db => { const b = db.book(3, at(db, 600).id, [5]); b.held = 2; b.heldFor = 'Men’s Match Play match' })
     await app.tap('Booking'); await app.tap('+ Add a booking')
