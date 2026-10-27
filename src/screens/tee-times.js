@@ -2,7 +2,7 @@
 // countdown in the last 24 hours (the database refuses early bookings; admins can book ahead).
 import * as api from '../api.js'
 import { S } from '../state.js'
-import { $, header, top0, render, toast } from '../ui.js'
+import { $, esc, header, top0, render, toast } from '../ui.js'
 import { DN, isoDate, nextDays, longDay, hhmm, today, addDaysIso, fromIso } from '../dates.js'
 import { opensAt, openLabel, countdown } from '../release.js'
 
@@ -53,11 +53,16 @@ export function draw({ days, sheet, points, me, rules, req, skew }) {
     if (!gs.length) continue
     h += `<div class="period">${g}${g === 'Afternoon' ? " · 12:20–13:00 held for Ladies' Comp" : ''}</div>`
     gs.forEach(s => {
-      const f = free(s), near = mv ? null : tooClose(s), off = !f || near || isMine(s), taken = s.players.length
-      const what = isMine(s) ? 'You’re booked on this' : near ? `Within 2 hours of your ${hhmm(near.time)}` : !f ? 'Fully booked' : f === 4 ? 'Open tee' : `${f} space${f > 1 ? 's' : ''} left`
-      h += `<button class="slot${off ? ' full' : ''}${locked ? ' notyet' : ''}${isMine(s) ? ' minebk' : ''}" data-id="${s.id}" ${off ? 'aria-disabled="true"' : ''}><span class="time">${hhmm(s.time)}</span>
-        <span class="meta"><strong>${what}${s.twilight ? '<span class="pill tag">Twilight</span>' : ''}</strong>1st tee · 18 holes</span>
-        <span class="balls" aria-label="${taken} of ${s.capacity} booked">${[0, 1, 2, 3].map(k => `<span class="ball${k < taken ? ' taken' : ''}"></span>`).join('')}</span></button>`
+      // Who's out on each time, so members can join friends. A time they can't book (full, or within 2 hours of
+      // their own) shows its names greyed, and tapping it says why.
+      const f = free(s), near = mv ? null : tooClose(s), mineHere = isMine(s), off = !mineHere && (!f || !!near)
+      const name = p => (p.memberId === me.id ? 'You' : p.guest ? `${p.name} (guest)` : p.name)
+      const cells = [...s.players.map(p => `<span class="pn${p.guest ? ' g' : ''}${p.memberId === me.id ? ' me' : ''}">${esc(name(p))}</span>`),
+        ...Array.from({ length: Math.max(0, s.capacity - s.players.length) }, () => (off || locked ? '<span class="pn empty"></span>' : '<span class="pn free">Space</span>'))]
+      const said = mineHere ? 'you’re booked on this' : near ? `within 2 hours of your ${hhmm(near.time)}` : !f ? 'full' : `${f} space${f > 1 ? 's' : ''} free`
+      h += `<button class="slot names${off ? ' full' : ''}${locked ? ' notyet' : ''}${mineHere ? ' minebk' : ''}" data-id="${s.id}" ${off ? 'aria-disabled="true"' : ''}
+        aria-label="${hhmm(s.time)}: ${esc([...s.players.map(name), said].join(', '))}"><span class="time">${hhmm(s.time)}${s.twilight ? '<span class="pill tag">Twilight</span>' : ''}</span>
+        <span class="pgrid4">${cells.join('')}</span></button>`
     })
   }
   $('main').innerHTML = h + '</div>'
@@ -73,8 +78,9 @@ export function draw({ days, sheet, points, me, rules, req, skew }) {
     if (mv) return moveSheet(s, mv) // the old time goes when the new one is booked, so the 2-hour gap doesn't apply here
     const near = tooClose(s)
     if (near) {
-      const who = isMine(near) ? 'You’re' : `${near.players.find(p => S.matchPick?.includes(p.memberId))?.name ?? 'Someone in your match'} is`
-      toast(`${who} booked at ${hhmm(near.time)}. Tee times have to be at least 2 hours apart`); return
+      const who = near.players.find(p => !isMine(near) && S.matchPick?.includes(p.memberId))?.name
+      toast(isMine(near) ? `Within 2 hours of your ${hhmm(near.time)} tee time. Tee times have to be at least 2 hours apart.`
+        : `${who ?? 'Someone in your match'} is booked at ${hhmm(near.time)}. Tee times have to be at least 2 hours apart.`); return
     }
     if (!free(s)) { toast('That time is full'); return }
     Object.assign(S, { slotId: s.id, picked: S.matchPick ?? [], guests: [], aview: 'book', matchPick: null }) // Book this match: the other three already added

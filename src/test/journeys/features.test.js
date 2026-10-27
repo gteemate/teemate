@@ -1189,3 +1189,35 @@ describe('found in review: the pretend server saves several events as the real o
     await expect(api.setKoRoundHoles(1, 11, [1])).rejects.toThrow('isn’t a round')
   })
 })
+
+describe('the tee sheet shows who’s out', () => {
+  const sheet = async () => { await app.tap('Booking'); await app.tap('+ Add a booking') }
+  it('each time shows the names booked on it, and a gold + Space for each place you can take', async () => {
+    app = await boot(db => { db.book(3, at(db, 600).id, [5]); db.book(9, at(db, 660).id, [], [{ name: 'Sam Reid', club: 'Portrush' }]) })
+    await sheet()
+    const row = document.querySelector(`[data-id="${at(app.db, 600).id}"]`)
+    expect(row.textContent).toContain("Ciarán O'Neill")
+    expect(row.textContent).toContain(app.db.members.find(m => m.id === 5).name)
+    expect(row.querySelectorAll('.free')).toHaveLength(2)
+    expect(document.querySelector(`[data-id="${at(app.db, 660).id}"]`).textContent).toContain('Sam Reid (guest)')
+  })
+  it('a time within 2 hours of mine shows its names greyed; tapping it says why', async () => {
+    app = await boot(db => { db.book(0, at(db, 570).id, []); db.book(3, at(db, 600).id, [5]) })
+    await sheet()
+    const row = document.querySelector(`[data-id="${at(app.db, 600).id}"]`)
+    expect(row.classList.contains('full')).toBe(true)
+    expect(row.textContent).toContain("Ciarán O'Neill")
+    expect(row.querySelectorAll('.free')).toHaveLength(0) // no places to take
+    await app.tap(`[data-id="${at(app.db, 600).id}"]`)
+    expect(app.toast()).toBe('Within 2 hours of your 09:30 tee time. Tee times have to be at least 2 hours apart.')
+  })
+  it('a full time shows all four names greyed; tapping says it’s full', async () => {
+    app = await boot(db => db.book(3, at(db, 720).id, [5, 7, 9]))
+    await sheet()
+    const row = document.querySelector(`[data-id="${at(app.db, 720).id}"]`)
+    expect(row.classList.contains('full')).toBe(true)
+    expect(row.querySelectorAll('.pn')).toHaveLength(4)
+    await app.tap(`[data-id="${at(app.db, 720).id}"]`)
+    expect(app.toast()).toBe('That time is full')
+  })
+})

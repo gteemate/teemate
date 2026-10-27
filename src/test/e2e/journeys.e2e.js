@@ -58,7 +58,7 @@ describe('journeys against the test database', () => {
     await app.tap('[data-tile="booking"]')
     await app.tap('+ Add a booking')
     await app.tap('[data-d="1"]') // tomorrow
-    const open = [...document.querySelectorAll('.slot:not(.full)')].find(b => b.textContent.includes('Open tee'))
+    const open = [...document.querySelectorAll('.slot:not(.full)')].find(b => b.querySelectorAll('.pn.free').length === 4) // an open tee
     expect(open, 'a free tee time tomorrow').toBeTruthy()
     await app.tap(`.slot[data-id="${open.dataset.id}"]`)
     await app.tap('[data-open]')

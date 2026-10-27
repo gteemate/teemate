@@ -125,7 +125,7 @@ test('every main screen', async ({ page }, testInfo) => {
   await tap(page, '[data-tile="booking"]'); await check(page, '06 bookings', testInfo)
   await tap(page, 'text=+ Add a booking'); await check(page, '07 tee sheet', testInfo)
   await tap(page, '[data-d="1"]')
-  await page.locator('.slot:not(.full)').filter({ hasText: 'Open tee' }).first().click(); await page.waitForLoadState('networkidle')
+  await page.locator('.slot:not(.full)').filter({ has: page.locator('.pn.free') }).first().click(); await page.waitForLoadState('networkidle')
   await check(page, '08 book a time', testInfo)
   await home(page)
 

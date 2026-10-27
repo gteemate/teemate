@@ -1,0 +1,49 @@
+<title>Tee Sheet Names</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* The app's own colours: navy surfaces, gold for "you can book here". One phone, the tee sheet. */
+:root{ --sunk:#0f1830; --bg:#141f3b; --surface:#1b2a4b; --leaf:#22325a; --line:#2b3c63; --ink:#e8ecf5; --muted:#9aa7c4; --gold:#e3c375;
+  --sys:"Source Sans 3",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; color-scheme:dark }
+*{box-sizing:border-box}
+body{margin:0;background:var(--sunk);color:var(--ink);font-family:var(--sys);padding-block:24px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:420px;margin:0 auto}
+h1{font-size:15px;color:var(--muted);font-weight:600;margin:0 0 4px}
+.lead{color:var(--muted);font-size:14px;line-height:1.45;margin:0 0 18px}
+.period{color:var(--muted);font-size:17px;margin:14px 2px 10px}
+.slot{display:grid;grid-template-columns:72px 1fr;align-items:stretch;background:var(--surface);border:1px solid var(--line);border-radius:18px;margin-bottom:10px;overflow:hidden}
+.slot .time{display:grid;place-items:center;font-size:23px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums;border-right:1px solid var(--line)}
+.names{display:grid;grid-template-columns:1fr 1fr}
+.names span{padding:10px 10px;font-size:14px;font-weight:600;border-bottom:1px solid var(--line);min-height:40px;display:flex;align-items:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.names span:nth-child(odd){border-right:1px solid var(--line)}
+.names span:nth-last-child(-n+2){border-bottom:0}
+.names span.free{color:var(--gold);font-weight:600;opacity:.85}
+.names span.free::before{content:"+ ";}
+.names span.g{color:var(--muted)}
+.slot.full{background:transparent}
+.slot.full .time,.slot.full .names span{color:var(--muted)}
+.slot.mine{border-color:var(--gold)}
+.slot.mine .tag{font-size:11px;font-weight:700;color:var(--gold);display:block;text-align:center;margin-top:2px;letter-spacing:.02em}
+.slot.blocked{grid-template-columns:72px 1fr;background:transparent;color:var(--muted)}
+.slot.blocked .msg{padding:14px 14px;font-size:15px;font-weight:700;display:flex;flex-direction:column;justify-content:center}
+.slot.blocked .msg small{font-weight:400;font-size:13px}
+.key{display:grid;gap:6px;margin-top:20px;font-size:13px;color:var(--muted);line-height:1.4}
+.key b{color:var(--ink)}
+</style>
+<div class="wrap">
+  <h1>Book tee times · Saturday</h1>
+  <p class="lead">Each time shows who’s out, so you can join friends. Gold “+ Space” is a place you can take. If you can’t book a time, the reason shows instead.</p>
+  <div class="period">Morning</div>
+  <div class="slot full"><div class="time">07:30</div><div class="names"><span>Alex Morgan</span><span>Chris Bennett</span><span>Ethan Brooks</span><span>Luke Turner</span></div></div>
+  <div class="slot"><div class="time">07:40</div><div class="names"><span>Daniel Scott</span><span>Ryan Mitchell</span><span>Owen Clark</span><span class="free">Space</span></div></div>
+  <div class="slot"><div class="time">07:50</div><div class="names"><span class="free">Space</span><span class="free">Space</span><span class="free">Space</span><span class="free">Space</span></div></div>
+  <div class="slot mine"><div class="time"><div>08:00<span class="tag">YOU</span></div></div><div class="names"><span>You</span><span>Tom Walker</span><span>James Collins</span><span class="free">Space</span></div></div>
+  <div class="slot blocked"><div class="time">08:20</div><div class="msg">Within 2 hours of your 08:00<small>Tee times have to be at least 2 hours apart</small></div></div>
+  <div class="slot blocked"><div class="time">09:50</div><div class="msg">Within 2 hours of your 08:00<small>Tee times have to be at least 2 hours apart</small></div></div>
+  <div class="slot"><div class="time">10:10</div><div class="names"><span>Jacob King</span><span class="g">Sam Reid (guest)</span><span class="free">Space</span><span class="free">Space</span></div></div>
+  <div class="key">
+    <div><b>Full</b> (07:30): names shown, greyed, can’t be tapped.</div>
+    <div><b>Your own time</b> (08:00): gold border, “You” first; tap to see or change your booking.</div>
+    <div><b>Can’t book</b> (08:20, 09:50): the reason shows instead of names, as now (also for days not open yet).</div>
+  </div>
+</div>
