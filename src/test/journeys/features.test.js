@@ -1359,3 +1359,66 @@ describe('adding a player to a booking I’m on', () => {
     expect(app.text()).not.toContain('+ Add a player')
   })
 })
+
+describe('club singles matches hold the four-ball', () => {
+  const draw = db => {
+    Object.assign(db.signups[0], { closesOn: '2026-10-01', drawPublished: true, roundDeadlines: ['2026-11-15', '2026-12-06'] })
+    db.signupEntries.push(...[0, 1, 3, 5].map((m, i) => ({ id: 100 + i, compId: 1, memberId: m, partnerId: null })))
+    db.koMatches.push({ id: 1, compId: 1, round: 1, slot: 0, aEntry: 100, bEntry: 101, winnerEntry: null, result: null, status: 'open', reportedEntry: null },
+      { id: 2, compId: 1, round: 1, slot: 1, aEntry: 102, bEntry: 103, winnerEntry: null, result: null, status: 'open', reportedEntry: null },
+      { id: 3, compId: 1, round: 2, slot: 0, aEntry: null, bEntry: null, winnerEntry: null, result: null, status: 'open', reportedEntry: null })
+  }
+  it('a club knockout: the other two places are held for the match, and the time is full for everyone else', async () => {
+    app = await boot(draw)
+    await app.tap('Competition')
+    await app.tap('Men’s Match Play')
+    await app.tap('Book this match')
+    await app.tap(`[data-id="${at(app.db, 600).id}"]`)
+    expect(document.querySelectorAll('.pslot.held')).toHaveLength(2)
+    expect(app.text()).toContain('Held for your Men’s Match Play match')
+    expect(document.querySelector('[data-open]')).toBeNull() // no open spaces to fill
+    await app.tap('Book Men’s Match Play match')
+    const b = app.db.bookings.at(-1)
+    expect(at(app.db, 600).players.map(p => p.memberId)).toEqual([0, 1])
+    expect([b.held, b.heldFor]).toEqual([2, 'Men’s Match Play match'])
+    // the tee sheet: the held places say what they're for, and the time can't be booked
+    await app.homeFromHere()
+    await app.tap('Booking'); await app.tap('+ Add a booking'); await app.tap('[data-f="all"]')
+    const row = document.querySelector(`[data-id="${at(app.db, 600).id}"]`)
+    expect([...row.querySelectorAll('.pn.held')].map(c => c.textContent)).toEqual(['Men’s Match Play match', 'Men’s Match Play match'])
+  })
+  it('someone else sees the held time as full; tapping says what it’s held for', async () => {
+    app = await boot(db => { const b = db.book(3, at(db, 600).id, [5]); b.held = 2; b.heldFor = 'Men’s Match Play match' })
+    await app.tap('Booking'); await app.tap('+ Add a booking')
+    const row = document.querySelector(`[data-id="${at(app.db, 600).id}"]`)
+    expect(row.classList.contains('full')).toBe(true)
+    await app.tap(`[data-id="${at(app.db, 600).id}"]`)
+    expect(app.toast()).toBe('Held for the Men’s Match Play match')
+  })
+  it('a held match in My bookings: the held places show, and no + Add a player', async () => {
+    app = await boot(db => { const b = db.book(0, at(db, 600).id, [5]); b.held = 2; b.heldFor = 'Men’s Match Play match' })
+    await app.tap('Booking')
+    expect([...document.querySelectorAll('[data-bk] .pn.held')]).toHaveLength(2)
+    await app.tap('[data-bk]')
+    expect(app.text()).toContain('2 places held for the Men’s Match Play match')
+    expect(app.text()).not.toContain('+ Add a player')
+  })
+  it('a club event’s singles match holds the places too', async () => {
+    app = await boot(db => { const e = db.events.find(x => x.id === 788); e.club = true; e.matches = { 1: [{ a: [0], b: [3] }] } })
+    await app.tap('Competition')
+    await app.tap('Christmas Cup')
+    await app.tap('Book this match')
+    await app.tap(`[data-id="${at(app.db, 600).id}"]`)
+    await app.tap('Book Christmas Cup match')
+    expect(app.db.bookings.at(-1).heldFor).toBe('Christmas Cup match')
+  })
+  it('a members’ own knockout doesn’t hold places: the usual open spaces', async () => {
+    app = await boot(db => { draw(db); db.signups[0].createdBy = 7 })
+    await app.tap('Competition')
+    await app.tap('Men’s Match Play')
+    await app.tap('Book this match')
+    await app.tap(`[data-id="${at(app.db, 600).id}"]`)
+    expect(document.querySelectorAll('.pslot.held')).toHaveLength(0)
+    expect(document.querySelector('[data-open]')).not.toBeNull()
+  })
+})

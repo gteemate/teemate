@@ -35,7 +35,7 @@ export async function loadBoard(id, dayWanted = null) {
     const ids = [...mine.a, ...mine.b], date = dayDate(e, day)
     const sheet = await api.getTeeSheet(date).catch(() => [])
     const name = mid => members.find(x => x.id === mid)?.name ?? 'A player'
-    action = { ...matchBooking(ids, sheet, me.id), date, ids, meId: me.id, names: name, eventName: e.name,
+    action = { ...matchBooking(ids, sheet, me.id), date, ids, meId: me.id, names: name, eventName: e.name, eventId: e.id, club: !!e.club,
       started: (dayCards[day] ?? []).some(c => ids.every(mid => c.lineup.some(x => x.m === mid))) }
     // A season's singles can be played in each player's own tee time: no "all four together" advice.
     if (matchType(mine) !== 'four' && ['apart', 'split'].includes(action.kind)) action = null

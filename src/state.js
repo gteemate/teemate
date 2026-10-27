@@ -4,7 +4,7 @@ export const S = {
   koNew: null, knCaret: null, // New knockout (members)
   signupNew: false, koCard: null, kcFrom: null, koComp: null, koRound: null, koView: 'round', koSwap: null, koFrom: null, // a knockout draw's page
   navReset: false, // a booking or request just finished: the back trail starts afresh from Home
-  matchNo: null, matchDay: null, matchFrom: null, matchPick: null, matchMove: null, // an event match's page; Book this match's players
+  matchNo: null, matchDay: null, matchFrom: null, matchPick: null, matchHold: null, matchMove: null, // an event match's page; Book this match's players
   hutPicks: {}, hutNote: '', hutQ: '', hutCaret: null, hutFrom: null, // hutFrom 'card': opened from the scorecard's prompt // halfway hut: order being picked; admin staff search
   guestPrefill: null, // booking: a friend from another club's details for the guest form
   friendHash: null, // a friend link being looked at (screens/friend.js)

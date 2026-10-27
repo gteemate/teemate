@@ -18,7 +18,7 @@ export const API_NAMES = ['getMe', 'forgetMe', 'getSession', 'signIn', 'needsAcc
   'getHutStaff', 'setHutStaff', 'placeHutOrder', 'cancelMyHutOrder', 'myHutOrders', 'hutOrdersToday', 'setHutOrderStatus', 'getMembers', 'getBuddies',
   'addBuddy', 'removeBuddy', 'getFriends', 'saveContact', 'removeContact', 'setFriendFavourite', 'getAccessList', 'saveMember', 'getFavourites',
   'setFavourite', 'setOfficeLogin', 'getAccessRequests', 'declineRequest', 'deleteMember', 'resetLogin', 'getCourse', 'getPins', 'setGreenWidth', 'publishPins',
-  'getTeeSheet', 'bookTeeTime', 'getMyTeeTimes', 'getGuests', 'setGuestHandicap', 'cancelBooking', 'removeFromBooking', 'addToBooking', 'chargeGuests', 'removeGuestCharge', 'getGuestChargesToday', 'moveMatchBooking', 'adminCancelBooking', 'adminMoveBooking',
+  'getTeeSheet', 'bookTeeTime', 'getMyTeeTimes', 'getGuests', 'setGuestHandicap', 'cancelBooking', 'removeFromBooking', 'addToBooking', 'bookClubMatch', 'chargeGuests', 'removeGuestCharge', 'getGuestChargesToday', 'moveMatchBooking', 'adminCancelBooking', 'adminMoveBooking',
   'getBookingNotices', 'seenBookingNotice', 'getMyBookings',
   'getGuestPoints', 'getBookingRules', 'setBookingRules', 'requestTeeTime', 'cancelTeeTimeRequest', 'getMyTeeTimeRequests', 'getTeeTimeRequests',
   'decideTeeTimeRequest', 'markTeeTimeRequestsSeen', 'dismissTeeTimeRequest', 'getGameSettings', 'setMyGamePref', 'getCurrentRound', 'getRound', 'deleteRound', 'saveRound',
@@ -130,6 +130,7 @@ export function makeWorld(today, setup = () => {}, as = 'admin') {
         selfEntry: false, entryRequired: true, createdBy: { id: 0, name: 'Gary Cochrane' }, A: { name: 'Blues', col: '#6f8fd8' }, B: { name: 'Reds', col: '#c27a8f' } },
     ],
   }
+  const heldOn = sid => db.bookings.filter(b => b.slotId === sid).reduce((t, b) => t + (b.held ?? 0), 0) // places held for a club singles match
   const sheet = date => (db.slots[date] ??= slotTimes.map(t => ({ id: id(), date, time: t, capacity: 4, twilight: false, players: [] })))
   const slotById = sid => Object.values(db.slots).flat().find(s => s.id === sid)
   const days = n => Array.from({ length: n }, (_, i) => addDaysIso(today, i))
@@ -140,8 +141,8 @@ export function makeWorld(today, setup = () => {}, as = 'admin') {
     const s = slotById(sid)
     if (!s) throw new Error('That tee time no longer exists.')
     const n = 1 + memberIds.length + guests.length
-    if (s.capacity - s.players.length < n) throw new Error('Sorry, that time has just been taken.')
-    const b = { id: id(), slotId: sid, bookedBy: booker }
+    if (s.capacity - s.players.length - heldOn(sid) < n) throw new Error('Sorry, that time has just been taken.')
+    const b = { id: id(), slotId: sid, bookedBy: booker, held: 0, heldFor: null }
     db.bookings.push(b)
     for (const m of [booker, ...memberIds]) s.players.push({ id: id(), bookingId: b.id, memberId: m, name: member(m).name, guest: false, hcp: member(m).hcp })
     for (const g of guests) {
@@ -334,7 +335,7 @@ export function makeWorld(today, setup = () => {}, as = 'admin') {
     getPins: async () => (db.pinSheet ? copy(db.pinSheet) : { ...copy(PIN_SHEET), date: db.pinsToday ? today : '2026-10-01' }),
     getGameSettings: async () => ({ ...copy(GAME_SETTINGS), mine: {} }),
     setMyGamePref: async () => {},
-    getTeeSheet: async date => copy(sheet(date).map(s => ({ ...s, players: s.players.map(p => ({ ...p, bookedBy: db.bookings.find(b => b.id === p.bookingId)?.bookedBy })) }))),
+    getTeeSheet: async date => copy(sheet(date).map(s => ({ ...s, held: heldOn(s.id), heldFor: db.bookings.find(b => b.slotId === s.id && b.held)?.heldFor ?? null, players: s.players.map(p => ({ ...p, bookedBy: db.bookings.find(b => b.id === p.bookingId)?.bookedBy })) }))),
     adminCancelBooking: async (bid, note = '') => {
       const b = db.bookings.find(x => x.id === bid), s = slotById(b.slotId), ids = s.players.filter(p => p.bookingId === bid && !p.guest).map(p => p.memberId)
       unbook(b)
@@ -346,7 +347,8 @@ export function makeWorld(today, setup = () => {}, as = 'admin') {
       if (to.capacity - to.players.length < mine.length) throw new Error('Sorry, those spaces have just been taken. Pick another time.')
       unbook(b)
       const ids = mine.filter(p => !p.guest).map(p => p.memberId)
-      db.book(b.bookedBy, sid, ids.filter(m => m !== b.bookedBy), mine.filter(p => p.guest).map(p => ({ name: p.name, club: p.club, hcp: p.hcp })))
+      const nb = db.book(b.bookedBy, sid, ids.filter(m => m !== b.bookedBy), mine.filter(p => p.guest).map(p => ({ name: p.name, club: p.club, hcp: p.hcp })))
+      Object.assign(nb, { held: b.held ?? 0, heldFor: b.heldFor ?? null }) // the hold moves with it
       ids.forEach(m => db.notices.push({ id: id(), memberId: m, kind: 'moved', date: to.date, oldTime: s.time, newTime: to.time, note: note || null, seen: false }))
     },
     getBookingNotices: async () => copy(db.notices.filter(n => n.memberId === ME && !n.seen && (n.kind !== 'added' || db.bookings.some(b => b.id === n.bookingId)))),
@@ -368,7 +370,7 @@ export function makeWorld(today, setup = () => {}, as = 'admin') {
       .map(({ b, s }) => {
         const ids = s.players.filter(p => p.bookingId === b.id && p.memberId != null).map(p => p.memberId)
         const card = db.rounds.find(r => r.slotId === s.id && r.date === s.date && r.lineup.some(x => ids.includes(x.m)))
-        return { id: b.id, date: s.date, time: s.time, capacity: s.capacity, mine: b.bookedBy === ME, bookedBy: member(b.bookedBy).name, guests: s.players.filter(p => p.bookingId === b.id && p.guest).length,
+        return { id: b.id, date: s.date, time: s.time, capacity: s.capacity, held: b.held ?? 0, heldFor: b.heldFor ?? null, mine: b.bookedBy === ME, bookedBy: member(b.bookedBy).name, guests: s.players.filter(p => p.bookingId === b.id && p.guest).length,
           players: s.players.length, scoredHoles: card ? card.done.filter(Boolean).length : 0,
           people: s.players.map(p => ({ bp: p.id, memberId: p.memberId, name: p.name, guest: p.guest, club: p.club, hcp: p.hcp, inBooking: p.bookingId === b.id })) }
       }).sort((x, y) => (x.date + x.time).localeCompare(y.date + y.time)),
@@ -380,14 +382,38 @@ export function makeWorld(today, setup = () => {}, as = 'admin') {
       db.rounds = db.rounds.filter(r => !(r.slotId === s.id && r.lineup.some(x => gone.includes(x.m)) && (removeScores || !r.done.some(Boolean))))
       return { result: 'deleted', pointsBack: 0, cardsRemoved: before - db.rounds.length, eventsCancelled: 0 }
     },
+    // As the database: a club singles match (a club knockout, or a club event's 1 v 1) holds the other places.
+    bookClubMatch: async ({ slotId, opponent, kind, ref }) => {
+      let label = null, ok = false, club = false
+      if (kind === 'ko') {
+        const c = db.signups.find(x => x.id === ref), es = db.signupEntries.filter(e => e.compId === ref)
+        const ent = mid => es.find(e => e.memberId === mid)
+        ok = !!c && db.koMatches.some(m => m.compId === ref && ['open', 'reported', 'disputed'].includes(m.status)
+          && [m.aEntry, m.bEntry].includes(ent(ME)?.id) && [m.aEntry, m.bEntry].includes(ent(opponent)?.id))
+        club = ok && c.createdBy == null && c.kind === 'singles'; label = c?.name
+      } else if (kind === 'event') {
+        const e = db.events.find(x => x.id === ref)
+        const m = e && Object.values(e.matches ?? {}).flat().find(x => (x.a.includes(ME) && x.b.includes(opponent)) || (x.b.includes(ME) && x.a.includes(opponent)))
+        ok = !!m; club = ok && e.club && m.a.length === 1 && m.b.length === 1; label = e?.name
+      }
+      if (!ok) throw new Error('That isn’t your match.')
+      if (!club) throw new Error('Only club singles matches hold the other places.')
+      const s = slotById(slotId)
+      if (s.players.length || heldOn(slotId)) throw new Error('There isn’t room for the whole match on that time. Pick an empty time.')
+      const b = db.book(ME, slotId, [opponent])
+      Object.assign(b, { held: s.capacity - 2, heldFor: `${label} match` })
+      db.notices.push({ id: id(), memberId: opponent, kind: 'added', date: s.date, oldTime: s.time, newTime: null, note: null, byName: member(ME).name, withNames: [member(ME).name.split(' ')[0]], bookingId: b.id, seen: false })
+      return { id: b.id, date: s.date, time: s.time, players: [member(ME).name, member(opponent).name], guests: 0, pointsUsed: 0, held: b.held, heldFor: b.heldFor }
+    },
     addToBooking: async (bid, { memberIds = [], guests = [] }) => { // as the database: anyone on it; room; not already on the time
       const b = db.bookings.find(x => x.id === bid)
       if (!b) throw new Error('That booking no longer exists.')
       const s = slotById(b.slotId)
       if (b.bookedBy !== ME && !s.players.some(p => p.bookingId === b.id && p.memberId === ME)) throw new Error('That isn’t your booking.')
+      if (b.held) throw new Error(`This time is held for the ${b.heldFor}.`)
       if (!memberIds.length && !guests.length) throw new Error('Add a player or guest first.')
       if (s.players.some(p => memberIds.includes(p.memberId))) throw new Error('One of your group is already booked on this time.')
-      if (memberIds.length + guests.length > s.capacity - s.players.length) throw new Error('Sorry, there’s no space left on this time.')
+      if (memberIds.length + guests.length > s.capacity - s.players.length - heldOn(s.id)) throw new Error('Sorry, there’s no space left on this time.')
       for (const m of memberIds) {
         s.players.push({ id: id(), bookingId: b.id, memberId: m, name: member(m).name, guest: false, hcp: member(m).hcp })
         db.notices.push({ id: id(), memberId: m, kind: 'added', date: s.date, oldTime: s.time, newTime: null, note: null, byName: member(ME).name,
@@ -407,6 +433,7 @@ export function makeWorld(today, setup = () => {}, as = 'admin') {
       if (!p) throw new Error('That player is no longer on this booking.')
       if (!s.players.some(x => x.bookingId === b.id && x !== p)) return api.cancelBooking(bid)
       s.players = s.players.filter(x => x !== p)
+      if (s.players.filter(x => x.bookingId === b.id && x.memberId != null).length < 2) Object.assign(b, { held: 0, heldFor: null }) // not a match of two any more
       const visit = db.guestVisits.find(v => v.playerId === p.id)
       db.guestVisits = db.guestVisits.filter(v => v !== visit)
       db.notices = db.notices.filter(n => !(n.kind === 'added' && n.bookingId === b.id && n.memberId === p.memberId))

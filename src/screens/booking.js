@@ -13,14 +13,15 @@ export async function load() {
   return { date, slot: sheet.find(s => (S.addTo ? s.time === S.addTo.time : s.id === S.slotId)), me, members, friends, points }
 }
 
-const back = () => { S.guests = []; S.gmodal = false; S.addTo = null; return goBack(() => { S.aview = 'tee'; return render() }) } // to the tee sheet, or a match you came from
+const back = () => { S.guests = []; S.gmodal = false; S.addTo = null; S.matchHold = null; return goBack(() => { S.aview = 'tee'; return render() }) } // to the tee sheet, or a match you came from
 
 const sub = m => [m.gui && 'GUI ' + m.gui, m.hcp != null && 'HCP ' + fmtHcp(m.hcp)].filter(Boolean).join(' · ')
 
 export function draw({ date, slot: s, me, members, friends, points }) {
   if (!s) { back(); return }
   const add = !!S.addTo // adding to a booking I'm on: I'm already on the time
-  const free = s.capacity - s.players.length, max = add ? free : free - 1, fee = s.twilight ? 25 : 0, cost = points.cost
+  const hold = !add && !S.reqMode ? S.matchHold : null // a club singles match: the other places are held for it
+  const free = s.capacity - s.players.length - (s.held ?? 0), max = add ? free : hold ? 1 : free - 1, fee = s.twilight ? 25 : 0, cost = points.cost
   header(add ? `Add to ${hhmm(s.time)}` : S.reqMode ? `Request ${hhmm(s.time)}` : hhmm(s.time), `${longDay(date)} · 1st tee`, back)
   if (free <= 0) { // someone else took the last space while this screen was open
     $('main').innerHTML = `<div class="done"><div class="flagmark">⛳</div><h4>This time is now full</h4>
@@ -36,7 +37,8 @@ export function draw({ date, slot: s, me, members, friends, points }) {
   let slots = add ? '' : `<div class="pslot filled"><span class="av">${ini(me.name)}</span><span class="who"><strong>${esc(me.name)} (you)</strong><small>${esc(sub(me))}</small></span><span></span></div>`
   S.picked.forEach(id => { const m = byId(id); slots += `<div class="pslot filled"><span class="av">${ini(m.name)}</span><span class="who"><strong>${esc(m.name)}</strong><small>${esc(sub(m))}</small></span><button class="x" data-rm="${id}" aria-label="Remove ${esc(m.name)}">×</button></div>` })
   S.guests.forEach((g, n) => { slots += `<div class="pslot filled guest"><span class="av gst">${ini(g.name)}</span><span class="who"><strong>${esc(g.name)} <span class="pill tag">Guest</span></strong><small>${[g.club, g.gui && 'GUI ' + g.gui, g.hcp != null ? 'HCP ' + fmtHcp(g.hcp) : 'handicap later'].filter(Boolean).map(esc).join(' · ')}</small></span><span class="gright"><span class="ptag">−${cost} pts</span><button class="x" data-rg="${n}" aria-label="Remove guest ${esc(g.name)}">×</button></span></div>` })
-  for (let k = (add ? 0 : 1) + used; k < free; k++) slots += '<button class="pslot open" data-open><span class="av empty">+</span><span class="who"><strong>Open space</strong><small>Tap to add a player or guest</small></span><span class="chev">›</span></button>'
+  if (hold) for (let k = 2; k < s.capacity; k++) slots += `<div class="pslot held"><span class="av empty">⛳</span><span class="who"><strong>Held for your ${esc(hold.label)}</strong><small>Nobody else can book this place</small></span><span></span></div>`
+  else for (let k = (add ? 0 : 1) + used; k < free; k++) slots += '<button class="pslot open" data-open><span class="av empty">+</span><span class="who"><strong>Open space</strong><small>Tap to add a player or guest</small></span><span class="chev">›</span></button>'
   s.players.forEach(p => (slots += `<div class="pslot other"><span class="av other">${ini(p.name)}</span><span class="who"><strong>${esc(p.name)}${p.memberId === me.id ? ' (you)' : ''}</strong><small>Already booked</small></span><span></span></div>`))
 
   $('main').innerHTML = `<div class="screen">
@@ -48,7 +50,7 @@ export function draw({ date, slot: s, me, members, friends, points }) {
   ${S.reqMode ? `<div class="card evsec"><label for="rq-why">Why do you need this time?</label><textarea id="rq-why" class="plainsel" rows="3" maxlength="500" placeholder="e.g. Visitors flying in from Boston for one weekend">${esc(S.reqReason)}</textarea>
     <span class="hint">An admin approves (it’s booked for you straight away) or declines with a note. Nothing is held while you wait.</span></div>` : ''}
   </div>
-  <div class="cta"><div class="tot">${add ? `${used} to add` : `${1 + used} player${used ? 's' : ''}`}<b>${fee ? `€${fee * (1 + S.picked.length)}` : "Members' time"}</b></div><button class="primary" id="confirm">${add ? 'Add to booking' : S.reqMode ? 'Send request' : 'Confirm booking'}</button></div>`
+  <div class="cta"><div class="tot">${add ? `${used} to add` : `${1 + used} player${used ? 's' : ''}`}<b>${fee ? `€${fee * (1 + S.picked.length)}` : "Members' time"}</b></div><button class="primary" id="confirm">${hold ? `Book ${esc(hold.label)}` : add ? 'Add to booking' : S.reqMode ? 'Send request' : 'Confirm booking'}</button></div>`
 
   const taken = new Set([me.id, ...S.picked, ...s.players.map(p => p.memberId)])
   if (S.gmodal === 'pick') pickSheet(members, friends, taken, canGuest, points, left)
@@ -86,7 +88,8 @@ export function draw({ date, slot: s, me, members, friends, points }) {
     }
     btn.disabled = true
     try {
-      S.lastBooking = await api.bookTeeTime({ slotId: s.id, memberIds: S.picked, guests: S.guests })
+      S.lastBooking = hold ? await api.bookClubMatch({ slotId: s.id, opponent: hold.opp, kind: hold.kind, ref: hold.ref })
+        : await api.bookTeeTime({ slotId: s.id, memberIds: S.picked, guests: S.guests })
     } catch (err) {
       let msg = err.message
       if (/just been taken/.test(msg)) { // lost it in a rush: say where there's still room
@@ -99,6 +102,7 @@ export function draw({ date, slot: s, me, members, friends, points }) {
     }
     S.guests = []
     S.picked = []
+    S.matchHold = null
     S.aview = 'booked'
     S.navReset = true // done: back goes Home from here
     await render()

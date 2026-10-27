@@ -17,6 +17,12 @@ export async function bookTeeTime({ slotId, memberIds = [], guests = [] }) {
   return must(await sb.rpc('book_tee_time', { p_slot_id: slotId, p_member_ids: memberIds, p_guests: guests }))
 }
 
+/** Book a club singles match (a club knockout, or a club event's 1 v 1) with my opponent: the other places on the time
+ *  are held for the match. kind 'ko' (ref: the competition) or 'event' (ref: the event). → as bookTeeTime, plus held, heldFor */
+export async function bookClubMatch({ slotId, opponent, kind, ref }) {
+  return must(await sb.rpc('book_club_match', { p_slot: slotId, p_opponent: opponent, p_kind: kind, p_ref: ref }))
+}
+
 /** Add members or guests to a booking I'm on (e.g. a fourth player), while the time has room. Guests are charged to me.
  *  → { added, pointsUsed } */
 export async function addToBooking(bookingId, { memberIds = [], guests = [] }) {

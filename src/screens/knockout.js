@@ -169,7 +169,9 @@ export function draw({ comp, me, members, matches = [], entries = [], mine, cour
     // The tee sheet with the other players in this match added (my partner and theirs).
     const opp = entries.find(e => e.id === (next.aEntry === mine.id ? next.bEntry : next.aEntry))
     const others = [mine.memberId, mine.partnerId, opp?.memberId, opp?.partnerId].filter(x => x != null && x !== me.id)
-    Object.assign(S, { tab: 'home', aview: 'tee', matchPick: others, filter: others.length >= 2 ? '4' : '2', reqMode: false, day: 0 })
+    // A club singles match holds the other places on the time (an empty time, so the four-ball is the match's).
+    const hold = comp.createdBy == null && comp.kind === 'singles' && opp ? { kind: 'ko', ref: comp.id, opp: opp.memberId, label: `${comp.name} match` } : null
+    Object.assign(S, { tab: 'home', aview: 'tee', matchPick: others, matchHold: hold, filter: hold || others.length >= 2 ? '4' : '2', reqMode: false, day: 0 })
     await render(); top0()
   }
 }

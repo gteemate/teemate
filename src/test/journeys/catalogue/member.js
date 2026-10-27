@@ -61,6 +61,16 @@ export default [
     action: 'cancelBooking', expect: db => db.bookings.length === 0, refusals: 'all',
   },
   {
+    id: 'book-club-match', who: 'member', title: 'Book my club knockout match (the other two places are held for it)',
+    setup: db => {
+      Object.assign(db.signups[0], { closesOn: '2026-10-01', drawPublished: true, roundDeadlines: ['2026-11-15', '2026-12-06'] })
+      db.signupEntries.push(...[1, 0, 3, 5].map((m, i) => ({ id: 100 + i, compId: 1, memberId: m, partnerId: null })))
+      db.koMatches.push({ id: 1, compId: 1, round: 1, slot: 0, aEntry: 100, bEntry: 101, winnerEntry: null, result: null, status: 'open', reportedEntry: null })
+    },
+    steps: [{ tap: 'Competition' }, { tap: 'Men’s Match Play' }, { tap: 'Book this match' }, { tap: db => `[data-id="${at(db, 600).id}"]` }, { tap: 'Book Men’s Match Play match' }],
+    action: 'bookClubMatch', expect: db => db.bookings.some(b => b.held === 2), refusals: 'all',
+  },
+  {
     id: 'add-to-booking', who: 'member', title: 'Add a fourth player to a booking I’m on',
     setup: db => db.book(5, at(db, 600).id, [1, 7]),
     steps: [{ tap: 'Booking' }, { tap: '10:00' }, { tap: '+ Add a player' }, { tap: '[data-open]' }, { tap: "Ciarán O'Neill" }, { tap: 'Add to booking' }],

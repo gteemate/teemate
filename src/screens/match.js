@@ -48,7 +48,9 @@ export function bindMatchAction(st) {
     } else if (b.dataset.mact === 'book') {
       // The tee sheet on the match day with the other three ready to add; beyond the booking window, a request.
       const rules = await api.getBookingRules(), days = nextDays(rules.days + 1).map(isoDate), i = days.indexOf(st.date)
-      Object.assign(S, { tab: 'home', aview: 'tee', matchPick: others, filter: '4', reqMode: i < 0, ...(i < 0 ? { reqDate: st.date, reqReason: `Match in ${st.eventName}` } : { day: i }) })
+      // A club event's 1 v 1 holds the other places on the time for the match.
+      const hold = st.club && st.ids.length === 2 && i >= 0 ? { kind: 'event', ref: st.eventId, opp: others[0], label: `${st.eventName} match` } : null
+      Object.assign(S, { tab: 'home', aview: 'tee', matchPick: others, matchHold: hold, filter: '4', reqMode: i < 0, ...(i < 0 ? { reqDate: st.date, reqReason: `Match in ${st.eventName}` } : { day: i }) })
     } else if (b.dataset.mact === 'add') {
       Object.assign(S, { tab: 'home', aview: 'book', slotId: st.slot.id, picked: st.missing, guests: [], reqMode: false })
       const days = nextDays(((await api.getBookingRules()).days) + 1).map(isoDate)

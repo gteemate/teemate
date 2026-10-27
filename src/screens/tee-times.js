@@ -38,7 +38,8 @@ export function draw({ days, sheet, points, me, rules, req, skew }) {
   // Booking a match: the other players' tee times count too (everyone has to be 2 hours from their own).
   const theirs = S.matchPick ? sheet.filter(s => !isMine(s) && s.players.some(p => S.matchPick.includes(p.memberId))) : []
   const tooClose = s => !isMine(s) && [...mine, ...theirs].find(m => m !== s && Math.abs(m.time - s.time) < GAP)
-  const free = s => s.capacity - s.players.length
+  const free = s => s.capacity - s.players.length - (s.held ?? 0) // places held for a club singles match aren't free
+  if (!S.matchPick) S.matchHold = null // only while booking a match from its page
   header(req ? 'Request a tee time' : 'Book tee times', `${longDay(req ? fromIso(req.date) : days[S.day])} · <b>${sheet.filter(s => free(s) > 0).length}</b> of ${sheet.length} available`)
   if (req) $('dateWrap').innerHTML = `<div class="reqdate"><label for="rq-date">Day</label><input type="date" id="rq-date" class="plainsel" min="${req.min}" max="${req.max}" value="${req.date}">
     <span class="hint">Any day not open for booking yet. Pick a time, then say why you need it; an admin approves or declines.</span></div>`
@@ -67,7 +68,8 @@ export function draw({ days, sheet, points, me, rules, req, skew }) {
       const name = p => (p.memberId === me.id ? 'You' : p.guest ? `${p.name} (guest)` : p.name)
       const cells = tier === ' open' ? [`<span class="pn whole">Available<small>Tap to book</small></span>`]
         : [...s.players.map(p => `<span class="pn${p.guest ? ' g' : ''}${p.memberId === me.id ? ' me' : ''}">${esc(name(p))}</span>`),
-          ...Array.from({ length: Math.max(0, s.capacity - s.players.length) }, () => (tier ? '<span class="pn free" aria-hidden="true">+</span>' : '<span class="pn empty"></span>'))]
+          ...Array.from({ length: s.held ?? 0 }, () => `<span class="pn held">${esc(s.heldFor ?? 'Held for a match')}</span>`),
+          ...Array.from({ length: Math.max(0, s.capacity - s.players.length - (s.held ?? 0)) }, () => (tier ? '<span class="pn free" aria-hidden="true">+</span>' : '<span class="pn empty"></span>'))]
       const said = mineHere ? 'you’re booked on this' : near ? `within 2 hours of your ${hhmm(near.time)}` : !f ? 'full' : `${f} space${f > 1 ? 's' : ''} free`
       h += `<button class="slot names${tier}${off ? ' full' : ''}${locked ? ' notyet' : ''}${mineHere ? ' minebk' : ''}" data-id="${s.id}" ${off ? 'aria-disabled="true"' : ''}
         aria-label="${hhmm(s.time)}: ${esc([...s.players.map(name), said].join(', '))}"><span class="time">${hhmm(s.time)}${s.twilight ? '<span class="pill tag">Twilight</span>' : ''}</span>
@@ -95,7 +97,7 @@ export function draw({ days, sheet, points, me, rules, req, skew }) {
       showNotice(isMine(near) ? `Within 2 hours of your ${hhmm(near.time)} tee time` : `${who ?? 'Someone in your match'} is booked at ${hhmm(near.time)}`,
         'Tee times have to be at least 2 hours apart, before or after.'); return
     }
-    if (!free(s)) { toast('That time is full'); return }
+    if (!free(s)) { toast(s.held ? `Held for the ${s.heldFor}` : 'That time is full'); return }
     Object.assign(S, { slotId: s.id, picked: S.matchPick ?? [], guests: [], aview: 'book', matchPick: null }) // Book this match: the other three already added
     await render()
     top0()

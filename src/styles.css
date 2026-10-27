@@ -1012,3 +1012,7 @@ button.lrow.ci-m{width:100%;text-align:left;background:none;border:0;border-top:
 .mycard{text-align:center}
 .mycard .qr.big{background:#fff;padding:16px;border-radius:18px;width:min(78vw,320px);margin:14px auto}
 .mypts #mycard{margin-top:12px;width:100%}
+/* places held for a club singles match: muted, in italics, on the tee sheet, My bookings and the booking screen */
+.pgrid4 .pn.held{color:var(--muted);font-style:italic;font-weight:500;font-size:14px}
+.pslot.held{opacity:.75;border-style:dashed}
+.ocell.held{font-style:italic;opacity:.75}

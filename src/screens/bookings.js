@@ -49,7 +49,7 @@ export function details(b, me) {
     ${others.length ? `<span class="hint">Also on this tee time</span><div class="card list">${others.map(p => person(p, false)).join('')}</div>` : ''}
     ${scored(b) ? `<div class="card warn-box"><strong>Scores entered for ${holes(b.scoredHoles)}</strong><span>Deleting this booking also deletes the scorecard for this round.${b.guests ? ' Your guest points come back.' : ''}</span></div>`
       : `<span class="hint">${b.mine ? `${canRemove ? 'Tap Remove to take one person off. ' : ''}Deleting takes everyone in your booking off this time${b.guests ? ' and gives your guest points back' : ''}.` : 'Withdrawing takes just you off. The rest of the booking stays.'} ${!b.mine && b.scoredHoles > 0 ? 'The group’s scorecard stays.' : 'A scorecard for it goes too, unless holes have been saved.'}</span>`}
-    ${b.people.length < (b.capacity ?? 4) ? '<button class="ghost dashed" id="bk-add">+ Add a player</button>' : ''}
+    ${b.held ? `<span class="hint">${b.held} places held for the ${esc(b.heldFor)}</span>` : b.people.length < (b.capacity ?? 4) ? '<button class="ghost dashed" id="bk-add">+ Add a player</button>' : ''}
     <div class="gm-btns"><button type="button" class="ghost" id="bk-close">${scored(b) ? 'Keep it' : 'Close'}</button><button class="primary" id="bk-act">${act}</button></div>
   </div></div>`
   const close = () => { $('modal').innerHTML = '' }
@@ -92,6 +92,7 @@ export function draw({ bookings, me, requests }) {
   const grid = b => {
     const ps = [...b.people.filter(p => p.inBooking), ...b.people.filter(p => !p.inBooking)]
     const cells = ps.map(p => `<span class="pn${p.guest ? ' g' : ''}${p.memberId === me.id ? ' me' : ''}">${esc(p.memberId === me.id ? 'You' : p.guest ? `${p.name} (guest)` : p.name)}</span>`)
+    for (let i = 0; i < (b.held ?? 0); i++) cells.push(`<span class="pn held">${esc(b.heldFor)}</span>`) // held for a club singles match
     while (cells.length < 4 || cells.length % 2) cells.push('<span class="pn empty"></span>')
     return `<span class="pgrid4">${cells.join('')}</span>`
   }

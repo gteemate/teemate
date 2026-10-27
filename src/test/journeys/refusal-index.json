@@ -3,6 +3,7 @@
   "add_to_booking": [
    "That booking no longer exists.",
    "That isn't your booking.",
+   "This time is held for the %.",
    "That tee time has passed.",
    "Add a player or guest first.",
    "A player is listed twice.",
@@ -71,7 +72,8 @@
    "GUI numbers are 6–10 digits.",
    "Handicap index must be between +10 and 54.",
    "Sorry, those spaces have just been taken. Pick another time.",
-   "You don't have enough guest points for this booking."
+   "You don't have enough guest points for this booking.",
+   "There isn’t room for the whole match on that time. Pick an empty time."
   ],
   "admin_publish_draw": [
    "Only admins can publish the draw.",
@@ -175,6 +177,23 @@
    "Sorry, those spaces have just been taken. Pick another time.",
    "You don't have enough guest points for this booking."
   ],
+  "book_club_match": [
+   "That isn't your match.",
+   "Only club singles matches hold the other places.",
+   "There isn’t room for the whole match on that time. Pick an empty time.",
+   "Only members can book tee times.",
+   "That tee time no longer exists.",
+   "That tee time has passed.",
+   "%",
+   "A player is listed twice.",
+   "One of those players isn't a member.",
+   "One of your group is already booked on this time.",
+   "Every guest needs a name.",
+   "GUI numbers are 6–10 digits.",
+   "Handicap index must be between +10 and 54.",
+   "Sorry, those spaces have just been taken. Pick another time.",
+   "You don't have enough guest points for this booking."
+  ],
   "book_tee_time": [
    "Only members can book tee times.",
    "That tee time no longer exists.",
@@ -210,6 +229,9 @@
   "cancel_tee_time_request": [
    "You can only cancel your own requests.",
    "This request is no longer waiting."
+  ],
+  "carry_hold": [
+   "There isn’t room for the whole match on that time. Pick an empty time."
   ],
   "check_guest_balance": [
    "You don't have enough guest points for this booking."
@@ -431,7 +453,8 @@
    "GUI numbers are 6–10 digits.",
    "Handicap index must be between +10 and 54.",
    "Sorry, those spaces have just been taken. Pick another time.",
-   "You don't have enough guest points for this booking."
+   "You don't have enough guest points for this booking.",
+   "There isn’t room for the whole match on that time. Pick an empty time."
   ],
   "my_booking_ids": [],
   "my_hut_orders": [],
@@ -487,6 +510,7 @@
    "Pick a team style."
   ],
   "points_problem": [],
+  "release_hold": [],
   "release_time_label": [],
   "remove_event_entrant": [
    "Only the club office can take someone off."
@@ -577,6 +601,7 @@
   ],
   "signup_counts": [],
   "slot_players": [],
+  "slot_taken": [],
   "start_league_knockout": [
    "That league no longer exists.",
    "Only the league's organiser (or an admin) starts its knockout.",
@@ -650,6 +675,12 @@
   "answerPlayerEvent": {
    "rpc": [
     "respond_player_event"
+   ],
+   "tables": []
+  },
+  "bookClubMatch": {
+   "rpc": [
+    "book_club_match"
    ],
    "tables": []
   },
