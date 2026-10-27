@@ -403,6 +403,12 @@ export function makeWorld(today, setup = () => {}, as = 'admin') {
     getCardsById: async ids => Object.fromEntries(db.rounds.filter(r => ids.includes(r.id)).map(r => [r.id, copy(r)])),
     getLeagueEntries: async eids => copy(db.leagueEntries.filter(x => eids.includes(x.eventId))),
     getEventEntries: async eids => copy(db.entries.filter(x => eids.includes(x.eventId))),
+    leaveLeague: async (rid, eid, ids) => {
+      const r = db.rounds.find(x => x.id === rid)
+      if (!r || !r.lineup.some(x => x.m === ME)) throw new Error('You can only change entries on a card you\'re on.')
+      if (r.done.some(Boolean)) throw new Error('Entries are locked once the first hole is saved.')
+      db.leagueEntries = db.leagueEntries.filter(x => !(x.eventId === eid && x.roundId === rid && ids.includes(x.memberId)))
+    },
     enterLeague: async (rid, eid, ids, marker = null) => { ids.forEach(m => db.leagueEntries.push({ eventId: eid, week: 1, memberId: m, roundId: rid, marker })); return 1 },
     enterEventRound: async (rid, eid, ids, marker = null) => { ids.forEach(m => db.entries.push({ eventId: eid, day: 1, memberId: m, roundId: rid, marker })); return 1 },
     // As the database's rules: a member sees their own entries; admins see everyone's.

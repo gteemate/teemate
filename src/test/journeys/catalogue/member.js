@@ -25,6 +25,20 @@ const twoGroups = db => { db.book(1, at(db, 570).id, [10]); db.book(7, at(db, 58
 // The club advertises the Frosty League for sign-up (entries close 30 Nov, 4 places); players already in it.
 const signupLeague = (players = [10, 12]) => db => db.events.push({ id: 881, name: 'Frosty League', style: 'league', fmt: 'beststab', club: true, everyone: false, startDate: '2026-12-07', days: 1, weeks: 10, bestOf: 4,
   teams: [], team: {}, players: [...players], matches: {}, captainPool: [], signup: true, advertiseFrom: '2026-10-01', entriesClose: '2026-11-30', maxEntries: 4, createdBy: { id: 0, name: 'Gary Cochrane' } })
+// A card read from paper today: Declan (1) and Ciarán (3), uploaded by `by`, to be confirmed by `confirmer`.
+const paperCard = (db, { by, confirmer = null, state = 'waiting', note = null }) => {
+  const b = db.book(1, at(db, 570).id, [3])
+  db.rounds.push({ id: 61, date: db.today, slotId: b.slotId, createdBy: by, lineup: [{ m: 1 }, { m: 3 }], game: 'stab', pairing: 0, submitted: {},
+    scores: Array.from({ length: 18 }, () => [4, 5]), done: Array(18).fill(true), paper: { by, confirmer, state, note, photos: 1 } })
+  db.photos.push('61/1.jpg')
+}
+// The camera and the crop, stood in for (the pretend browser has neither).
+const camera = async () => {
+  const flow = await import('../../../paper/paper-flow.js')
+  flow.io.choose = async () => new File(['card'], 'card.jpg', { type: 'image/jpeg' })
+  flow.io.preview = () => 'data:,'
+  flow.io.crop = async () => new Blob(['grid'], { type: 'image/jpeg' })
+}
 const toHole9 = Array.from({ length: 8 }, (_, h) => ({ tap: `Save hole ${h + 1}` }))
 
 export default [
@@ -208,5 +222,57 @@ export default [
     setup: db => db.orders.push({ id: 900, memberId: 1, items: [{ id: 1, name: 'Bacon roll', qty: 1, pricePence: 450 }], totalPence: 450, note: null, status: 'sent', cancelNote: null, createdAt: new Date().toISOString(), roundId: null }),
     steps: [{ tap: '#account' }, { tap: '[data-a="hutorder"]' }, { tap: '[data-cancel="900"]' }, { tap: '[data-cancel="900"]' }],
     action: 'cancelMyHutOrder', expect: db => db.orders[0].status === 'cancelled', refusals: 'all',
+  },
+  {
+    id: 'count-for-event-round', who: 'member', title: 'Count my round for an event I’m entered in as I start',
+    setup: db => { teeTime(db); db.events.push({ id: 950, name: 'Pals Medal', style: 'individual', fmt: 'stab', club: false, everyone: false, startDate: db.today, days: 1, players: [1, 3], team: {}, teams: [], matches: {}, captainPool: [], entryRequired: true, createdBy: { id: 1, name: 'Declan Murphy' } }) },
+    steps: [{ tap: 'Scoring' }, { tap: '09:30' }, { tap: 'Pals Medal' }, { tap: '#start' }], // (Ciarán marks me: the only other player)
+    keeps: { rounds: 'the card is made first; a refused count leaves a general-play card, which can still be counted before hole 1' },
+    action: 'enterEventRound', expect: db => db.entries.some(x => x.eventId === 950 && x.memberId === 1), refusals: 'all',
+  },
+  {
+    id: 'leave-league', who: 'member', title: 'Stop my round counting for the league before hole 1',
+    setup: db => { const b = teeTime(db); db.rounds.push({ id: 71, date: db.today, slotId: b.slotId, createdBy: 1, lineup: [{ m: 1 }, { m: 3 }], game: 'stab', pairing: 0, submitted: {}, scores: Array.from({ length: 18 }, () => [4, 4]), done: Array(18).fill(false) }); db.leagueEntries.push({ eventId: 2, week: 1, memberId: 1, roundId: 71 }, { eventId: 2, week: 1, memberId: 3, roundId: 71 }) },
+    prepare: () => { try { localStorage.setItem('teemate.lgAsked.71', '1') } catch { /* none */ } },
+    steps: [{ tap: 'Scoring' }, { tap: '.wlpill' }, { tap: '[data-yn="2:1"][data-v="0"]' }, { tap: '[data-yn="2:3"][data-v="1"]' }, { tap: '#lg-done' }],
+    action: 'leaveLeague', expect: db => !db.leagueEntries.some(x => x.memberId === 1), refusals: 'all',
+  },
+  {
+    id: 'booked-you-in', who: 'member', title: 'See that someone booked me in, and OK it',
+    setup: db => { const b = db.book(7, at(db, 600).id, [1]); db.notices.push({ id: 900, memberId: 1, kind: 'added', date: db.today, oldTime: 600, newTime: null, note: null, byName: 'Peter Walsh', withNames: ['Peter'], bookingId: b.id, seen: false }) },
+    steps: [{ tap: '[data-al="ok"]' }],
+    action: 'seenBookingNotice', expect: db => db.notices[0].seen, refusals: { none: 'marking a notice read happens quietly; if it fails the notice simply shows again next time' },
+  },
+  {
+    id: 'request-answers-read', who: 'member', title: 'Open my bookings after a request is answered (the answer is marked read)',
+    setup: db => db.requests.push({ id: 36, memberId: 1, slotId: 1, date: FUTURE, time: 460, memberIds: [], guests: [], reason: 'Visitors flying in', status: 'approved', bookingId: null, note: null, decidedAt: '2026-10-09T18:45:00Z', seen: false, createdAt: '2026-10-09T18:00:00Z' }),
+    steps: [{ tap: '[data-al="later"]' }, { tap: 'Booking' }],
+    action: 'markTeeTimeRequestsSeen', expect: db => db.requests[0].seen, refusals: { none: 'marking answers read happens quietly; if it fails they show as new again next time' },
+  },
+  {
+    id: 'paper-resend', who: 'member', title: 'Fix my paper score that was sent back, and send it again',
+    setup: db => { paperCard(db, { by: 1, confirmer: 3, state: 'sent_back', note: 'Hole 14 was a 6' }) },
+    steps: [{ tap: 'Check my scores' }, { tap: '[data-ph="13"]' }, { tap: '[data-pn="6"]' }, { tap: 'My scores are right' }],
+    action: 'resendPaperScore', expect: db => db.rounds.find(r => r.id === 61).paper.state === 'waiting', refusals: 'all',
+    keeps: { rounds: 'the fixed score is saved on the card first; a refused send leaves it sent back, to send again' },
+  },
+  {
+    id: 'paper-card', who: 'member', title: 'Photograph our paper card and save the scores',
+    setup: db => { db.theme.paperCards = true; db.book(1, at(db, 570).id, [3]) },
+    prepare: camera,
+    steps: [{ tap: 'Scoring' }, { tap: '09:30' }, { tap: '#start' }, { tap: 'Photograph your card instead' }, { tap: 'Take photo of card 1' }, { tap: 'Yes, all the scores are in the box' },
+      { tap: '#pf-next' }, { tap: 'Ciarán’s scores are right' }, { tap: 'My scores are right' }, { tap: '[data-conf="3"]' }, { tap: '#pf-save' }],
+    keeps: { rounds: 'the scores are saved on the card first, then it is marked as read from paper', photos: 'the photo is kept with the card' },
+    action: 'markPaperCard', expect: db => db.rounds.some(r => r.paper?.state === 'waiting'), refusals: 'all',
+  },
+  {
+    id: 'paper-confirm', who: 'member', title: 'Confirm a playing partner’s paper score',
+    setup: db => paperCard(db, { by: 3, confirmer: 1 }), steps: [{ tap: '[data-al="pconfirm"]' }],
+    action: 'confirmPaperScore', expect: db => db.rounds.find(r => r.id === 61).paper.state === 'confirmed', refusals: 'all',
+  },
+  {
+    id: 'paper-send-back', who: 'member', title: 'Send a partner’s paper score back with a note',
+    setup: db => paperCard(db, { by: 3, confirmer: 1 }), steps: [{ tap: '[data-al="pback"]' }, { type: ['#pb-note', 'Hole 14 was a 6'] }, { tap: '#pb-send' }],
+    action: 'sendBackPaperScore', expect: db => db.rounds.find(r => r.id === 61).paper.state === 'sent_back', refusals: 'all',
   },
 ]

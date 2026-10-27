@@ -8,6 +8,7 @@
 //   keeps:      { [db key]: why } — what may change even when the action is refused (left out of 'nothing half-saved')
 //   hash:       start from a link (e.g. a shared friend card)
 //   browser:    steps that also work on the test database, for the real-browser run
+//   prepare:    async (app) after the app starts, before the steps (e.g. stand in for the camera)
 import member from './catalogue/member.js'
 import office from './catalogue/office.js'
 

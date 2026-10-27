@@ -31,6 +31,7 @@ afterEach(() => { app?.done(); app = null })
 describe.each(JOURNEYS.map(j => [j.id, j]))('%s', (_, j) => {
   it(`${j.title} (as ${j.who})`, async () => {
     app = await boot(j.setup ?? (() => {}), { as: j.who, hash: j.hash ?? '' })
+    if (j.prepare) await j.prepare(app)
     await runSteps(app, j.steps)
     expect(app.db.calls, `the journey should end in ${j.action}`).toContain(j.action)
     expect(j.expect(app.db, app)).toBeTruthy()
@@ -38,6 +39,7 @@ describe.each(JOURNEYS.map(j => [j.id, j]))('%s', (_, j) => {
   const msgs = refusalsOf(j)
   if (msgs.length) it.each(msgs)('refused: “%s” is seen, not stuck, nothing half-saved', async msg => {
     app = await boot(j.setup ?? (() => {}), { as: j.who, hash: j.hash ?? '' })
+    if (j.prepare) await j.prepare(app)
     await runSteps(app, j.steps.slice(0, -1))
     const before = snapshot(app.db, j.keeps), text = fillMessage(msg)
     app.db.refuse = { [j.action]: text }
