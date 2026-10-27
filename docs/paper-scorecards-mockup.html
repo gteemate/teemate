@@ -1,0 +1,481 @@
+<title>Paper Scorecards Demo</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&family=Source+Serif+4:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --sunk:#0f1830; --bg:#141f3b; --surface:#1b2a4b; --leaf:#22325a; --line:#2b3c63;
+  --ink:#e8ecf5; --muted:#9aa7c4; --gold:#e3c375; --on-gold:#1a1606; --cream:#f3efe7;
+  --live:#7fcca2; --ring:#762A43; --warn:#f0a85a;
+  --sys:"Source Sans 3",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+  --display:"Source Serif 4",Georgia,serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--sunk);color:var(--ink);font-family:var(--sys);font-size:15px;padding-block:28px 60px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+button{font-family:var(--sys);cursor:pointer}
+.wrap{display:flex;gap:32px;justify-content:center;align-items:flex-start;flex-wrap:wrap;max-width:1000px;margin:0 auto}
+.side{width:300px;max-width:100%}
+.side h1{font-family:var(--display);font-weight:400;font-size:34px;margin:0 0 6px}
+.side p{color:var(--muted);line-height:1.5;margin:0 0 18px;font-size:15px}
+.steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
+.steps button{width:100%;text-align:left;background:none;border:1px solid transparent;color:var(--muted);border-radius:12px;padding:8px 10px;font-size:14px;display:flex;gap:10px;align-items:center}
+.steps button .n{width:22px;height:22px;border-radius:50%;background:var(--leaf);color:var(--ink);display:grid;place-items:center;font-size:12px;font-weight:700;flex-shrink:0}
+.steps button.on{border-color:var(--line);background:var(--surface);color:var(--ink)}
+.steps button.on .n{background:var(--gold);color:var(--on-gold)}
+.reset{margin-top:14px;background:none;border:1px solid var(--line);color:var(--muted);border-radius:999px;padding:7px 14px;font-size:13px}
+.device{width:370px;max-width:100%}
+.whose{text-align:center;font-weight:700;font-size:14px;color:var(--gold);margin-bottom:10px;min-height:20px}
+.phone{background:var(--bg);border:1px solid var(--line);border-radius:36px;overflow:hidden;height:720px;display:flex;flex-direction:column;position:relative;box-shadow:0 30px 60px -30px rgba(0,0,0,.6)}
+.top{padding:22px 18px 6px;flex-shrink:0}
+.top h2{font-family:var(--display);font-weight:400;font-size:27px;margin:0;line-height:1.15}
+.top .sub{color:var(--muted);font-size:14px;margin-top:5px}
+.back{background:none;border:0;color:var(--muted);font-size:14px;font-weight:600;padding:0 0 8px}
+.screen{padding:10px 14px 18px;display:flex;flex-direction:column;gap:12px;flex:1;overflow-y:auto}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:14px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.row + .row{border-top:1px solid var(--line);margin-top:12px;padding-top:12px}
+.t b{display:block;font-size:15px}
+.t span{color:var(--muted);font-size:13px;line-height:1.35;display:block}
+.btn{border:0;border-radius:999px;padding:12px 16px;font-weight:600;font-size:15px;text-align:center}
+.primary{background:var(--gold);color:var(--on-gold)}
+.primary:disabled{opacity:.4;cursor:not-allowed}
+.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.sm{padding:7px 12px;font-size:13px}
+.full{width:100%}
+.seg{display:flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;flex-shrink:0}
+.seg button{background:none;border:0;padding:7px 12px;font-size:13px;font-weight:600;color:var(--muted)}
+.seg button.on{background:var(--gold);color:var(--on-gold)}
+.pill{display:inline-block;background:var(--leaf);border-radius:999px;padding:2px 9px;font-size:12px;font-weight:600}
+.pill.new{background:var(--ring);color:var(--cream)}
+.hint{color:var(--muted);font-size:13px;line-height:1.45;margin:0}
+.spacer{flex:1}
+.cta{display:flex;gap:10px}
+.cta .btn{flex:1}
+.paper{background:var(--cream);color:#2b2b2b;border-radius:10px;padding:10px 8px;font-family:"Bradley Hand","Segoe Print","Comic Sans MS",cursive;box-shadow:0 8px 18px rgba(0,0,0,.4);position:relative}
+.paper.tilt{transform:rotate(-1.2deg)}
+.paper table{border-collapse:collapse;width:100%;font-size:12px}
+.paper th{font-family:var(--sys);font-size:10px;color:#6b5a3a;font-weight:700;padding:2px 0;border-bottom:1px solid #c9bfa8}
+.paper td{text-align:center;padding:3px 0;border-bottom:1px dotted #d6ccb6}
+.paper td.nm{width:40px;padding:0}
+.paper td.nm i{display:block;height:14px;margin:2px 4px;background:#2b2b2b;border-radius:3px}
+.paper td.tot{font-weight:700}
+.paper tr.hl td{background:rgba(227,195,117,.45)}
+.card-paper{background:#fbfaf6;color:#222;border-radius:6px;padding:8px;box-shadow:0 8px 18px rgba(0,0,0,.45);position:relative;font-family:var(--sys)}
+.card-paper.tilt{transform:rotate(-1deg)}
+.card-paper .head{display:grid;grid-template-columns:22px 1fr 54px;gap:4px;font-size:10px;align-items:center;margin-bottom:6px}
+.card-paper .head .nm{height:13px;background:#222;border-radius:2px}
+.card-paper .head .lbl{font-weight:700;text-align:center;border:1px solid #bbb;padding:1px 0}
+.card-paper .date{font-size:10px;color:#555;text-align:right;margin-bottom:4px}
+.card-paper .date b{font-family:"Bradley Hand","Segoe Print","Comic Sans MS",cursive;color:#222;font-size:12px}
+.card-paper table{border-collapse:collapse;width:100%;font-size:10px;font-variant-numeric:tabular-nums}
+.card-paper th{background:#e9e6dd;font-weight:700;padding:2px 0;border:1px solid #c9c4b6}
+.card-paper td,.card-paper th{color:#222;font-size:10px}
+.card-paper td{text-align:center;border:1px solid #d6d1c4;padding:0;height:14px}
+.card-paper td.si{color:#b0262b}
+.card-paper td.hw{color:#1d1d6b}
+.card-paper td.hw{font-family:"Bradley Hand","Segoe Print","Comic Sans MS",cursive;font-size:13px;line-height:13px;color:#1d1d6b}
+.card-paper td.hw.hl{background:rgba(227,195,117,.55)}
+.card-paper tr.tot td{font-weight:700;background:#f1efe8}
+.card-paper .split td{height:5px;border:0}
+.card-paper .nmw,.card-paper .sig i,.card-paper .hcp i{font-family:"Bradley Hand","Segoe Print","Comic Sans MS",cursive;color:#1d1d6b;font-style:normal;font-size:13px}
+.card-paper .nmw{border-bottom:1px solid #bbb;padding-left:4px}
+.card-paper .sig{display:flex;justify-content:space-between;font-size:10px;color:#555;margin-top:6px}
+.card-paper .outside{opacity:.3;filter:blur(1.2px);position:relative}
+.cropbox{position:relative;outline:2px dashed var(--gold);outline-offset:3px;margin:4px 0}
+.cropbox .hdl{position:absolute;width:14px;height:14px;border:3px solid var(--gold);background:none}
+.hdl.tl{left:-6px;top:-6px;border-right:0;border-bottom:0}.hdl.tr{right:-6px;top:-6px;border-left:0;border-bottom:0}
+.hdl.bl{left:-6px;bottom:-6px;border-right:0;border-top:0}.hdl.br{right:-6px;bottom:-6px;border-left:0;border-top:0}
+.private{display:flex;gap:10px;align-items:flex-start;background:var(--leaf);border:1px solid var(--line);border-radius:14px;padding:10px 12px;font-size:13px;line-height:1.4}
+.private b{display:block;font-size:14px}
+.paper .tag,.card-paper .tag{position:absolute;right:-6px;top:-10px;background:var(--live);color:#0d2418;font:700 11px var(--sys);padding:3px 8px;border-radius:999px;transform:rotate(3deg)}
+.tips{margin:0;padding-left:18px;line-height:1.6;font-size:14px}
+.reading{display:flex;flex-direction:column;align-items:center;gap:14px;padding:26px 0 10px}
+.spin{width:44px;height:44px;border-radius:50%;border:4px solid var(--line);border-top-color:var(--gold);animation:s 1s linear infinite}
+@keyframes s{to{transform:rotate(360deg)}}
+.check{display:flex;gap:8px;font-size:13px;line-height:1.4;align-items:flex-start}
+.check + .check{margin-top:8px}
+.check .i{flex-shrink:0;width:18px;height:18px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:700}
+.ok .i{background:var(--live);color:#0d2418}
+.wn .i{background:var(--warn);color:#2a1700}
+.fade{animation:f .4s ease both}
+@keyframes f{from{opacity:0;transform:translateY(4px)}}
+.match{display:flex;flex-direction:column;gap:6px}
+.match + .match{border-top:1px solid var(--line);margin-top:10px;padding-top:10px}
+.match .sc{font-variant-numeric:tabular-nums;color:var(--muted);font-size:13px}
+.match .sc b{color:var(--ink)}
+select{appearance:none;background:var(--leaf) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%239aa7c4' stroke-width='2' fill='none'/%3E%3C/svg%3E") no-repeat right 12px center;border:1px solid var(--line);border-radius:12px;padding:9px 12px;color:var(--ink);font:600 15px var(--sys);width:100%}
+select.dup{border-color:var(--warn)}
+.grid{display:grid;grid-template-columns:30px repeat(9,1fr) 30px;gap:3px;font-variant-numeric:tabular-nums;text-align:center;font-size:12px;align-items:center}
+.grid .h,.grid .par{color:var(--muted);font-size:11px}
+.grid button.c{background:var(--leaf);border:1px solid var(--line);border-radius:7px;padding:6px 0;font-weight:700;font-size:14px;color:var(--ink)}
+.grid button.c.warn{border-color:var(--warn);background:rgba(240,168,90,.15);color:var(--warn)}
+.grid button.c.fixed{border-color:var(--live)}
+.grid .tot{font-weight:700}
+.grid + .grid{margin-top:10px}
+.dots{display:flex;gap:6px;justify-content:center}
+.dots i{width:8px;height:8px;border-radius:50%;background:var(--line)}
+.dots i.on{background:var(--gold)}
+.dots i.done{background:var(--live)}
+.radio{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--line);border-radius:14px;background:var(--leaf);width:100%;text-align:left;color:var(--ink)}
+.radio + .radio{margin-top:8px}
+.radio .o{width:20px;height:20px;border-radius:50%;border:2px solid var(--muted);flex-shrink:0}
+.radio.on{border-color:var(--gold)}
+.radio.on .o{border-color:var(--gold);background:radial-gradient(var(--gold) 45%,transparent 50%)}
+.radio:disabled{opacity:.45;cursor:not-allowed}
+.radio.office{margin-top:14px}
+.toast{position:absolute;left:16px;right:16px;bottom:22px;background:var(--cream);color:#1b2a4b;border-radius:14px;padding:11px 14px;font-weight:600;font-size:14px;text-align:center;animation:f .3s ease both;z-index:5}
+.notice{border-color:var(--gold);background:linear-gradient(0deg,var(--surface),#24345b)}
+.notice .bell{color:var(--gold);font-weight:700;font-size:12px;letter-spacing:.5px;text-transform:uppercase}
+.big{font-family:var(--display);font-size:40px;line-height:1}
+.players .p{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)}
+.players .p:last-child{border-bottom:0}
+.players .p .s{font-family:var(--display);font-size:22px}
+.tick{color:var(--live)!important;font-weight:700}
+.wait{color:var(--warn)!important;font-weight:700}
+.pad{position:absolute;inset:0;background:rgba(10,16,32,.7);display:flex;align-items:flex-end;z-index:6}
+.pad .sheet{background:var(--surface);border-top:1px solid var(--line);border-radius:22px 22px 0 0;padding:16px;width:100%}
+.pad .keys{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 0}
+.pad .keys button{background:var(--leaf);border:1px solid var(--line);border-radius:12px;padding:12px 0;font-size:18px;font-weight:700;color:var(--ink)}
+.pad .keys button.cur{border-color:var(--gold);color:var(--gold)}
+.note{background:rgba(240,168,90,.12);border:1px solid var(--warn);border-radius:14px;padding:12px;font-size:14px;line-height:1.4}
+@media (max-width:700px){.side{order:2}.device{order:1}}
+</style>
+<div class="wrap">
+  <div class="side">
+    <h1>Paper scorecards</h1>
+    <p>A clickable demo. Tap the buttons on the phone to go through it, or jump to any step here. Try changing the amber scores, matching the rows differently, or picking the club office to confirm.</p>
+    <ul class="steps" id="steps"></ul>
+    <button class="reset" id="reset">Start again</button>
+  </div>
+  <div class="device">
+    <div class="whose" id="whose"></div>
+    <div class="phone" id="phone"></div>
+  </div>
+</div>
+
+<script>
+const PAR = [4,4,3,5,4,4,3,4,5, 4,5,3,4,4,4,3,5,4]
+const PEOPLE = [
+  { id: 'alex', name: 'Alex Hart', short: 'Alex', app: true },
+  { id: 'pat', name: 'Pat Reid', short: 'Pat', app: true },
+  { id: 'chris', name: 'Chris Lowe', short: 'Chris', app: true },
+  { id: 'jo', name: 'Jo Banks', short: 'Jo', app: false },
+]
+// What the photo "reads": each row's 18 holes, the totals written on the card, and the holes it wasn't sure of.
+const READ = [
+  { s: [5,4,3,5,4,5,3,6,6, 5,5,4,5,5,4,4,6,6], out: 41, in: 44, unsure: [] },
+  { s: [4,4,4,6,5,5,3,8,5, 4,5,3,5,4,4,4,5,9], out: 44, in: 44, unsure: [7, 17] },
+  { s: [6,5,3,5,5,6,4,5,7, 5,6,4,5,5,5,4,6,7], out: 46, in: 47, unsure: [] },
+  { s: [5,3,4,5,4,5,3,5,8, 4,5,3,5,4,5,3,6,6], out: 42, in: 41, unsure: [11] },
+]
+const STEPS = [
+  ['club', 'The office switches it on'],
+  ['scores', 'After the round'],
+  ['photo', 'Take the photo'],
+  ['crop', 'Names cut off'],
+  ['reading', 'Reading the card'],
+  ['match', 'Which column is who'],
+  ['check', 'Check each player'],
+  ['who', 'Who confirms your score'],
+  ['saved', 'Card saved'],
+  ['confirm', 'Partner or office confirms'],
+  ['done', 'The finished card'],
+]
+let S
+function fresh() {
+  S = { screen: 'club', on: true, rows: READ.map(r => ({ ...r, s: [...r.s], unsure: [...r.unsure], fixed: [] })),
+        who: ['alex', 'pat', 'chris', 'jo'], ci: 0, confirmer: 'chris', shots: 0, status: 'waiting', pad: null, toast: '', sentBack: false }
+}
+fresh()
+
+const $ = s => document.querySelector(s)
+const sum = a => a.reduce((x, y) => x + y, 0)
+const person = id => PEOPLE.find(p => p.id === id)
+const rowOf = id => S.rows[S.who.indexOf(id)]
+// Uploader checks the others first, then their own row last.
+const order = () => [...S.who.filter(id => id && id !== 'alex'), 'alex'].filter(id => S.who.includes(id))
+const go = screen => { if (screen === 'photo') S.shots = 0; S.screen = screen; S.pad = null; draw() }
+let toastTimer
+const toast = t => { S.toast = t; draw(); clearTimeout(toastTimer); toastTimer = setTimeout(() => { S.toast = ''; draw() }, 2600) }
+
+function whose() {
+  if (S.screen === 'club') return '🏢 The club office'
+  if (S.screen === 'confirm') return S.confirmer === 'office' ? '🏢 The club office, later that day' : `📱 ${person(S.confirmer).name}'s phone`
+  return '📱 Alex Hart\'s phone'
+}
+
+const SI = [7,13,17,1,15,11,5,9,3, 16,8,12,18,2,10,4,14,6]
+// One paper card as photographed: holes down the side, players A and B across. hl: the column to highlight.
+const NAMES = [['Alex Hart', 14, 'Pat Reid', 18], ['Chris Lowe', 22, 'Jo Banks', 11]]
+// One paper card as photographed: holes down the side, players A and B across. hl: the column to highlight.
+// mode 'full': the whole card as the member photographs it; 'crop': with the box the app trims to; 'sent': only the box.
+function paperCard(c, hl, mode = 'sent') {
+  const a = READ[c * 2], b = READ[c * 2 + 1], [na, ha, nb, hb] = NAMES[c]
+  const cell = (r, h, k) => `<td class="hw ${hl === k ? 'hl' : ''}">${r.s[h]}</td>`
+  const hole = h => `<tr><td>${h + 1}</td><td>${PAR[h]}</td><td class="si">${SI[h]}</td>${cell(a, h, 0)}${cell(b, h, 1)}</tr>`
+  const tot = (lbl, f, par) => `<tr class="tot"><td colspan="2">${lbl}</td><td>${par}</td><td class="hw ${hl === 0 ? 'hl' : ''}">${f(a)}</td><td class="hw ${hl === 1 ? 'hl' : ''}">${f(b)}</td></tr>`
+  const table = `<table><tr><th>Hole</th><th>Par</th><th>SI</th><th>A</th><th>B</th></tr>
+    ${[0,1,2,3,4,5,6,7,8].map(hole).join('')}${tot('OUT', r => r.out, 36)}
+    <tr class="split"><td colspan="5"></td></tr>
+    ${[9,10,11,12,13,14,15,16,17].map(hole).join('')}${tot('IN', r => r.in, 36)}${tot('TOTAL', r => r.out + r.in, 72)}</table>`
+  if (mode === 'sent') return table
+  const top = `<div class="date">Date <b>${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</b></div>
+    <div class="head"><span class="lbl">A</span><span class="nmw">${na}</span><span class="lbl hcp">Hcp <i>${ha}</i></span><span class="lbl">B</span><span class="nmw">${nb}</span><span class="lbl hcp">Hcp <i>${hb}</i></span></div>`
+  const foot = `<div class="sig"><span>Marker <i>${nb.split(' ')[0]}</i></span><span>Player <i>${na.split(' ')[0]}</i></span></div>`
+  if (mode === 'full') return top + table + foot
+  return `<div class="outside">${top}</div><div class="cropbox">${table}<i class="hdl tl"></i><i class="hdl tr"></i><i class="hdl bl"></i><i class="hdl br"></i></div><div class="outside">${foot}</div>`
+}
+
+function grid(r, half) {
+  const a = half * 9, holes = r.s.slice(a, a + 9), pars = PAR.slice(a, a + 9)
+  return `<div class="grid">
+    <span class="h">Hole</span>${holes.map((_, k) => `<span class="h">${a + k + 1}</span>`).join('')}<span class="h">${half ? 'In' : 'Out'}</span>
+    <span class="par">Par</span>${pars.map(p => `<span class="par">${p}</span>`).join('')}<span class="par">${sum(pars)}</span>
+    <span></span>${holes.map((x, k) => { const h = a + k; return `<button class="c ${r.unsure.includes(h) ? 'warn' : r.fixed.includes(h) ? 'fixed' : ''}" data-h="${h}">${x}</button>` }).join('')}<span class="tot">${sum(holes)}</span>
+  </div>`
+}
+
+function checks(r) {
+  const out = sum(r.s.slice(0, 9)), inn = sum(r.s.slice(9))
+  const line = (ok, text) => `<div class="check ${ok ? 'ok' : 'wn'}"><span class="i">${ok ? '✓' : '!'}</span><span>${text}</span></div>`
+  let h = out === r.out ? line(true, `Out adds up to ${out}, as written on the card`) : line(false, `Out: the holes add up to ${out}, but the card says ${r.out}`)
+  h += inn === r.in ? line(true, `In adds up to ${inn}, as written on the card`) : line(false, `In: the holes add up to ${inn}, but the card says ${r.in}. Check the amber holes.`)
+  for (const u of r.unsure) h += line(false, `Hole ${u + 1} was hard to read. Is it a ${r.s[u]}? Tap it to check.`)
+  return h
+}
+
+const SCREENS = {
+  club: () => `
+    <div class="top"><h2>Club</h2><div class="sub">Settings you set once and change now and then</div></div>
+    <div class="screen">
+      <div class="card">
+        <div class="row"><div class="t"><b>Name, colours and course</b><span>Hilltop GC</span></div><button class="btn ghost sm">Edit</button></div>
+        <div class="row"><div class="t"><b>Pins</b><span>Set today by Sam</span></div><button class="btn ghost sm">Change</button></div>
+        <div class="row"><div class="t"><b>Halfway hut</b><span>Taking orders · 12 on the menu</span></div><button class="btn ghost sm">Edit</button></div>
+        <div class="row"><div class="t"><b>Paper scorecards</b><span>After the round, members can photograph a paper card and the app reads the scores</span></div>
+          <div class="seg"><button data-on="0" class="${S.on ? '' : 'on'}">Off</button><button data-on="1" class="${S.on ? 'on' : ''}">On</button></div></div>
+      </div>
+      <p class="hint">Try switching it off, then go to the next step: the photo button disappears.</p>
+      <div class="spacer"></div>
+      <button class="btn primary full" data-go="scores">Next: a member after the round</button>
+    </div>`,
+
+  scores: () => `
+    <div class="top"><h2>Scores</h2><div class="sub">Today · 09:20 · Monthly Medal</div></div>
+    <div class="screen">
+      <div class="card"><div class="t"><b>You, Pat Reid, Chris Lowe, Jo Banks</b><span>No scores entered yet</span></div></div>
+      <button class="btn primary full" data-toast="This opens the usual hole-by-hole entry">Enter scores hole by hole</button>
+      <p class="hint" style="text-align:center">Scores entered as you play show on the live leaderboard.</p>
+      ${S.on ? `<div class="spacer"></div>
+        <p class="hint" style="text-align:center">Played on paper? <button class="back" style="padding:0;color:var(--gold);text-decoration:underline" data-go="photo">Photograph your card instead</button></p>`
+        : `<p class="hint">Paper scorecards are switched off at this club, so only the usual entry shows. <button class="back" style="padding:0;color:var(--gold)" data-go="club">Switch it on</button></p>`}
+    </div>`,
+
+  photo: () => `
+    <div class="top"><button class="back" data-go="scores">‹ Back</button><h2>Photograph your card${S.shots === 1 ? 's' : ''}</h2></div>
+    <div class="screen">
+      <div class="card-paper tilt"><span class="tag">Like this</span>${paperCard(S.shots === 1 ? 1 : 0, null, 'full')}</div>
+      <ul class="tips">
+        <li>Lay the card flat, in good light, with all 18 holes and the totals in the picture</li>
+        <li>Photograph the whole card: the names are cut off on your phone before it's read</li>
+        <li>A four-ball has two cards: photograph each one</li>
+      </ul>
+      ${S.shots === 1 ? '<div class="check ok"><span class="i">✓</span><span>Card 1 taken (players A and B). Now the second card.</span></div>' : ''}
+      <div class="spacer"></div>
+      <div class="cta"><button class="btn ghost" id="${S.shots === 1 ? 'oneonly' : 'shot'}">${S.shots === 1 ? 'Only one card' : 'Choose a photo'}</button><button class="btn primary" id="shot">Take photo of card ${S.shots + 1}</button></div>
+    </div>`,
+
+  crop: () => `
+    <div class="top"><button class="back" id="retake">‹ Retake photo</button><h2>Are all the scores in the box?</h2><div class="sub">Card ${S.shots + 1}</div></div>
+    <div class="screen">
+      <div class="card-paper">${paperCard(S.shots, null, 'crop')}</div>
+      <div class="private"><span>🔒</span><span><b>Names stay on your phone</b>Only the scores inside the box are sent to be read. Names, handicaps and signatures are cut off first and never leave your phone.</span></div>
+      <p class="hint">Drag the corners if any scores are outside the box.</p>
+      <button class="btn primary full" id="cropok">Yes, all the scores are in the box</button>
+    </div>`,
+
+  reading: () => `
+    <div class="top"><button class="back" data-go="photo">‹ Back</button><h2>Reading your card…</h2></div>
+    <div class="screen">
+      <div class="reading"><div class="spin"></div><div class="hint">Finding the rows and checking the totals</div></div>
+      <div class="card" id="found"></div>
+      <p class="hint">If it can't read the card it says so, and you can retake the photo or enter the scores yourself.</p>
+    </div>`,
+
+  match: () => {
+    const dup = S.who.filter((id, i) => id && S.who.indexOf(id) !== i)
+    const missing = PEOPLE.filter(p => !S.who.includes(p.id))
+    return `
+    <div class="top"><button class="back" data-go="photo">‹ Retake photo</button><h2>4 players found</h2><div class="sub">Match each Score column to a player</div></div>
+    <div class="screen">
+      <div class="card">${S.rows.map((r, i) => `
+        <div class="match"><div class="sc">Card ${Math.floor(i / 2) + 1} · column ${'AB'[i % 2]} · Out <b>${sum(r.s.slice(0, 9))}</b> · In <b>${sum(r.s.slice(9))}</b> = <b>${sum(r.s)}</b></div>
+          <select data-row="${i}" class="${dup.includes(S.who[i]) ? 'dup' : ''}">
+            ${PEOPLE.map(p => `<option value="${p.id}" ${S.who[i] === p.id ? 'selected' : ''}>${p.id === 'alex' ? 'You' : p.name}</option>`).join('')}
+            <option value="" ${!S.who[i] ? 'selected' : ''}>Skip this column</option>
+          </select></div>`).join('')}
+      </div>
+      ${dup.length ? `<div class="note">Two columns are set to ${person(dup[0]).id === 'alex' ? 'you' : person(dup[0]).name}. Each player can only have one column.</div>`
+        : missing.length ? `<p class="hint">${missing.map(p => p.id === 'alex' ? 'You' : p.short).join(' and ')} won't get scores from this card.</p>`
+        : '<p class="hint">Guessed from the booking order. Each list has the players on today\'s card, plus "Skip this column".</p>'}
+      <div class="spacer"></div>
+      <button class="btn primary full" id="tocheck" ${dup.length || !S.who.includes('alex') ? 'disabled' : ''}>Next: check the scores</button>
+    </div>`
+  },
+
+  check: () => {
+    const ids = order(), id = ids[S.ci], r = rowOf(id), p = person(id), me = id === 'alex'
+    return `
+    <div class="top"><button class="back" id="ckback">‹ Back</button><h2>${me ? 'Your scores' : p.name}</h2><div class="sub">Player ${S.ci + 1} of ${ids.length} · tap any score to change it</div></div>
+    <div class="screen">
+      <div class="hint" style="text-align:center">Card ${Math.floor(S.who.indexOf(id) / 2) + 1} · column ${'AB'[S.who.indexOf(id) % 2]}</div>
+      <div class="dots">${ids.map((_, k) => `<i class="${k < S.ci ? 'done' : k === S.ci ? 'on' : ''}"></i>`).join('')}</div>
+      <div class="card">${grid(r, 0)}${grid(r, 1)}</div>
+      <div class="card">${checks(r)}</div>
+      <div class="spacer"></div>
+      <button class="btn primary full" id="ckok">${me ? 'My scores are right' : `${p.short}'s scores are right`} · ${sum(r.s)}</button>
+    </div>`
+  },
+
+  who: () => `
+    <div class="top"><button class="back" id="whoback">‹ Back</button><h2>Who'll confirm your score?</h2><div class="sub">Your ${sum(rowOf('alex').s)} · Out ${sum(rowOf('alex').s.slice(0, 9))} · In ${sum(rowOf('alex').s.slice(9))}</div></div>
+    <div class="screen">
+      <div>
+        ${PEOPLE.filter(p => p.id !== 'alex').map(p => `<button class="radio ${S.confirmer === p.id ? 'on' : ''}" data-conf="${p.id}" ${p.app ? '' : 'disabled'}><span class="o"></span><span class="t"><b>${p.name}</b><span>${p.app ? 'Uses the app' : 'Doesn\'t use the app'}</span></span></button>`).join('')}
+        <button class="radio office ${S.confirmer === 'office' ? 'on' : ''}" data-conf="office"><span class="o"></span><span class="t"><b>The club office</b><span>Hand your card in at the office: they check it against the photo</span></span></button>
+      </div>
+      <p class="hint">You can't confirm your own score, the same as with a marker on paper.</p>
+      <div class="spacer"></div>
+      <button class="btn primary full" id="save">Save the card</button>
+    </div>`,
+
+  saved: () => {
+    const by = S.confirmer === 'office' ? 'the office' : person(S.confirmer).short
+    return `
+    <div class="top"><h2>Today's card</h2><div class="sub">09:20 · Monthly Medal · read from paper</div></div>
+    <div class="screen">
+      ${S.sentBack ? `<div class="note"><b>${S.confirmer === 'office' ? 'The office' : person(S.confirmer).short} says your score isn't right.</b><br>"Hole 14 was a 6, not a 5." Check your scores and send it again.<div style="margin-top:10px"><button class="btn primary sm" id="recheck">Check my scores</button></div></div>` : ''}
+      <div class="card players">${cardRows()}</div>
+      ${S.sentBack ? '' : `<p class="hint">${S.confirmer === 'office' ? 'Hand your paper card in at the office. They\'ll confirm it against the photo.' : `${by} has been sent a notice to confirm your score.`}</p>
+      <div class="spacer"></div>
+      <button class="btn primary full" data-go="confirm">Next: see ${S.confirmer === 'office' ? 'the office' : `${by}'s phone`}</button>`}
+    </div>`
+  },
+
+  confirm: () => {
+    const r = rowOf('alex'), g = sum(r.s)
+    if (S.confirmer === 'office') return `
+    <div class="top"><h2>Today</h2><div class="sub">Scores to confirm · <b>2</b></div></div>
+    <div class="screen">
+      <div class="card">
+        <div class="row" style="align-items:flex-start"><div class="t"><b>Alex Hart · ${g}</b><span>09:20 Monthly Medal · Out ${sum(r.s.slice(0, 9))} · In ${sum(r.s.slice(9))}</span></div><span class="pill">Paper</span></div>
+        <div class="card-paper" style="margin:12px 0 4px">${paperCard(Math.floor(S.who.indexOf('alex') / 2), S.who.indexOf('alex') % 2)}</div>
+        <p class="hint" style="margin-top:6px">Alex's column is highlighted on the photo. Compare it with the card handed in.</p>
+        <div class="cta" style="margin-top:12px"><button class="btn ghost sm" id="notright">Not right</button><button class="btn primary sm" id="confirmit">Confirm</button></div>
+      </div>
+      <div class="card"><div class="row"><div class="t"><b>Sue Moss · 92</b><span>10:40 Monthly Medal</span></div><button class="btn ghost sm" data-toast="Another card waiting to be checked">Check</button></div></div>
+    </div>`
+    const p = person(S.confirmer)
+    return `
+    <div class="top"><h2>Home</h2><div class="sub">Good afternoon, ${p.short}</div></div>
+    <div class="screen">
+      <div class="card notice">
+        <div class="bell">Please confirm a score</div>
+        <div class="t" style="margin-top:8px"><b>Alex Hart · today's Monthly Medal</b><span>Read from the group's paper card</span></div>
+        <div class="row" style="border:0;margin-top:10px;padding:0"><div class="big">${g}</div><div class="t" style="text-align:right"><span>Out ${sum(r.s.slice(0, 9))} · In ${sum(r.s.slice(9))}</span></div></div>
+        <div style="margin-top:12px"><button class="btn ghost sm" id="seeholes">${S.showHoles ? 'Hide the holes' : 'See the holes and the photo'}</button></div>
+        ${S.showHoles ? `<div style="margin-top:12px">${grid(r, 0).replaceAll('<button class="c', '<button disabled class="c')}${grid(r, 1).replaceAll('<button class="c', '<button disabled class="c')}</div>` : ''}
+        <div class="cta" style="margin-top:14px"><button class="btn ghost" id="notright">Not right</button><button class="btn primary" id="confirmit">Confirm</button></div>
+      </div>
+      <p class="hint">"Not right" sends it back to Alex with a note.</p>
+    </div>`
+  },
+
+  done: () => `
+    <div class="top"><h2>Today's card</h2><div class="sub">09:20 · Monthly Medal · read from paper</div></div>
+    <div class="screen">
+      <div class="card players">${cardRows()}</div>
+      <button class="btn ghost full" data-toast="Opens the photo of the paper card">📷 See the photo of the card</button>
+      <p class="hint">Goes into the competition, the leaderboard and handicaps exactly like a card typed on a phone. The photo stays with the round in case the office needs to check it.</p>
+      <div class="spacer"></div>
+      <button class="btn ghost full" id="again">Start the demo again</button>
+    </div>`,
+}
+
+function cardRows() {
+  const by = S.confirmer === 'office' ? 'the office' : person(S.confirmer).short
+  return S.who.filter(Boolean).map(id => {
+    const p = person(id), mine = id === 'alex'
+    const st = mine
+      ? S.status === 'confirmed' ? `<span class="tick">✓ Confirmed by ${by}</span>` : S.sentBack ? '<span class="wait">Sent back to you</span>' : `<span class="wait">Waiting for ${by}</span>`
+      : '<span class="tick">✓ Confirmed by Alex</span>'
+    return `<div class="p"><div class="t"><b>${p.name}</b>${st}</div><span class="s">${sum(rowOf(id).s)}</span></div>`
+  }).join('')
+}
+
+function pad() {
+  if (!S.pad) return ''
+  const r = rowOf(S.pad.id), h = S.pad.h
+  return `<div class="pad" id="padbg"><div class="sheet">
+    <div class="row" style="border:0;margin:0;padding:0"><div class="t"><b>Hole ${h + 1} · par ${PAR[h]}</b><span>The card read ${READ[S.who.indexOf(S.pad.id)].s[h]}</span></div><button class="btn ghost sm" id="padx">Cancel</button></div>
+    <div class="keys">${[1,2,3,4,5,6,7,8,9,10,11,12].map(n => `<button data-n="${n}" class="${r.s[h] === n ? 'cur' : ''}">${n}</button>`).join('')}</div>
+  </div></div>`
+}
+
+function draw() {
+  const i = STEPS.findIndex(s => s[0] === S.screen)
+  $('#steps').innerHTML = STEPS.map(([k, t], j) => `<li><button data-step="${k}" class="${j === i ? 'on' : ''}"><span class="n">${j + 1}</span>${t}</button></li>`).join('')
+  $('#whose').textContent = whose()
+  $('#phone').innerHTML = SCREENS[S.screen]() + pad() + (S.toast ? `<div class="toast">${S.toast}</div>` : '')
+  if (S.screen === 'reading') reading()
+}
+
+let readTimer
+function reading() {
+  clearTimeout(readTimer)
+  const lines = ['2 cards: 4 Score columns found (A and B on each)', 'Names cut off: only the score grids were sent', 'The par column matches this course, and every column has OUT, IN and TOTAL', '3 scores were hard to read: you\'ll be asked to check them']
+  let k = 0
+  const step = () => {
+    if (S.screen !== 'reading') return
+    const el = $('#found'); if (!el) return
+    if (k < lines.length) { el.insertAdjacentHTML('beforeend', `<div class="check ${k === 3 ? 'wn' : 'ok'} fade"><span class="i">${k === 3 ? '!' : '✓'}</span><span>${lines[k]}</span></div>`); k++; readTimer = setTimeout(step, 650) }
+    else readTimer = setTimeout(() => S.screen === 'reading' && go('match'), 900)
+  }
+  readTimer = setTimeout(step, 500)
+}
+
+document.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) { if (e.target.id === 'padbg') { S.pad = null; draw() } return }
+  const d = b.dataset
+  if (d.step) { if (['check', 'who', 'saved', 'confirm', 'done'].includes(d.step) && !S.who.includes('alex')) S.who = ['alex', 'pat', 'chris', 'jo']; if (d.step === 'check') S.ci = 0; if (d.step === 'done') S.status = 'confirmed', S.sentBack = false; if (['saved', 'confirm'].includes(d.step)) S.status = 'waiting'; go(d.step); return }
+  if (d.go) return go(d.go)
+  if (d.toast) return toast(d.toast)
+  if (d.on) { S.on = d.on === '1'; toast(S.on ? 'Members can now photograph paper cards' : 'Paper scorecards switched off'); return }
+  if (d.h && S.screen === 'check') { S.pad = { id: order()[S.ci], h: +d.h }; draw(); return }
+  if (d.n) { const r = rowOf(S.pad.id), h = S.pad.h; r.s[h] = +d.n; r.unsure = r.unsure.filter(x => x !== h); if (!r.fixed.includes(h)) r.fixed.push(h); S.pad = null; draw(); return }
+  if (d.conf) { S.confirmer = d.conf; draw(); return }
+  switch (b.id) {
+    case 'padx': S.pad = null; draw(); break
+    case 'shot': S.screen = 'crop'; draw(); break
+    case 'retake': S.screen = 'photo'; draw(); break
+    case 'cropok': if (S.shots === 0) { S.shots = 1; S.screen = 'photo'; draw() } else go('reading'); break
+    case 'oneonly': go('reading'); break
+    case 'reset': case 'again': fresh(); draw(); break
+    case 'tocheck': S.ci = 0; go('check'); break
+    case 'ckback': S.ci ? (S.ci--, draw()) : go('match'); break
+    case 'ckok': { const r = rowOf(order()[S.ci]); r.unsure = []
+      if (S.sentBack && order()[S.ci] === 'alex') { S.sentBack = false; S.status = 'waiting'; go('saved'); toast(`Sent to ${S.confirmer === 'office' ? 'the office' : person(S.confirmer).short} again`); break }
+      if (S.ci < order().length - 1) { S.ci++; draw() } else go('who'); break }
+    case 'whoback': S.ci = order().length - 1; go('check'); break
+    case 'save': S.status = 'waiting'; S.sentBack = false; go('saved'); toast(S.confirmer === 'office' ? 'Card saved. Hand it in at the office.' : `Card saved. ${person(S.confirmer).short} will confirm your score.`); break
+    case 'seeholes': S.showHoles = !S.showHoles; draw(); break
+    case 'confirmit': S.status = 'confirmed'; go('done'); toast('Score confirmed'); break
+    case 'notright': S.sentBack = true; S.status = 'waiting'; go('saved'); break
+    case 'recheck': S.ci = order().length - 1; go('check'); break
+  }
+})
+document.addEventListener('change', e => {
+  if (e.target.dataset.row != null) { S.who[+e.target.dataset.row] = e.target.value || null; draw() }
+})
+draw()
+</script>
