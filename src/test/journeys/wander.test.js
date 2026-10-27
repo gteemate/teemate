@@ -48,14 +48,14 @@ describe('wander: every screen within two taps of Home', () => {
   it('the club office: every section, and every page one tap from it, draws without errors and gets back to its section', async () => {
     app = await boot(db => { db.asOffice = true; busy(db) })
     const fails = [], reached = new Set()
-    for (const sec of ['Today', 'Members', 'Tee sheet', 'Leaderboard', 'Competitions', 'Club']) {
-      await app.tap(`[data-ov]:nth-of-type(${['Today', 'Members', 'Tee sheet', 'Leaderboard', 'Competitions', 'Club'].indexOf(sec) + 1})`, { count: false })
+    for (const sec of ['Today', 'Members', 'Tee sheet', 'Guests', 'Leaderboard', 'Competitions', 'Club']) {
+      await app.tap(`[data-ov]:nth-of-type(${['Today', 'Members', 'Tee sheet', 'Guests', 'Leaderboard', 'Competitions', 'Club'].indexOf(sec) + 1})`, { count: false })
       const there = app.screen()
       reached.add(there)
       const inside = [...document.querySelectorAll('#main button')].map(b => b.textContent.replace(/\s+/g, ' ').trim()).filter(l => l && !SKIP.test(l) && !/let in|refuse|book it/i.test(l))
       for (const b of new Set(inside)) {
         try {
-          await app.tap(`[data-ov="${({ Today: 'today', Members: 'members', 'Tee sheet': 'tee', Leaderboard: 'board', Competitions: 'comps', Club: 'club' })[sec]}"]`, { count: false })
+          await app.tap(`[data-ov="${({ Today: 'today', Members: 'members', 'Tee sheet': 'tee', Guests: 'guests', Leaderboard: 'board', Competitions: 'comps', Club: 'club' })[sec]}"]`, { count: false })
           if (!app.labels().includes(b)) continue
           await app.tap(b, { count: false })
           reached.add(app.screen())

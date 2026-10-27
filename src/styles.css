@@ -1005,3 +1005,7 @@ details.oboard[open] > summary::before{transform:rotate(90deg)}
 .scanframe{position:relative;width:min(70vw,280px);aspect-ratio:1;border:4px solid var(--gold);border-radius:24px;box-shadow:0 0 0 100vmax rgba(0,0,0,.45)}
 .scanhint{position:absolute;top:max(24px,env(safe-area-inset-top));left:16px;right:16px;text-align:center;color:#fff;font-size:17px;font-weight:600;margin:0}
 .scanx{position:absolute;bottom:max(28px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);min-width:160px;background:rgba(0,0,0,.6);color:#fff}
+.ci-scan{min-height:64px;font-size:19px;margin-bottom:18px}
+.ci-who{display:grid;grid-template-columns:44px 1fr;gap:12px;align-items:center;padding:14px}
+.ci-g{display:grid;gap:6px;padding:14px;margin-bottom:10px}
+button.lrow.ci-m{width:100%;text-align:left;background:none;border:0;border-top:1px solid var(--line);color:var(--ink);cursor:pointer}

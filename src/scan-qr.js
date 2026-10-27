@@ -19,11 +19,13 @@ export function openScanner({ onText, onError }) {
   let stream = null, timer = null, done = false
   const stop = () => {
     done = true
+    removeEventListener('popstate', stop) // Back closes it, so the camera never stays on behind another page
     clearTimeout(timer)
     stream?.getTracks().forEach(t => t.stop())
     box.remove()
   }
   box.querySelector('.scanx').onclick = stop
+  addEventListener('popstate', stop)
   const look = () => {
     if (done) return
     if (video.readyState >= 2 && video.videoWidth) {

@@ -50,13 +50,14 @@ import * as officeTee from './office/tee.js'
 import * as officeComps from './office/comps.js'
 import * as officeClub from './office/club.js'
 import * as officeBoard from './office/leaderboard.js'
+import * as officeGuests from './office/guests.js'
 import { drawSide, hideSide, forgetSummary, summary } from './office/shell.js'
 
 // Each screen exports an optional async load() and a sync draw(data).
 const ADMIN = { home, account: adminHome, tee: teeTimes, book: booking, booked, mine: bookings, buddies, pins, points, events, event: eventEditor, evboard: eventBoardScreen, access, colours, weather, friend, hutadmin: hutAdmin, hutorder: hutOrder, hutstaff: hutStaff, match: matchScreen, signups: signupsAdmin, ko: knockout, konew: koNew, kocard: koCard, rules: bookingRules, comp: competitions, treq: teeRequests, mygames: myGames }
 // The club office: a section page, or one of the admin pages it opens (pins, a competition…). Pages that go back
 // to Account, Home, Club events or Competitions go back to the office section instead.
-const OFFICE = { today: officeToday, members: officeMembers, tee: officeTee, board: officeBoard, comps: officeComps, club: officeClub }
+const OFFICE = { today: officeToday, members: officeMembers, tee: officeTee, board: officeBoard, comps: officeComps, club: officeClub, guests: officeGuests }
 const OFFICE_HOME = new Set(['office', 'account', 'home', 'events', 'comp'])
 const officeScreen = () => (OFFICE_HOME.has(S.aview) || !ADMIN[S.aview] ? OFFICE[S.ov] ?? officeToday : ADMIN[S.aview])
 function screenFor() {
