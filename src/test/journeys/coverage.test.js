@@ -25,3 +25,12 @@ describe('journey coverage', () => {
     expect(gaps([], index, [], {}, { saveNote: 'no screen saves notes' }).actions).toEqual(['enterSignup', 'bookTeeTime'])
   })
 })
+
+import { readFileSync } from 'node:fs'
+import { JOURNEYS, PEOPLE, ALSO_UNREACHABLE, NOT_OFFERED } from './catalogue.js'
+describe('the journey list is complete', () => {
+  it('every action, every refusal and every kind of person has a journey (or a reason it can’t)', () => {
+    const real = JSON.parse(readFileSync(`${process.cwd()}/src/test/journeys/refusal-index.json`, 'utf8'))
+    expect(gaps(JOURNEYS, real, PEOPLE, ALSO_UNREACHABLE, NOT_OFFERED)).toEqual({ actions: [], messages: {}, people: [] })
+  })
+})
