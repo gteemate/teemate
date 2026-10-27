@@ -1,6 +1,7 @@
 // The camera, reading a QR code: a full-screen view with a frame to aim at. jsQR reads the frames (the phone camera
 // can't read a code inside a web page on iPhone by itself). Tests replace this module (vi.mock), so it stays thin.
-import jsQR from 'jsqr'
+
+let jsQR // loaded with the first camera (see below)
 
 export const NO_CAMERA = 'Can’t use the camera: find the member by name instead'
 
@@ -38,9 +39,10 @@ export function openScanner({ onText, onError }) {
     timer = setTimeout(look, 200)
   }
   navigator.mediaDevices?.getUserMedia?.({ video: { facingMode: 'environment' }, audio: false })
-    .then(s => {
+    .then(async s => {
       if (done) { s.getTracks().forEach(t => t.stop()); return }
       stream = s; video.srcObject = s
+      jsQR = (await import('jsqr')).default // the code reader: fetched the first time a camera opens, not with the app
       return video.play().then(look)
     })
     .catch(() => { stop(); onError(NO_CAMERA) })

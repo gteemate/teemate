@@ -4,11 +4,8 @@ import * as api from './api.js'
 import { $, esc, header, setRender, setRedraw, setDefaultBack, toast, top0, keepScroll } from './ui.js'
 import { navStack } from './nav-stack.js'
 import * as login from './screens/login.js'
-import * as colours from './screens/colours.js'
-import * as bookingRules from './screens/booking-rules.js'
 import * as competitions from './screens/competitions.js'
 import * as scoringRound from './screens/scoring-round.js'
-import * as teeRequests from './screens/tee-requests.js'
 import { applyTheme, cachedTheme } from './theme.js'
 import * as scores from './screens/scores.js'
 import * as paperFlow from './paper/paper-flow.js'
@@ -25,33 +22,61 @@ import * as booking from './screens/booking.js'
 import * as booked from './screens/booked.js'
 import * as bookings from './screens/bookings.js'
 import * as buddies from './screens/buddies.js'
-import * as pins from './screens/pins.js'
 import * as points from './screens/points.js'
 import * as events from './screens/events.js'
 import * as eventEditor from './screens/event-editor.js'
 import * as eventBoardScreen from './screens/event-board.js'
-import * as access from './screens/access.js'
-import * as myGames from './screens/my-games.js'
-import * as weather from './screens/weather.js'
-import * as hutAdmin from './screens/hut-admin.js'
 import * as hutOrder from './screens/hut-order.js'
-import * as hutStaff from './screens/hut-staff.js'
 import * as matchScreen from './screens/match.js'
-import * as signupsAdmin from './screens/signups-admin.js'
 import * as knockout from './screens/knockout.js'
-import * as koNew from './screens/ko-new.js'
 import * as koCard from './screens/ko-card.js'
 import * as friend from './screens/friend.js'
 import { pendingFriend, setPendingFriend } from './screens/friend.js'
 import { checkAlerts } from './alert-bar.js'
-import * as officeToday from './office/today.js'
-import * as officeMembers from './office/members.js'
-import * as officeTee from './office/tee.js'
-import * as officeComps from './office/comps.js'
-import * as officeClub from './office/club.js'
-import * as officeBoard from './office/leaderboard.js'
-import * as officeGuests from './office/guests.js'
 import { drawSide, hideSide, forgetSummary, summary } from './office/shell.js'
+
+// Screens most members never open (admin pages, the club office) load the first time they're needed, so the
+// first download is smaller on a weak signal. Each acts like the screen itself: load() fetches it, then draw().
+const lazies = []
+const lazy = get => {
+  let mod
+  const fetch = async () => (mod ??= await get().catch(newVersion))
+  const screen = { async load(...a) { await fetch(); return mod.load?.(...a) }, draw: d => mod.draw(d), fetch }
+  lazies.push(screen)
+  return screen
+}
+// A screen file from an older version of the app (the phone showed its kept copy, and the app has been updated since):
+// reload once to get the new version, rather than a screen that won't open.
+function newVersion(err) {
+  try { if (!sessionStorage.getItem('tm-reloaded')) { sessionStorage.setItem('tm-reloaded', '1'); location.reload() } } catch { /* no storage */ }
+  throw err
+}
+// On a decent connection, fetch the on-demand screens quietly once the app has settled, so they're on the phone
+// (and work offline) by the time they're opened. Not on a slow or data-saving connection.
+if (import.meta.env.PROD) setTimeout(() => {
+  const c = navigator.connection
+  if (navigator.onLine !== false && !c?.saveData && !/(^|-)2g$/.test(c?.effectiveType ?? '')) fetchAllScreens().catch(() => {})
+}, 10000)
+/** Fetch every screen that loads on demand now (the tests; or to warm them up when the signal is good). */
+export const fetchAllScreens = () => Promise.all(lazies.map(l => l.fetch()))
+const colours = lazy(() => import('./screens/colours.js'))
+const bookingRules = lazy(() => import('./screens/booking-rules.js'))
+const teeRequests = lazy(() => import('./screens/tee-requests.js'))
+const pins = lazy(() => import('./screens/pins.js'))
+const access = lazy(() => import('./screens/access.js'))
+const hutAdmin = lazy(() => import('./screens/hut-admin.js'))
+const hutStaff = lazy(() => import('./screens/hut-staff.js'))
+const signupsAdmin = lazy(() => import('./screens/signups-admin.js'))
+const koNew = lazy(() => import('./screens/ko-new.js'))
+const myGames = lazy(() => import('./screens/my-games.js'))
+const weather = lazy(() => import('./screens/weather.js'))
+const officeToday = lazy(() => import('./office/today.js'))
+const officeMembers = lazy(() => import('./office/members.js'))
+const officeTee = lazy(() => import('./office/tee.js'))
+const officeComps = lazy(() => import('./office/comps.js'))
+const officeClub = lazy(() => import('./office/club.js'))
+const officeBoard = lazy(() => import('./office/leaderboard.js'))
+const officeGuests = lazy(() => import('./office/guests.js'))
 
 // Each screen exports an optional async load() and a sync draw(data).
 const ADMIN = { home, account: adminHome, tee: teeTimes, book: booking, booked, mine: bookings, buddies, pins, points, events, event: eventEditor, evboard: eventBoardScreen, access, colours, weather, friend, hutadmin: hutAdmin, hutorder: hutOrder, hutstaff: hutStaff, match: matchScreen, signups: signupsAdmin, ko: knockout, konew: koNew, kocard: koCard, rules: bookingRules, comp: competitions, treq: teeRequests, mygames: myGames }

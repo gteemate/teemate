@@ -33,7 +33,7 @@ export async function boot(setup, { hash = '', as = 'admin' } = {}) {
   const spy = vi.spyOn(console, 'error').mockImplementation((...a) => errors.push(a.map(String).join(' ')))
   vi.spyOn(console, 'warn').mockImplementation(() => {})
   vi.resetModules()
-  await import('../../main.js')
+  await (await import('../../main.js')).fetchAllScreens() // screens that load on demand: here before the first tap
 
   const d = {
     db: world.db, taps: 0, visited: [], errors,
