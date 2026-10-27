@@ -26,7 +26,8 @@ export const API_NAMES = ['getMe', 'forgetMe', 'getSession', 'signIn', 'needsAcc
   'getStamps', 'getEvents', 'saveEvent', 'saveEvents', 'enterEvent', 'withdrawEvent', 'removeEventEntrant', 'getEventTemplates', 'saveEventTemplate', 'deleteEventTemplate', 'saveSeason', 'deleteEvent', 'getCardsOn', 'getLeagueEntries', 'getCardsById', 'enterLeague', 'leaveLeague', 'enterEventToday',
   'getEventEntries', 'enterEventRound', 'leaveEventRound', 'startLeagueKnockout',
   'getSignups', 'getSignupCounts', 'getSignupDeclines', 'declineSignup', 'undeclineSignup', 'runSignup', 'enterSignup', 'withdrawSignup', 'setMyPlaysIn', 'adminSetPlaysIn', 'saveSignup', 'deleteSignup',
-  'getKnockout', 'createMemberKnockout', 'deleteMemberKnockout', 'makeDraw', 'swapDraw', 'setRoundDeadlines', 'setKoRoundHoles', 'publishDraw', 'getKoMatchOfCard', 'linkKoCard', 'reportKoResult', 'confirmKoResult', 'disputeKoResult', 'adminSetKoResult']
+  'getKnockout', 'createMemberKnockout', 'deleteMemberKnockout', 'makeDraw', 'swapDraw', 'setRoundDeadlines', 'setKoRoundHoles', 'publishDraw', 'getKoMatchOfCard', 'linkKoCard', 'reportKoResult', 'confirmKoResult', 'disputeKoResult', 'adminSetKoResult',
+  'setPaperCards', 'readScorecard', 'markPaperCard', 'confirmPaperScore', 'sendBackPaperScore', 'resendPaperScore', 'getPaperConfirms', 'uploadCardPhoto', 'cardPhotoUrl', 'removeCardPhotos']
 
 /** For vi.mock('…/api.js'): every export, each calling the current world's version (globalThis.__world). */
 export function mockModule() {
@@ -39,6 +40,14 @@ export function mockModule() {
   const cache = new Proxy({}, { get: (_, k) => (...a) => globalThis.__world.cache[k](...a) })
   return { ...plain, cache }
 }
+
+// The pretend reader's answer: two cards, four Score columns (the demo's). Card 1's B column has holes 8 and 18
+// hard to read, and its holes 10–18 add up to 43 where the card says 44 (hole 18 was really a 10).
+const col = (label, s, out, inn, unsure = []) => ({ label, holes: s.map((score, h) => ({ score, sure: !unsure.includes(h) })), out, in: inn, total: out + inn })
+export const PAPER_READING = { parMatches: true, cards: [
+  { columns: [col('A', [5,4,3,5,4,5,3,6,6, 5,5,4,5,5,4,4,6,6], 41, 44), col('B', [4,4,4,6,5,5,3,8,5, 4,5,3,5,4,4,4,5,9], 44, 44, [7, 17])] },
+  { columns: [col('A', [6,5,3,5,5,6,4,5,7, 5,6,4,5,5,5,4,6,7], 46, 47), col('B', [5,3,4,5,4,5,3,5,8, 4,5,3,5,4,5,3,6,6], 42, 41)] },
+] }
 
 const member = id => MEMBERS.find(m => m.id === id)
 
@@ -90,13 +99,15 @@ export function makeWorld(today, setup = () => {}) {
     contacts: [{ id: 1, name: 'Sam Visitor', club: 'Royal Portrush GC', hcp: '12.0', gui: '1234567', sharedOn: today, favourite: false, updatedAt: `${today}T08:00:00Z` }],
     slots: {}, bookings: [], guestVisits: [], rounds: [], requests: [], playerEvents: [],
     rules: { time: '20:00', days: 8, weekendsOnly: false },
-    theme: { main: '#19335A', accent: '#762A43', name: 'Royal Teemate Golf Club', courseLat: 55.2, courseLon: -6.65, coursePlace: 'Portrush', feePayment: 'shop', dayBoardDays: [0, 1, 2, 3, 4, 5, 6], dayBoardToday: null },
+    theme: { main: '#19335A', accent: '#762A43', name: 'Royal Teemate Golf Club', courseLat: 55.2, courseLon: -6.65, coursePlace: 'Portrush', feePayment: 'shop', dayBoardDays: [0, 1, 2, 3, 4, 5, 6], dayBoardToday: null, paperCards: false },
     balances: null, // the club's system once linked: { competition, clubhouse } in pence
     hut: { on: true, menu: [
       { id: 1, section: 'Food', name: 'Bacon roll', pricePence: 450, soldOut: false, sort: 1 },
       { id: 2, section: 'Food', name: 'Toastie', pricePence: 500, soldOut: false, sort: 2 },
       { id: 3, section: 'Drinks', name: 'Tea', pricePence: 250, soldOut: false, sort: 1 }] },
     orders: [], entries: [], leagueEntries: [],
+    paperReads: {}, photos: [], // paper scorecards: reads today per member, stored photo paths
+    paperReading: PAPER_READING, // what the reader returns (journeys can change it)
     notices: [], // the office changed a booking, or someone booked me in: { id, memberId, kind, date, oldTime, newTime, note, byName?, withNames?, bookingId?, seen }
     joins: [], emails: { 0: 'gary@example.invalid' }, office: null, asOffice: false, pinsToday: false, // club office: asking to join, sign-in emails, the office login
     events: [
@@ -141,6 +152,49 @@ export function makeWorld(today, setup = () => {}) {
     getTheme: async () => ({ ...db.theme }),
     setDayBoardDays: async days => { if (!db.members.find(m => m.id === ME)?.admin && !db.asOffice) throw new Error('Only admins can change the club settings.'); db.theme.dayBoardDays = [...new Set(days)].sort() },
     setDayBoardToday: async on => { if (!db.members.find(m => m.id === ME)?.admin && !db.asOffice) throw new Error('Only admins can change the club settings.'); db.theme.dayBoardToday = on == null ? null : { date: today, on } },
+    // Paper scorecards, with the database's rules and messages.
+    setPaperCards: async on => { if (!db.members.find(m => m.id === ME)?.admin && !db.asOffice) throw new Error('Only the club office can change this.'); db.theme.paperCards = !!on },
+    readScorecard: async ({ images }) => {
+      if (!db.theme.paperCards) throw new Error('Paper scorecards are switched off at this club.')
+      const n = (db.paperReads[ME] ?? 0)
+      if (n >= 10) throw new Error('You’ve read 10 cards today. Enter the scores by hand, or try again tomorrow.')
+      db.paperReads[ME] = n + 1
+      db.calls.push(['readScorecard', images.length])
+      const reading = copy(db.paperReading)
+      return { ...reading, cards: reading.cards.slice(0, images.length) }
+    },
+    markPaperCard: async (rid, photos, confirmer) => {
+      const r = db.rounds.find(x => x.id === rid)
+      if (!r || !r.lineup.some(x => x.m === ME)) throw new Error('Only players on this card can do that.')
+      if (confirmer === ME) throw new Error('Someone else has to confirm your own score.')
+      if (confirmer != null && !r.lineup.some(x => x.m === confirmer)) throw new Error('The person confirming your score has to be on this card.')
+      r.paper = { by: ME, confirmer: confirmer ?? null, state: 'waiting', note: null, photos: Math.min(2, Math.max(0, photos)) }
+    },
+    confirmPaperScore: async rid => {
+      const r = db.rounds.find(x => x.id === rid), admin = db.asOffice || db.members.find(m => m.id === ME)?.admin
+      if (r?.paper?.state !== 'waiting' || !(admin || r.paper.confirmer === ME)) throw new Error('Only the person asked to confirm this score can confirm it.')
+      Object.assign(r.paper, { state: 'confirmed', note: null, confirmer: admin && r.paper.confirmer !== ME ? null : r.paper.confirmer })
+    },
+    sendBackPaperScore: async (rid, note) => {
+      const r = db.rounds.find(x => x.id === rid), admin = db.asOffice || db.members.find(m => m.id === ME)?.admin
+      if (r?.paper?.state !== 'waiting' || !(admin || r.paper.confirmer === ME)) throw new Error('Only the person asked to confirm this score can confirm it.')
+      if (!note?.trim()) throw new Error('Add a short note saying what isn’t right.')
+      Object.assign(r.paper, { state: 'sent_back', note: note.trim() })
+    },
+    resendPaperScore: async rid => {
+      const r = db.rounds.find(x => x.id === rid)
+      if (r?.paper?.by !== ME) throw new Error('Only the player who uploaded the card can send it again.')
+      if (r.paper.state !== 'sent_back') throw new Error('This score isn’t waiting to be fixed.')
+      r.paper.state = 'waiting'
+    },
+    getPaperConfirms: async () => {
+      const admin = db.asOffice || db.members.find(m => m.id === ME)?.admin
+      return copy(db.rounds.filter(r => r.paper?.state === 'waiting' && (r.paper.confirmer === ME || (r.paper.confirmer == null && admin)))
+        .map(r => ({ id: r.id, date: r.date, paperBy: r.paper.by, paperPhotos: r.paper.photos, confirmer: r.paper.confirmer, lineup: r.lineup, scores: r.scores, game: r.game })))
+    },
+    uploadCardPhoto: async (rid, n) => { db.photos.push(`${rid}/${n}.jpg`) },
+    cardPhotoUrl: async (rid, n) => `data:image/gif;base64,R0lGODlhAQABAAAAACw=#${rid}-${n}`,
+    removeCardPhotos: async rid => { db.photos = db.photos.filter(x => !x.startsWith(`${rid}/`)) },
     setTheme: async (main, accent) => { Object.assign(db.theme, { main: main.toUpperCase(), accent: accent.toUpperCase() }) },
     setClubName: async name => { db.theme.name = name.trim() },
     setCourseLocation: async (lat, lon, place) => { Object.assign(db.theme, { courseLat: lat, courseLon: lon, coursePlace: place }) },

@@ -120,6 +120,7 @@ describe('found in review', () => {
     has('cancelBooking', 'requests', 'comps')
     has('adminCancelBooking', 'requests')
     has('adminMoveBooking', 'requests')
+    has('setPaperCards', 'club')
   })
   it('after a reload, signing out removes the last person’s kept data', async () => {
     const storage = store()

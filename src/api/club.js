@@ -27,6 +27,10 @@ export async function setFeePayment(p) {
 }
 
 /** Admins: the days of the week (0 Sunday … 6 Saturday) the leaderboard of the day is on. */
+export async function setPaperCards(on) {
+  must(await sb.rpc('admin_set_paper_cards', { p: on }))
+}
+
 export async function setDayBoardDays(days) {
   must(await sb.rpc('admin_set_day_board_days', { p_days: days }))
 }

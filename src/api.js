@@ -17,7 +17,7 @@ export { cache }
 export const {
   getMembers, getAccessList, getCourse, getPins, getGameSettings, getEvents, getEventTemplates, saveEvents, enterEvent, withdrawEvent, removeEventEntrant, saveEventTemplate, deleteEventTemplate, setKoRoundHoles,
   getTheme, getSignups, getSignupCounts, getKnockout, getAccessRequests, getTeeTimeRequests,
-  getBuddies, getFriends, getFavourites, setTheme, setClubName, setFeePayment,
+  getBuddies, getFriends, getFavourites, setTheme, setClubName, setFeePayment, setPaperCards,
   setHutOn, setBookingRules, setDayBoardDays, setDayBoardToday, setCourseLocation, setGreenWidth,
   publishPins, saveEvent, saveSeason, deleteEvent, enterEventToday, startLeagueKnockout,
   setMyGamePref, setHutStaff, saveMember, setOfficeLogin, deleteMember, resetLogin,
