@@ -6,6 +6,7 @@ import { $, esc, ini, header, keepScroll, top0, render, toast, parseHcp, fmtHcp,
 import { isoDate, nextDays, dayMonth, longDay, hhmm, fromIso } from '../dates.js'
 import { nextFreeNote } from '../release.js'
 import { pickerGroups } from '../friend-link.js'
+import { scanPeople } from '../scan-people.js'
 
 export async function load() {
   const date = S.addTo ? fromIso(S.addTo.date) : S.reqMode ? fromIso(S.reqDate) : nextDays(S.day + 1)[S.day] // the day picked on the tee sheet (or for a request)
@@ -53,7 +54,7 @@ export function draw({ date, slot: s, me, members, friends, points }) {
   <div class="cta"><div class="tot">${add ? `${used} to add` : `${1 + used} player${used ? 's' : ''}`}<b>${fee ? `€${fee * (1 + S.picked.length)}` : "Members' time"}</b></div><button class="primary" id="confirm">${hold ? `Book ${esc(hold.label)}` : add ? 'Add to booking' : S.reqMode ? 'Send request' : 'Confirm booking'}</button></div>`
 
   const taken = new Set([me.id, ...S.picked, ...s.players.map(p => p.memberId)])
-  if (S.gmodal === 'pick') pickSheet(members, friends, taken, canGuest, points, left)
+  if (S.gmodal === 'pick') pickSheet(members, friends, taken, canGuest, points, left, max)
   else if (S.gmodal) guestForm(points, after)
   document.querySelectorAll('[data-open]').forEach(b => (b.onclick = () => { S.gmodal = 'pick'; keepScroll(render) }))
   document.querySelectorAll('[data-rm]').forEach(b => (b.onclick = () => { S.picked = S.picked.filter(x => x !== +b.dataset.rm); keepScroll(render) }))
@@ -114,7 +115,7 @@ export const bar = (left, allowance) => `<span class="pbar"><i style="width:${Ma
 
 // Tapping an open space: favourites first, then your friends (club, then other clubs: they come in as guests,
 // with the guest form filled in), search everyone, or add a guest.
-function pickSheet(members, friends, taken, canGuest, points, left) {
+function pickSheet(members, friends, taken, canGuest, points, left, max) {
   const guestNames = new Set(S.guests.map(g => g.name.trim().toLowerCase().replace(/\s+/g, ' ')))
   const row = r => r.kind === 'member'
     ? `<button class="brow" data-add="${r.m.id}"><span class="av">${ini(r.m.name)}</span><span class="who"><strong>${esc(r.m.name)}</strong><small>${esc(sub(r.m))}</small></span><span class="chev">+</span></button>`
@@ -126,6 +127,7 @@ function pickSheet(members, friends, taken, canGuest, points, left) {
   }
   $('modal').innerHTML = `<div class="overlay" id="ovl"><div class="sheet" role="dialog" aria-labelledby="ptitle">
     <h4 id="ptitle">Add to your group</h4>
+    <button class="primary scanbtn" id="pscan">Scan their QR code</button>
     <button class="ghost guestbtn" id="addG" ${canGuest ? '' : 'disabled'}>+ Add a guest <small>${canGuest ? `${points.cost} points` : left < points.cost ? 'not enough guest points' : ''}</small></button>
     <label for="pq">Find a member</label><input id="pq" type="search" autocomplete="off" placeholder="Type a name">
     <div class="pick picklist" id="plist">${list('')}</div>
@@ -144,6 +146,31 @@ function pickSheet(members, friends, taken, canGuest, points, left) {
   $('pq').oninput = e => { $('plist').innerHTML = list(e.target.value); wire() }
   $('addG').onclick = () => { S.guestPrefill = null; S.gmodal = true; keepScroll(render) }
   $('pcancel').onclick = close
+  // Scan their QR (the one on their Account card), one after another until the group is full: a club member joins the
+  // group, a TeeMate player from another club joins as a guest (their details filled in). Each is kept as a friend.
+  $('pscan').onclick = () => scanPeople(members, async p => {
+    const room = () => max - S.picked.length - S.guests.length
+    const norm = s => String(s ?? '').trim().toLowerCase().replace(/\s+/g, ' ')
+    if (p.member) {
+      const m = p.member
+      if (taken.has(m.id) || S.picked.includes(m.id)) { toast(`${m.name} is already in your group`); return room() > 0 }
+      S.picked = [...S.picked, m.id]
+      if (!friends.buddies.some(b => b.id === m.id)) api.addBuddy(m.id).catch(() => {})
+      toast(`${m.name} added`)
+    } else {
+      const c = p.card
+      if (S.guests.some(g => norm(g.name) === norm(c.name))) { toast(`${c.name} is already in your group`); return room() > 0 }
+      if (left - points.cost * S.guests.length < points.cost) { toast(`Not enough guest points to bring ${c.name}`); return false }
+      const hcp = c.hcp == null ? null : parseHcp(c.hcp)
+      S.guests.push({ name: c.name, club: c.club ?? '', gui: c.gui ?? '', hcp: Number.isNaN(hcp) ? null : hcp })
+      if (!friends.contacts.some(x => norm(x.name) === norm(c.name))) api.saveContact(c).catch(() => {})
+      toast(`${c.name} added as a guest`)
+    }
+    const more = room() > 0
+    if (!more) S.gmodal = false
+    await keepScroll(render)
+    return more
+  })
   $('ovl').onclick = e => { if (e.target.id === 'ovl') close() }
 }
 

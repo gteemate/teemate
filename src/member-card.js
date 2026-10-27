@@ -13,3 +13,13 @@ export function memberFromCard(text, members) {
   const m = members.find(x => x.id === card.memberId)
   return m && norm(m.name) === norm(card.name) ? { id: m.id, name: m.name, cardName: card.name } : null
 }
+
+/** Adding playing partners by their QR: → { member } (one of ours, number and name match), { card } (a TeeMate player
+ *  from another club: name, club, hcp, gui), or null (not a TeeMate card). */
+export function personFromScan(text, members) {
+  const member = memberFromCard(text, members)
+  if (member) return { member }
+  if (typeof text !== 'string' || text.length > 2000 || !text.includes('#')) return null
+  const card = readFriendLink(text.slice(text.indexOf('#')))
+  return card ? { card } : null
+}

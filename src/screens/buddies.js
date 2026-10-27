@@ -3,6 +3,7 @@
 import * as api from '../api.js'
 import { S } from '../state.js'
 import { $, esc, ini, header, keepScroll, top0, render, toast } from '../ui.js'
+import { scanPeople } from '../scan-people.js'
 
 export async function load() {
   const [members, buddies, me, friends] = await Promise.all([api.getMembers(), api.getBuddies(), api.getMe(), api.getFriends()])
@@ -37,6 +38,7 @@ export function draw({ members, buddies, friends }) {
   $('main').innerHTML = `<div class="screen">
     <div class="seg" role="group"><button data-s="mine" aria-pressed="${S.bseg === 'mine'}">Friends</button><button data-s="find" aria-pressed="${S.bseg === 'find'}">Find members</button></div>
     ${S.bseg === 'find' ? `<div class="search"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="q" type="search" placeholder="Name or GUI number" value="${esc(S.q)}" autocomplete="off"></div>` : ''}
+    ${S.bseg === 'find' ? '<button class="primary scanbtn" id="bscan">Scan a QR code</button>' : ''}
     ${body}${back}</div>`
 
   document.querySelectorAll('[data-s]').forEach(b => (b.onclick = () => { S.bseg = b.dataset.s; render() }))
@@ -70,6 +72,23 @@ export function draw({ members, buddies, friends }) {
     qi.oninput = () => { S.q = qi.value; S.qCaret = qi.selectionStart; render() }
     if (S.qCaret != null) { qi.focus(); qi.setSelectionRange(S.qCaret, S.qCaret); S.qCaret = null }
   }
+  // Scan their QR (their Account card), one after another: club members become friends (and, when picking players
+  // for a card, are picked); TeeMate players from other clubs are saved as friends from other clubs.
+  if ($('bscan')) $('bscan').onclick = () => scanPeople(members, async p => {
+    const norm = x => String(x ?? '').trim().toLowerCase().replace(/\s+/g, ' ')
+    if (p.member) {
+      const m = p.member
+      if (!buddies.includes(m.id)) await api.addBuddy(m.id).catch(() => {})
+      if (S.bfrom === 'players' && S.pickTmp && !S.pickTmp.includes(m.id) && S.pickTmp.length < 3) S.pickTmp = [...S.pickTmp, m.id]
+      toast(`${m.name} added to your friends`)
+    } else {
+      const c = p.card
+      if (!friends.contacts.some(x => norm(x.name) === norm(c.name))) await api.saveContact(c).catch(() => {})
+      toast(`${c.name}${c.club ? ` (${c.club})` : ''} saved to your friends`)
+    }
+    await keepScroll(render)
+    return true // next person: Cancel on the camera stops
+  })
   const bp = $('backPick')
   if (bp) bp.onclick = async () => { S.bfrom = null; S.tab = 'scores'; await render(); top0() }
   const bb = $('backBook')

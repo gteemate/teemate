@@ -1025,3 +1025,4 @@ button.lrow.ci-m{width:100%;text-align:left;background:none;border:0;border-top:
 #app.office.kiosk .oside,#app.kiosk #side{display:none}
 #app.office.kiosk #hdr,#app.office.kiosk #alerts,#app.office.kiosk #dateWrap,#app.office.kiosk main{grid-column:1}
 #app.office.kiosk main .screen.ci-kiosk{max-width:640px;margin:0 auto}
+.scanbtn{width:100%;min-height:52px;margin:6px 0 12px}

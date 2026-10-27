@@ -47,6 +47,14 @@ export const FEATURES = [
   { id: 'maker-mark', area: 'Booking', name: 'Made by TeeMate on Home',
     what: 'A quiet maker’s mark at the foot of Home (and sign-in and Account), which opens about us.',
     scenarios: [{ says: 'On Home, tappable', tests: ['src/test/journeys/features.test.js › a quiet maker’s mark at the foot of Home, which opens about us'] }] },
+  { id: 'scan-partners', area: 'Booking', name: 'Add playing partners by scanning their QR code',
+    what: 'In booking, Scoring → Players and Friends, scan the QR on someone’s Account card instead of searching. The camera opens again for the next person until the group is full. Club members join the group; TeeMate players from other clubs join a booking as guests. Each is kept as a friend.',
+    scenarios: [
+      { says: 'Booking: a club member, then another club’s player as a guest, back to back', tests: ['src/test/journeys/guest-check-in.test.js › booking: scan a club member, then a player from another club (a guest, details filled in); the camera opens again for each', 'src/test/journeys/guest-check-in.test.js › booking: scanning someone already in the group says so'] },
+      { says: 'Scoring → Players: club members onto the card; other clubs told to come through a booking', tests: ['src/test/journeys/guest-check-in.test.js › Scoring → Players: scan club members onto the card, one after another', 'src/test/journeys/guest-check-in.test.js › Scoring → Players: someone from another club is told how they join a card'] },
+      { says: 'Friends: scan to add friends', tests: ['src/test/journeys/guest-check-in.test.js › Friends → Find members: scan to add friends, one after another', 'src/member-card.test.js'] },
+    ],
+    demo: [{ who: 'live@test.com', steps: ['Booking → + Add a booking → a time → Open space → Scan their QR code', 'Scan a friend’s Account card QR'], see: 'They join the group and the camera opens for the next.' }] },
   { id: 'guest-check-in', area: 'Booking', name: 'Guest check-in at the club office',
     what: 'For guests who weren’t booked in the app, the office scans the member’s card (or finds them by name), adds up to 3 guests and charges their guest points. Today’s check-ins can be removed again.',
     scenarios: [

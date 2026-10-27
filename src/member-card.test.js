@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { memberFromCard } from './member-card.js'
+import { memberFromCard, personFromScan } from './member-card.js'
 import { friendLink } from './friend-link.js'
 
 const members = [{ id: 3, name: "Ciarán O'Neill" }, { id: 5, name: 'Pat Reid' }]
@@ -24,4 +24,16 @@ describe('reading a member card (the QR on the Account card)', () => {
     expect(memberFromCard(null, members)).toBeNull()
     expect(memberFromCard('x'.repeat(10000), members)).toBeNull()
   })
+})
+
+describe('who a scanned code is (adding playing partners)', () => {
+  it('one of our members → { member }', () => {
+    expect(personFromScan(card(members[1]), members)).toEqual({ member: { id: 5, name: 'Pat Reid', cardName: 'Pat Reid' } })
+  })
+  it('someone from another club (their card isn’t one of ours) → { card } with their details', () => {
+    const p = personFromScan(friendLink({ id: 44, name: 'Alex Moore', hcp: 9.1, gui: '10855555' }, 'Portrush', 'https://x.example/'), members)
+    expect(p.card).toMatchObject({ name: 'Alex Moore', club: 'Portrush', hcp: '9.1', gui: '10855555' })
+    expect(p.member).toBeUndefined()
+  })
+  it('any other QR code → null', () => expect(personFromScan('https://example.com', members)).toBeNull())
 })

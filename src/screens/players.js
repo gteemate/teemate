@@ -5,6 +5,7 @@ import { $, esc, ini, header, keepScroll, top0, render, toast, fmtHcp } from '..
 import { getRound, setRound, newRound, lineupFromTeeTime } from './scores.js'
 import { buildLibrary, NO_GAME } from '../games.js'
 import { today, hhmm } from '../dates.js'
+import { scanPeople } from '../scan-people.js'
 
 export async function load() {
   const [members, friends, course, games, me, teeTimes] = await Promise.all([
@@ -26,6 +27,7 @@ export function draw({ members, buddies, course, L, me, teeTimes }) {
       const on = t.includes(m.id), dis = !on && t.length >= 3
       return `<button class="brow" data-p="${m.id}" aria-pressed="${on}" ${dis ? 'disabled' : ''}><span class="av">${ini(m.name)}</span><span class="who"><strong>${fav.has(m.id) ? '<span class="favmark" aria-label="Favourite">★</span> ' : ''}${esc(m.name)}</strong><small>HI ${fmtHcp(m.hcp)} · GUI ${m.gui ?? '–'}</small></span><span class="check">${on ? '✓' : ''}</span></button>`
     }).join('') || '<div class="empty-state">No playing partners yet.</div>'}</div>
+    <button class="primary scanbtn" id="pscan">Scan their QR code</button>
     <button class="ghost" id="more">+ Add playing partners</button>
     <div class="hint">Pick 1 to 3. Better-ball games need four players. Changing players starts a new scorecard.</div></div>
     <div class="cta"><button class="primary" id="ok" ${t.length ? '' : 'disabled'}>${t.length ? `Use these ${t.length + 1} players` : 'Pick who you’re playing with'}</button></div>`
@@ -52,6 +54,20 @@ export function draw({ members, buddies, course, L, me, teeTimes }) {
     S.pickTmp = t.includes(id) ? t.filter(x => x !== id) : [...t, id]
     keepScroll(render)
   }))
+  // Scan their QR, one after another (up to 3): club members go on the card and are kept as friends. Players from
+  // other clubs join a card through a booking, as guests.
+  $('pscan').onclick = () => scanPeople(members, async p => {
+    if (p.card) { toast(`${p.card.name} is from another club: add them to your booking as a guest, and they join your card from there.`); return false }
+    const m = p.member
+    if (m.id === me.id) { toast('That’s your own card'); return S.pickTmp.length < 3 }
+    if (S.pickTmp.includes(m.id)) { toast(`${m.name} is already picked`); return S.pickTmp.length < 3 }
+    if (S.pickTmp.length >= 3) return false
+    S.pickTmp = [...S.pickTmp, m.id]
+    if (!ids.has(m.id)) await api.addBuddy(m.id).catch(() => {}) // kept as a friend, so they're in the list
+    toast(`${m.name} added`)
+    await keepScroll(render)
+    return S.pickTmp.length < 3
+  })
   $('more').onclick = async () => { S.tab = 'home'; S.aview = 'buddies'; S.bseg = 'find'; S.bfrom = 'players'; await render(); top0() }
   $('ok').onclick = () => start([{ m: me.id }, ...S.pickTmp.map(m => ({ m }))], null, 'New scorecard started')
 }
