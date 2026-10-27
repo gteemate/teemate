@@ -999,3 +999,9 @@ details.oboard[open] > summary::before{transform:rotate(90deg)}
 .slot.names.full .pn,.slot.names.full .time{color:var(--muted)}
 .slot.names.full{background:transparent}
 .slot.names.minebk{border-color:var(--gold)}
+/* the QR scanner (scan-qr.js): the camera full screen, a frame to aim at */
+.scanov{position:fixed;inset:0;z-index:200;background:#000;display:grid;place-items:center}
+.scanov video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.scanframe{position:relative;width:min(70vw,280px);aspect-ratio:1;border:4px solid var(--gold);border-radius:24px;box-shadow:0 0 0 100vmax rgba(0,0,0,.45)}
+.scanhint{position:absolute;top:max(24px,env(safe-area-inset-top));left:16px;right:16px;text-align:center;color:#fff;font-size:17px;font-weight:600;margin:0}
+.scanx{position:absolute;bottom:max(28px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);min-width:160px;background:rgba(0,0,0,.6);color:#fff}
