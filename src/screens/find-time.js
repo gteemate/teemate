@@ -50,7 +50,7 @@ export function draw({ grid, me, booked }) {
   const byName = id => first(players.find(p => p.id === id)?.name ?? 'someone')
   const cell = (t, p) => {
     const a = shown(t, p), cls = a === true ? 'y' : a === false ? 'n' : ''
-    return `<td><button class="tick ${cls}" data-tt="${t.id}" data-p="${p.id}" ${p.id === me.id ? `data-t="${t.id}"` : 'disabled'} aria-label="${esc(p.name)}, ${dayLabel(t.day)} ${t.part}: ${a === true ? 'can' : a === false ? 'can’t' : 'not answered'}">${mark(a)}</button></td>`
+    return `<td><button class="fttick ${cls}" data-tt="${t.id}" data-p="${p.id}" ${p.id === me.id ? `data-t="${t.id}"` : 'disabled'} aria-label="${esc(p.name)}, ${dayLabel(t.day)} ${t.part}: ${a === true ? 'can' : a === false ? 'can’t' : 'not answered'}">${mark(a)}</button></td>`
   }
   const head = p => p.id === me.id ? 'You' : `${esc(first(p.name))}${grid.answeredBy?.[p.id] && grid.answeredBy[p.id] !== me.id ? `<small>answered by ${esc(byName(grid.answeredBy[p.id]))}</small>` : grid.answeredBy?.[p.id] === me.id ? '<small>answered by you</small>' : ''}`
   const notes = players.filter(p => grid.notes?.[p.id]).map(p => `<span><b>${p.id === me.id ? 'You' : esc(first(p.name))}:</b> ${esc(grid.notes[p.id])}</span>`).join('')

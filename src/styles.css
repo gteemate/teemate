@@ -1048,10 +1048,10 @@ button.lrow.ci-m{width:100%;text-align:left;background:none;border:0;border-top:
 .ftgrid td:first-child small{display:block;color:var(--muted);font-weight:600}
 .ftgrid td:last-child{border-right:1px solid var(--line);border-radius:0 12px 12px 0}
 .ftgrid tr.all td{background:rgba(92,194,138,.14);border-color:var(--live)}
-.tick{width:42px;height:42px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--muted);font-size:18px;font-weight:800;cursor:pointer}
-.tick.y{background:var(--live);border-color:var(--live);color:#08210f}
-.tick.n{background:transparent;border-color:var(--loss);color:var(--loss)}
-.tick:disabled{cursor:default}
+.fttick{width:42px;height:42px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--muted);font-size:18px;font-weight:800;cursor:pointer}
+.fttick.y{background:var(--live);border-color:var(--live);color:#08210f}
+.fttick.n{background:transparent;border-color:var(--loss);color:var(--loss)}
+.fttick:disabled{cursor:default}
 .ftagreed{border-color:var(--live)}
 .ftline b{color:var(--ink)}
 .ftcard{display:grid;gap:10px}
