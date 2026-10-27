@@ -18,7 +18,7 @@ export const API_NAMES = ['getMe', 'forgetMe', 'getSession', 'signIn', 'needsAcc
   'getHutStaff', 'setHutStaff', 'placeHutOrder', 'cancelMyHutOrder', 'myHutOrders', 'hutOrdersToday', 'setHutOrderStatus', 'getMembers', 'getBuddies',
   'addBuddy', 'removeBuddy', 'getFriends', 'saveContact', 'removeContact', 'setFriendFavourite', 'getAccessList', 'saveMember', 'getFavourites',
   'setFavourite', 'setOfficeLogin', 'getAccessRequests', 'declineRequest', 'deleteMember', 'resetLogin', 'getCourse', 'getPins', 'setGreenWidth', 'publishPins',
-  'getTeeSheet', 'bookTeeTime', 'getMyTeeTimes', 'getGuests', 'setGuestHandicap', 'cancelBooking', 'moveMatchBooking', 'adminCancelBooking', 'adminMoveBooking',
+  'getTeeSheet', 'bookTeeTime', 'getMyTeeTimes', 'getGuests', 'setGuestHandicap', 'cancelBooking', 'removeFromBooking', 'moveMatchBooking', 'adminCancelBooking', 'adminMoveBooking',
   'getBookingNotices', 'seenBookingNotice', 'getMyBookings',
   'getGuestPoints', 'getBookingRules', 'setBookingRules', 'requestTeeTime', 'cancelTeeTimeRequest', 'getMyTeeTimeRequests', 'getTeeTimeRequests',
   'decideTeeTimeRequest', 'markTeeTimeRequestsSeen', 'dismissTeeTimeRequest', 'getGameSettings', 'setMyGamePref', 'getCurrentRound', 'getRound', 'deleteRound', 'saveRound',
@@ -361,13 +361,13 @@ export function makeWorld(today, setup = () => {}, as = 'admin') {
     },
     getGuests: async ids => Object.values(db.slots).flat().flatMap(s => s.players).filter(p => p.guest && ids.includes(p.id)).map(p => ({ id: p.id, name: p.name, club: p.club, hcp: p.hcp })),
     getMyBookings: async () => db.bookings.map(b => ({ b, s: slotById(b.slotId) }))
-      .filter(({ s }) => s.date >= today && s.players.some(p => p.memberId === ME))
+      .filter(({ b, s }) => s.date >= today && (b.bookedBy === ME || s.players.some(p => p.bookingId === b.id && p.memberId === ME)))
       .map(({ b, s }) => {
         const ids = s.players.filter(p => p.bookingId === b.id && p.memberId != null).map(p => p.memberId)
         const card = db.rounds.find(r => r.slotId === s.id && r.date === s.date && r.lineup.some(x => ids.includes(x.m)))
         return { id: b.id, date: s.date, time: s.time, mine: b.bookedBy === ME, bookedBy: member(b.bookedBy).name, guests: s.players.filter(p => p.bookingId === b.id && p.guest).length,
           players: s.players.length, scoredHoles: card ? card.done.filter(Boolean).length : 0,
-          people: s.players.map(p => ({ memberId: p.memberId, name: p.name, guest: p.guest, club: p.club, hcp: p.hcp, inBooking: p.bookingId === b.id })) }
+          people: s.players.map(p => ({ bp: p.id, memberId: p.memberId, name: p.name, guest: p.guest, club: p.club, hcp: p.hcp, inBooking: p.bookingId === b.id })) }
       }).sort((x, y) => (x.date + x.time).localeCompare(y.date + y.time)),
     cancelBooking: async (bid, removeScores = false) => {
       const b = db.bookings.find(x => x.id === bid), s = slotById(b.slotId)
@@ -376,6 +376,21 @@ export function makeWorld(today, setup = () => {}, as = 'admin') {
       const before = db.rounds.length
       db.rounds = db.rounds.filter(r => !(r.slotId === s.id && r.lineup.some(x => gone.includes(x.m)) && (removeScores || !r.done.some(Boolean))))
       return { result: 'deleted', pointsBack: 0, cardsRemoved: before - db.rounds.length, eventsCancelled: 0 }
+    },
+    removeFromBooking: async (bid, pid) => { // as the database: the booker only; the last one off deletes the booking
+      const b = db.bookings.find(x => x.id === bid)
+      if (!b) throw new Error('That booking no longer exists.')
+      if (b.bookedBy !== ME) throw new Error('Only the member who made the booking can take people off it.')
+      const s = slotById(b.slotId), p = s.players.find(x => x.id === pid && x.bookingId === b.id)
+      if (!p) throw new Error('That player is no longer on this booking.')
+      if (!s.players.some(x => x.bookingId === b.id && x !== p)) return api.cancelBooking(bid)
+      s.players = s.players.filter(x => x !== p)
+      const visit = db.guestVisits.find(v => v.playerId === p.id)
+      db.guestVisits = db.guestVisits.filter(v => v !== visit)
+      db.notices = db.notices.filter(n => !(n.kind === 'added' && n.bookingId === b.id && n.memberId === p.memberId))
+      const before = db.rounds.length
+      db.rounds = db.rounds.filter(r => !(r.slotId === s.id && p.memberId != null && r.lineup.some(x => x.m === p.memberId) && !r.done.some(Boolean)))
+      return { result: 'removed', pointsBack: visit?.points ?? 0, cardsRemoved: before - db.rounds.length, eventsCancelled: 0 }
     },
     moveMatchBooking: async (bid, sid) => {
       const b = db.bookings.find(x => x.id === bid), s = slotById(b.slotId)

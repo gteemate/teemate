@@ -61,6 +61,12 @@ export default [
     action: 'cancelBooking', expect: db => db.bookings.length === 0, refusals: 'all',
   },
   {
+    id: 'remove-from-booking', who: 'member', title: 'Take one person off my booking',
+    setup: db => db.book(1, at(db, 540).id, [3, 5]),
+    steps: [{ tap: 'Booking' }, { tap: '09:00' }, { tap: '.rmrow:nth-child(2) [data-rm]' }, { tap: 'Sure?' }],
+    action: 'removeFromBooking', expect: db => db.bookings.length === 1 && at(db, 540).players.length === 2, refusals: 'all',
+  },
+  {
     id: 'request-tee-time', who: 'member', title: 'Request a tee time further ahead',
     steps: [{ tap: 'Booking' }, { tap: 'Request a tee time further ahead' }, { tap: '10:20' }, { type: ['#rq-why', 'Visitors from Boston'] }, { tap: 'Send request' }],
     action: 'requestTeeTime', expect: db => db.requests.some(r => r.memberId === 1 && r.status === 'pending'), refusals: 'all',

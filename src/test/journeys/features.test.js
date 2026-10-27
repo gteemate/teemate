@@ -1204,7 +1204,7 @@ describe('the tee sheet shows who’s out', () => {
     expect(row.getAttribute('aria-label')).toContain('2 spaces free') // read out in words
     expect(document.querySelector(`[data-id="${at(app.db, 660).id}"]`).textContent).toContain('Sam Reid (guest)')
   })
-  it('a free four-ball is a light-blue row saying “All 4 free · Tap to book” on one line, not four boxes', async () => {
+  it('a free four-ball is a light-blue row saying “Available · Tap to book” on one line, not four boxes', async () => {
     app = await boot()
     await sheet()
     const row = document.querySelector(`[data-id="${at(app.db, 600).id}"]`)
@@ -1212,7 +1212,7 @@ describe('the tee sheet shows who’s out', () => {
     expect(row.classList.contains('part')).toBe(false)
     expect(row.querySelectorAll('.pn')).toHaveLength(1)
     expect(row.querySelectorAll('.free')).toHaveLength(0)
-    expect(row.querySelector('.whole').textContent).toBe('All 4 freeTap to book')
+    expect(row.querySelector('.whole').textContent).toBe('AvailableTap to book')
   })
   it('a time within 2 hours of mine shows its names greyed; tapping it says why', async () => {
     app = await boot(db => { db.book(0, at(db, 570).id, []); db.book(3, at(db, 600).id, [5]) })
@@ -1275,5 +1275,47 @@ describe('My bookings: each booking laid out like the tee sheet', () => {
     expect(card.textContent).not.toContain('Booked by')
     await app.tap('[data-bk]')
     expect(document.querySelector('.sheet').textContent).toContain('Booked by') // still in the details
+  })
+})
+
+describe('taking one person off a booking I made', () => {
+  const pid = (db, time, name) => at(db, time).players.find(p => p.name === name).id
+  it('a member I booked in: Remove, Sure?, and they’re off; the rest of the booking stays', async () => {
+    let five
+    app = await boot(db => { five = db.members.find(m => m.id === 5).name; db.book(0, at(db, 600).id, [5, 7]) })
+    await app.tap('Booking')
+    await app.tap('[data-bk]')
+    await app.tap(`[data-rm="${pid(app.db, 600, five)}"]`)
+    expect(document.querySelector(`[data-rm="${pid(app.db, 600, five)}"]`).textContent).toBe('Sure?') // a second tap, so a slip doesn't take someone off
+    await app.tap(`[data-rm="${pid(app.db, 600, five)}"]`)
+    expect(app.toast()).toBe(`${five} is off the 10:00 booking`)
+    expect(at(app.db, 600).players.map(p => p.memberId)).toEqual([0, 7])
+    expect(document.querySelector('[data-bk]').textContent).not.toContain(five)
+  })
+  it('a guest: their guest points come back', async () => {
+    app = await boot(db => db.book(0, at(db, 600).id, [], [{ name: 'Sam Reid', club: 'Portrush' }]))
+    await app.tap('Booking')
+    await app.tap('[data-bk]')
+    const sam = pid(app.db, 600, 'Sam Reid')
+    await app.tap(`[data-rm="${sam}"]`); await app.tap(`[data-rm="${sam}"]`)
+    expect(app.toast()).toBe('Sam Reid is off the 10:00 booking · 3 guest points back')
+    expect(app.db.guestVisits).toHaveLength(0)
+  })
+  it('myself: the others keep the time and it stays in my bookings to manage', async () => {
+    app = await boot(db => db.book(0, at(db, 600).id, [5]))
+    await app.tap('Booking')
+    await app.tap('[data-bk]')
+    const me = at(app.db, 600).players.find(p => p.memberId === 0).id
+    await app.tap(`[data-rm="${me}"]`); await app.tap(`[data-rm="${me}"]`)
+    expect(app.toast()).toBe('You’re off the 10:00 booking')
+    expect(at(app.db, 600).players.map(p => p.memberId)).toEqual([5])
+    expect(document.querySelector('[data-bk]')).not.toBeNull()
+  })
+  it('a booking someone else made: no Remove buttons (I can only withdraw myself)', async () => {
+    app = await boot(db => db.book(3, at(db, 600).id, [0, 5]))
+    await app.tap('Booking')
+    await app.tap('[data-bk]')
+    expect(document.querySelectorAll('[data-rm]')).toHaveLength(0)
+    expect(document.getElementById('bk-act').textContent).toBe('Withdraw from this booking')
   })
 })

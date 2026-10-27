@@ -461,6 +461,12 @@
   "remove_event_entrant": [
    "Only the club office can take someone off."
   ],
+  "remove_from_booking": [
+   "That booking no longer exists.",
+   "Only the member who made the booking can take people off it.",
+   "That player is no longer on this booking.",
+   "That isn't your booking."
+  ],
   "report_ko_result": [
    "That match no longer exists.",
    "You can only report your match.",
@@ -1100,6 +1106,12 @@
   "removeEventEntrant": {
    "rpc": [
     "remove_event_entrant"
+   ],
+   "tables": []
+  },
+  "removeFromBooking": {
+   "rpc": [
+    "remove_from_booking"
    ],
    "tables": []
   },

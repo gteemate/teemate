@@ -29,13 +29,16 @@ export const FEATURES = [
     ],
     demo: [{ who: 'live@test.com', steps: ['Booking → + Add a booking', 'Pick a free time, add a friend', 'Confirm booking'], see: 'The booking is under Booking, with your friend on it.' }] },
   { id: 'my-bookings', area: 'Booking', name: 'My bookings: cancel and change',
-    what: 'Members see their bookings and cancel them. Cancelling a booking with scores warns first and takes the scorecard with it.',
+    what: 'Members see their bookings and cancel them, or take one person off one they made. Cancelling a booking with scores warns first and takes the scorecard with it.',
     scenarios: [
       { says: 'Delete a booking (two taps)', tests: ['journey:cancel-booking'] },
+      { says: 'Take one person off a booking I made (two taps); a guest’s points come back; the last one off deletes it', tests: ['journey:remove-from-booking', `${F} › a guest: their guest points come back`, 'supabase/tests/remove_from_booking.sql › Take off: taking the last person off deletes the booking'] },
+      { says: 'Only whoever made the booking can take people off', tests: [`${F} › a booking someone else made: no Remove buttons (I can only withdraw myself)`, 'supabase/tests/remove_from_booking.sql › Take off: only the member who made the booking'] },
       { says: 'A booking with scores: warned, and the scorecard goes too', tests: [`${J} › 3. Delete a booking that has scores: warned, and the scorecard goes too`, 'supabase/tests/card_delete.sql › Delete confirmed: the scorecard goes too'] },
       { says: 'Rearrange a team match’s booking to another time', tests: ['journey:move-match-booking', `${J} › 5. Book your match from the event, then rearrange it`] },
     ],
-    demo: [{ who: 'live@test.com', steps: ['Booking → tap a booking → Delete booking → tap again'], see: 'It’s gone from Booking and the tee sheet.' }] },
+    demo: [{ who: 'live@test.com', steps: ['Booking → tap a booking → Delete booking → tap again'], see: 'It’s gone from Booking and the tee sheet.' },
+      { who: 'live@test.com', steps: ['Book a time with a friend', 'Booking → tap it → Remove next to your friend → Sure?'], see: 'Your friend is off; you keep the time.' }] },
   { id: 'requests', area: 'Booking', name: 'Tee time requests further ahead',
     what: 'For days not open yet, members ask the club office for a time with a reason. The office books it or declines with a note; the member is told.',
     scenarios: [

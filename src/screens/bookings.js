@@ -36,23 +36,40 @@ async function cancel(b) {
 
 // Booking details: everyone on the tee time, and delete / withdraw. The tee sheet opens it too, when you tap your own time.
 export function details(b, me) {
-  const person = p => `<div class="lrow"><span class="av${p.guest ? ' gst' : ''}">${ini(p.name)}</span><span class="who"><strong>${esc(p.name)}${p.memberId === me.id ? ' (you)' : ''}</strong><small>${p.guest ? `Guest${p.club ? ' · ' + esc(p.club) : ''}` : 'Member'}</small></span><span class="hcp">${fmtHcp(p.hcp == null ? null : Number(p.hcp))}<small>HI</small></span></div>`
   const ours = b.people.filter(p => p.inBooking), others = b.people.filter(p => !p.inBooking)
+  const canRemove = b.mine && ours.length > 1 // I made it: take people off one at a time (the last one goes with Delete booking)
+  const person = (p, rm) => `<div class="lrow${rm ? ' rmrow' : ''}"><span class="av${p.guest ? ' gst' : ''}">${ini(p.name)}</span><span class="who"><strong>${esc(p.name)}${p.memberId === me.id ? ' (you)' : ''}</strong><small>${p.guest ? `Guest${p.club ? ' · ' + esc(p.club) : ''}` : 'Member'}</small></span><span class="hcp">${fmtHcp(p.hcp == null ? null : Number(p.hcp))}<small>HI</small></span>${rm ? `<button type="button" class="ghost rmbtn" data-rm="${p.bp}">Remove</button>` : ''}</div>`
   const act = scored(b) ? 'Delete booking and scores' : b.mine ? 'Delete booking' : 'Withdraw from this booking'
   const holes = n => `${n} hole${n === 1 ? '' : 's'}`
   $('modal').innerHTML = `<div class="overlay" id="ovl"><div class="sheet" role="dialog" aria-labelledby="bkt">
     <span class="kicker">${longDay(fromIso(b.date))}</span>
     <h4 id="bkt">${hhmm(b.time)} · 1st tee</h4>
     <span class="hint">${b.mine ? 'You booked this' : `Booked by ${esc(b.bookedBy ?? 'another member')}`}</span>
-    <div class="card list">${ours.map(person).join('')}</div>
-    ${others.length ? `<span class="hint">Also on this tee time</span><div class="card list">${others.map(person).join('')}</div>` : ''}
+    <div class="card list">${ours.map(p => person(p, canRemove)).join('')}</div>
+    ${others.length ? `<span class="hint">Also on this tee time</span><div class="card list">${others.map(p => person(p, false)).join('')}</div>` : ''}
     ${scored(b) ? `<div class="card warn-box"><strong>Scores entered for ${holes(b.scoredHoles)}</strong><span>Deleting this booking also deletes the scorecard for this round.${b.guests ? ' Your guest points come back.' : ''}</span></div>`
-      : `<span class="hint">${b.mine ? `Deleting takes everyone in your booking off this time${b.guests ? ' and gives your guest points back' : ''}.` : 'Withdrawing takes just you off. The rest of the booking stays.'} ${!b.mine && b.scoredHoles > 0 ? 'The group’s scorecard stays.' : 'A scorecard for it goes too, unless holes have been saved.'}</span>`}
+      : `<span class="hint">${b.mine ? `${canRemove ? 'Tap Remove to take one person off. ' : ''}Deleting takes everyone in your booking off this time${b.guests ? ' and gives your guest points back' : ''}.` : 'Withdrawing takes just you off. The rest of the booking stays.'} ${!b.mine && b.scoredHoles > 0 ? 'The group’s scorecard stays.' : 'A scorecard for it goes too, unless holes have been saved.'}</span>`}
     <div class="gm-btns"><button type="button" class="ghost" id="bk-close">${scored(b) ? 'Keep it' : 'Close'}</button><button class="primary" id="bk-act">${act}</button></div>
   </div></div>`
   const close = () => { $('modal').innerHTML = '' }
   $('bk-close').onclick = close
   $('ovl').onclick = e => { if (e.target.id === 'ovl') close() }
+  document.querySelectorAll('[data-rm]').forEach(btn => (btn.onclick = async () => {
+    if (btn.dataset.armed !== '1') { btn.dataset.armed = '1'; btn.textContent = 'Sure?'; return } // a second tap, so a slip doesn't take someone off
+    btn.disabled = true
+    const p = ours.find(x => x.bp === +btn.dataset.rm)
+    let r
+    try {
+      r = await api.removeFromBooking(b.id, p.bp)
+    } catch (err) {
+      toast(err.message); btn.disabled = false; return
+    }
+    close()
+    resetRound() // Scores reloads, in case a card for that tee time went
+    await keepScroll(render)
+    toast(r.result === 'deleted' ? `${hhmm(b.time)} booking deleted`
+      : `${p.memberId === me.id ? 'You’re' : `${p.name} is`} off the ${hhmm(b.time)} booking${r.pointsBack ? ` · ${r.pointsBack} guest points back` : ''}`)
+  }))
   $('bk-act').onclick = async () => {
     const btn = $('bk-act')
     if (btn.dataset.armed !== '1') { btn.dataset.armed = '1'; btn.textContent = b.mine ? 'Tap again to delete' : 'Tap again to withdraw'; return }

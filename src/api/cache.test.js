@@ -118,6 +118,7 @@ describe('found in review', () => {
     has('deleteSignup', 'comps', 'events')
     has('deleteRound', 'comps')
     has('cancelBooking', 'requests', 'comps')
+    has('removeFromBooking', 'requests', 'comps') // the last one off deletes the booking
     has('adminCancelBooking', 'requests')
     has('adminMoveBooking', 'requests')
     has('setPaperCards', 'club')
