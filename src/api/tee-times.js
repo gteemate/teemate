@@ -17,6 +17,12 @@ export async function bookTeeTime({ slotId, memberIds = [], guests = [] }) {
   return must(await sb.rpc('book_tee_time', { p_slot_id: slotId, p_member_ids: memberIds, p_guests: guests }))
 }
 
+/** Add members or guests to a booking I'm on (e.g. a fourth player), while the time has room. Guests are charged to me.
+ *  → { added, pointsUsed } */
+export async function addToBooking(bookingId, { memberIds = [], guests = [] }) {
+  return must(await sb.rpc('add_to_booking', { p_booking: bookingId, p_member_ids: memberIds, p_guests: guests }))
+}
+
 /** My tee times on a date, each with everyone on it (members and guests, with handicaps). */
 export async function getMyTeeTimes(date) {
   const meId = await myId()

@@ -1,5 +1,20 @@
 {
  "db": {
+  "add_to_booking": [
+   "That booking no longer exists.",
+   "That isn't your booking.",
+   "That tee time has passed.",
+   "Add a player or guest first.",
+   "A player is listed twice.",
+   "One of those players isn't a member.",
+   "One of your group is already booked on this time.",
+   "%",
+   "Every guest needs a name.",
+   "GUI numbers are 6–10 digits.",
+   "Handicap index must be between +10 and 54.",
+   "Sorry, there’s no space left on this time.",
+   "You don't have enough guest points for this booking."
+  ],
   "admin_cancel_booking": [
    "Only the club office can change members' bookings.",
    "That booking no longer exists.",
@@ -199,6 +214,7 @@
   "check_guest_balance": [
    "You don't have enough guest points for this booking."
   ],
+  "club_minutes_now": [],
   "club_today": [],
   "confirm_ko_result": [
    "There's no result waiting to confirm.",
@@ -600,6 +616,12 @@
    "tables": [
     "buddies"
    ]
+  },
+  "addToBooking": {
+   "rpc": [
+    "add_to_booking"
+   ],
+   "tables": []
   },
   "adminCancelBooking": {
    "rpc": [

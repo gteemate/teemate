@@ -1229,14 +1229,14 @@ describe('the tee sheet shows who’s out', () => {
     expect(document.getElementById('alerts').textContent).not.toContain('Within 2 hours')
   })
   it('the 2 hours apply before my tee time too: an earlier time shows its names greyed and says why', async () => {
-    app = await boot(db => { db.book(0, at(db, 600).id, []); db.book(3, at(db, 500).id, [5]) }) // mine 10:00; 08:20 is 1h40 before
+    app = await boot(db => { db.book(0, at(db, 720).id, []); db.book(3, at(db, 620).id, [5]) }) // mine 12:00; 10:20 is 1h40 before
     await sheet()
-    const row = document.querySelector(`[data-id="${at(app.db, 500).id}"]`)
+    const row = document.querySelector(`[data-id="${at(app.db, 620).id}"]`)
     expect(row.classList.contains('full')).toBe(true)
     expect(row.textContent).toContain("Ciarán O'Neill")
-    await app.tap(`[data-id="${at(app.db, 500).id}"]`)
-    expect(document.getElementById('alerts').textContent).toContain('Within 2 hours of your 10:00 tee time')
-    expect(document.querySelector(`[data-id="${at(app.db, 480).id}"]`).classList.contains('full')).toBe(false) // 08:00 is exactly 2 hours: fine
+    await app.tap(`[data-id="${at(app.db, 620).id}"]`)
+    expect(document.getElementById('alerts').textContent).toContain('Within 2 hours of your 12:00 tee time')
+    expect(document.querySelector(`[data-id="${at(app.db, 600).id}"]`).classList.contains('full')).toBe(false) // 10:00 is exactly 2 hours: fine
   })
   it('tapping my own time opens that booking (who’s playing, delete or withdraw) right there, not My bookings', async () => {
     app = await boot(db => db.book(0, at(db, 600).id, [5]))
@@ -1248,6 +1248,16 @@ describe('the tee sheet shows who’s out', () => {
     await app.tap('#bk-act'); await app.tap('#bk-act') // tap twice to delete
     expect(app.toast()).toContain('10:00 booking deleted')
     expect(document.querySelector(`[data-id="${at(app.db, 600).id}"]`).classList.contains('open')).toBe(true) // the time is free again on the sheet
+  })
+  it('today starts at the time now: times already gone aren’t listed (so they can’t be booked, and no scrolling past them)', async () => {
+    app = await boot() // the test clock is 09:00
+    await sheet()
+    expect(document.querySelector(`[data-id="${at(app.db, 530).id}"]`)).toBeNull() // 08:50
+    expect(document.querySelector(`[data-id="${at(app.db, 540).id}"]`)).not.toBeNull() // 09:00
+    expect(app.text()).toContain('Earlier times today have gone')
+    await app.tap('[data-d="1"]') // tomorrow: from the first time
+    expect(document.querySelector('[data-id]')).not.toBeNull()
+    expect(app.text()).not.toContain('Earlier times today have gone')
   })
   it('a full time shows all four names greyed; tapping says it’s full', async () => {
     app = await boot(db => db.book(3, at(db, 720).id, [5, 7, 9]))
@@ -1317,5 +1327,35 @@ describe('taking one person off a booking I made', () => {
     await app.tap('[data-bk]')
     expect(document.querySelectorAll('[data-rm]')).toHaveLength(0)
     expect(document.getElementById('bk-act').textContent).toBe('Withdraw from this booking')
+  })
+})
+
+describe('adding a player to a booking I’m on', () => {
+  it('someone else booked me with two others: + Add a player, pick a member, and they join the same booking', async () => {
+    app = await boot(db => db.book(5, at(db, 600).id, [0, 7]))
+    await app.tap('Booking')
+    await app.tap('[data-bk]')
+    await app.tap('+ Add a player')
+    await app.tap('[data-open]')
+    await app.tap("Ciarán O'Neill")
+    await app.tap('Add to booking')
+    expect(app.toast()).toBe("Ciarán O'Neill added to your 10:00 booking")
+    const s = at(app.db, 600)
+    expect(s.players.map(p => p.memberId)).toEqual([5, 0, 7, 3])
+    expect(new Set(s.players.map(p => p.bookingId)).size).toBe(1) // the same booking, not a new one
+    expect(app.db.notices.some(n => n.memberId === 3 && n.kind === 'added')).toBe(true)
+  })
+  it('the tee sheet: tap my own time, then + Add a player', async () => {
+    app = await boot(db => db.book(0, at(db, 600).id, [7]))
+    await app.tap('Booking'); await app.tap('+ Add a booking')
+    await app.tap(`[data-id="${at(app.db, 600).id}"]`)
+    await app.tap('+ Add a player')
+    expect(app.text()).toContain('Add to 10:00')
+  })
+  it('a full time: no + Add a player', async () => {
+    app = await boot(db => db.book(0, at(db, 600).id, [5, 7, 9]))
+    await app.tap('Booking')
+    await app.tap('[data-bk]')
+    expect(app.text()).not.toContain('+ Add a player')
   })
 })

@@ -24,6 +24,7 @@ export const FEATURES = [
       { says: 'Book with a friend; the booking shows for both', tests: ['journey:book-tee-time', `${J} › 1. Book a tee time with a friend`] },
       { says: 'Book a guest from another club, using guest points', tests: [`${J} › 2. Book with a friend from another club as a guest (their details filled in)`, 'src/friend-link.test.js › not enough guest points: other-club friends are greyed out'] },
       { says: 'Days not open yet are refused, with when they open', tests: ['supabase/tests/release.sql › Before release: a member is refused, with when it opens', 'src/release.test.js'] },
+      { says: 'Today starts at the time now; members can’t book a time that has gone (the office still can)', tests: [`${F} › today starts at the time now: times already gone aren’t listed (so they can’t be booked, and no scrolling past them)`, 'supabase/tests/passed_times.sql › Passed: a member can\'t book a time that has gone today', 'supabase/tests/passed_times.sql › Passed: the club office still can'] },
       { says: 'Two hours apart: refused closer, allowed after', tests: ['rule:booking-two-hours-fine', 'supabase/tests/bookings_cards.sql › 2 hours: 2 hours 10 minutes later is fine'] },
       { says: 'Every refusal while booking is seen, nothing half-booked', tests: ['journey:book-tee-time'] },
     ],
@@ -32,6 +33,8 @@ export const FEATURES = [
     what: 'Members see their bookings and cancel them, or take one person off one they made. Cancelling a booking with scores warns first and takes the scorecard with it.',
     scenarios: [
       { says: 'Delete a booking (two taps)', tests: ['journey:cancel-booking'] },
+      { says: 'Add a player (a fourth, say) to a booking I’m on, even one someone else made; they’re told', tests: ['journey:add-to-booking', `${F} › someone else booked me with two others: + Add a player, pick a member, and they join the same booking`, 'supabase/tests/add_to_booking.sql › Add: the new player is told who booked them in'] },
+      { says: 'A full time has no + Add a player; adding to a full time is refused', tests: [`${F} › a full time: no + Add a player`, 'supabase/tests/add_to_booking.sql › Add: a full time is refused'] },
       { says: 'Take one person off a booking I made (two taps); a guest’s points come back; the last one off deletes it', tests: ['journey:remove-from-booking', `${F} › a guest: their guest points come back`, 'supabase/tests/remove_from_booking.sql › Take off: taking the last person off deletes the booking'] },
       { says: 'Only whoever made the booking can take people off', tests: [`${F} › a booking someone else made: no Remove buttons (I can only withdraw myself)`, 'supabase/tests/remove_from_booking.sql › Take off: only the member who made the booking'] },
       { says: 'A booking with scores: warned, and the scorecard goes too', tests: [`${J} › 3. Delete a booking that has scores: warned, and the scorecard goes too`, 'supabase/tests/card_delete.sql › Delete confirmed: the scorecard goes too'] },

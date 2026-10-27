@@ -18,7 +18,7 @@ export const API_NAMES = ['getMe', 'forgetMe', 'getSession', 'signIn', 'needsAcc
   'getHutStaff', 'setHutStaff', 'placeHutOrder', 'cancelMyHutOrder', 'myHutOrders', 'hutOrdersToday', 'setHutOrderStatus', 'getMembers', 'getBuddies',
   'addBuddy', 'removeBuddy', 'getFriends', 'saveContact', 'removeContact', 'setFriendFavourite', 'getAccessList', 'saveMember', 'getFavourites',
   'setFavourite', 'setOfficeLogin', 'getAccessRequests', 'declineRequest', 'deleteMember', 'resetLogin', 'getCourse', 'getPins', 'setGreenWidth', 'publishPins',
-  'getTeeSheet', 'bookTeeTime', 'getMyTeeTimes', 'getGuests', 'setGuestHandicap', 'cancelBooking', 'removeFromBooking', 'chargeGuests', 'removeGuestCharge', 'getGuestChargesToday', 'moveMatchBooking', 'adminCancelBooking', 'adminMoveBooking',
+  'getTeeSheet', 'bookTeeTime', 'getMyTeeTimes', 'getGuests', 'setGuestHandicap', 'cancelBooking', 'removeFromBooking', 'addToBooking', 'chargeGuests', 'removeGuestCharge', 'getGuestChargesToday', 'moveMatchBooking', 'adminCancelBooking', 'adminMoveBooking',
   'getBookingNotices', 'seenBookingNotice', 'getMyBookings',
   'getGuestPoints', 'getBookingRules', 'setBookingRules', 'requestTeeTime', 'cancelTeeTimeRequest', 'getMyTeeTimeRequests', 'getTeeTimeRequests',
   'decideTeeTimeRequest', 'markTeeTimeRequestsSeen', 'dismissTeeTimeRequest', 'getGameSettings', 'setMyGamePref', 'getCurrentRound', 'getRound', 'deleteRound', 'saveRound',
@@ -353,6 +353,9 @@ export function makeWorld(today, setup = () => {}, as = 'admin') {
     seenBookingNotice: async nid => { const n = db.notices.find(x => x.id === nid); if (n?.memberId === ME) n.seen = true },
     getMyTeeTimes: async date => copy(sheet(isoDate(date)).filter(s => s.players.some(p => p.memberId === ME))),
     bookTeeTime: async ({ slotId, memberIds = [], guests = [] }) => {
+      const t = slotById(slotId), n = new Date() // as the database: a time already gone today, for members (the office still can)
+      const onDay = `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}` === db.today // the journeys' clock (not the same-rules checks')
+      if (t && onDay && t.date === db.today && t.time < n.getHours() * 60 + n.getMinutes() && !db.asOffice && !me()?.admin) throw new Error('That tee time has passed.')
       const b = db.book(ME, slotId, memberIds, guests), s = slotById(slotId)
       const on = s.players.filter(p => p.bookingId === b.id) // as the database: everyone else on it is told who booked them in
       on.filter(p => p.memberId != null && p.memberId !== ME).forEach(p => db.notices.push({ id: id(), memberId: p.memberId, kind: 'added', date: s.date, oldTime: s.time,
@@ -365,7 +368,7 @@ export function makeWorld(today, setup = () => {}, as = 'admin') {
       .map(({ b, s }) => {
         const ids = s.players.filter(p => p.bookingId === b.id && p.memberId != null).map(p => p.memberId)
         const card = db.rounds.find(r => r.slotId === s.id && r.date === s.date && r.lineup.some(x => ids.includes(x.m)))
-        return { id: b.id, date: s.date, time: s.time, mine: b.bookedBy === ME, bookedBy: member(b.bookedBy).name, guests: s.players.filter(p => p.bookingId === b.id && p.guest).length,
+        return { id: b.id, date: s.date, time: s.time, capacity: s.capacity, mine: b.bookedBy === ME, bookedBy: member(b.bookedBy).name, guests: s.players.filter(p => p.bookingId === b.id && p.guest).length,
           players: s.players.length, scoredHoles: card ? card.done.filter(Boolean).length : 0,
           people: s.players.map(p => ({ bp: p.id, memberId: p.memberId, name: p.name, guest: p.guest, club: p.club, hcp: p.hcp, inBooking: p.bookingId === b.id })) }
       }).sort((x, y) => (x.date + x.time).localeCompare(y.date + y.time)),
@@ -376,6 +379,25 @@ export function makeWorld(today, setup = () => {}, as = 'admin') {
       const before = db.rounds.length
       db.rounds = db.rounds.filter(r => !(r.slotId === s.id && r.lineup.some(x => gone.includes(x.m)) && (removeScores || !r.done.some(Boolean))))
       return { result: 'deleted', pointsBack: 0, cardsRemoved: before - db.rounds.length, eventsCancelled: 0 }
+    },
+    addToBooking: async (bid, { memberIds = [], guests = [] }) => { // as the database: anyone on it; room; not already on the time
+      const b = db.bookings.find(x => x.id === bid)
+      if (!b) throw new Error('That booking no longer exists.')
+      const s = slotById(b.slotId)
+      if (b.bookedBy !== ME && !s.players.some(p => p.bookingId === b.id && p.memberId === ME)) throw new Error('That isn’t your booking.')
+      if (!memberIds.length && !guests.length) throw new Error('Add a player or guest first.')
+      if (s.players.some(p => memberIds.includes(p.memberId))) throw new Error('One of your group is already booked on this time.')
+      if (memberIds.length + guests.length > s.capacity - s.players.length) throw new Error('Sorry, there’s no space left on this time.')
+      for (const m of memberIds) {
+        s.players.push({ id: id(), bookingId: b.id, memberId: m, name: member(m).name, guest: false, hcp: member(m).hcp })
+        db.notices.push({ id: id(), memberId: m, kind: 'added', date: s.date, oldTime: s.time, newTime: null, note: null, byName: member(ME).name,
+          withNames: s.players.filter(p => p.bookingId === b.id && p.memberId !== m).map(p => p.name.split(' ')[0]), bookingId: b.id, seen: false })
+      }
+      for (const g of guests) {
+        const p = { id: id(), bookingId: b.id, memberId: null, name: g.name, club: g.club ?? '', guest: true, hcp: g.hcp ?? null }
+        s.players.push(p); db.guestVisits.push({ member: ME, date: s.date, guest: g.name, club: g.club ?? '', points: 3, playerId: p.id })
+      }
+      return { added: memberIds.length + guests.length, pointsUsed: guests.length * 3 }
     },
     removeFromBooking: async (bid, pid) => { // as the database: the booker only; the last one off deletes the booking
       const b = db.bookings.find(x => x.id === bid)

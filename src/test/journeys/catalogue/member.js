@@ -61,6 +61,12 @@ export default [
     action: 'cancelBooking', expect: db => db.bookings.length === 0, refusals: 'all',
   },
   {
+    id: 'add-to-booking', who: 'member', title: 'Add a fourth player to a booking I’m on',
+    setup: db => db.book(5, at(db, 600).id, [1, 7]),
+    steps: [{ tap: 'Booking' }, { tap: '10:00' }, { tap: '+ Add a player' }, { tap: '[data-open]' }, { tap: "Ciarán O'Neill" }, { tap: 'Add to booking' }],
+    action: 'addToBooking', expect: db => at(db, 600).players.some(p => p.memberId === 3), refusals: 'all',
+  },
+  {
     id: 'remove-from-booking', who: 'member', title: 'Take one person off my booking',
     setup: db => db.book(1, at(db, 540).id, [3, 5]),
     steps: [{ tap: 'Booking' }, { tap: '09:00' }, { tap: '.rmrow:nth-child(2) [data-rm]' }, { tap: 'Sure?' }],

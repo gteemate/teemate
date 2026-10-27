@@ -1,4 +1,5 @@
-// Admin → Tee times → a time: tap an open space to add a member or a guest, then confirm.
+// Admin → Tee times → a time: tap an open space to add a member or a guest, then confirm. With S.addTo (a booking I'm
+// on, from its details): the same screen adds players to that booking instead (a fourth player, say).
 import * as api from '../api.js'
 import { S } from '../state.js'
 import { $, esc, ini, header, keepScroll, top0, render, toast, parseHcp, fmtHcp, goBack } from '../ui.js'
@@ -7,19 +8,20 @@ import { nextFreeNote } from '../release.js'
 import { pickerGroups } from '../friend-link.js'
 
 export async function load() {
-  const date = S.reqMode ? fromIso(S.reqDate) : nextDays(S.day + 1)[S.day] // the day picked on the tee sheet (or for a request)
+  const date = S.addTo ? fromIso(S.addTo.date) : S.reqMode ? fromIso(S.reqDate) : nextDays(S.day + 1)[S.day] // the day picked on the tee sheet (or for a request)
   const [sheet, me, members, friends, points] = await Promise.all([api.getTeeSheet(isoDate(date)), api.getMe(), api.getMembers(), api.getFriends(), api.getGuestPoints()])
-  return { date, slot: sheet.find(s => s.id === S.slotId), me, members, friends, points }
+  return { date, slot: sheet.find(s => (S.addTo ? s.time === S.addTo.time : s.id === S.slotId)), me, members, friends, points }
 }
 
-const back = () => { S.guests = []; S.gmodal = false; return goBack(() => { S.aview = 'tee'; return render() }) } // to the tee sheet, or a match you came from
+const back = () => { S.guests = []; S.gmodal = false; S.addTo = null; return goBack(() => { S.aview = 'tee'; return render() }) } // to the tee sheet, or a match you came from
 
 const sub = m => [m.gui && 'GUI ' + m.gui, m.hcp != null && 'HCP ' + fmtHcp(m.hcp)].filter(Boolean).join(' · ')
 
 export function draw({ date, slot: s, me, members, friends, points }) {
   if (!s) { back(); return }
-  const free = s.capacity - s.players.length, max = free - 1, fee = s.twilight ? 25 : 0, cost = points.cost
-  header(S.reqMode ? `Request ${hhmm(s.time)}` : hhmm(s.time), `${longDay(date)} · 1st tee`, back)
+  const add = !!S.addTo // adding to a booking I'm on: I'm already on the time
+  const free = s.capacity - s.players.length, max = add ? free : free - 1, fee = s.twilight ? 25 : 0, cost = points.cost
+  header(add ? `Add to ${hhmm(s.time)}` : S.reqMode ? `Request ${hhmm(s.time)}` : hhmm(s.time), `${longDay(date)} · 1st tee`, back)
   if (free <= 0) { // someone else took the last space while this screen was open
     $('main').innerHTML = `<div class="done"><div class="flagmark">⛳</div><h4>This time is now full</h4>
       <p>${s.players.map(p => esc(p.name)).join(', ')}</p><button class="primary" id="other">Pick another time</button></div>`
@@ -31,11 +33,11 @@ export function draw({ date, slot: s, me, members, friends, points }) {
   const left = points.allowance - points.mine.reduce((t, x) => t + x.points, 0), after = left - cost * S.guests.length
   const canGuest = used < max && after >= cost
 
-  let slots = `<div class="pslot filled"><span class="av">${ini(me.name)}</span><span class="who"><strong>${esc(me.name)} (you)</strong><small>${esc(sub(me))}</small></span><span></span></div>`
+  let slots = add ? '' : `<div class="pslot filled"><span class="av">${ini(me.name)}</span><span class="who"><strong>${esc(me.name)} (you)</strong><small>${esc(sub(me))}</small></span><span></span></div>`
   S.picked.forEach(id => { const m = byId(id); slots += `<div class="pslot filled"><span class="av">${ini(m.name)}</span><span class="who"><strong>${esc(m.name)}</strong><small>${esc(sub(m))}</small></span><button class="x" data-rm="${id}" aria-label="Remove ${esc(m.name)}">×</button></div>` })
   S.guests.forEach((g, n) => { slots += `<div class="pslot filled guest"><span class="av gst">${ini(g.name)}</span><span class="who"><strong>${esc(g.name)} <span class="pill tag">Guest</span></strong><small>${[g.club, g.gui && 'GUI ' + g.gui, g.hcp != null ? 'HCP ' + fmtHcp(g.hcp) : 'handicap later'].filter(Boolean).map(esc).join(' · ')}</small></span><span class="gright"><span class="ptag">−${cost} pts</span><button class="x" data-rg="${n}" aria-label="Remove guest ${esc(g.name)}">×</button></span></div>` })
-  for (let k = 1 + used; k < free; k++) slots += '<button class="pslot open" data-open><span class="av empty">+</span><span class="who"><strong>Open space</strong><small>Tap to add a player or guest</small></span><span class="chev">›</span></button>'
-  s.players.forEach(p => (slots += `<div class="pslot other"><span class="av other">${ini(p.name)}</span><span class="who"><strong>${esc(p.name)}</strong><small>Already booked</small></span><span></span></div>`))
+  for (let k = (add ? 0 : 1) + used; k < free; k++) slots += '<button class="pslot open" data-open><span class="av empty">+</span><span class="who"><strong>Open space</strong><small>Tap to add a player or guest</small></span><span class="chev">›</span></button>'
+  s.players.forEach(p => (slots += `<div class="pslot other"><span class="av other">${ini(p.name)}</span><span class="who"><strong>${esc(p.name)}${p.memberId === me.id ? ' (you)' : ''}</strong><small>Already booked</small></span><span></span></div>`))
 
   $('main').innerHTML = `<div class="screen">
     <div class="card summary"><div><span>Date</span><b>${dayMonth(date)}</b></div><div><span>Tee</span><b>${hhmm(s.time)}</b></div><div><span>Spaces</span><b>${free} / ${s.capacity}</b></div></div>
@@ -46,7 +48,7 @@ export function draw({ date, slot: s, me, members, friends, points }) {
   ${S.reqMode ? `<div class="card evsec"><label for="rq-why">Why do you need this time?</label><textarea id="rq-why" class="plainsel" rows="3" maxlength="500" placeholder="e.g. Visitors flying in from Boston for one weekend">${esc(S.reqReason)}</textarea>
     <span class="hint">An admin approves (it’s booked for you straight away) or declines with a note. Nothing is held while you wait.</span></div>` : ''}
   </div>
-  <div class="cta"><div class="tot">${1 + used} player${used ? 's' : ''}<b>${fee ? `€${fee * (1 + S.picked.length)}` : "Members' time"}</b></div><button class="primary" id="confirm">${S.reqMode ? 'Send request' : 'Confirm booking'}</button></div>`
+  <div class="cta"><div class="tot">${add ? `${used} to add` : `${1 + used} player${used ? 's' : ''}`}<b>${fee ? `€${fee * (1 + S.picked.length)}` : "Members' time"}</b></div><button class="primary" id="confirm">${add ? 'Add to booking' : S.reqMode ? 'Send request' : 'Confirm booking'}</button></div>`
 
   const taken = new Set([me.id, ...S.picked, ...s.players.map(p => p.memberId)])
   if (S.gmodal === 'pick') pickSheet(members, friends, taken, canGuest, points, left)
@@ -57,6 +59,19 @@ export function draw({ date, slot: s, me, members, friends, points }) {
   if ($('rq-why')) $('rq-why').oninput = e => { S.reqReason = e.target.value } // kept while players are added
   $('confirm').onclick = async () => {
     const btn = $('confirm') // kept: re-enabled after a refusal (don't rely on the click event once the server has answered)
+    if (add) {
+      if (!used) { toast('Add a player or guest first'); return }
+      btn.disabled = true
+      const names = [...S.picked.map(id => byId(id).name), ...S.guests.map(g => g.name)]
+      try {
+        await api.addToBooking(S.addTo.id, { memberIds: S.picked, guests: S.guests })
+      } catch (err) { toast(err.message); await keepScroll(render); return }
+      Object.assign(S, { addTo: null, picked: [], guests: [], aview: 'mine', navReset: true })
+      await render()
+      top0()
+      toast(`${names.join(', ')} added to your ${hhmm(s.time)} booking`)
+      return
+    }
     if (S.reqMode) {
       if (!S.reqReason.trim()) { toast('Say why you need this time'); $('rq-why').focus(); return }
       btn.disabled = true

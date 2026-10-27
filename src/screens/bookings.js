@@ -49,10 +49,16 @@ export function details(b, me) {
     ${others.length ? `<span class="hint">Also on this tee time</span><div class="card list">${others.map(p => person(p, false)).join('')}</div>` : ''}
     ${scored(b) ? `<div class="card warn-box"><strong>Scores entered for ${holes(b.scoredHoles)}</strong><span>Deleting this booking also deletes the scorecard for this round.${b.guests ? ' Your guest points come back.' : ''}</span></div>`
       : `<span class="hint">${b.mine ? `${canRemove ? 'Tap Remove to take one person off. ' : ''}Deleting takes everyone in your booking off this time${b.guests ? ' and gives your guest points back' : ''}.` : 'Withdrawing takes just you off. The rest of the booking stays.'} ${!b.mine && b.scoredHoles > 0 ? 'The group’s scorecard stays.' : 'A scorecard for it goes too, unless holes have been saved.'}</span>`}
+    ${b.people.length < (b.capacity ?? 4) ? '<button class="ghost dashed" id="bk-add">+ Add a player</button>' : ''}
     <div class="gm-btns"><button type="button" class="ghost" id="bk-close">${scored(b) ? 'Keep it' : 'Close'}</button><button class="primary" id="bk-act">${act}</button></div>
   </div></div>`
   const close = () => { $('modal').innerHTML = '' }
   $('bk-close').onclick = close
+  if ($('bk-add')) $('bk-add').onclick = async () => { // the booking screen, adding to this booking (a fourth player, say)
+    close()
+    Object.assign(S, { addTo: { id: b.id, date: b.date, time: b.time }, picked: [], guests: [], gmodal: false, aview: 'book' })
+    await render(); top0()
+  }
   $('ovl').onclick = e => { if (e.target.id === 'ovl') close() }
   document.querySelectorAll('[data-rm]').forEach(btn => (btn.onclick = async () => {
     if (btn.dataset.armed !== '1') { btn.dataset.armed = '1'; btn.textContent = 'Sure?'; return } // a second tap, so a slip doesn't take someone off
