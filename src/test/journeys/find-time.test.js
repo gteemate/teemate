@@ -60,7 +60,7 @@ describe('Find a time', () => {
     await app.tap('Book a tee time · Mon 12 Oct')
     expect(app.screen()).toBe('Book tee times')
     expect(document.querySelector('.day[aria-pressed="true"]').textContent).toContain('12')
-    expect(app.text()).toContain('Booking your match')
+    expect(app.text()).toContain('Morning times for your Men’s Match Play match')
   })
   it('my column cycles ✓, ✕, blank on screen; Confirm saves what it shows', async () => {
     app = await boot(suggested, { as: 'member' })
@@ -164,5 +164,36 @@ describe('Find a time: pairs', () => {
     await app.tap('Competition'); await app.tap('Men’s Match Play')
     await app.tap('Find a time')
     expect(document.getElementById('ft-same')).toBeNull()
+  })
+})
+
+describe('Find a time: from an agreed slot straight to booking it', () => {
+  // Gary and Declan can both do Mon 12 Oct morning.
+  const agreedMorning = db => { suggested(db); db.notices[0].seen = true; db.matchTimes[0].answers[1] = true; db.notices.push({ id: 62, memberId: 1, kind: 'agreed', date: '2026-10-12', oldTime: 0, newTime: null, note: 'Men’s Match Play', part: 'morning', koMatchId: 1, seen: false }) }
+  const slotAt = (db, date, t) => db.slotsOn(date).find(s => s.time === t)
+  it('Book a tee time opens the tee sheet for that day showing only the morning, Gary ready to add; Show all times', async () => {
+    app = await boot(agreedMorning, { as: 'member' })
+    await app.tap('Competition'); await app.tap('Men’s Match Play'); await app.tap('Find a time')
+    await app.tap('Book a tee time · Mon 12 Oct')
+    expect(app.text()).toContain('Morning times for your Men’s Match Play match')
+    expect(document.querySelector(`[data-id="${slotAt(app.db, '2026-10-12', 600).id}"]`)).not.toBeNull()
+    expect(document.querySelector(`[data-id="${slotAt(app.db, '2026-10-12', 780).id}"]`)).toBeNull() // 13:00: afternoon
+    await app.tap('Show all times')
+    expect(document.querySelector(`[data-id="${slotAt(app.db, '2026-10-12', 780).id}"]`)).not.toBeNull()
+  })
+  it('the “Everyone can do” notice goes straight to that slot on the tee sheet', async () => {
+    app = await boot(agreedMorning, { as: 'member' })
+    expect(document.getElementById('alerts').textContent).toContain('Everyone can do Mon 12 Oct · morning')
+    await app.tap('[data-al="bookagreed"]')
+    expect(app.screen()).toBe('Book tee times')
+    expect(app.text()).toContain('Morning times for your Men’s Match Play match')
+  })
+  it('once booked, Find a time says when, with See the booking', async () => {
+    app = await boot(db => { agreedMorning(db); db.book(1, slotAt(db, '2026-10-12', 600).id, [0]) }, { as: 'member' })
+    await app.tap('Competition'); await app.tap('Men’s Match Play'); await app.tap('Find a time')
+    expect(app.text()).toContain('Booked: Mon 12 Oct 10:00')
+    expect(document.getElementById('ft-book')).toBeNull()
+    await app.tap('See the booking')
+    expect(app.screen()).toBe('Booking')
   })
 })

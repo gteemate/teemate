@@ -131,6 +131,16 @@ async function act(a, id, btn) {
     S.tab = 'home'; S.aview = 'hutorder'; S.hutFrom = 'card' // Back returns to the scorecard
     return render()
   }
+  if (id === 'bookagreed') { // "everyone can do": straight to that day's tee sheet, that part of the day, the others ready to add
+    done.add(a.key)
+    shown = shown.filter(x => x.key !== a.key)
+    api.seenBookingNotice(a.ref.noticeId).catch(() => {})
+    const [grid, me, ft] = await Promise.all([api.getMatchTimes(a.ref.matchId), api.getMe(), import('./screens/find-time.js')])
+    const agreed = grid.times.find(t => t.id === grid.agreed)
+    if (agreed) return ft.book(grid.match, me, grid.players.filter(p => p.id !== me.id), agreed)
+    Object.assign(S, { tab: 'home', aview: 'findtime', ftMatch: a.ref.matchId, ftPick: null }) // no longer agreed: the grid
+    return render()
+  }
   if (id === 'times' || id === 'findtime') { // Find a time: open the match's times (the reminder starts with suggesting)
     done.add(a.key)
     shown = shown.filter(x => x.key !== a.key)

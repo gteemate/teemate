@@ -50,11 +50,13 @@ export function draw({ days, sheet, points, me, rules, req, skew }) {
   // scrolling past the morning to get to them.
   const nowMin = (d => d.getHours() * 60 + d.getMinutes())(new Date(now())), today0 = !req && S.day === 0
   const live = today0 ? sheet.filter(s => s.time >= nowMin) : sheet
-  const list = live.filter(s => (need ? free(s) >= need : S.filter === 'all' || (S.filter === 'open' && free(s) > 0) || (S.filter === '2' && free(s) >= 2) || (S.filter === '4' && free(s) >= 4)))
+  // An agreed Find a time slot (S.matchPart): only that part of the day, until Show all times.
+  const inPart = s => !S.matchPart || (S.matchPart === 'morning' ? s.time < 720 : S.matchPart === 'afternoon' ? s.time >= 720 && s.time < 900 : s.time >= 900)
+  const list = live.filter(inPart).filter(s => (need ? free(s) >= need : S.filter === 'all' || (S.filter === 'open' && free(s) > 0) || (S.filter === '2' && free(s) >= 2) || (S.filter === '4' && free(s) >= 4)))
   const left = points.allowance - points.mine.reduce((t, x) => t + x.points, 0)
   const until = () => (at - now() < DAY ? countdown(at - now()) : 'You can see the times, but not book them yet.')
   const banner = closed ? `<div class="relbanner"><b>${openLabel(iso, rules)}</b><span id="relcd">${me.admin ? 'Not open to members yet. You can book it as an admin.' : until()}</span>${me.admin ? '' : '<button class="linkbtn" id="rq-day">Request a time on this day</button>'}</div>` : ''
-  let h = `<div class="screen">${banner}${mv ? `<div class="hcpnote">Moving your match from ${hhmm(mv.from)}: pick a new time. Showing tee times with room for all ${need}.</div>` : S.matchPick ? '<div class="hcpnote">Booking your match: pick a time and the other three are added.</div>' : ''}<div class="ptsmini${left < points.cost ? ' low' : ''}">🎟️ <b>${left}</b> of ${points.allowance} guest points left · ${points.cost} per guest${left < points.cost ? ' · not enough for a guest' : ''}</div>${need ? '' : `<div class="filters" role="group" aria-label="Filter">${[['all', 'All'], ['open', 'Has space'], ['2', '2+ spaces'], ['4', '4 spaces']].map(([k, l]) => `<button class="chip" data-f="${k}" aria-pressed="${S.filter === k}">${l}</button>`).join('')}</div>`}`
+  let h = `<div class="screen">${banner}${mv ? `<div class="hcpnote">Moving your match from ${hhmm(mv.from)}: pick a new time. Showing tee times with room for all ${need}.</div>` : S.matchPart ? `<div class="hcpnote">${S.matchPart[0].toUpperCase() + S.matchPart.slice(1)} times for your ${esc(S.matchName ?? '')} match: pick one and the others are added. <button class="linkbtn" id="tt-all">Show all times</button></div>` : S.matchPick ? '<div class="hcpnote">Booking your match: pick a time and the other three are added.</div>' : ''}<div class="ptsmini${left < points.cost ? ' low' : ''}">🎟️ <b>${left}</b> of ${points.allowance} guest points left · ${points.cost} per guest${left < points.cost ? ' · not enough for a guest' : ''}</div>${need ? '' : `<div class="filters" role="group" aria-label="Filter">${[['all', 'All'], ['open', 'Has space'], ['2', '2+ spaces'], ['4', '4 spaces']].map(([k, l]) => `<button class="chip" data-f="${k}" aria-pressed="${S.filter === k}">${l}</button>`).join('')}</div>`}`
   if (today0 && live.length < sheet.length) h += '<div class="hint gone">Earlier times today have gone</div>'
   for (const [g, a, b] of [['Morning', 0, 720], ['Afternoon', 720, 900], ['Twilight', 900, 1440]]) {
     const gs = list.filter(s => s.time >= a && s.time < b)
@@ -82,6 +84,7 @@ export function draw({ days, sheet, points, me, rules, req, skew }) {
   document.querySelector('.day[aria-pressed="true"]')?.scrollIntoView({ inline: 'nearest', block: 'nearest' }) // 9+ days don't all fit
   document.querySelectorAll('.day').forEach(b => (b.onclick = async () => { S.day = +b.dataset.d; await render(); top0() }))
   document.querySelectorAll('.chip').forEach(b => (b.onclick = () => { S.filter = b.dataset.f; render() }))
+  if ($('tt-all')) $('tt-all').onclick = () => { S.matchPart = null; render() }
   document.querySelectorAll('.slot').forEach(b => (b.onclick = async () => {
     const s = sheet.find(x => x.id === +b.dataset.id)
     if (locked) { toast(`${openLabel(iso, rules)}`); return }

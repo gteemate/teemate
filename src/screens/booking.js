@@ -104,6 +104,7 @@ export function draw({ date, slot: s, me, members, friends, points }) {
     S.guests = []
     S.picked = []
     S.matchHold = null
+    S.matchPart = null
     S.filter = 'all' // a match's "4 spaces" filter doesn't stay on the tee sheet
     S.aview = 'booked'
     S.navReset = true // done: back goes Home from here

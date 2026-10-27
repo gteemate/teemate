@@ -48,7 +48,7 @@ export function pickAlerts({ me, playerEvents, requests, date, now = Date.now(),
     key: `bn:${n.id}`, kind: 'notice', ref: { noticeId: n.id, matchId: n.koMatchId },
     title: n.kind === 'times' ? `${n.byName} suggests times for your ${n.note} match` : `Everyone can do ${longDay(fromIso(n.date))} · ${n.part}`,
     detail: n.kind === 'times' ? 'Tick the days you can do.' : `Your ${n.note} match: book a tee time that ${n.part}.`,
-    actions: [{ id: 'times', label: n.kind === 'times' ? 'See the times' : 'Book a tee time', primary: true }, later],
+    actions: n.kind === 'times' ? [{ id: 'times', label: 'See the times', primary: true }, later] : [{ id: 'bookagreed', label: 'Book a tee time', primary: true }, { id: 'times', label: 'See the times' }, later],
   }))
   const due = koDue.map(d => ({
     key: `kd:${d.matchId}:${date}`, kind: 'findtime', ref: { matchId: d.matchId, compId: d.compId },

@@ -55,6 +55,7 @@ describe('pickAlerts: what drops down from the header', () => {
     expect(a).toMatchObject({ title: 'Gary Cochrane suggests times for your Men’s Match Play match', ref: { noticeId: 8, matchId: 1 } })
     expect(ids(a)).toEqual(['times', 'later'])
     expect(b).toMatchObject({ title: 'Everyone can do Mon 12 Oct · morning', detail: 'Your Men’s Match Play match: book a tee time that morning.' })
+    expect(ids(b)).toEqual(['bookagreed', 'times', 'later'])
     expect(c).toMatchObject({ kind: 'findtime', title: 'Your Club Singles match isn’t arranged yet: play by Thu 15 Oct', ref: { matchId: 2 } })
     expect(ids(c)).toEqual(['findtime', 'later'])
   })

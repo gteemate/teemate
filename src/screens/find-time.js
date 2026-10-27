@@ -5,7 +5,7 @@
 import * as api from '../api.js'
 import { S } from '../state.js'
 import { $, esc, header, keepScroll, render, redraw, toast, top0, goBack } from '../ui.js'
-import { fromIso, longDay, isoDate, addDaysIso, nextDays } from '../dates.js'
+import { fromIso, longDay, isoDate, addDaysIso, nextDays, hhmm } from '../dates.js'
 
 const PARTS = [['morning', 'Morning'], ['afternoon', 'Afternoon'], ['evening', 'Evening']]
 const gone = part => { const h = new Date().getHours(); return (part === 'morning' && h >= 12) || (part === 'afternoon' && h >= 17) }
@@ -13,9 +13,12 @@ const MAX = 6
 let sending = false
 
 export async function load() {
-  const [grid, me] = await Promise.all([api.getMatchTimes(S.ftMatch), api.getMe()])
-  if (S.ftPick == null) S.ftPick = grid.times.length ? null : [] // nothing suggested yet: start by suggesting
-  return { grid, me }
+  const [grid, me, bookings] = await Promise.all([api.getMatchTimes(S.ftMatch), api.getMe(), api.getMyBookings()])
+  // Booked already: all the players on one booking up to the play-by date
+  const today = isoDate(new Date())
+  const booked = bookings.find(b => b.date >= today && b.date <= grid.match.by && grid.players.every(p => b.people.some(x => x.memberId === p.id))) ?? null
+  if (S.ftPick == null) S.ftPick = grid.times.length || booked ? null : [] // nothing suggested yet: start by suggesting
+  return { grid, me, booked }
 }
 
 // Leaving with ticks not confirmed: say so once; Back again leaves (and drops them).
@@ -30,7 +33,7 @@ const partLabel = p => PARTS.find(x => x[0] === p)?.[1] ?? p
 const cycle = v => (v === true ? false : v === false ? null : true) // ✓, ✕, blank
 const mark = v => (v === true ? '✓' : v === false ? '✕' : '·')
 
-export function draw({ grid, me }) {
+export function draw({ grid, me, booked }) {
   const { match: m, players, times } = grid
   S.ftComp = m.compId
   const others = players.filter(p => p.id !== me.id)
@@ -42,7 +45,7 @@ export function draw({ grid, me }) {
   if (S.ftDraft?.match !== m.id) S.ftDraft = { match: m.id, mine: Object.fromEntries(times.map(t => [t.id, t.answers[me.id] ?? null])), same: false, note: grid.notes?.[me.id] ?? '', dirty: false }
   const d = S.ftDraft
   const shown = (t, p) => (p.id === me.id ? d.mine[t.id] : partner && p.id === partner.id && d.same ? d.mine[t.id] : t.answers[p.id] ?? null)
-  const agreed = times.find(t => t.id === grid.agreed)
+  const agreed = booked ? null : times.find(t => t.id === grid.agreed) // booked: nothing left to book
   const answered = p => times.some(t => t.answers[p.id] != null)
   const byName = id => first(players.find(p => p.id === id)?.name ?? 'someone')
   const cell = (t, p) => {
@@ -52,6 +55,7 @@ export function draw({ grid, me }) {
   const head = p => p.id === me.id ? 'You' : `${esc(first(p.name))}${grid.answeredBy?.[p.id] && grid.answeredBy[p.id] !== me.id ? `<small>answered by ${esc(byName(grid.answeredBy[p.id]))}</small>` : grid.answeredBy?.[p.id] === me.id ? '<small>answered by you</small>' : ''}`
   const notes = players.filter(p => grid.notes?.[p.id]).map(p => `<span><b>${p.id === me.id ? 'You' : esc(first(p.name))}:</b> ${esc(grid.notes[p.id])}</span>`).join('')
   $('main').innerHTML = `<div class="screen">
+    ${booked ? `<div class="card ftcard ftagreed"><b>Booked: ${dayLabel(booked.date)} ${hhmm(booked.time)}</b><span class="hint">Everyone in the match is on it.</span><button class="ghost" id="ft-seebk">See the booking</button></div>` : ''}
     ${agreed ? `<div class="card ftcard ftagreed"><b>Everyone can do ${dayLabel(agreed.day)} · ${agreed.part}</b>
       <span class="hint">Book a tee time that ${agreed.part}: the tee sheet opens on that day with ${esc(others.map(p => first(p.name)).join(' and '))} ready to add.</span>
       <button class="primary" id="ft-book">Book a tee time · ${dayLabel(agreed.day)}</button></div>` : ''}
@@ -84,6 +88,7 @@ export function draw({ grid, me }) {
     toast(r.agreed && !agreed ? 'Everyone can make it: book a tee time' : 'Your answers are in')
   }
   $('ft-more').onclick = () => { S.ftPick = []; keepScroll(render) }
+  if ($('ft-seebk')) $('ft-seebk').onclick = async () => { S.ftDraft = null; S.aview = 'mine'; await render(); top0() }
   if ($('ft-book')) $('ft-book').onclick = () => book(m, me, others, agreed)
 }
 
@@ -129,11 +134,11 @@ function drawSuggest(grid, me, others) {
 
 // Book a tee time on the agreed day: the tee sheet with the other players ready to add (a club singles match holds the
 // four-ball), as Book this match does; a day not open for booking yet becomes a request.
-async function book(m, me, others, agreed) {
+export async function book(m, me, others, agreed) {
   const rules = await api.getBookingRules(), days = nextDays(rules.days + 1).map(isoDate), i = days.indexOf(agreed.day)
   const ids = others.map(p => p.id)
   const hold = m.club && m.kind === 'singles' && i >= 0 ? { kind: 'ko', ref: m.compId, opp: ids[0], label: `${m.compName} match` } : null
-  Object.assign(S, { ftPick: null, tab: 'home', aview: 'tee', matchPick: ids, matchHold: hold, filter: hold || ids.length >= 2 ? '4' : '2',
+  Object.assign(S, { ftPick: null, ftDraft: null, tab: 'home', aview: 'tee', matchPick: ids, matchHold: hold, matchPart: agreed.part, matchName: m.compName, filter: hold || ids.length >= 2 ? '4' : '2',
     reqMode: i < 0, ...(i < 0 ? { reqDate: agreed.day, reqReason: `${m.compName} match` } : { day: i }) })
   await render(); top0()
 }
