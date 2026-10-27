@@ -2,12 +2,13 @@
 // in TeeMate yet). Scan the member's card (the QR on their Account card) or find them by name, add up to 3 guests,
 // and their guest points are charged. Today's check-ins can be removed again (points back).
 import * as api from '../api.js'
-import { $, esc, ini, header, keepScroll, render, toast } from '../ui.js'
+import { $, esc, ini, header, keepScroll, render, redraw, toast } from '../ui.js'
 import { openScanner } from '../scan-qr.js'
 import { memberFromCard } from '../member-card.js'
 
 let cur = null // the member being checked in: { id, name, cardName (from a scan, else null), guests: [{ name, club }] }
 let find = ''
+let sending = false // a charge on its way: Charge, Cancel and Add wait, so slow wifi can't charge twice
 
 export async function load() {
   const [members, points, charges] = await Promise.all([api.getMembers(), api.getGuestPoints(), api.getGuestChargesToday()])
@@ -42,7 +43,10 @@ export function draw({ members, points, charges }) {
         onError: msg => toast(msg),
       })
     }
-    $('ci-find').oninput = e => { find = e.target.value; keepScroll(render).then(() => { const i = $('ci-find'); i?.focus(); i?.setSelectionRange(i.value.length, i.value.length) }) }
+    $('ci-find').oninput = e => { // filter what's already loaded: no trip to the server per letter, and the keyboard stays up
+      find = e.target.value
+      Promise.resolve(redraw()).then(() => { const i = $('ci-find'); i?.focus(); i?.setSelectionRange(i.value.length, i.value.length) })
+    }
     document.querySelectorAll('[data-ci-m]').forEach(b => (b.onclick = () => {
       const m = members.find(x => x.id === +b.dataset.ciM)
       cur = { id: m.id, name: m.name, cardName: null, guests: [{ name: '', club: '' }] }; find = ''; render()
@@ -54,8 +58,8 @@ export function draw({ members, points, charges }) {
       <h3>Guests</h3>
       ${cur.guests.map((g, i) => `<div class="card ci-g"><label for="ci-n${i}">Guest ${i + 1}’s name</label><input id="ci-n${i}" class="plainsel" autocomplete="off" maxlength="100" value="${esc(g.name)}">
         <label for="ci-c${i}">Their club <span class="hint">optional</span></label><input id="ci-c${i}" class="plainsel" autocomplete="off" maxlength="100" value="${esc(g.club)}"></div>`).join('')}
-      ${n < 3 ? '<button class="ghost dashed" id="ci-add">+ Add another guest</button>' : ''}
-      <div class="gm-btns"><button type="button" class="ghost" id="ci-cancel">Cancel</button><button class="primary" id="ci-go">Charge ${plural(n * cost, 'point')} · ${plural(n, 'guest')}</button></div>
+      ${n < 3 ? `<button class="ghost dashed" id="ci-add"${sending ? ' disabled' : ''}>+ Add another guest</button>` : ''}
+      <div class="gm-btns"><button type="button" class="ghost" id="ci-cancel"${sending ? ' disabled' : ''}>Cancel</button><button class="primary" id="ci-go"${sending ? ' disabled' : ''}>${sending ? 'Charging…' : `Charge ${plural(n * cost, 'point')} · ${plural(n, 'guest')}`}</button></div>
       ${today}</div>`
     cur.guests.forEach((g, i) => {
       $(`ci-n${i}`).oninput = e => { g.name = e.target.value }
@@ -65,19 +69,25 @@ export function draw({ members, points, charges }) {
     $('ci-cancel').onclick = () => { cur = null; render() }
     $('ci-go').onclick = async () => {
       const btn = $('ci-go')
-      if (btn.disabled) return
+      if (sending) return
       if (cur.guests.some(g => !g.name.trim())) { toast('Add the guest’s name.'); return }
-      btn.disabled = true
+      const who = cur
+      const busy = on => { // also kept through any redraw while it's sending (see draw)
+        sending = on
+        btn.disabled = on; btn.textContent = on ? 'Charging…' : `Charge ${plural(who.guests.length * cost, 'point')} · ${plural(who.guests.length, 'guest')}`
+        for (const id of ['ci-cancel', 'ci-add']) if ($(id)) $(id).disabled = on
+      }
+      busy(true)
       let r
       try {
-        r = await api.chargeGuests(cur.id, cur.cardName, cur.guests.map(g => ({ name: g.name.trim(), club: g.club.trim() || undefined })))
+        r = await api.chargeGuests(who.id, who.cardName, who.guests.map(g => ({ name: g.name.trim(), club: g.club.trim() || undefined })))
       } catch (err) {
-        toast(err.message); btn.disabled = false; return
+        busy(false); toast(err.message); return
       }
-      const name = cur.name
-      cur = null
+      sending = false
+      if (cur === who) cur = null
       await render()
-      toast(`${plural(r.charged, 'point')} charged to ${name} · ${r.pointsLeft} left`)
+      toast(`${plural(r.charged, 'point')} charged to ${who.name} · ${r.pointsLeft} left`)
     }
   }
   document.querySelectorAll('[data-ci-rm]').forEach(b => (b.onclick = async () => {

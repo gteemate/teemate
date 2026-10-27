@@ -78,6 +78,33 @@ describe('Club office → Guests', () => {
     await app.settle()
     expect(app.db.guestVisits).toHaveLength(1)
   })
+  it('while a charge is sending: Charging…, and Cancel and Add can’t be tapped (no double charge on slow wifi)', async () => {
+    await office()
+    await app.type('#ci-find', 'ciar')
+    await app.tap('[data-ci-m="3"]')
+    await guest(0, 'Sam Guest')
+    const w = globalThis.__world.wrapped, real = w.chargeGuests
+    let release
+    w.chargeGuests = (...a) => new Promise(r => { release = () => r(real(...a)) })
+    document.getElementById('ci-go').click()
+    await Promise.resolve()
+    expect(document.getElementById('ci-go').textContent).toBe('Charging…')
+    expect(document.getElementById('ci-go').disabled).toBe(true)
+    expect(document.getElementById('ci-cancel').disabled).toBe(true)
+    expect(document.getElementById('ci-add').disabled).toBe(true)
+    release()
+    await app.settle()
+    expect(app.toast()).toBe("3 points charged to Ciarán O'Neill · 33 left")
+    expect(app.db.guestVisits).toHaveLength(1)
+  })
+  it('find by name filters as you type without asking the server again', async () => {
+    await office()
+    const before = app.db.calls.filter(c => c === 'getGuestChargesToday').length
+    await app.type('#ci-find', 'ciar')
+    expect(document.querySelector('[data-ci-m="3"]')).not.toBeNull()
+    expect(app.db.calls.filter(c => c === 'getGuestChargesToday').length).toBe(before)
+    expect(document.activeElement?.id).toBe('ci-find')
+  })
   it('Checked in today: Remove, Sure?, and the points come back', async () => {
     await office(db => db.guestVisits.push({ id: 77, member: 3, date: db.today, guest: 'Sam Guest', club: '', points: 3, playerId: null, by: 0 }))
     await app.tap('[data-ci-rm="77"]')
