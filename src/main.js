@@ -11,6 +11,7 @@ import * as scoringRound from './screens/scoring-round.js'
 import * as teeRequests from './screens/tee-requests.js'
 import { applyTheme, cachedTheme } from './theme.js'
 import * as scores from './screens/scores.js'
+import * as paperFlow from './paper/paper-flow.js'
 import * as players from './screens/players.js'
 import * as challenge from './screens/challenge.js'
 import * as eventLive from './screens/event-live.js'
@@ -60,7 +61,7 @@ const OFFICE_HOME = new Set(['office', 'account', 'home', 'events', 'comp'])
 const officeScreen = () => (OFFICE_HOME.has(S.aview) || !ADMIN[S.aview] ? OFFICE[S.ov] ?? officeToday : ADMIN[S.aview])
 function screenFor() {
   if (S.office) return officeScreen()
-  if (S.tab === 'scores') return S.sview === 'players' ? players : S.sview === 'challenge' ? challenge : S.sview === 'pevent' ? eventLive : S.sview === 'counts' ? scoringRound : scores
+  if (S.tab === 'scores') return S.sview === 'players' ? players : S.sview === 'challenge' ? challenge : S.sview === 'pevent' ? eventLive : S.sview === 'counts' ? scoringRound : S.sview === 'paper' ? paperFlow : scores
   if (S.tab === 'lb') return leaderboard
   if (S.tab === 'course') return course
   return ADMIN[S.aview] || home

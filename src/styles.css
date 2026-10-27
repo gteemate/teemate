@@ -916,3 +916,51 @@ details.oboard[open] > summary::before{transform:rotate(90deg)}
 .hpquick{display:flex;gap:6px;flex-wrap:wrap}
 .hpquick button[aria-pressed="true"]{border-color:var(--ink)}
 .hpdays{display:flex;flex-direction:column;gap:4px;margin-top:6px;border-top:1px solid var(--line);padding-top:6px}
+
+/* Paper scorecards (paper/paper-flow.js): the example card, the box around the score grid, matching and checking */
+.ppaper{text-align:center;margin:4px 0 0}
+.ppaper .linkbtn{color:var(--gold);padding:2px 0}
+.pflow .card{padding:14px}
+.ptips{margin:0;padding-left:20px;line-height:1.6;font-size:15px}
+.pex{position:relative;background:#fbfaf6;color:#222;border-radius:8px;padding:8px;transform:rotate(-1deg);box-shadow:0 8px 18px rgba(0,0,0,.45);font-size:11px}
+.pex-tag{position:absolute;right:-6px;top:-10px;background:var(--live);color:#0d2418;font-weight:700;font-size:11px;padding:3px 8px;border-radius:999px}
+.pex-names{display:grid;grid-template-columns:18px 1fr 18px 1fr;gap:4px;align-items:center;margin-bottom:6px;font-weight:700}
+.pex-names i{height:12px;background:#222;border-radius:2px}
+.pex table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+.pex th{background:#e9e6dd;color:#222;border:1px solid #c9c4b6;padding:2px 0}
+.pex td{color:#222;text-align:center;border:1px solid #d6d1c4;height:15px;padding:0}
+.pex td.si{color:#b0262b}
+.pex td.hw{font-family:"Bradley Hand","Segoe Print","Comic Sans MS",cursive;font-size:13px;color:#1d1d6b}
+.pex tr.tot td{font-weight:700;background:#f1efe8}
+.pcrop{position:relative;border-radius:12px;overflow:hidden;background:var(--sunk);touch-action:none}
+.pcrop img{display:block;width:100%;height:auto}
+.pbox{position:absolute;outline:2px dashed var(--gold);box-shadow:0 0 0 999px rgba(10,16,32,.6)}
+.phdl{position:absolute;width:28px;height:28px;border:4px solid var(--gold);touch-action:none;cursor:grab}
+.phdl.tl{left:-6px;top:-6px;border-right:0;border-bottom:0}.phdl.tr{right:-6px;top:-6px;border-left:0;border-bottom:0}
+.phdl.bl{left:-6px;bottom:-6px;border-right:0;border-top:0}.phdl.br{right:-6px;bottom:-6px;border-left:0;border-top:0}
+.pprivate{display:grid;gap:2px;background:var(--leaf);border:1px solid var(--line);border-radius:14px;padding:10px 12px;font-size:14px;line-height:1.4}
+.pprivate span{color:var(--muted)}
+.pspin{width:44px;height:44px;margin:40px auto;border-radius:50%;border:4px solid var(--line);border-top-color:var(--gold);animation:pspin 1s linear infinite}
+@keyframes pspin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.pspin{animation:none}}
+.pnote{background:rgba(240,168,90,.12);border:1px solid #f0a85a;border-radius:14px;padding:12px;line-height:1.4}
+.pmatch{display:grid;gap:12px}
+.pcol{display:grid;gap:6px;font-size:14px;color:var(--muted);font-variant-numeric:tabular-nums}
+.pcol select{background:var(--leaf);color:var(--ink);border:1px solid var(--line);border-radius:12px;padding:10px 12px;font:600 15px var(--sys)}
+.pgrid{display:grid;grid-template-columns:repeat(9,1fr);gap:4px;text-align:center;font-variant-numeric:tabular-nums}
+.pgrid + .pgrid{margin-top:12px}
+.pgrid .ph{font-size:12px;color:var(--muted)}
+.pcell{background:var(--leaf);border:1px solid var(--line);border-radius:8px;padding:8px 0;font-weight:700;font-size:16px;color:var(--ink);cursor:pointer}
+.pcell.warn{border-color:#f0a85a;background:rgba(240,168,90,.15);color:#f0a85a}
+.pchk{display:flex;gap:8px;font-size:14px;line-height:1.4}
+.pchk + .pchk{margin-top:8px}
+.pchk>span{flex-shrink:0;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:700}
+.pchk.ok>span{background:var(--live);color:#0d2418}
+.pchk.wn>span{background:#f0a85a;color:#2a1700}
+.ppad{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 0}
+.ppad button{background:var(--leaf);border:1px solid var(--line);border-radius:12px;padding:14px 0;font-size:18px;font-weight:700;color:var(--ink);cursor:pointer}
+.ppad button.on{border-color:var(--gold);color:var(--gold)}
+.pradios{display:grid;gap:8px}
+.pradio{display:grid;gap:2px;text-align:left;background:var(--leaf);border:1px solid var(--line);border-radius:14px;padding:12px 14px;color:var(--ink);cursor:pointer;font-size:15px}
+.pradio span{color:var(--muted);font-size:13px}
+.pradio.on{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset}

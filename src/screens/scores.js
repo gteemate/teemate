@@ -10,6 +10,7 @@ import { guestHcpSheet } from './scores-guest.js'
 import { holeGrid } from '../course-art.js'
 import { cardHoles } from './card-holes.js'
 import { openCourse, scaleHcp, holesText, allOpen } from '../open-holes.js'
+import { startPaper } from '../paper/paper-flow.js'
 import { courseHandicap, playingHandicaps, holeCalc, gameState, upText, toPar } from '../scoring.js'
 import { buildLibrary, playable, gameSpec, resolveGame, preferredGame, teeRating, PAIRINGS, NO_GAME, SCORES_ONLY, parseGame, oneOnOneKey, oneOnOneGames, gameName } from '../games.js'
 
@@ -32,7 +33,8 @@ export function lineupFromTeeTime(slot, meId) {
 }
 
 export async function load() {
-  const [course, members, games, me, teeTimes, events, allEvents] = await Promise.all([api.getCourse(), api.getMembers(), api.getGameSettings(), api.getMe(), api.getMyTeeTimes(today()), api.getMyPlayerEvents(), api.getEvents()])
+  const [course, members, games, me, teeTimes, events, allEvents, theme] = await Promise.all([api.getCourse(), api.getMembers(), api.getGameSettings(), api.getMe(), api.getMyTeeTimes(today()), api.getMyPlayerEvents(), api.getEvents(), api.getTheme()])
+  S.paperCards = !!theme?.paperCards
   round = !round ? await api.getCurrentRound() : round.id ? await latest(round) : round
   const guests = round ? await api.getGuests(round.lineup.filter(e => e.g != null).map(e => e.g)) : []
   // The competition this card counts for (its Leaderboard tab) and the holes it plays (card-holes.js).
@@ -209,6 +211,7 @@ export function draw({ course, members, guests, L, me, teeTimes, events, leagues
     ${gamebar}
     ${body}
     <span class="hint">${round.done[i] ? 'Saved' : 'Gross scores. Shots applied automatically.'}</span>
+    ${S.paperCards && !round.done.some(Boolean) ? '<p class="hint ppaper">Scores entered as you play show on the live leaderboard. Played on paper? <button class="linkbtn" id="paper-go">Photograph your card instead</button></p>' : ''}
     ${!G.pairs && g !== 'match1' && gs.thru ? `<h3>Standings</h3>${standings(ps, gs, g)}` : ''}
     ${round.id ? '<button class="ghost accremove" id="delcard">Delete scorecard</button>' : ''}
   </div>
@@ -219,6 +222,7 @@ export function draw({ course, members, guests, L, me, teeTimes, events, leagues
   // Game menu
   $('gchip').onclick = async () => { S.gmenu = !S.gmenu; await keepScroll(render) }
   $('gname').onclick = () => matchSheet({ L, n, ps })
+  if ($('paper-go')) $('paper-go').onclick = async () => { startPaper(); await render(); top0() }
   if (S.gmenu) {
     document.querySelectorAll('[data-gm]').forEach(b => (b.onclick = async () => { round.game = b.dataset.gm; await api.saveRound(round); keepScroll(render) }))
     document.querySelectorAll('[data-pr]').forEach(b => (b.onclick = async () => {
