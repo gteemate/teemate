@@ -70,6 +70,7 @@ const signupsAdmin = lazy(() => import('./screens/signups-admin.js'))
 const koNew = lazy(() => import('./screens/ko-new.js'))
 const myGames = lazy(() => import('./screens/my-games.js'))
 const weather = lazy(() => import('./screens/weather.js'))
+const findTime = lazy(() => import('./screens/find-time.js'))
 const officeToday = lazy(() => import('./office/today.js'))
 const officeMembers = lazy(() => import('./office/members.js'))
 const officeTee = lazy(() => import('./office/tee.js'))
@@ -79,7 +80,7 @@ const officeBoard = lazy(() => import('./office/leaderboard.js'))
 const officeGuests = lazy(() => import('./office/guests.js'))
 
 // Each screen exports an optional async load() and a sync draw(data).
-const ADMIN = { home, account: adminHome, tee: teeTimes, book: booking, booked, mine: bookings, buddies, pins, points, events, event: eventEditor, evboard: eventBoardScreen, access, colours, weather, friend, hutadmin: hutAdmin, hutorder: hutOrder, hutstaff: hutStaff, match: matchScreen, signups: signupsAdmin, ko: knockout, konew: koNew, kocard: koCard, rules: bookingRules, comp: competitions, treq: teeRequests, mygames: myGames }
+const ADMIN = { home, account: adminHome, tee: teeTimes, book: booking, booked, mine: bookings, buddies, pins, points, events, event: eventEditor, evboard: eventBoardScreen, access, colours, weather, friend, hutadmin: hutAdmin, hutorder: hutOrder, hutstaff: hutStaff, match: matchScreen, signups: signupsAdmin, ko: knockout, konew: koNew, kocard: koCard, rules: bookingRules, comp: competitions, treq: teeRequests, mygames: myGames , findtime: findTime}
 // The club office: a section page, or one of the admin pages it opens (pins, a competition…). Pages that go back
 // to Account, Home, Club events or Competitions go back to the office section instead.
 const OFFICE = { today: officeToday, members: officeMembers, tee: officeTee, board: officeBoard, comps: officeComps, club: officeClub, guests: officeGuests }

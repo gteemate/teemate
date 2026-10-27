@@ -48,6 +48,17 @@ describe('pickAlerts: what drops down from the header', () => {
     expect(ids(a)).toEqual(['ok'])
   })
 
+  it('Find a time: suggested days, everyone can, and a reminder near the play-by date', () => {
+    const n = [{ id: 8, kind: 'times', date: '2026-10-12', oldTime: 0, byName: 'Gary Cochrane', note: 'Men’s Match Play', koMatchId: 1 },
+      { id: 9, kind: 'agreed', date: '2026-10-12', oldTime: 0, note: 'Men’s Match Play', part: 'morning', koMatchId: 1 }]
+    const [a, b, c] = pickAlerts({ ...base, notices: n, koDue: [{ matchId: 2, compId: 1, compName: 'Club Singles', round: 1, by: '2026-10-15' }] })
+    expect(a).toMatchObject({ title: 'Gary Cochrane suggests times for your Men’s Match Play match', ref: { noticeId: 8, matchId: 1 } })
+    expect(ids(a)).toEqual(['times', 'later'])
+    expect(b).toMatchObject({ title: 'Everyone can do Mon 12 Oct · morning', detail: 'Your Men’s Match Play match: book a tee time that morning.' })
+    expect(c).toMatchObject({ kind: 'findtime', title: 'Your Club Singles match isn’t arranged yet: play by Thu 15 Oct', ref: { matchId: 2 } })
+    expect(ids(c)).toEqual(['findtime', 'later'])
+  })
+
   it('someone booked me in: who, when and who else is playing; OK or See my bookings', () => {
     const added = n => ({ id: 6, kind: 'added', date: '2026-10-24', oldTime: 480, byName: 'Pat Reid', withNames: n, note: null })
     const [a] = pickAlerts({ ...base, notices: [added(['Pat', 'Alex', 'Jo'])] })

@@ -483,6 +483,7 @@
   ],
   "my_booking_ids": [],
   "my_hut_orders": [],
+  "my_ko_due": [],
   "my_ko_entry": [],
   "my_paper_confirms": [],
   "my_request_pending": [],
@@ -1028,6 +1029,12 @@
   "getMyBookings": {
    "rpc": [
     "get_my_bookings"
+   ],
+   "tables": []
+  },
+  "getMyKoDue": {
+   "rpc": [
+    "my_ko_due"
    ],
    "tables": []
   },

@@ -57,6 +57,16 @@ export const FEATURES = [
       { says: 'A real refusal still says why', tests: ['src/test/journeys/offline-scores.test.js › a refusal from the server (not the signal) still says why and keeps the hole open'] },
     ],
     demo: [{ who: 'live@test.com', steps: ['Start a round', 'Turn on Airplane mode, save a hole', 'Turn Airplane mode off'], see: '“Saved on your phone”, then “Your scores have been sent”.' }] },
+  { id: 'find-a-time', area: 'Competitions', name: 'Find a time for a knockout match',
+    what: 'The players in a knockout match suggest days (Morning, Afternoon or Evening) up to the play-by date and tick which they can do. When everyone can, they’re told and Book a tee time opens the tee sheet on that day. A reminder a week before the play-by date if nothing’s arranged.',
+    scenarios: [
+      { says: 'Suggest days and send; the others are told', tests: ['journey:suggest-match-times', 'src/test/journeys/find-time.test.js › suggest three days and send: the grid shows them, with me able to do each; Declan is told', 'supabase/tests/find_a_time.sql › Find a time: the others are told'] },
+      { says: 'Tick what you can; when everyone can, Book a tee time on that day', tests: ['journey:answer-match-time', 'src/test/journeys/find-time.test.js › Declan is told, ticks one, everyone can: Book a tee time opens the tee sheet on that day with Gary to add', 'supabase/tests/find_a_time.sql › Find a time: the last ✓ makes it agreed and everyone is told'] },
+      { says: 'Only the players; days up to the play-by date; 12 at most', tests: ['rule:find-time-players-only', 'rule:find-time-within-round', 'supabase/tests/find_a_time.sql › Find a time: at most 12'] },
+      { says: 'A reminder a week before the play-by date when nothing’s arranged', tests: ['src/test/journeys/find-time.test.js › a week from the play-by date with nothing arranged: a reminder with Find a time', 'supabase/tests/find_a_time.sql › Find a time: due within a week and not agreed: a reminder'] },
+      { says: 'Cleared when the match has a result', tests: ['supabase/tests/find_a_time.sql › Find a time: a result clears the suggestions'] },
+    ],
+    demo: [{ who: 'winter.league@test.com', steps: ['Competition → a knockout with your next match → Find a time', 'Tick a few days, Send'], see: 'The grid, with you able to do each; your opponent gets a notice.' }] },
   { id: 'scan-partners', area: 'Booking', name: 'Add playing partners by scanning their QR code',
     what: 'In booking, Scoring → Players and Friends, scan the QR on someone’s Account card instead of searching. The camera opens again for the next person until the group is full. Club members join the group; TeeMate players from other clubs join a booking as guests. Each is kept as a friend.',
     scenarios: [

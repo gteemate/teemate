@@ -14,7 +14,7 @@ const later = { id: 'later', label: 'Later' }
  * hut's "would you like to order?" after hole 8. Keys in `hidden` (Later) are left out.
  * hut = { on, card, asked: cardIds, orders: my orders today, seen: ready orders already OK'd }
  */
-export function pickAlerts({ me, playerEvents, requests, date, now = Date.now(), hidden = new Set(), hut = null, notices = [], paper = [] }) {
+export function pickAlerts({ me, playerEvents, requests, date, now = Date.now(), hidden = new Set(), hut = null, notices = [], paper = [], koDue = [] }) {
   const challenges = playerEvents.filter(e => e.date === date && needsMyAnswer(e, me)).map(e => {
     const theirs = e.groups.find(g => g.slot === (e.proposerSlot ?? e.groups.find(x => x.host)?.slot))
     return {
@@ -41,6 +41,20 @@ export function pickAlerts({ me, playerEvents, requests, date, now = Date.now(),
     title: `${n.byName} has booked you in`,
     detail: `${longDay(fromIso(n.date))} at ${hhmm(n.oldTime)}${n.withNames?.length ? ` · with ${names(n.withNames)}` : ''}`,
     actions: [{ id: 'ok', label: 'OK', primary: true }, { id: 'bookings', label: 'See my bookings' }],
+  }))
+  // Find a time: someone suggested days for my knockout match; everyone can do one; or the play-by date is close and
+  // nothing's arranged (once a day).
+  const times = notices.filter(n => n.kind === 'times' || n.kind === 'agreed').map(n => ({
+    key: `bn:${n.id}`, kind: 'notice', ref: { noticeId: n.id, matchId: n.koMatchId },
+    title: n.kind === 'times' ? `${n.byName} suggests times for your ${n.note} match` : `Everyone can do ${longDay(fromIso(n.date))} · ${n.part}`,
+    detail: n.kind === 'times' ? 'Tick the days you can do.' : `Your ${n.note} match: book a tee time that ${n.part}.`,
+    actions: [{ id: 'times', label: n.kind === 'times' ? 'See the times' : 'Book a tee time', primary: true }, later],
+  }))
+  const due = koDue.map(d => ({
+    key: `kd:${d.matchId}:${date}`, kind: 'findtime', ref: { matchId: d.matchId, compId: d.compId },
+    title: `Your ${d.compName} match isn’t arranged yet: play by ${longDay(fromIso(d.by))}`,
+    detail: 'Suggest a few days and the others tick the ones they can do.',
+    actions: [{ id: 'findtime', label: 'Find a time', primary: true }, later],
   }))
   // A score read from a paper card that I was asked to confirm.
   const confirm = paper.map(p => ({
@@ -72,7 +86,7 @@ export function pickAlerts({ me, playerEvents, requests, date, now = Date.now(),
     title: 'Halfway hut is open', detail: 'Would you like to place an order?',
     actions: [{ id: 'order', label: 'Order', primary: true }, { id: 'nothanks', label: 'No thanks' }],
   }] : []
-  return [...office, ...guests, ...added, ...confirm, ...challenges, ...answered, ...ready, ...prompt].filter(a => !hidden.has(a.key))
+  return [...office, ...guests, ...added, ...times, ...due, ...confirm, ...challenges, ...answered, ...ready, ...prompt].filter(a => !hidden.has(a.key))
 }
 
 /** Look for alerts on a new screen, or at most once a minute while the same screen redraws (a scorecard redraws on every tap). */

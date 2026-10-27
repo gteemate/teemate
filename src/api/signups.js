@@ -83,6 +83,11 @@ export async function getMatchTimes(matchId) {
   return must(await sb.rpc('get_match_times', { p_match: matchId }))
 }
 
+/** My knockout matches due within a week with nothing agreed or booked (the reminder): [{ matchId, compId, compName, round, by }] */
+export async function getMyKoDue() {
+  return must(await sb.rpc('my_ko_due'))
+}
+
 export async function getKoMatchOfCard(roundId) {
   const m = must(await sb.from('ko_matches').select('comp_id, round').eq('round_id', roundId).limit(1))[0]
   return m ? { compId: m.comp_id, round: m.round } : null

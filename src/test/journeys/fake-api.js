@@ -19,7 +19,7 @@ export const API_NAMES = ['getMe', 'forgetMe', 'getSession', 'signIn', 'needsAcc
   'getHutStaff', 'setHutStaff', 'placeHutOrder', 'cancelMyHutOrder', 'myHutOrders', 'hutOrdersToday', 'setHutOrderStatus', 'getMembers', 'getBuddies',
   'addBuddy', 'removeBuddy', 'getFriends', 'saveContact', 'removeContact', 'setFriendFavourite', 'getAccessList', 'saveMember', 'getFavourites',
   'setFavourite', 'setOfficeLogin', 'getAccessRequests', 'declineRequest', 'deleteMember', 'resetLogin', 'getCourse', 'getPins', 'setGreenWidth', 'publishPins',
-  'getTeeSheet', 'bookTeeTime', 'getMyTeeTimes', 'getGuests', 'setGuestHandicap', 'setHandicaps', 'suggestMatchTimes', 'answerMatchTime', 'getMatchTimes', 'cancelBooking', 'removeFromBooking', 'addToBooking', 'bookClubMatch', 'chargeGuests', 'removeGuestCharge', 'getGuestChargesToday', 'moveMatchBooking', 'adminCancelBooking', 'adminMoveBooking',
+  'getTeeSheet', 'bookTeeTime', 'getMyTeeTimes', 'getGuests', 'setGuestHandicap', 'setHandicaps', 'suggestMatchTimes', 'answerMatchTime', 'getMatchTimes', 'getMyKoDue', 'cancelBooking', 'removeFromBooking', 'addToBooking', 'bookClubMatch', 'chargeGuests', 'removeGuestCharge', 'getGuestChargesToday', 'moveMatchBooking', 'adminCancelBooking', 'adminMoveBooking',
   'getBookingNotices', 'seenBookingNotice', 'getMyBookings',
   'getGuestPoints', 'getBookingRules', 'setBookingRules', 'requestTeeTime', 'cancelTeeTimeRequest', 'getMyTeeTimeRequests', 'getTeeTimeRequests',
   'decideTeeTimeRequest', 'markTeeTimeRequestsSeen', 'dismissTeeTimeRequest', 'getGameSettings', 'setMyGamePref', 'getCurrentRound', 'getRound', 'deleteRound', 'saveRound',
@@ -430,13 +430,22 @@ export function makeWorld(today, setup = () => {}, as = 'admin') {
       }
       return { agreed }
     },
+    getMyKoDue: async () => db.koMatches.filter(m => ['open', 'disputed'].includes(m.status) && m.aEntry != null && m.bEntry != null && koPlayers(m.id).includes(ME)).flatMap(m => {
+      const c = db.signups.find(x => x.id === m.compId), by = c?.drawPublished ? c.roundDeadlines?.[m.round - 1] : null, players = koPlayers(m.id)
+      if (!by || by < db.today || by > addDaysIso(db.today, 7)) return []
+      if (db.matchTimes.some(t => t.matchId === m.id && t.day >= db.today && players.every(p => t.answers[p] === true))) return [] // agreed
+      if (db.bookings.some(b => { const s = slotById(b.slotId); return s.date >= db.today && s.date <= by && players.every(p => s.players.some(x => x.bookingId === b.id && x.memberId === p)) })) return [] // booked
+      return [{ matchId: m.id, compId: c.id, compName: c.name, round: m.round, by }]
+    }),
     getMatchTimes: async mid => {
       const players = koPlayers(mid)
       if (!players.includes(ME) && !db.asOffice && !me()?.admin) throw new Error('Only the players in this match can arrange it.')
       const order = ['morning', 'afternoon', 'evening']
       const times = db.matchTimes.filter(x => x.matchId === mid && x.day >= db.today).sort((a, b) => a.day.localeCompare(b.day) || order.indexOf(a.part) - order.indexOf(b.part))
         .map(t => ({ id: t.id, day: t.day, part: t.part, by: t.by, answers: Object.fromEntries(Object.entries(t.answers).filter(([k]) => players.includes(+k))) }))
-      return copy({ players: players.map(p => ({ id: p, name: member(p).name })), times, agreed: times.find(t => players.every(p => t.answers[p] === true))?.id ?? null })
+      const m = db.koMatches.find(x => x.id === mid), c = db.signups.find(x => x.id === m.compId)
+      const match = { id: m.id, compId: c.id, compName: c.name, kind: c.kind, club: c.createdBy == null, round: m.round, by: c.roundDeadlines?.[m.round - 1] ?? addDaysIso(db.today, 21), status: m.status }
+      return copy({ match, players: players.map(p => ({ id: p, name: member(p).name })), times, agreed: times.find(t => players.every(p => t.answers[p] === true))?.id ?? null })
     },
     // As the database: a club singles match (a club knockout, or a club event's 1 v 1) holds the other places.
     bookClubMatch: async ({ slotId, opponent, kind, ref }) => {

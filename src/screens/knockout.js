@@ -5,7 +5,7 @@
 import * as api from '../api.js'
 import { S } from '../state.js'
 import { $, esc, header, keepScroll, render, toast, top0, goBack } from '../ui.js'
-import { eventDates, isoDate, today } from '../dates.js'
+import { eventDates, isoDate, today, longDay, fromIso } from '../dates.js'
 import { roundName, myNextMatch, matchState, entryName, champion, spreadDates } from '../knockout.js'
 import { koStates, koStateText } from './ko-card.js'
 import { holesText } from '../open-holes.js'
@@ -19,12 +19,24 @@ export async function load() {
   const [ko, course, games] = await Promise.all([api.getKnockout(comp.id), api.getCourse(), api.getGameSettings()])
   const mine = signups.entries.find(e => e.compId === comp.id && (e.memberId === me.id || e.partnerId === me.id)) ?? null
   const cards = await api.getCardsById(ko.matches.filter(m => m.roundId).map(m => m.roundId))
-  return { comp, me, members, ...ko, mine, course, games, states: koStates({ ...ko, members, course, games, cards, roundHoles: comp?.roundHoles }) }
+  // Find a time: how far my next match has got (who's answered, or the day everyone can do)
+  const nm = mine && comp.drawPublished ? myNextMatch(ko.matches, mine.id) : null
+  const times = nm && nm.aEntry != null && nm.bEntry != null && ['open', 'disputed'].includes(nm.status) ? await api.getMatchTimes(nm.id).catch(() => null) : null
+  return { comp, me, members, ...ko, mine, course, games, times, states: koStates({ ...ko, members, course, games, cards, roundHoles: comp?.roundHoles }) }
+}
+
+// Find a time on my next match: who's answered so far, or the day everyone can do.
+function ftLine(t) {
+  if (!t?.times?.length) return ''
+  const agreed = t.times.find(x => x.id === t.agreed)
+  if (agreed) return `<span class="hint ftline">Everyone can do <b>${longDay(fromIso(agreed.day))} · ${agreed.part}</b></span>`
+  const n = t.players.filter(p => t.times.some(x => x.answers[p.id] != null)).length
+  return `<span class="hint ftline">Find a time: ${n} of ${t.players.length} have answered</span>`
 }
 
 const RESULTS = ['1 up', '2&1', '3&2', '4&3', '5&4', 'At the 19th', 'Conceded']
 
-export function draw({ comp, me, members, matches = [], entries = [], mine, course, games, states = {} }) {
+export function draw({ comp, me, members, matches = [], entries = [], mine, course, games, states = {}, times = null }) {
   const back = () => goBack(async () => { S.aview = S.koFrom ?? 'comp'; await render(); top0() })
   if (!comp) { header('Competition', '', back); $('main').innerHTML = '<div class="screen"><div class="empty-state">This competition is no longer available.</div></div>'; return }
   const rounds = Math.max(0, ...matches.map(m => m.round))
@@ -54,13 +66,13 @@ export function draw({ comp, me, members, matches = [], entries = [], mine, cour
       : cs?.finished ? '<span class="hint">All square after 18 on the card: play extra holes, then enter the result.</span><button class="primary sm" id="ko-report">Enter result</button>'
       : cs ? `<span class="hint">On the card: <b>${esc(koStateText(cs, next, name))}</b></span>${cs.card.date === date ? '<button class="primary sm" id="ko-scores">Enter scores</button>' : ''}<button class="ghost sm" data-kcard="${next.id}">Scorecard</button><button class="ghost sm" id="ko-report">Enter result</button>`
       : null
-    const act = st === 'report' ? fromCard ?? '<button class="primary sm" id="ko-book">Book this match</button><button class="ghost sm" id="ko-score">Score this match</button><button class="ghost sm" id="ko-report">Enter result</button>'
+    const act = st === 'report' ? fromCard ?? '<button class="primary sm" id="ko-find">Find a time</button><button class="ghost sm" id="ko-book">Book this match</button><button class="ghost sm" id="ko-score">Score this match</button><button class="ghost sm" id="ko-report">Enter result</button>'
       : st === 'confirm' ? `<span class="hint">They’ve entered: <b>${esc(name(next.winnerEntry))} won ${esc(next.result ?? '')}</b></span><button class="primary sm" id="ko-confirm">Confirm</button><button class="ghost sm" id="ko-dispute">That’s not right</button>`
       : st === 'reported' ? '<span class="hint">You’ve entered the result: waiting for them to confirm.</span>'
       : st === 'disputed' ? '<span class="hint">The result has been questioned: the competition secretary will settle it.</span>'
       : '<span class="hint">Your opponent isn’t known yet.</span>'
     top = `<div class="card kotop"><span class="kicker">Your next match · ${roundName(next.round, rounds)}</span>
-      <b class="kovs">v ${esc(name(opp))}</b><span class="hint">${by(next.round) ? `Play by ${eventDates(by(next.round), 1)}` : ''}</span><div class="koact">${act}</div></div>`
+      <b class="kovs">v ${esc(name(opp))}</b><span class="hint">${by(next.round) ? `Play by ${eventDates(by(next.round), 1)}` : ''}</span>${ftLine(times)}<div class="koact">${act}</div></div>`
   } else if (mine && comp.drawPublished && rounds) top = `<div class="card kotop"><span class="kicker">Your draw</span><b class="kovs">${champ === mine.id ? 'You’re the champion!' : 'Your run is over this year. The draw carries on below.'}</b></div>`
 
   // Admin, before publishing: make or remake the draw, swap two, play-by dates, publish.
@@ -165,6 +177,7 @@ export function draw({ comp, me, members, matches = [], entries = [], mine, cour
     await render(); top0()
     toast(`Card started for your ${roundName(next.round, rounds).toLowerCase()}: the result fills in from it`)
   }
+  if ($('ko-find')) $('ko-find').onclick = async () => { Object.assign(S, { ftMatch: next.id, ftComp: comp.id, ftPick: null, aview: 'findtime' }); await render(); top0() }
   if ($('ko-book')) $('ko-book').onclick = async () => {
     // The tee sheet with the other players in this match added (my partner and theirs).
     const opp = entries.find(e => e.id === (next.aEntry === mine.id ? next.bEntry : next.aEntry))

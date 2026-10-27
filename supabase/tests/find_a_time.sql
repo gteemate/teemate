@@ -73,6 +73,20 @@ do $$ declare r jsonb; e text; d date := public.club_today(); v_t bigint; v_n in
   perform t.ok('Find a time: the last ✓ makes it agreed and everyone is told',
     (r->>'agreed')::bigint = v_t and (select count(distinct member_id) from public.booking_notices where kind = 'agreed' and member_id between 999001 and 999004) = 4, r::text);
 
+  perform t.act_as(999001); r := public.get_match_times(999301); reset role;
+  perform t.ok('Find a time: the grid says which match and its play-by date',
+    (r->'match'->>'compId')::bigint = 999101 and r->'match'->>'compName' = 'Mixed fourball' and (r->'match'->>'by')::date = d + 14 and (r->'match'->>'round')::int = 1, (r->'match')::text);
+  -- a match due within a week with nothing agreed is listed for a reminder; this one is agreed, so it isn't
+  update public.signup_comps set round_deadlines = array[d + 5, d + 28] where id = 999101;
+  perform t.act_as(999002);
+  perform t.ok('Find a time: an agreed match needs no reminder', not exists (select 1 from jsonb_array_elements(public.my_ko_due()) x where (x->>'matchId')::bigint = 999301));
+  reset role;
+  delete from public.match_time_answers where member_id = 999004;
+  perform t.act_as(999002);
+  r := public.my_ko_due();
+  perform t.ok('Find a time: due within a week and not agreed: a reminder',
+    exists (select 1 from jsonb_array_elements(r) x where (x->>'matchId')::bigint = 999301 and x->>'compName' = 'Mixed fourball' and (x->>'by')::date = d + 5), r::text);
+  reset role;
   perform t.act_as(999005);
   e := t.err('select public.get_match_times(999301)');
   v_n := (select count(*) from public.match_times);

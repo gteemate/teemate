@@ -48,13 +48,13 @@ async function run() {
   if (busy || !$('alerts')) return
   busy = true
   try {
-    const [me, playerEvents, requests, hutState, notices, waiting] = await Promise.all([api.getMe(), api.getMyPlayerEvents(), api.getMyTeeTimeRequests(), hutNow(), api.getBookingNotices(),
-      api.getPaperConfirms().catch(() => [])])
+    const [me, playerEvents, requests, hutState, notices, waiting, koDue] = await Promise.all([api.getMe(), api.getMyPlayerEvents(), api.getMyTeeTimeRequests(), hutNow(), api.getBookingNotices(),
+      api.getPaperConfirms().catch(() => []), api.getMyKoDue().catch(() => [])])
     if (!me) return clear()
     paperWaiting = waiting.filter(c => !c.forOffice && c.confirmer === me.id) // the club office confirms its own from Office → Today
     paperMembers = paperWaiting.length ? await api.getMembers() : []
     const paper = paperWaiting.map(c => ({ id: c.id, at: c.at, ...confirmLine(c, paperMembers) }))
-    const all = pickAlerts({ me, playerEvents, requests, date: isoDate(today()), hut: hutState, notices, paper }).filter(a => !done.has(a.key))
+    const all = pickAlerts({ me, playerEvents, requests, date: isoDate(today()), hut: hutState, notices, paper, koDue }).filter(a => !done.has(a.key))
     // The Scores tab asks about a challenge itself, so it doesn't drop down there too.
     showAlerts(all.filter(a => !(a.kind === 'challenge' && S.tab === 'scores')))
   } catch (err) {
@@ -129,6 +129,13 @@ async function act(a, id, btn) {
     shown = shown.filter(x => x.key !== a.key)
     if (id === 'nothanks') return draw()
     S.tab = 'home'; S.aview = 'hutorder'; S.hutFrom = 'card' // Back returns to the scorecard
+    return render()
+  }
+  if (id === 'times' || id === 'findtime') { // Find a time: open the match's times (the reminder starts with suggesting)
+    done.add(a.key)
+    shown = shown.filter(x => x.key !== a.key)
+    if (a.ref.noticeId) api.seenBookingNotice(a.ref.noticeId).catch(() => {})
+    Object.assign(S, { tab: 'home', aview: 'findtime', ftMatch: a.ref.matchId, ftPick: id === 'findtime' ? [] : null })
     return render()
   }
   if (id === 'bookings') { // "booked you in": seen, and open my bookings
