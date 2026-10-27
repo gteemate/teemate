@@ -54,7 +54,7 @@ describe('leagues and knockouts on the open holes', () => {
   it('a league week with its own holes: week 1 over 18, week 2 over the back 9', () => {
     const entries = [{ week: 1, memberId: 1, roundId: 'a' }, { week: 2, memberId: 1, roundId: 'b' }]
     const r = scoreLeague(league, H, entries, { a: pars([1]), b: pars([1]) }, player, 1)
-    expect(r.players[0].perWeek).toEqual({ 1: { pts: 54, thru: 18, done: true }, 2: { pts: 27, thru: 9, done: true } })
+    expect(r.players[0].perWeek).toEqual({ 1: { pts: 54, thru: 18, done: true, live: false }, 2: { pts: 27, thru: 9, done: true, live: false } })
   })
   it('a pairs league week on its own holes', () => {
     const e = { ...league, leaguePairs: [[1, 2]] }

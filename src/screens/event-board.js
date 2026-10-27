@@ -201,7 +201,7 @@ function leagueHtml({ e, members, course, L, entries, cards, me }, top) {
   const g = L.lib.stab, allow = g?.pct == null ? 1 : g.pct / 100
   const mine = entries.filter(x => x.eventId === e.id)
   if (Array.isArray(e.leaguePairs)) return pairsLeagueHtml(e, scorePairsLeague(e, course.holes, mine, cards, player, allow), me, top)
-  const r = scoreLeague(e, course.holes, mine, cards, player, allow)
+  const r = scoreLeague(e, course.holes, mine, cards, player, allow, isoDate(today()))
   if (!e.teams?.length) S.lgView = 'individual' // a member's league: just its players
   const now = Math.min(e.weeks, leagueWeek(e, isoDate(today())))
   const wk = S.lgWeek === 'season' || !S.lgWeek ? 'season' : Math.min(S.lgWeek, e.weeks)
@@ -230,7 +230,7 @@ function leagueHtml({ e, members, course, L, entries, cards, me }, top) {
           return { p, v: p.total, has: p.rounds > 0, counts: false, note: p.rounds ? `${p.rounds} round${p.rounds === 1 ? '' : 's'} · counted ${counted}×` : 'no rounds yet' }
         }
         const pw = p.perWeek[wk]
-        return { p, v: pw ? pw.pts : null, has: !!pw, counts: w.counting.includes(p.id), note: pw ? (pw.done ? 'Finished' : `thru ${pw.thru} <span class="livedot">● live</span>`) : 'not entered' }
+        return { p, v: pw ? pw.pts : null, has: !!pw, counts: w.counting.includes(p.id), note: pw ? (pw.done ? 'Finished' : pw.live ? `thru ${pw.thru} <span class="livedot">● live</span>` : `thru ${pw.thru} · not finished`) : 'not entered' }
       }).sort((a, b) => b.has - a.has || (b.v ?? 0) - (a.v ?? 0) || a.p.name.localeCompare(b.p.name))
       return `<details class="lgteam${t.idx === myTeam ? ' me' : ''}" data-lgteam="${t.idx}" ${S.lgOpen.has(t.idx) ? 'open' : ''}>
         <summary class="lbrow"><span class="lpos">${pos}</span><span class="av" style="border-color:${t.col}">${ini(t.name)}</span><span class="who"><strong>${esc(t.name)}${t.idx === myTeam ? ' (your team)' : ''}</strong><small>${sub}</small></span><span class="lval">${v}</span></summary>
@@ -240,13 +240,13 @@ function leagueHtml({ e, members, course, L, entries, cards, me }, top) {
     <div class="hint">${wk === 'season' ? 'Tap a team to see its players’ season points.' : `Tap a team to see its players. Highlighted scores are the best ${e.bestOf} that count this week.`} <button class="linkbtn" id="lg-all">${S.lgOpen.size === r.teams.length ? 'Close all' : 'Open all'}</button></div>`
   } else {
     const rows = r.players.filter(p => (wk === 'season' ? p.rounds : p.perWeek[wk]))
-      .map(p => ({ ...p, v: wk === 'season' ? p.total : p.perWeek[wk].pts, thru: wk === 'season' ? null : p.perWeek[wk].thru, done: wk !== 'season' && p.perWeek[wk].done }))
+      .map(p => ({ ...p, v: wk === 'season' ? p.total : p.perWeek[wk].pts, thru: wk === 'season' ? null : p.perWeek[wk].thru, done: wk !== 'season' && p.perWeek[wk].done, live: wk !== 'season' && p.perWeek[wk].live }))
       .sort((a, b) => b.v - a.v)
     let pos = 0, prev = null
     body = rows.length ? `<div class="lblist">${rows.map((p, i) => {
       if (p.v !== prev) { pos = i + 1; prev = p.v }
       const t = e.teams[p.team]
-      return `<div class="lbrow${p.id === me.id ? ' me' : ''}"><span class="lpos">${pos}</span><span class="av" style="border-color:${t?.col}">${ini(p.name)}</span><span class="who"><strong>${esc(p.name)}${p.id === me.id ? ' (you)' : ''}</strong><small>${esc(t?.name ?? '')} · ${wk === 'season' ? `${p.rounds} round${p.rounds === 1 ? '' : 's'}` : p.done ? 'Finished' : `thru ${p.thru} <span class="livedot">● live</span>`}</small></span><span class="lval">${p.v}</span></div>`
+      return `<div class="lbrow${p.id === me.id ? ' me' : ''}"><span class="lpos">${pos}</span><span class="av" style="border-color:${t?.col}">${ini(p.name)}</span><span class="who"><strong>${esc(p.name)}${p.id === me.id ? ' (you)' : ''}</strong><small>${esc(t?.name ?? '')} · ${wk === 'season' ? `${p.rounds} round${p.rounds === 1 ? '' : 's'}` : p.done ? 'Finished' : p.live ? `thru ${p.thru} <span class="livedot">● live</span>` : `thru ${p.thru} · not finished`}</small></span><span class="lval">${p.v}</span></div>`
     }).join('')}</div>` : '<div class="empty-state">No rounds entered yet.</div>'
   }
   const notYet = now === 0

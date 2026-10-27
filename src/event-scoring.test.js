@@ -473,3 +473,19 @@ describe('tidy: “to win” only when every match is worth the same to both tea
     expect(scoreAdvanceEvent(ev([{ a: [1, 2], b: [3] }]), FLAT, { 1: [] }, player, 1).score.toWin).toBeNull()
   })
 })
+
+describe('a league card left unfinished on an earlier day', () => {
+  const event = { weeks: 1, bestOf: 2, teams: [{ name: 'T1' }], team: { 1: 0, 2: 0 }, players: [1, 2] }
+  const part = date => ({ date, lineup: [{ m: 1 }, { m: 2 }], scores: FLAT.map(() => [4, 4]), done: FLAT.map((_, i) => i === 0) })
+  const run = (date, today) => scoreLeague(event, FLAT, [{ week: 1, memberId: 1, roundId: 9 }], { 9: part(date) }, id => ({ name: `P${id}`, courseHcp: 0 }), 1, today)
+  it('today: live', () => {
+    const r = run('2026-10-27', '2026-10-27')
+    expect(r.players[0].perWeek[1]).toMatchObject({ thru: 1, done: false, live: true })
+    expect(r.teams[0].perWeek[0].live).toBe(true)
+  })
+  it('an earlier day: not finished, and not live', () => {
+    const r = run('2026-10-26', '2026-10-27')
+    expect(r.players[0].perWeek[1]).toMatchObject({ thru: 1, done: false, live: false })
+    expect(r.teams[0].perWeek[0].live).toBe(false)
+  })
+})

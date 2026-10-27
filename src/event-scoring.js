@@ -241,7 +241,8 @@ export function scoreAdvanceEvent(event, holes, dayCards, player, allow, entries
  *   entries: [{ week, memberId, roundId }]      cards: { [roundId]: { lineup, scores, done } }
  *   player(id) → { name, courseHcp }            allow: Stableford allowance (fraction)
  */
-export function scoreLeague(event, holes, entries, cards, player, allow) {
+// today: a card still being played counts as live only on its own day (one left unfinished earlier isn't).
+export function scoreLeague(event, holes, entries, cards, player, allow, today = null) {
   const rounds = entries.map(en => {
     const card = cards[en.roundId]
     const k = card ? card.lineup.findIndex(x => x.m === en.memberId) : -1
@@ -251,7 +252,8 @@ export function scoreLeague(event, holes, entries, cards, player, allow) {
     const ph = phOn(wh, [player(en.memberId).courseHcp], allow)[0]
     let pts = 0
     for (let i = 0; i < thru; i++) pts += stablefordPoints(gross[i], wh[i].par, shotsOnHole(ph, wh[i].si, wh[i].of))
-    return { ...en, team: event.team[en.memberId], pts, thru, live: thru < wh.length }
+    const open = thru < wh.length
+    return { ...en, team: event.team[en.memberId], pts, thru, open, live: open && (!today || card?.date === today) }
   })
   const weeks = Array.from({ length: event.weeks }, (_, i) => i + 1)
   const teams = (event.teams ?? []).map((t, idx) => {
@@ -266,7 +268,7 @@ export function scoreLeague(event, holes, entries, cards, player, allow) {
   const ids = event.teams?.length ? Object.keys(event.team).map(Number) : event.players // a league with no teams: just its players
   const players = ids.map(id => {
     const mine = rounds.filter(r => r.memberId === id)
-    return { id, name: player(id).name, team: event.team[id], total: mine.reduce((s, r) => s + r.pts, 0), rounds: mine.length, perWeek: Object.fromEntries(mine.map(r => [r.week, { pts: r.pts, thru: r.thru, done: !r.live }])) }
+    return { id, name: player(id).name, team: event.team[id], total: mine.reduce((s, r) => s + r.pts, 0), rounds: mine.length, perWeek: Object.fromEntries(mine.map(r => [r.week, { pts: r.pts, thru: r.thru, done: !r.open, live: r.live }])) }
   })
   rankBy(players.filter(p => p.rounds), p => p.total)
   players.sort((a, b) => (b.rounds > 0) - (a.rounds > 0) || b.total - a.total)
