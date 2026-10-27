@@ -1,0 +1,16 @@
+// Bugs the testing found, each now guarded by the test that found it (shown in the testing PDF).
+export const FOUND_FIXED = [
+  { date: '26 Oct 2026', what: 'Entering a pairs competition with a partner who had already entered: the reason was hidden behind the pop-up', test: 'caching.test.js › says so in the sheet (not behind it)' },
+  { date: '26 Oct 2026', what: 'Adding or removing a friend, and choosing a usual game, lost a refusal without saying anything', test: 'Journeys: add-buddy, remove-buddy, game-pref' },
+  { date: '26 Oct 2026', what: 'A refused hole save was lost and the hole stayed marked saved', test: 'Journey: save-hole' },
+  { date: '26 Oct 2026', what: 'Deleting a scorecard crashed before saying it was deleted', test: 'Journey: delete-scorecard' },
+  { date: '27 Oct 2026', what: 'A knockout showed a half-played card from an earlier day as the match’s card', test: 'ko-card.test.js' },
+  { date: '27 Oct 2026', what: 'Match day “Who’s playing”: names squeezed into a narrow column on a phone', test: 'match-day-flow.test.js (and the browser squeezed-name check)' },
+  { date: '27 Oct 2026', what: 'The club office refusing someone’s request to join lost a refusal', test: 'Journey: office-refuse-join' },
+  { date: '27 Oct 2026', what: 'Saving a member re-saved their details when only hut staff or plays-in changed, so a refusal left half of it saved', test: 'Journeys: office-hut-staff, office-plays-in' },
+  { date: '27 Oct 2026', what: 'Publishing today’s flags and correcting a green’s width lost refusals', test: 'Journeys: office-publish-pins, office-green-width' },
+  { date: '27 Oct 2026', what: 'Cancelling or calling off a challenge lost a refusal', test: 'Journey: cancel-challenge' },
+  { date: '27 Oct 2026', what: 'The pretend server was looser than the real database in 12 rules (closing dates, full lists, request limits, hut limits, knockout reporting, counting locks, sign-up advertising), so journeys could pass where the app would refuse', test: 'rules.test.js (26 rules)' },
+  { date: '27 Oct 2026', what: 'Deleting a member left them in events’ player lists, teams and league captaincies', test: 'ripples.sql' },
+  { date: '27 Oct 2026', what: 'A card that had a deleted member on it failed to draw for the other players', test: 'ripples.test.js' },
+]
