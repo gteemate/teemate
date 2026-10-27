@@ -46,7 +46,8 @@ export const FEATURES = [
       { who: 'live@test.com', steps: ['Book a time with a friend', 'Booking → tap it → Remove next to your friend → Sure?'], see: 'Your friend is off; you keep the time.' }] },
   { id: 'maker-mark', area: 'Booking', name: 'Made by TeeMate on Home',
     what: 'A quiet maker’s mark at the foot of Home (and sign-in and Account), which opens about us.',
-    scenarios: [{ says: 'On Home, tappable', tests: ['src/test/journeys/features.test.js › a quiet maker’s mark at the foot of Home, which opens about us'] }] },
+    scenarios: [{ says: 'On Home, tappable', tests: ['src/test/journeys/features.test.js › a quiet maker’s mark at the foot of Home, which opens about us'] }],
+    demo: [{ who: 'live@test.com', steps: ['Home → tap Made by TeeMate at the foot'], see: 'The about-us sheet, with the email to ask about TeeMate.' }] },
   { id: 'scan-partners', area: 'Booking', name: 'Add playing partners by scanning their QR code',
     what: 'In booking, Scoring → Players and Friends, scan the QR on someone’s Account card instead of searching. The camera opens again for the next person until the group is full. Club members join the group; TeeMate players from other clubs join a booking as guests. Each is kept as a friend.',
     scenarios: [
@@ -97,7 +98,7 @@ export const FEATURES = [
       { says: 'Not shown once the day has passed; gone if the booking is cancelled', tests: ['src/alerts.test.js › a \"booked you in\" for a day that has passed is not shown', 'supabase/tests/booked_you_in.sql › A cancelled booking takes its \"booked you in\" notice with it'] },
       { says: 'Moving a booking sends no new notice', tests: ['supabase/tests/booked_you_in.sql › A move sends no \"booked you in\" notice'] },
     ],
-    demo: [{ who: 'live@test.com', steps: ['Book a time with captain@test.com on it'], see: '' }, { who: 'captain@test.com', steps: ['Open the app'], see: '“Live Tester has booked you in” drops down, with the day, time and who else.' }] },
+    demo: [{ who: 'live@test.com', steps: ['Book a time with captain@test.com on it'], see: 'The booking is under Booking, with the captain on it.' }, { who: 'captain@test.com', steps: ['Open the app'], see: '“Live Tester has booked you in” drops down, with the day, time and who else.' }] },
 
   // ── Scoring and games ────────────────────────────────────────────────────────────────────────────────────────────
   { id: 'scorecard', area: 'Scoring and games', name: 'The scorecard',

@@ -22,6 +22,13 @@ export function missing(ref) {
 }
 
 describe('the feature register', () => {
+  it('every feature lists its demo steps for the testing PDF (who signs in, what to do, what you see)', () => {
+    for (const f of FEATURES) {
+      expect(Array.isArray(f.demo), f.id).toBe(true) // [] for one with nothing to show (behind the scenes)
+      for (const d of f.demo) expect(d.who && d.steps?.length, f.id).toBeTruthy()
+      if (f.demo.length) expect(f.demo.at(-1).see, f.id).toBeTruthy() // the last step says what you should see
+    }
+  })
   it('every feature has an area, words and at least one scenario', () => {
     for (const f of FEATURES) {
       expect(AREAS, f.id).toContain(f.area)
