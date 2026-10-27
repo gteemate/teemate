@@ -69,6 +69,20 @@ export async function setKoRoundHoles(compId, round, holes) { must(await sb.rpc(
 export async function publishDraw(compId) { must(await sb.rpc('admin_publish_draw', { p_comp: compId })) }
 /** Link my scorecard to my match (Score this match). */
 /** The knockout match a card is for: { compId, round }, or null. */
+/** Find a time: suggest days for my knockout match, each { day: 'YYYY-MM-DD', part: 'morning' | 'afternoon' | 'evening' }
+ *  (1 to 6; I count as able to do them). The other players are told. → { added } */
+export async function suggestMatchTimes(matchId, times) {
+  return must(await sb.rpc('suggest_match_times', { p_match: matchId, p_times: times }))
+}
+/** My answer to a suggested day: true (can), false (can't) or null (not answered). → { agreed } (everyone can) */
+export async function answerMatchTime(timeId, can) {
+  return must(await sb.rpc('answer_match_time', { p_time: timeId, p_can: can }))
+}
+/** The grid: { players: [{ id, name }], times: [{ id, day, part, by, answers: { [memberId]: true | false } }], agreed: timeId | null } */
+export async function getMatchTimes(matchId) {
+  return must(await sb.rpc('get_match_times', { p_match: matchId }))
+}
+
 export async function getKoMatchOfCard(roundId) {
   const m = must(await sb.from('ko_matches').select('comp_id, round').eq('round_id', roundId).limit(1))[0]
   return m ? { compId: m.comp_id, round: m.round } : null

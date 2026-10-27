@@ -170,6 +170,12 @@
    "Only admins can change the draw.",
    "The draw is published."
   ],
+  "answer_match_time": [
+   "That day is no longer suggested.",
+   "That match no longer exists.",
+   "Only the players in this match can arrange it.",
+   "That match has been played."
+  ],
   "book_as": [
    "Only members can book tee times.",
    "That tee time no longer exists.",
@@ -244,6 +250,7 @@
   "check_guest_balance": [
    "You don't have enough guest points for this booking."
   ],
+  "clear_match_times": [],
   "club_minutes_now": [],
   "club_today": [],
   "confirm_ko_result": [
@@ -389,6 +396,9 @@
    "Only members can see this."
   ],
   "get_hut": [],
+  "get_match_times": [
+   "Only the players in this match can arrange it."
+  ],
   "get_my_bookings": [],
   "get_tee_sheet": [
    "Only members can see the tee sheet."
@@ -426,6 +436,12 @@
    "A draw needs at least two entries."
   ],
   "ko_make_seeded_draw": [],
+  "ko_match_players": [],
+  "ko_match_to_arrange": [
+   "That match no longer exists.",
+   "Only the players in this match can arrange it.",
+   "That match has been played."
+  ],
   "ko_organiser": [],
   "leave_event_round": [
    "You can only change rounds from a card you're on.",
@@ -620,6 +636,16 @@
   "start_tee_time_card": [
    "A tee time is needed to start this card."
   ],
+  "suggest_match_times": [
+   "Pick 1 to 6 days.",
+   "Pick morning, afternoon or evening.",
+   "Pick days up to the play-by date.",
+   "That day is already suggested.",
+   "A match can have at most 12 suggestions on the go.",
+   "That match no longer exists.",
+   "Only the players in this match can arrange it.",
+   "That match has been played."
+  ],
   "take_off_event": [],
   "take_paper_read": [
    "Only members can read scorecards.",
@@ -678,6 +704,12 @@
   "adminSetPlaysIn": {
    "rpc": [
     "admin_set_plays_in"
+   ],
+   "tables": []
+  },
+  "answerMatchTime": {
+   "rpc": [
+    "answer_match_time"
    ],
    "tables": []
   },
@@ -971,6 +1003,12 @@
   },
   "getLeagueEntries": {
    "rpc": [],
+   "tables": []
+  },
+  "getMatchTimes": {
+   "rpc": [
+    "get_match_times"
+   ],
    "tables": []
   },
   "getMe": {
@@ -1461,6 +1499,12 @@
   "startLeagueKnockout": {
    "rpc": [
     "start_league_knockout"
+   ],
+   "tables": []
+  },
+  "suggestMatchTimes": {
+   "rpc": [
+    "suggest_match_times"
    ],
    "tables": []
   },

@@ -6,6 +6,13 @@ const at = (db, time, date = db.today) => db.slotsOn(date).find(s => s.time === 
 const LATER = '2026-10-17' // a day beyond the booking window
 const entry = (db, id, compId, memberId, partnerId = null) => db.signupEntries.push({ id, compId, memberId, partnerId })
 
+// A club singles knockout: Gary (0) v Declan (1), round 1 to be played by 20 Oct.
+const koMatch = db => {
+  Object.assign(db.signups[0], { closesOn: '2026-10-01', drawPublished: true, roundDeadlines: ['2026-10-20', '2026-11-03'] })
+  db.signupEntries.push({ id: 100, compId: 1, memberId: 0, partnerId: null }, { id: 101, compId: 1, memberId: 1, partnerId: null })
+  db.koMatches.push({ id: 1, compId: 1, round: 1, slot: 0, aEntry: 100, bEntry: 101, winnerEntry: null, result: null, status: 'open', reportedEntry: null })
+}
+
 export const RULES = [
   { id: 'signup-not-twice', says: 'A member can’t enter the same competition twice', sql: ['signups.sql', 'Not twice'], who: 'member',
     setup: db => entry(db, 90, 1, 1), act: api => api.enterSignup(1), refused: /already entered/i },
@@ -83,4 +90,8 @@ export const RULES = [
     act: api => api.chargeGuests(3, null, [{ name: 'One' }, { name: 'Two' }]), refused: /Not enough guest points: \S+ has 3 left/ },
   { id: 'checkin-card-name', says: 'A scanned card’s name must match the member', sql: ['guest_check_in.sql', 'Check-in: the card\'s name must match the member'], who: 'office',
     act: api => api.chargeGuests(3, 'Someone Else', [{ name: 'Sam Guest' }]), refused: /isn’t a TeeMate member card|isn't a TeeMate member card/ },
+  { id: 'find-time-players-only', says: 'Only the players in a knockout match can arrange it', sql: ['find_a_time.sql', 'Find a time: only the players can suggest'], who: 'organiser',
+    setup: koMatch, act: (api, db) => api.suggestMatchTimes(1, [{ day: '2026-10-12', part: 'morning' }]), refused: /Only the players in this match/ },
+  { id: 'find-time-within-round', says: 'Suggested days are up to the round’s play-by date', sql: ['find_a_time.sql', 'Find a time: days within the round'], who: 'member',
+    setup: koMatch, act: api => api.suggestMatchTimes(1, [{ day: '2026-10-25', part: 'morning' }]), refused: /up to the play-by date/ },
 ]

@@ -19,7 +19,7 @@ export const API_NAMES = ['getMe', 'forgetMe', 'getSession', 'signIn', 'needsAcc
   'getHutStaff', 'setHutStaff', 'placeHutOrder', 'cancelMyHutOrder', 'myHutOrders', 'hutOrdersToday', 'setHutOrderStatus', 'getMembers', 'getBuddies',
   'addBuddy', 'removeBuddy', 'getFriends', 'saveContact', 'removeContact', 'setFriendFavourite', 'getAccessList', 'saveMember', 'getFavourites',
   'setFavourite', 'setOfficeLogin', 'getAccessRequests', 'declineRequest', 'deleteMember', 'resetLogin', 'getCourse', 'getPins', 'setGreenWidth', 'publishPins',
-  'getTeeSheet', 'bookTeeTime', 'getMyTeeTimes', 'getGuests', 'setGuestHandicap', 'setHandicaps', 'cancelBooking', 'removeFromBooking', 'addToBooking', 'bookClubMatch', 'chargeGuests', 'removeGuestCharge', 'getGuestChargesToday', 'moveMatchBooking', 'adminCancelBooking', 'adminMoveBooking',
+  'getTeeSheet', 'bookTeeTime', 'getMyTeeTimes', 'getGuests', 'setGuestHandicap', 'setHandicaps', 'suggestMatchTimes', 'answerMatchTime', 'getMatchTimes', 'cancelBooking', 'removeFromBooking', 'addToBooking', 'bookClubMatch', 'chargeGuests', 'removeGuestCharge', 'getGuestChargesToday', 'moveMatchBooking', 'adminCancelBooking', 'adminMoveBooking',
   'getBookingNotices', 'seenBookingNotice', 'getMyBookings',
   'getGuestPoints', 'getBookingRules', 'setBookingRules', 'requestTeeTime', 'cancelTeeTimeRequest', 'getMyTeeTimeRequests', 'getTeeTimeRequests',
   'decideTeeTimeRequest', 'markTeeTimeRequestsSeen', 'dismissTeeTimeRequest', 'getGameSettings', 'setMyGamePref', 'getCurrentRound', 'getRound', 'deleteRound', 'saveRound',
@@ -104,7 +104,7 @@ export function makeWorld(today, setup = () => {}, as = 'admin') {
       { id: 3, name: 'Ladies Singles', category: 'ladies', kind: 'singles', closesOn: '2026-10-31', notes: null, open: true },
       { id: 4, name: 'Mixed Foursome', category: 'mixed', kind: 'pairs', closesOn: '2026-10-31', notes: null, open: true }],
     eventTemplates: [], // club event templates: { id, name, setup }
-    signupEntries: [], koMatches: [], declines: [], // declines: compIds I've said No thanks to
+    signupEntries: [], koMatches: [], declines: [], matchTimes: [], // matchTimes: Find a time { id, matchId, day, part, by, answers: { [memberId]: bool } } // declines: compIds I've said No thanks to
     buddies: [{ id: 1, favourite: false }, { id: 3, favourite: true }, { id: 5, favourite: false }, { id: 7, favourite: false }, { id: 11, favourite: false }],
     contacts: [{ id: 1, name: 'Sam Visitor', club: 'Royal Portrush GC', hcp: '12.0', gui: '1234567', sharedOn: today, favourite: false, updatedAt: `${today}T08:00:00Z` }],
     slots: {}, bookings: [], guestVisits: [], rounds: [], requests: [], playerEvents: [],
@@ -130,6 +130,16 @@ export function makeWorld(today, setup = () => {}, as = 'admin') {
         team: { 0: 'A', 1: 'A', 7: 'A', 11: 'A', 3: 'B', 5: 'B', 2: 'B', 4: 'B' }, matches: { 1: [{ a: [7, 11], b: [2, 4] }, { a: [0, 1], b: [3, 5] }] },
         selfEntry: false, entryRequired: true, createdBy: { id: 0, name: 'Gary Cochrane' }, A: { name: 'Blues', col: '#6f8fd8' }, B: { name: 'Reds', col: '#c27a8f' } },
     ],
+  }
+  // Find a time: who's in a knockout match, and the match checked for arranging (as the database's ko_match_to_arrange).
+  const koPlayers = mid => { const m = db.koMatches.find(x => x.id === mid), e = eid => db.signupEntries.find(x => x.id === eid)
+    return m ? [e(m.aEntry)?.memberId, e(m.aEntry)?.partnerId, e(m.bEntry)?.memberId, e(m.bEntry)?.partnerId].filter(x => x != null) : [] }
+  const arrange = mid => {
+    const m = db.koMatches.find(x => x.id === mid)
+    if (!m) throw new Error('That match no longer exists.')
+    if (!koPlayers(mid).includes(ME)) throw new Error('Only the players in this match can arrange it.')
+    if (!['open', 'disputed'].includes(m.status) || m.aEntry == null || m.bEntry == null) throw new Error('That match has been played.')
+    return m
   }
   const heldOn = sid => db.bookings.filter(b => b.slotId === sid).reduce((t, b) => t + (b.held ?? 0), 0) // places held for a club singles match
   const sheet = date => (db.slots[date] ??= slotTimes.map(t => ({ id: id(), date, time: t, capacity: 4, twilight: false, players: [] })))
@@ -391,6 +401,42 @@ export function makeWorld(today, setup = () => {}, as = 'admin') {
       const before = db.rounds.length
       db.rounds = db.rounds.filter(r => !(r.slotId === s.id && r.lineup.some(x => gone.includes(x.m)) && (removeScores || !r.done.some(Boolean))))
       return { result: 'deleted', pointsBack: 0, cardsRemoved: before - db.rounds.length, eventsCancelled: 0 }
+    },
+    // Find a time, as the database: the players in the match only; days up to the round's play-by date; 12 at most.
+    suggestMatchTimes: async (mid, times) => {
+      const m = arrange(mid), c = db.signups.find(x => x.id === m.compId), last = c.roundDeadlines?.[m.round - 1] ?? addDaysIso(db.today, 21)
+      if (!Array.isArray(times) || times.length < 1 || times.length > 6) throw new Error('Pick 1 to 6 days.')
+      for (const t of times) {
+        if (!['morning', 'afternoon', 'evening'].includes(t.part)) throw new Error('Pick morning, afternoon or evening.')
+        if (!t.day || t.day < db.today || t.day > last) throw new Error('Pick days up to the play-by date.')
+        if (db.matchTimes.some(x => x.matchId === mid && x.day === t.day && x.part === t.part)) throw new Error('That day is already suggested.')
+      }
+      if (db.matchTimes.filter(x => x.matchId === mid && x.day >= db.today).length + times.length > 12) throw new Error('A match can have at most 12 suggestions on the go.')
+      for (const t of times) db.matchTimes.push({ id: id(), matchId: mid, day: t.day, part: t.part, by: ME, answers: { [ME]: true } })
+      db.notices = db.notices.filter(n => !(n.kind === 'times' && n.koMatchId === mid && !n.seen && n.memberId !== ME))
+      const first = times.map(t => t.day).sort()[0]
+      for (const p of koPlayers(mid).filter(p => p !== ME)) db.notices.push({ id: id(), memberId: p, kind: 'times', date: first, oldTime: 0, newTime: null, byName: member(ME).name, note: c.name, koMatchId: mid, seen: false })
+      return { added: times.length }
+    },
+    answerMatchTime: async (tid, can) => {
+      const t = db.matchTimes.find(x => x.id === tid)
+      if (!t) throw new Error('That day is no longer suggested.')
+      const m = arrange(t.matchId), players = koPlayers(m.id)
+      if (can == null) delete t.answers[ME]; else t.answers[ME] = can
+      const agreed = !!can && t.day >= db.today && players.every(p => t.answers[p] === true)
+      if (agreed && !db.notices.some(n => n.kind === 'agreed' && n.koMatchId === m.id && n.date === t.day && n.part === t.part)) {
+        const name = db.signups.find(x => x.id === m.compId).name
+        for (const p of players) db.notices.push({ id: id(), memberId: p, kind: 'agreed', date: t.day, oldTime: 0, newTime: null, note: name, part: t.part, koMatchId: m.id, seen: false })
+      }
+      return { agreed }
+    },
+    getMatchTimes: async mid => {
+      const players = koPlayers(mid)
+      if (!players.includes(ME) && !db.asOffice && !me()?.admin) throw new Error('Only the players in this match can arrange it.')
+      const order = ['morning', 'afternoon', 'evening']
+      const times = db.matchTimes.filter(x => x.matchId === mid && x.day >= db.today).sort((a, b) => a.day.localeCompare(b.day) || order.indexOf(a.part) - order.indexOf(b.part))
+        .map(t => ({ id: t.id, day: t.day, part: t.part, by: t.by, answers: Object.fromEntries(Object.entries(t.answers).filter(([k]) => players.includes(+k))) }))
+      return copy({ players: players.map(p => ({ id: p, name: member(p).name })), times, agreed: times.find(t => players.every(p => t.answers[p] === true))?.id ?? null })
     },
     // As the database: a club singles match (a club knockout, or a club event's 1 v 1) holds the other places.
     bookClubMatch: async ({ slotId, opponent, kind, ref }) => {
