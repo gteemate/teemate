@@ -167,6 +167,26 @@ test('every main screen', async ({ page }, testInfo) => {
     await tap(page, `[data-ov="${k}"]`); await check(page, `3${['today', 'members', 'tee', 'comps', 'club'].indexOf(k)} club office · ${n}`, testInfo)
   }
   await tap(page, '[data-ov="members"]'); await tap(page, '[data-o-m]'); await check(page, '35 club office · a member (side panel)', testInfo)
+
+  // More screens (added for the testing protocol). Each is visited if the test data has it; one that can't be
+  // reached is noted in the results (and the run carries on), so a gap shows rather than stopping everything.
+  const visit = async (name, go) => {
+    try { await go(); await check(page, name, testInfo) } catch (err) { results.push({ size: testInfo.project.name, name, skipped: String(err.message).slice(0, 200) }) }
+  }
+  await visit('36 club office · club settings (paper scorecards, fees, leaderboard days)', async () => { await tap(page, '[data-ov="club"]') })
+  await visit('37 club office · new competition', async () => { await tap(page, '[data-ov="comps"]'); await tap(page, '#o-new') })
+  await visit('38 club office · new club event: details', async () => { await tap(page, '[data-o-kind="event"]') })
+  await visit('39 club office · new club event: holes', async () => { await page.fill('#ev-name', 'Screen check'); await tap(page, '[data-style="individual"]'); await tap(page, '[data-who="all"]') })
+  await visit('40 club office · the leaderboard', async () => { await tap(page, '[data-ov="board"]') })
+  await visit('41 club office · tee sheet booking rules', async () => { await tap(page, '[data-ov="tee"]'); await tap(page, '#o-rules') })
+  await page.goto('/'); await page.waitForSelector('#app:not(.signed-out)'); await dismissAlerts(page); await home(page)
+  await visit('42 make your own event', async () => { await tap(page, '[data-tile="comp"]'); await tap(page, '[data-tab="events"]'); await tap(page, 'text=+ Create your own event') })
+  await visit('43 a season: match day, who’s playing', async () => {
+    await home(page); await tap(page, '[data-tile="comp"]'); await tap(page, '[data-tab="entered"]')
+    await tap(page, '[data-edit]'); for (let i = 0; i < 3; i++) await tap(page, '#ev-next')
+    await tap(page, '#md-new'); await page.fill('#ev-md', new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10)); await tap(page, '#ev-mdadd')
+  })
+  await visit('44 friends · find', async () => { await home(page); await tap(page, '[data-tile="friends"]'); await tap(page, '[data-s="find"]') })
 })
 
 test.afterAll(async ({}, testInfo) => {
