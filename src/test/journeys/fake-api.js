@@ -282,7 +282,7 @@ export function makeWorld(today, setup = () => {}, as = 'admin') {
     setFriendFavourite: async ({ memberId, contactId }, on) => { (memberId != null ? db.buddies.find(b => b.id === memberId) : db.contacts.find(c => c.id === contactId)).favourite = on },
     getAccessRequests: async () => copy(db.joins), getFavourites: async () => [],
     declineRequest: async rid => { db.joins = db.joins.filter(r => r.id !== rid) },
-    getAccessList: async () => [...db.members.map(m => ({ id: m.id, name: m.name, gui: m.gui, hcp: m.hcp, email: db.emails[m.id] ?? null, admin: !!m.admin, office: false, signedIn: m.id === 0 })),
+    getAccessList: async () => [...db.members.map(m => ({ id: m.id, name: m.name, gui: m.gui, hcp: m.hcp, email: db.emails[m.id] ?? null, admin: !!m.admin, office: false, signedIn: m.id === 0 || !!m.signedIn })),
       ...(db.office ? [{ id: 9000, name: 'Club office', gui: null, hcp: 54, email: db.office, admin: true, office: true, signedIn: false }] : [])],
     saveMember: async m => {
       let row = db.members.find(x => x.id === m.id)

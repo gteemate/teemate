@@ -21,4 +21,7 @@ describe('journey coverage', () => {
     const journeys = [{ id: 'n', who: 'member', action: 'saveNote', refusals: { none: 'a plain table write: no messages' } }]
     expect(gaps(journeys, { db: {}, api: { saveNote: index.api.saveNote } }, ['member'])).toEqual({ actions: [], messages: {}, people: [] })
   })
+  it('an action the app never offers anyone is listed with why, not as a gap', () => {
+    expect(gaps([], index, [], {}, { saveNote: 'no screen saves notes' }).actions).toEqual(['enterSignup', 'bookTeeTime'])
+  })
 })

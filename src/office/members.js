@@ -100,7 +100,8 @@ function memberSheet(m, me, allowance, done) {
     if (!name) { $('o-err').textContent = 'Enter a name.'; return }
     $('o-save').disabled = true
     try {
-      await api.saveMember({ id: m.id, name, email, gui: m.gui ?? '', hcp: m.hcp, admin: on('o-adm') })
+      // Only what changed is sent, so a refused change leaves the rest as it was (nothing half-saved).
+      if (name !== m.name || email !== (m.email ?? '') || on('o-adm') !== !!m.admin) await api.saveMember({ id: m.id, name, email, gui: m.gui ?? '', hcp: m.hcp, admin: on('o-adm') })
       if (on('o-hut') !== m.hutStaff) await api.setHutStaff(m.id, on('o-hut'))
       const plays = $('o-plays').value || null
       if (plays !== m.playsIn) await api.adminSetPlaysIn(m.id, plays)

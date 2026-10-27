@@ -70,7 +70,7 @@ export function draw({ joins, treqs, disputes, date, sheet, hut, orders, pinsTod
   document.querySelectorAll('[data-o-refuse]').forEach(b => (b.onclick = async () => {
     if (b.dataset.armed !== '1') { b.dataset.armed = '1'; b.textContent = 'Sure?'; return }
     const r = joins.find(x => x.id === +b.dataset.oRefuse)
-    await api.declineRequest(r.id)
+    try { await api.declineRequest(r.id) } catch (err) { toast(err.message); b.dataset.armed = ''; b.textContent = 'Refuse'; return }
     done(`${r.name}’s request refused`)
   }))
   document.querySelectorAll('[data-o-book]').forEach(b => (b.onclick = async () => {

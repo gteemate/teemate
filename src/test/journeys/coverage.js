@@ -8,10 +8,10 @@ const messagesOf = (j, index) => {
   return Array.isArray(j.refusals) ? j.refusals : all
 }
 
-export function gaps(journeys, index, people, alsoUnreachable = {}) {
+export function gaps(journeys, index, people, alsoUnreachable = {}, notOffered = {}) {
   const changes = Object.keys(index.api).filter(n => !READS.test(n) && (index.api[n].rpc.length || index.api[n].tables.length))
   const covered = new Set(journeys.map(j => j.action))
-  const actions = changes.filter(n => !covered.has(n))
+  const actions = changes.filter(n => !covered.has(n) && !(n in notOffered)) // notOffered: data functions no screen calls, with why
   // Every message a covered action's database functions can give must be a journey's refusal or have a reason.
   const seen = new Set(Object.keys(alsoUnreachable))
   for (const j of journeys) { messagesOf(j, index).forEach(m => seen.add(m)); Object.keys(j.unreachable ?? {}).forEach(m => seen.add(m)) }
