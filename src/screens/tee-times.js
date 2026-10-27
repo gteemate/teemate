@@ -54,14 +54,16 @@ export function draw({ days, sheet, points, me, rules, req, skew }) {
     if (!gs.length) continue
     h += `<div class="period">${g}${g === 'Afternoon' ? " · 12:20–13:00 held for Ladies' Comp" : ''}</div>`
     gs.forEach(s => {
-      // Who's out on each time, so members can join friends. A free place is a solid gold "+ Free" box (easy to spot at any age). A time they can't book (full, or within 2 hours of
-      // their own) shows its names greyed, and tapping it says why.
+      // Who's out on each time, so members can join friends. Three shades: light blue for a free four-ball (one line, not four boxes), mid blue for a time with
+      // space (a gold + in each gap), the usual navy for a time they can't book (full, or within 2 hours of their own): names greyed, and tapping it says why.
       const f = free(s), near = mv ? null : tooClose(s), mineHere = isMine(s), off = !mineHere && (!f || !!near)
+      const tier = off || locked ? '' : s.players.length ? ' part' : ' open'
       const name = p => (p.memberId === me.id ? 'You' : p.guest ? `${p.name} (guest)` : p.name)
-      const cells = [...s.players.map(p => `<span class="pn${p.guest ? ' g' : ''}${p.memberId === me.id ? ' me' : ''}">${esc(name(p))}</span>`),
-        ...Array.from({ length: Math.max(0, s.capacity - s.players.length) }, () => (off || locked ? '<span class="pn empty"></span>' : '<span class="pn free">Free</span>'))]
+      const cells = tier === ' open' ? [`<span class="pn whole">All ${s.capacity} free<small>Tap to book</small></span>`]
+        : [...s.players.map(p => `<span class="pn${p.guest ? ' g' : ''}${p.memberId === me.id ? ' me' : ''}">${esc(name(p))}</span>`),
+          ...Array.from({ length: Math.max(0, s.capacity - s.players.length) }, () => (tier ? '<span class="pn free" aria-hidden="true">+</span>' : '<span class="pn empty"></span>'))]
       const said = mineHere ? 'you’re booked on this' : near ? `within 2 hours of your ${hhmm(near.time)}` : !f ? 'full' : `${f} space${f > 1 ? 's' : ''} free`
-      h += `<button class="slot names${off ? ' full' : ''}${locked ? ' notyet' : ''}${mineHere ? ' minebk' : ''}" data-id="${s.id}" ${off ? 'aria-disabled="true"' : ''}
+      h += `<button class="slot names${tier}${off ? ' full' : ''}${locked ? ' notyet' : ''}${mineHere ? ' minebk' : ''}" data-id="${s.id}" ${off ? 'aria-disabled="true"' : ''}
         aria-label="${hhmm(s.time)}: ${esc([...s.players.map(name), said].join(', '))}"><span class="time">${hhmm(s.time)}${s.twilight ? '<span class="pill tag">Twilight</span>' : ''}</span>
         <span class="pgrid4">${cells.join('')}</span></button>`
     })

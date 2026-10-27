@@ -1192,15 +1192,27 @@ describe('found in review: the pretend server saves several events as the real o
 
 describe('the tee sheet shows who’s out', () => {
   const sheet = async () => { await app.tap('Booking'); await app.tap('+ Add a booking') }
-  it('each time shows the names booked on it, and a solid gold + Free for each place you can take', async () => {
+  it('each time shows the names booked on it, a mid-blue row with a gold + for each place you can take', async () => {
     app = await boot(db => { db.book(3, at(db, 600).id, [5]); db.book(9, at(db, 660).id, [], [{ name: 'Sam Reid', club: 'Portrush' }]) })
     await sheet()
     const row = document.querySelector(`[data-id="${at(app.db, 600).id}"]`)
     expect(row.textContent).toContain("Ciarán O'Neill")
     expect(row.textContent).toContain(app.db.members.find(m => m.id === 5).name)
+    expect(row.classList.contains('part')).toBe(true)
     expect(row.querySelectorAll('.free')).toHaveLength(2)
-    expect(row.querySelector('.free').textContent).toBe('Free')
+    expect(row.querySelector('.free').textContent).toBe('+')
+    expect(row.getAttribute('aria-label')).toContain('2 spaces free') // read out in words
     expect(document.querySelector(`[data-id="${at(app.db, 660).id}"]`).textContent).toContain('Sam Reid (guest)')
+  })
+  it('a free four-ball is a light-blue row saying “All 4 free · Tap to book” on one line, not four boxes', async () => {
+    app = await boot()
+    await sheet()
+    const row = document.querySelector(`[data-id="${at(app.db, 600).id}"]`)
+    expect(row.classList.contains('open')).toBe(true)
+    expect(row.classList.contains('part')).toBe(false)
+    expect(row.querySelectorAll('.pn')).toHaveLength(1)
+    expect(row.querySelectorAll('.free')).toHaveLength(0)
+    expect(row.querySelector('.whole').textContent).toBe('All 4 freeTap to book')
   })
   it('a time within 2 hours of mine shows its names greyed; tapping it says why', async () => {
     app = await boot(db => { db.book(0, at(db, 570).id, []); db.book(3, at(db, 600).id, [5]) })
@@ -1231,6 +1243,7 @@ describe('the tee sheet shows who’s out', () => {
     await sheet()
     const row = document.querySelector(`[data-id="${at(app.db, 720).id}"]`)
     expect(row.classList.contains('full')).toBe(true)
+    expect(row.classList.contains('open') || row.classList.contains('part')).toBe(false) // the usual navy
     expect(row.querySelectorAll('.pn')).toHaveLength(4)
     await app.tap(`[data-id="${at(app.db, 720).id}"]`)
     expect(app.toast()).toBe('That time is full')

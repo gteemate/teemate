@@ -1,0 +1,81 @@
+<title>Tee Sheet Free Places</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* Lighter navy tiers (chosen). Three quieter ways to show free places, so a fully free four-ball isn't four "+ Space"s. */
+:root{ --sunk:#0f1830; --surface:#1b2a4b; --line:#2b3c63; --ink:#e8ecf5; --muted:#9aa7c4; --gold:#e3c375;
+  --open:#3d5c9a; --open-line:#5675b3; --part:#283e6b; --part-line:#3a5288;
+  --sys:"Source Sans 3",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; color-scheme:dark }
+*{box-sizing:border-box}
+body{margin:0;background:var(--sunk);color:var(--ink);font-family:var(--sys);padding-block:24px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1{font-size:26px;margin:0 auto 6px;max-width:1240px;font-weight:700}
+.lead{color:var(--muted);font-size:16px;line-height:1.5;margin:0 auto 22px;max-width:1240px}
+.opts{display:flex;flex-wrap:wrap;gap:28px;justify-content:center;max-width:1240px;margin:0 auto}
+.opt{width:380px;max-width:100%}
+.opt h2{font-size:20px;margin:0 0 4px;color:var(--gold)}
+.opt p{color:var(--muted);font-size:15px;line-height:1.45;margin:0 0 14px;min-height:66px}
+.slot{display:grid;grid-template-columns:76px 1fr;border:1px solid var(--line);border-radius:18px;overflow:hidden;margin-bottom:10px;background:var(--surface)}
+.slot.open{background:var(--open);border-color:var(--open-line)}
+.slot.part{background:var(--part);border-color:var(--part-line)}
+.slot.full{background:transparent}
+.slot.full .pn,.slot.full .time{color:var(--muted)}
+.slot.mine{outline:2px solid var(--gold);outline-offset:-2px}
+.time{display:grid;place-items:center;font-size:24px;font-weight:800;border-right:1px solid rgba(255,255,255,.12);font-variant-numeric:tabular-nums}
+.grid{display:grid;grid-template-columns:1fr 1fr}
+.pn{min-height:46px;padding:10px 12px;font-size:16px;font-weight:600;display:flex;align-items:center;border-bottom:1px solid rgba(255,255,255,.12);line-height:1.2;overflow-wrap:anywhere;color:#fff}
+.pn:nth-child(odd){border-right:1px solid rgba(255,255,255,.12)}
+.pn:nth-last-child(-n+2){border-bottom:0}
+.pn.g::after{content:"\00a0(guest)";font-weight:500;opacity:.8}
+.free{color:var(--gold);font-weight:700}
+/* the whole four-ball free: one line across the grid */
+.whole{grid-column:1 / -1;min-height:93px;justify-content:center;font-size:19px;font-weight:700;color:var(--gold);border:0}
+.whole small{display:block;font-size:14px;font-weight:600;color:#fff;opacity:.85;margin-top:2px}
+/* B: just a gold plus */
+.b .free{justify-content:center;font-size:26px;font-weight:700;line-height:1}
+/* C: count in the first free place, the rest left empty */
+.c .free.count::before{content:"+ ";white-space:pre}
+</style>
+
+<h1>Free places, quieter</h1>
+<p class="lead">All three use the lighter navies you picked. Each shows a completely free four-ball and times with one, two or three spaces left.</p>
+
+<div class="opts">
+  <section class="opt a"><h2>A · One line for a free four-ball</h2>
+    <p>A free four-ball has no boxes, just “All 4 free · tap to book” across the row. Times with someone in them keep “+ Space” in each gap.</p>
+    <div class="slots" data-kind="a"></div></section>
+  <section class="opt b"><h2>B · Just a gold +</h2>
+    <p>Every free place shows a single gold “+”. No words, so a free four-ball reads as four quiet plus signs. The row colour already says it’s free.</p>
+    <div class="slots" data-kind="b"></div></section>
+  <section class="opt c"><h2>C · Count the spaces once</h2>
+    <p>The first gap says how many places are left (“+ 2 spaces”) and the other gaps stay empty. A free four-ball says “All 4 free” on one line.</p>
+    <div class="slots" data-kind="c"></div></section>
+</div>
+
+<script>
+// [time, tier, names (null = a free place)]
+const ROWS = [
+  ['13:20', 'part', ['Eamon Regan', 'Declan Murphy', 'Paul Hughes', null]],
+  ['13:30', 'open', [null, null, null, null]],
+  ['13:40', 'open', [null, null, null, null]],
+  ['14:00', 'part', ['Conor Keane', 'Aidan Carroll', null, null]],
+  ['14:10', 'part', ['g:Chris Byrne', null, null, null]],
+  ['14:20', 'full', ["Brian O'Connor", 'Jacqueline Cochrane', 'Fiona Collins', 'g:Sam Visitor']],
+  ['15:00', 'part mine', ['You', 'Tom Walker', null, null]],
+]
+const named = n => n.startsWith('g:') ? `<div class="pn g">${n.slice(2)}</div>` : `<div class="pn">${n}</div>`
+function grid(kind, tier, ns) {
+  const left = ns.filter(n => n == null).length
+  if (tier === 'open' && kind !== 'b') return `<div class="pn whole"><span>All 4 free<small>Tap to book</small></span></div>`
+  let first = true
+  return ns.map(n => {
+    if (n != null) return named(n)
+    if (kind === 'a') return '<div class="pn free">+ Space</div>'
+    if (kind === 'b') return '<div class="pn free">+</div>'
+    const cell = first ? `<div class="pn free count">${left} space${left > 1 ? 's' : ''}</div>` : '<div class="pn"></div>'
+    first = false
+    return cell
+  }).join('')
+}
+for (const box of document.querySelectorAll('.slots')) box.innerHTML = ROWS.map(([t, k, ns]) =>
+  `<div class="slot ${k}"><div class="time">${t}</div><div class="grid">${grid(box.dataset.kind, k.split(' ')[0], ns)}</div></div>`).join('')
+</script>

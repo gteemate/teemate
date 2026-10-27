@@ -982,8 +982,15 @@ details.oboard[open] > summary::before{transform:rotate(90deg)}
 .pgrid4 .pn:nth-last-child(-n+2){border-bottom:0}
 .pgrid4 .pn.g{color:var(--muted);font-weight:500}
 .pgrid4 .pn.me{color:var(--gold)}
-.pgrid4 .pn.free{background:var(--gold);color:var(--on-gold);font-weight:800;font-size:17px;justify-content:center;border-color:rgba(26,22,6,.25)}
-.pgrid4 .pn.free::before{content:"+";font-size:22px;line-height:1;margin-right:6px}
+/* three shades: light blue = a free four-ball, mid blue = has space, the usual navy = full or can't book */
+.slot.names.open{background:#3d5c9a;border-color:#5675b3}
+.slot.names.part{background:#283e6b;border-color:#3a5288}
+.slot.names.open .pn,.slot.names.part .pn:not(.free):not(.me){color:#fff}
+.slot.names.open .time,.slot.names.part .time{border-right-color:rgba(255,255,255,.14)}
+.slot.names.part .pn{border-color:rgba(255,255,255,.14)}
+.pgrid4 .pn.free{color:var(--gold);font-size:28px;font-weight:700;line-height:1;justify-content:center}
+.pgrid4 .pn.whole{grid-column:1 / -1;flex-direction:column;justify-content:center;gap:2px;min-height:96px;border:0;font-size:19px;font-weight:700}
+.pgrid4 .pn.whole small{font-size:14px;font-weight:600;opacity:.85}
 .slot.names.full .pn,.slot.names.full .time{color:var(--muted)}
 .slot.names.full{background:transparent}
 .slot.names.minebk{border-color:var(--gold)}
