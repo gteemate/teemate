@@ -53,6 +53,7 @@ export const FEATURES = [
     scenarios: [
       { says: 'Kept on the phone, said on the card, sent when the signal is back', tests: ['src/test/journeys/offline-scores.test.js › a hole is kept on the phone, the card says so, and it’s sent when the signal comes back', 'src/test/journeys/offline-scores.test.js › it keeps trying by itself every 20 seconds'] },
       { says: 'Closing the app loses nothing', tests: ['src/test/journeys/offline-scores.test.js › closing the app doesn’t lose them: the next time Scoring opens, they’re sent'] },
+      { says: 'No signal at all: the card carries on, and a hole is kept instantly when the phone knows it’s offline', tests: ['src/test/journeys/offline-scores.test.js › with no signal at all the card carries on (no “Something went wrong”), and catches up when it’s back', 'src/test/journeys/offline-scores.test.js › when the phone knows it’s offline, the hole is kept straight away (no waiting on the green)'] },
       { says: 'A real refusal still says why', tests: ['src/test/journeys/offline-scores.test.js › a refusal from the server (not the signal) still says why and keeps the hole open'] },
     ],
     demo: [{ who: 'live@test.com', steps: ['Start a round', 'Turn on Airplane mode, save a hole', 'Turn Airplane mode off'], see: '“Saved on your phone”, then “Your scores have been sent”.' }] },

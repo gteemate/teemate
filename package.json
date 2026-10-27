@@ -24,7 +24,8 @@
     "load-test": "node scripts/load-test.mjs",
     "journeys:index": "node scripts/refusal-index.mjs",
     "journeys:coverage": "node scripts/journeys-coverage.mjs",
-    "testing:pdf": "node scripts/testing-pdf.mjs"
+    "testing:pdf": "node scripts/testing-pdf.mjs",
+    "test:slow": "playwright test -c playwright.slow.config.js"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.0",

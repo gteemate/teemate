@@ -18,6 +18,13 @@ const start = async () => {
   await app.tap('Start round · General play')
 }
 const card = () => app.db.rounds.find(r => r.lineup.some(x => x.m === 0))
+// No signal at all: every call to the server fails (what a phone in a dead spot gets).
+const nothingWorks = () => {
+  const w = globalThis.__world.wrapped, real = { ...w }
+  const onPhone = new Set(['getSession', 'getMe']) // kept on the phone in the real app (no trip to the server)
+  for (const k of Object.keys(w)) if (typeof w[k] === 'function' && !onPhone.has(k)) w[k] = () => Promise.reject(new Error('TypeError: Failed to fetch'))
+  return () => Object.assign(w, real)
+}
 const noSignal = () => { const w = globalThis.__world.wrapped, real = w.saveRound; w.saveRound = () => Promise.reject(new Error('TypeError: Failed to fetch')); return () => { w.saveRound = real } }
 
 describe('scoring with no signal', () => {
@@ -35,6 +42,29 @@ describe('scoring with no signal', () => {
     expect(card().done.slice(0, 2)).toEqual([true, true])
     expect(app.text()).not.toContain('Saved on your phone')
     expect(app.toast()).toBe('Your scores have been sent')
+  })
+  it('with no signal at all the card carries on (no “Something went wrong”), and catches up when it’s back', async () => {
+    await start()
+    const signal = nothingWorks()
+    await app.tap('Save hole 1')
+    expect(app.text()).not.toContain('Something went wrong')
+    expect(app.text()).toContain('Saved on your phone · sending when you have signal')
+    await app.tap('Save hole 2')
+    expect(app.text()).toContain('Save hole 3')
+    signal()
+    window.dispatchEvent(new Event('online'))
+    await app.settle()
+    expect(card().done.slice(0, 2)).toEqual([true, true])
+  })
+  it('when the phone knows it’s offline, the hole is kept straight away (no waiting on the green)', async () => {
+    await start()
+    Object.defineProperty(navigator, 'onLine', { value: false, configurable: true })
+    try {
+      const before = app.db.calls.filter(c => c === 'saveRound').length
+      await app.tap('Save hole 1')
+      expect(app.text()).toContain('Saved on your phone')
+      expect(app.db.calls.filter(c => c === 'saveRound').length).toBe(before) // didn't even try
+    } finally { Object.defineProperty(navigator, 'onLine', { value: true, configurable: true }) }
   })
   it('it keeps trying by itself every 20 seconds', async () => {
     await start()

@@ -18,11 +18,12 @@ import { buildLibrary, playable, gameSpec, resolveGame, preferredGame, teeRating
 
 // The round is kept here between redraws so unsaved stepper changes survive; api.saveRound() persists it.
 // persist(): save the card; false (with the reason shown) if the server refused, so nothing looks saved that isn't.
-// No signal (or no answer in 12 seconds) isn't a refusal: the card is kept on the phone and sent when the signal
+// No signal (or no answer in 8 seconds) isn't a refusal: the card is kept on the phone and sent when the signal
 // comes back (score-outbox.js), so a dead spot on the course doesn't hold up the round.
-const WAIT = 12000
+const WAIT = 8000 // a request that hangs this long in a dead spot is given up (the scores are kept)
 let pending = false, meId = null, retry = null, sending = false
 async function persist(round) {
+  if (navigator.onLine === false) { holdOn(round); return true } // the phone knows it's offline: no waiting on the green
   try { await withTimeout(api.saveRound(round), WAIT) } catch (err) {
     if (!isSignalError(err)) { toast(err.message); return false }
     holdOn(round)
@@ -72,7 +73,17 @@ export function lineupFromTeeTime(slot, meId) {
   return [{ m: meId }, ...others.map(p => (p.guest ? { g: p.id } : { m: p.memberId }))]
 }
 
+// With no signal, redraw the card from what was loaded last time (the scores are on the phone anyway): a dead spot on
+// the course mustn't turn the card into "Something went wrong".
+let lastLoad = null
 export async function load() {
+  if (navigator.onLine === false && lastLoad && round) return lastLoad // offline: no waiting for calls that can't work
+  try { return (lastLoad = await loadFresh()) } catch (err) {
+    if (isSignalError(err) && lastLoad && round) return lastLoad
+    throw err
+  }
+}
+async function loadFresh() {
   const [course, members, games, me, teeTimes, events, allEvents, theme] = await Promise.all([api.getCourse(), api.getMembers(), api.getGameSettings(), api.getMe(), api.getMyTeeTimes(today()), api.getMyPlayerEvents(), api.getEvents(), api.getTheme()])
   S.paperCards = !!theme?.paperCards
   meId = me.id
