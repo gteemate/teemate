@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>How TeeMate is built</title>
+<style>
+@page { size: A4; margin: 14mm 15mm 16mm 15mm; }
+:root { --navy:#13213f; --gold:#b8933a; --ink:#1d2433; --muted:#5b6475; --line:#d9dde5; --soft:#f3f5f9; --green:#2f7a4b; }
+* { box-sizing: border-box; }
+body { font: 9.6pt/1.45 -apple-system, "Helvetica Neue", Arial, sans-serif; color: var(--ink); margin: 0; }
+h1 { font: 700 21pt/1.1 Georgia, serif; color: var(--navy); margin: 0 0 2mm; }
+h2 { font: 700 13.5pt/1.2 Georgia, serif; color: var(--navy); margin: 7mm 0 3mm; padding-bottom: 1.5mm; border-bottom: 2px solid var(--gold); break-after: avoid; }
+h3 { font-size: 10.2pt; color: var(--navy); margin: 0 0 1.2mm; }
+p { margin: 0 0 2.2mm; }
+.kicker { font-size: 7.5pt; letter-spacing: .08em; text-transform: uppercase; color: var(--gold); font-weight: 700; }
+.sub { color: var(--muted); margin-bottom: 4mm; }
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3mm; margin: 4mm 0; }
+.stat { border: 1px solid var(--line); border-radius: 2mm; padding: 2.6mm; text-align: center; }
+.stat b { display: block; font: 700 17pt/1 Georgia, serif; color: var(--navy); }
+.stat small { color: var(--muted); font-size: 7.8pt; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 3.5mm; }
+.box { border: 1px solid var(--line); border-radius: 2mm; padding: 3mm 3.4mm; break-inside: avoid; }
+.box.soft { background: var(--soft); border-color: var(--soft); }
+.callout { border-left: 3px solid var(--gold); padding: 2mm 3.4mm; background: #fbf6ea; margin: 2mm 0 3mm; }
+table { width: 100%; border-collapse: collapse; font-size: 8.6pt; margin-bottom: 3mm; }
+th { text-align: left; background: var(--navy); color: #fff; font-weight: 600; padding: 1.6mm 2mm; }
+td { border-bottom: 1px solid var(--line); padding: 1.5mm 2mm; vertical-align: top; }
+td.n { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+ul { margin: 0 0 2mm; padding-left: 4.4mm; } li { margin-bottom: .9mm; }
+.flow { display: flex; align-items: stretch; gap: 1.6mm; margin: 2mm 0 3mm; }
+.flow .step { flex: 1; border: 1.5px solid var(--navy); border-radius: 2mm; padding: 2mm 2.2mm; font-size: 8.2pt; background: #fff; }
+.flow .step b { display: block; color: var(--navy); font-size: 8.8pt; margin-bottom: .6mm; }
+.flow .step.gate { border-color: var(--gold); background: #fbf6ea; }
+.flow .arr { align-self: center; color: var(--gold); font-weight: 700; }
+.diagram { display: grid; grid-template-columns: 1fr 1.35fr 1fr; gap: 3mm; align-items: center; margin: 3mm 0 4mm; }
+.node { border: 1.5px solid var(--navy); border-radius: 2.5mm; padding: 2.6mm 3mm; background: #fff; font-size: 8.4pt; }
+.node b { display: block; color: var(--navy); font-size: 9.6pt; margin-bottom: .8mm; }
+.node.db { border-color: var(--green); background: #f1f8f3; }
+.node.ext { border-style: dashed; color: var(--muted); }
+.stack { display: grid; gap: 2.5mm; }
+.pb { break-before: page; }
+.foot { color: var(--muted); font-size: 7.6pt; margin-top: 3mm; }
+</style></head><body>
+
+<div class="kicker">TeeMate · 27 October 2026</div>
+<h1>How TeeMate is built</h1>
+<p class="sub">What the app is made of, where it runs, how many databases there are, and how a change gets from here to members’ phones. In plain words, with the real numbers.</p>
+
+<div class="stats">
+  <div class="stat"><b>1</b><small>web app, for phones, iPads and computers</small></div>
+  <div class="stat"><b>2</b><small>databases: test and live, the same shape</small></div>
+  <div class="stat"><b>35</b><small>tables in each database</small></div>
+  <div class="stat"><b>~1,800</b><small>automatic checks before each release</small></div>
+</div>
+
+<div class="callout"><b>In one line:</b> TeeMate is a single website written in plain JavaScript (no app store, no framework). It keeps all the club’s data in a Postgres database run by Supabase, and is hosted for free on GitHub Pages. There are two copies of the database: a <b>test</b> one to try changes on, and the <b>live</b> one members use.</div>
+
+<h2>The pieces and how they connect</h2>
+<div class="diagram">
+  <div class="stack">
+    <div class="node"><b>Members’ phones</b>The app in the web browser, or added to the home screen like an app. Works on iPhone and Android.</div>
+    <div class="node"><b>The club office iPad</b>The same app, signed in with the office login: it opens on the office pages.</div>
+  </div>
+  <div class="stack">
+    <div class="node"><b>The website (GitHub Pages)</b>The app’s files: one page, the JavaScript, the styles and the course pictures. Free hosting. Address: gteemate.github.io/teemate</div>
+    <div class="node db"><b>Supabase (live)</b>The database with all the club’s data, sign-in, private photo storage, and the paper-scorecard reader.</div>
+    <div class="node db"><b>Supabase (test)</b>An identical copy with made-up data, where every change is tried first. Members never see it.</div>
+  </div>
+  <div class="stack">
+    <div class="node ext"><b>Claude (Anthropic)</b>Reads paper scorecards: only the cropped score grid is sent, never names.</div>
+    <div class="node ext"><b>Open-Meteo</b>The weather at the course on Home. Free.</div>
+    <div class="node ext"><b>OpenStreetMap</b>Map tiles for finding the course’s location. Free.</div>
+  </div>
+</div>
+<p>The phone talks to Supabase directly, with every request checked by the database’s own rules (below). The website itself holds no data: it’s the same files for every club member.</p>
+
+<h2>What it’s written in</h2>
+<table>
+  <tr><th>Part</th><th>Language</th><th class="n">Size</th><th>What it is</th></tr>
+  <tr><td>The app</td><td>JavaScript (plain, no framework)</td><td class="n">9,658 lines · 107 files</td><td>Every screen (43 member screens, 7 club office pages), scoring rules, games, knockouts, leagues, the paper-card flow</td></tr>
+  <tr><td>Look and feel</td><td>CSS</td><td class="n">973 lines</td><td>One stylesheet; the club’s colours come from the database</td></tr>
+  <tr><td>The page</td><td>HTML</td><td class="n">1 file</td><td>One page; the JavaScript draws every screen into it</td></tr>
+  <tr><td>The database</td><td>SQL (Postgres)</td><td class="n">82 changes · 5,533 lines</td><td>The tables, the rules for who may see and change what, and 130 functions such as booking a tee time or making a draw</td></tr>
+  <tr><td>The paper-card reader</td><td>TypeScript</td><td class="n">112 lines</td><td>The one piece that runs on Supabase’s servers, holding the Claude key. The only TypeScript in the project</td></tr>
+  <tr><td>Tests</td><td>JavaScript and SQL</td><td class="n">8,425 + 3,581 lines</td><td>1,185 app tests and 599 database checks (see the testing PDF)</td></tr>
+</table>
+<p><b>Libraries used by the app:</b> three, kept small on purpose: Supabase’s client (talking to the database), Leaflet (the map for the course location) and a QR-code maker (sharing your friend card). <b>Tools only on this computer:</b> Vite (bundles the files for the website), Vitest and happy-dom (the quick tests), and Playwright (the real-browser checks and printing these PDFs).</p>
+
+<h2 class="pb">The two databases</h2>
+<div class="grid2">
+  <div class="box"><h3>Test (“teemate-test”)</h3><ul>
+    <li>Made-up club data that can be wiped and reloaded at any time (the seed and scenarios).</li>
+    <li>Every database change goes here first, and its database checks are run.</li>
+    <li>Where the real-browser screen checks run.</li></ul></div>
+  <div class="box"><h3>Live</h3><ul>
+    <li>What members use: today 139 members, 1,010 bookings, 130 scorecards, 6 events.</li>
+    <li>Changes only after they pass on test, and only with your go-ahead.</li>
+    <li>The demo logins (live@, admin@ and the rest, password “password”) live here too.</li></ul></div>
+</div>
+<p>Both have the same 35 tables, kept in step by the numbered change files in <code>supabase/migrations</code>: each is applied once, to test then live, and recorded so it’s never applied twice. The seed and scenario scripts refuse to run on live.</p>
+
+<h3>The main groups of tables</h3>
+<table>
+  <tr><th>Group</th><th>What it holds</th></tr>
+  <tr><td>Members and the club</td><td>Members, the office login, club settings and colours, friends, favourites, contacts from other clubs, game preferences</td></tr>
+  <tr><td>The course</td><td>Holes, tees, today’s pins</td></tr>
+  <tr><td>Tee times</td><td>Tee times, bookings and who’s on them, guest visits and points, requests, booking notices</td></tr>
+  <tr><td>Scorecards</td><td>Cards (one per group, shared), what each card counts for (events, leagues), paper-card reads</td></tr>
+  <tr><td>Competitions</td><td>Events (one-offs, seasons, leagues), templates, sign-up competitions and their entries, knockout draws</td></tr>
+  <tr><td>Club life</td><td>The halfway hut menu and orders, challenges between groups, balances</td></tr>
+</table>
+
+<h2>Keeping data safe</h2>
+<ul>
+  <li><b>The database decides, not the app.</b> 47 row-level rules say who can see and change each row (a member sees their own requests; only players on a card can change it; only the office can delete a member). The app can’t get round them, even if someone tampers with it.</li>
+  <li><b>Anything with rules goes through a database function</b> (130 of them): booking checks the two-hour gap and the release time; entering checks the closing date and places. Each refusal comes back as a plain message the app shows.</li>
+  <li><b>Secrets stay on the server.</b> The phone only has the public key (which can do nothing the rules don’t allow). The Claude key is a Supabase secret, never in the app or the code.</li>
+  <li><b>Paper-card photos</b> are cropped to the score grid on the phone first (names never leave it), kept in a private store that only the players on that card and the office can open.</li>
+</ul>
+
+<h2>Speed: what’s kept on the phone</h2>
+<p>Lists that rarely change (members, the course, events, competitions, club settings) are kept on the phone, so screens open instantly. The database stamps each kind of data when it changes; the phone checks the stamps and only fetches what’s changed. Tee times, scorecards and alerts are always fetched fresh. A small service worker keeps the app’s own files, so it opens quickly even on a poor signal.</p>
+
+<h2 class="pb">How a change reaches members</h2>
+<div class="flow">
+  <div class="step"><b>1. Build it</b>On this computer, with a test written first for each change</div><div class="arr">›</div>
+  <div class="step"><b>2. Check it</b>1,185 app tests, including every journey and every refusal</div><div class="arr">›</div>
+  <div class="step"><b>3. Test database</b>Database changes applied to test; 599 database checks</div><div class="arr">›</div>
+  <div class="step gate"><b>4. Your go-ahead</b>Nothing goes live without it</div><div class="arr">›</div>
+  <div class="step"><b>5. Live database</b>The same change, then the checks again on live</div><div class="arr">›</div>
+  <div class="step"><b>6. Push</b>GitHub runs every test again, builds the site and publishes it: live in about a minute</div>
+</div>
+<p>Members get the new version the next time they open or refresh the app. If the tests fail on GitHub, nothing is published.</p>
+
+<h2>How the code is organised</h2>
+<table>
+  <tr><th>Folder</th><th>What’s in it</th></tr>
+  <tr><td><code>src/screens</code></td><td>The member screens: Home, booking, the scorecard, competitions, knockouts, leagues, the course guide, friends, account</td></tr>
+  <tr><td><code>src/office</code></td><td>The club office pages: Today, Members, Tee sheet, Leaderboard, Competitions, Club</td></tr>
+  <tr><td><code>src/api</code> and <code>src/api.js</code></td><td>Every call to the database goes through one front door, so the backend could be swapped (to AWS, say) without touching the screens</td></tr>
+  <tr><td><code>src/*.js</code></td><td>The rules that don’t need the database: scoring, handicaps and shots, every game, match play, knockout brackets, release times, weather</td></tr>
+  <tr><td><code>src/paper</code></td><td>Paper scorecards: the crop box, reading the result, the flow</td></tr>
+  <tr><td><code>supabase/</code></td><td>The database changes, the database checks, and the paper-card reader function</td></tr>
+  <tr><td><code>src/test</code></td><td>The journeys, the pretend server they run on, the feature register and the testing report</td></tr>
+  <tr><td><code>scripts/</code></td><td>Commands: run database changes and checks, load test data, make the testing PDF</td></tr>
+</table>
+
+<h2>Running costs</h2>
+<table>
+  <tr><th>Service</th><th>What for</th><th>Cost now</th></tr>
+  <tr><td>GitHub Pages</td><td>Hosting the website</td><td>Free</td></tr>
+  <tr><td>Supabase</td><td>Two databases, sign-in, photo storage, the reader function</td><td>Free plan, or Pro (about $25 a month per project) for daily backups and more room as clubs join: your plan shows in the Supabase dashboard</td></tr>
+  <tr><td>Anthropic (Claude)</td><td>Reading paper scorecards</td><td>Pay as you go, about 1–2p per card, with a monthly cap you set</td></tr>
+  <tr><td>Open-Meteo, OpenStreetMap</td><td>Weather, map tiles</td><td>Free</td></tr>
+</table>
+<p class="foot">Numbers counted from the code and the databases on 27 October 2026. See also: TeeMate-testing.pdf (what’s tested and how it went).</p>
+</body></html>
