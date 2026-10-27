@@ -16,12 +16,16 @@ export const MEMBER_COLS = 'id, name, gui, hcp_index, admin, hut_staff, plays_in
 export const toMember = m => ({ id: m.id, name: m.name, gui: m.gui, hcp: Number(m.hcp_index), admin: m.admin, hutStaff: !!m.hut_staff, playsIn: m.plays_in ?? null, office: !!m.office })
 
 let me // cached for the session; undefined = not loaded, null = signed in but not a member
+let meLoading = null // asked twice at once (on opening): one trip, not two
 /** The signed-in member, or null if this login isn't on the members list. */
 export async function getMe() {
   if (me !== undefined) return me
+  return (meLoading ??= loadMe().finally(() => { meLoading = null }))
+}
+async function loadMe() {
   const id = must(await sb.rpc('current_member_id'))
   me = id == null ? null : toMember(must(await sb.from('members').select(MEMBER_COLS).eq('id', id).single()))
   return me
 }
 export const myId = async () => (await getMe())?.id
-export const forgetMe = () => { me = undefined }
+export const forgetMe = () => { me = undefined; meLoading = null }

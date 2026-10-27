@@ -12,15 +12,16 @@ export async function cardHoles(round, t, { playerEvents, allEvents } = {}) {
   const onCard = e => round.lineup.some(x => e.players.includes(x.m))
   // Leagues running this week that someone on this card plays in.
   const leagues = allEvents.filter(e => e.style === 'league' && e.startDate <= t && eventLastDay(e) >= t && onCard(e))
-  const entries = await api.getLeagueEntries(leagues.map(e => e.id))
-  if (!round.id) return { board: null, holes: null, leagues, entries }
   const onToday = allEvents.filter(e => e.style !== 'league' && e.startDate <= t && eventLastDay(e) >= t && onCard(e))
-  const eventEntries = await api.getEventEntries(onToday.map(e => e.id))
+  // All at once, not one after another: on a weak signal each trip is most of a second.
+  const [entries, eventEntries, ko] = await Promise.all([
+    api.getLeagueEntries(leagues.map(e => e.id)),
+    round.id ? api.getEventEntries(onToday.map(e => e.id)) : [],
+    round.id ? api.getKoMatchOfCard(round.id) : null, // a knockout match's card plays its round's holes
+  ])
+  if (!round.id) return { board: null, holes: null, leagues, entries }
   const board = roundBoard({ cardId: round.id, lineup: round.lineup, events: allEvents, leagueEntries: entries, eventEntries, playerEvents, date: t })
   let holes = board?.holes ?? null
-  if (holes == null) { // a knockout match's card: its round's holes
-    const ko = await api.getKoMatchOfCard(round.id)
-    if (ko) holes = (await api.getSignups()).comps.find(c => c.id === ko.compId)?.roundHoles?.[ko.round] ?? null
-  }
+  if (holes == null && ko) holes = (await api.getSignups()).comps.find(c => c.id === ko.compId)?.roundHoles?.[ko.round] ?? null
   return { board, holes, leagues, entries }
 }

@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { readFileSync } from 'node:fs'
 
 // The service worker (public/sw.js) runs in a pretend worker: its own `self`, `caches` and `fetch`.
@@ -58,5 +58,34 @@ describe('the service worker, found in review', () => {
     const w = loadWorker(async (req, opts) => { seen.push(opts?.cache); return new Response('page') })
     await run(w, 'https://gteemate.github.io/teemate/')
     expect(seen).toEqual(['no-cache'])
+  })
+  it('on a slow connection the kept page shows within 2 seconds; the newer one is kept for next time', async () => {
+    vi.useFakeTimers()
+    try {
+      let arrive
+      const w = loadWorker(() => new Promise(r => { arrive = () => r(new Response('new page')) }))
+      const url = 'https://gteemate.github.io/teemate/'
+      w.store.get('tm-v1').set(url, new Response('kept page'))
+      let answer; const waits = []
+      w.handlers.fetch({ request: { url, method: 'GET' }, respondWith: p => (answer = p), waitUntil: p => waits.push(p) })
+      await vi.advanceTimersByTimeAsync(2100)
+      expect(await (await answer).text()).toBe('kept page') // didn't wait for the slow network
+      arrive()
+      await vi.runAllTimersAsync(); await Promise.all(waits)
+      expect(await w.store.get('tm-v1').get(url).text()).toBe('new page') // kept for the next open
+    } finally { vi.useRealTimers() }
+  })
+  it('with nothing kept yet it waits for the network, however slow', async () => {
+    vi.useFakeTimers()
+    try {
+      let arrive
+      const w = loadWorker(() => new Promise(r => { arrive = () => r(new Response('page')) }))
+      let answer, done = false
+      w.handlers.fetch({ request: { url: 'https://gteemate.github.io/teemate/', method: 'GET' }, respondWith: p => (answer = p.then(r => { done = true; return r })), waitUntil: () => {} })
+      await vi.advanceTimersByTimeAsync(5000)
+      expect(done).toBe(false)
+      arrive()
+      expect(await (await answer).text()).toBe('page')
+    } finally { vi.useRealTimers() }
   })
 })

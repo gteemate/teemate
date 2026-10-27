@@ -32,24 +32,30 @@ self.addEventListener('activate', ev => ev.waitUntil((async () => {
   await self.clients.claim()
 })()))
 
+const QUICK = 2000 // on a weak signal, how long the page waits for a newer version before showing the kept one
+
 self.addEventListener('fetch', ev => {
   const how = self.swRoute(ev.request.url, self.registration.scope, ev.request.method)
   if (how === 'skip') return
+  if (how === 'network-first') {
+    // The page: a newer version if it comes quickly; on a weak signal, the kept one after 2 seconds (the newer one is
+    // still kept when it arrives, for next time). With nothing kept yet (the first open), wait however long it takes.
+    const net = fetch(ev.request, { cache: 'no-cache' }).then(res => ({ res, copy: res.ok ? res.clone() : null })) // past the browser's own cache
+    ev.waitUntil(net.then(async ({ copy }) => { if (copy) await keep(await caches.open(CACHE), ev.request, copy) }).catch(() => {}))
+    ev.respondWith((async () => {
+      const hit = await (await caches.open(CACHE)).match(ev.request)
+      const fresh = net.then(x => x.res)
+      if (!hit) return fresh
+      return Promise.race([fresh.catch(() => hit), new Promise(r => setTimeout(() => r(hit), QUICK))])
+    })())
+    return
+  }
   ev.respondWith((async () => {
     const kept = await caches.open(CACHE)
-    if (how === 'cache-first') {
-      const hit = await kept.match(ev.request)
-      if (hit) return hit
-      const res = await fetch(ev.request)
-      if (res.ok) ev.waitUntil(keep(kept, ev.request, res.clone()))
-      return res
-    }
-    try {
-      const res = await fetch(ev.request, { cache: 'no-cache' }) // past the browser's own cache: a new version shows now
-      if (res.ok) ev.waitUntil(keep(kept, ev.request, res.clone()))
-      return res
-    } catch (err) {
-      return (await kept.match(ev.request)) ?? Promise.reject(err)
-    }
+    const hit = await kept.match(ev.request) // cache-first: the app's files and pictures
+    if (hit) return hit
+    const res = await fetch(ev.request)
+    if (res.ok) ev.waitUntil(keep(kept, ev.request, res.clone()))
+    return res
   })())
 })
