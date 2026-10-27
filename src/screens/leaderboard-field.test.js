@@ -14,3 +14,14 @@ describe('found in review: today’s scores on a short round', () => {
     expect(html).toMatch(/class="lval[^"]*">E</)
   })
 })
+
+describe('paper scorecards: an unconfirmed score counts, with a mark', () => {
+  it('awaiting confirmation, or sent back', () => {
+    S.lbm = 'gross'
+    const gross = COURSE.holes.map(h => h.par)
+    const row = paper => ({ member: { id: 1, name: 'Ann Lee', hcp: 0 }, gross, paper, live: true })
+    expect(fieldHtml({ course: COURSE, me: { id: 2 }, rounds: [row('waiting')] })).toContain('Awaiting confirmation')
+    expect(fieldHtml({ course: COURSE, me: { id: 2 }, rounds: [row('sent_back')] })).toContain('Sent back')
+    expect(fieldHtml({ course: COURSE, me: { id: 2 }, rounds: [row(null)] })).not.toContain('confirmation')
+  })
+})

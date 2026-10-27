@@ -33,6 +33,13 @@ let F = null // this visit: { step, shots: [{ file, url, blob }], cur, box, cols
 
 /** Open the flow from today's card. */
 export function startPaper() { F = { step: 'photo', shots: [], box: savedBox() }; S.sview = 'paper' }
+/** Sent back: check my own scores on the saved card, then send them to the same person again. */
+export function startPaperRecheck(meId) {
+  const round = getRound(), k = round.lineup.findIndex(e => e.m === meId)
+  const holes = round.scores.map(h => ({ score: h[k], sure: true }))
+  F = { step: 'check', recheck: true, shots: [], ci: 0, who: [`m${meId}`], cols: [{ card: 1, label: 'A', holes, out: null, in: null, total: null, blank: false }] }
+  S.sview = 'paper'
+}
 const leave = async () => { F = null; S.sview = 'card'; await render(); top0() }
 const go = async step => { F.step = step; await render(); top0() }
 
@@ -187,7 +194,8 @@ function check({ players, open }) {
   const half = from => { const hs = open.filter(h => h >= from && h < from + 9); return hs.length ? `<div class="pgrid">${hs.map(h => `<span class="ph">${h + 1}</span>`).join('')}${hs.map(cell).join('')}</div>` : '' }
   const line = (ok, text) => `<div class="pchk ${ok ? 'ok' : 'wn'}"><span>${ok ? '✓' : '!'}</span>${text}</div>`
   const tot = (t, nm) => (!t ? '' : t.ok ? line(true, `${nm} adds up to ${t.holes}, as written on the card`) : line(false, `${nm}: the holes add up to ${t.holes}, but the card says ${t.written}. Check the amber holes.`))
-  header(p.me ? 'Your scores' : p.name, `Card ${col.card} · column ${col.label} · player ${F.ci + 1} of ${keys.length}`, () => (F.ci ? (F.ci--, go('check')) : go('match')))
+  header(p.me ? 'Your scores' : p.name, F.recheck ? 'Check them against your paper card' : `Card ${col.card} · column ${col.label} · player ${F.ci + 1} of ${keys.length}`,
+    () => (F.recheck ? leave() : F.ci ? (F.ci--, go('check')) : go('match')))
   $('main').innerHTML = `<div class="screen pflow">
     <p class="hint">Tap any score to change it.</p>
     <div class="card">${half(0)}${half(9)}</div>
@@ -198,6 +206,7 @@ function check({ players, open }) {
   document.querySelectorAll('[data-ph]').forEach(b => (b.onclick = () => pad(col, +b.dataset.ph)))
   $('pf-ok').onclick = () => {
     for (const h of open) col.holes[h].sure = true
+    if (F.recheck) return resend({ players, open, col })
     if (F.ci < keys.length - 1) { F.ci++; go('check') } else go('who')
   }
 }
@@ -226,6 +235,22 @@ function who({ players, open, me }) {
   <div class="cta"><button class="primary" id="pf-save" ${F.confirmer ? '' : 'disabled'}>Save the card</button></div>`
   document.querySelectorAll('[data-conf]').forEach(b => (b.onclick = () => { F.confirmer = b.dataset.conf; render() }))
   $('pf-save').onclick = () => save({ players, open, me })
+}
+
+async function resend({ players, open, col }) {
+  $('pf-ok').disabled = true
+  const round = getRound(), me = players.find(p => p.me), k = round.lineup.findIndex(e => playerKey(e) === me.key)
+  round.changed ??= new Set()
+  round.entered ??= round.scores.map(r => r.map(() => null))
+  toScores(col, open).forEach((v, h) => { if (v != null && v !== round.scores[h][k]) { round.scores[h][k] = v; round.entered[h][k] = me.m; round.changed.add(`${h}:${k}`) } })
+  try {
+    await api.saveRound(round)
+    await api.resendPaperScore(round.id)
+  } catch (err) { toast(err.message); $('pf-ok').disabled = false; return }
+  const to = round.paper?.confirmer == null ? 'the office' : first(players.find(p => p.m === round.paper.confirmer)?.name ?? 'them')
+  if (round.paper) Object.assign(round.paper, { state: 'waiting', note: null })
+  await leave()
+  toast(`Sent to ${to} again`)
 }
 
 async function save({ players, open, me }) {

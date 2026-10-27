@@ -964,3 +964,9 @@ details.oboard[open] > summary::before{transform:rotate(90deg)}
 .pradio{display:grid;gap:2px;text-align:left;background:var(--leaf);border:1px solid var(--line);border-radius:14px;padding:12px 14px;color:var(--ink);cursor:pointer;font-size:15px}
 .pradio span{color:var(--muted);font-size:13px}
 .pradio.on{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset}
+.ppbox{display:grid;gap:6px}
+.ppbox .linkbtn{color:var(--gold);padding:0}
+.ppnote{color:var(--ink)}
+.ppbox .ghost.sm{justify-self:start}
+.pmark{color:#f0a85a;font-weight:700}
+.pphoto{display:block;width:100%;border-radius:10px;margin-top:10px}

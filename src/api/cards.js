@@ -129,7 +129,8 @@ export async function getTodayRounds(date = today()) {
       const key = e.m != null ? `m${e.m}` : `g${e.g}`
       if (seen.has(key) || !byKey.has(key)) return
       seen.add(key)
-      out.push({ member: byKey.get(key), ...savedHoles(r, k), teeTime: r.tee_time ?? undefined, live: true })
+      const paper = r.paper_state && r.paper_state !== 'confirmed' && e.m != null && e.m === r.paper_by ? r.paper_state : null // the uploader's score, not yet confirmed
+      out.push({ member: byKey.get(key), ...savedHoles(r, k), teeTime: r.tee_time ?? undefined, live: true, paper })
     })
   }
   return out

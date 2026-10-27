@@ -10,10 +10,12 @@ import { S } from './state.js'
 import { $, esc, render, toast } from './ui.js'
 import { isoDate, today } from './dates.js'
 import { pickAlerts, alertCheckDue } from './alerts.js'
+import { confirmLine, noteSheet, reviewSheet } from './paper/review.js'
 
 const hidden = new Set() // Later, until the app is next opened
 const done = new Set() // answered or OK'd this visit (the server catches up on the next check)
 let shown = [], timer = null, busy = false
+let paperWaiting = [], paperMembers = [] // paper scores I was asked to confirm (getPaperConfirms), and names for them
 
 // The halfway hut: on? my card, my orders today, and (kept on this phone) which cards I've been asked about and
 // which ready orders I've OK'd. Nothing is fetched beyond whether it's on while the hut is switched off.
@@ -46,9 +48,13 @@ async function run() {
   if (busy || !$('alerts')) return
   busy = true
   try {
-    const [me, playerEvents, requests, hutState, notices] = await Promise.all([api.getMe(), api.getMyPlayerEvents(), api.getMyTeeTimeRequests(), hutNow(), api.getBookingNotices()])
+    const [me, playerEvents, requests, hutState, notices, waiting] = await Promise.all([api.getMe(), api.getMyPlayerEvents(), api.getMyTeeTimeRequests(), hutNow(), api.getBookingNotices(),
+      api.getPaperConfirms().catch(() => [])])
     if (!me) return clear()
-    const all = pickAlerts({ me, playerEvents, requests, date: isoDate(today()), hut: hutState, notices }).filter(a => !done.has(a.key))
+    paperWaiting = waiting.filter(c => c.confirmer === me.id) // the club office confirms its own from Office → Today
+    paperMembers = paperWaiting.length ? await api.getMembers() : []
+    const paper = paperWaiting.map(c => ({ id: c.id, ...confirmLine(c, paperMembers) }))
+    const all = pickAlerts({ me, playerEvents, requests, date: isoDate(today()), hut: hutState, notices, paper }).filter(a => !done.has(a.key))
     // The Scores tab asks about a challenge itself, so it doesn't drop down there too.
     showAlerts(all.filter(a => !(a.kind === 'challenge' && S.tab === 'scores')))
   } catch (err) {
@@ -91,6 +97,16 @@ function drawDot(on) {
 
 async function act(a, id, btn) {
   if (id === 'later') { hidden.add(a.key); return draw() }
+  if (a.kind === 'paperconfirm') { // a score read from a paper card, for me to confirm
+    const c = paperWaiting.find(x => x.id === a.ref.roundId), name = c ? confirmLine(c, paperMembers).byName.split(' ')[0] : 'them'
+    const gone = () => { done.add(a.key); shown = shown.filter(x => x.key !== a.key); draw() }
+    const confirm = async () => { try { await api.confirmPaperScore(a.ref.roundId); gone(); toast('Score confirmed') } catch (err) { toast(err.message) } }
+    const back = async note => { await api.sendBackPaperScore(a.ref.roundId, note); gone(); toast(`Sent back to ${name}`) }
+    if (id === 'pconfirm') return confirm()
+    if (id === 'pback') return noteSheet(back)
+    if (id === 'pholes' && c) return reviewSheet(c, paperMembers, { confirm, back })
+    return
+  }
   if (id === 'details') {
     hidden.add(a.key)
     S.tab = 'scores'; S.sview = 'pevent'; S.peId = a.ref.peId

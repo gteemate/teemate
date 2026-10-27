@@ -346,10 +346,10 @@ export function makeWorld(today, setup = () => {}) {
       }
       if (!round.id) Object.assign(round, { id: id(), createdBy: ME })
       round.updatedAt = new Date().toISOString(); round.changed = new Set()
-      const row = { ...copy(round), date: today }
+      const row = { ...copy(round), date: today, paper: db.rounds.find(r => r.id === round.id)?.paper ?? null } // as the database: only the paper steps change it
       db.rounds = [...db.rounds.filter(r => r.id !== round.id), row]
     },
-    deleteRound: async rid => { db.rounds = db.rounds.filter(r => r.id !== rid) },
+    deleteRound: async rid => { db.rounds = db.rounds.filter(r => r.id !== rid); db.photos = db.photos.filter(x => !x.startsWith(`${rid}/`)) },
     getTodayRounds: async () => [],
     getCardsForTeeTimes: async () => ({}),
     getMyPlayerEvents: async () => copy(db.playerEvents),

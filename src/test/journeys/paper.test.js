@@ -182,3 +182,60 @@ describe('paper scorecards: reading the group’s cards', () => {
     expect(app.screen()).toBe('2 players found')
   })
 })
+
+// A card read from paper today: Tom (10) uploaded it and Gary (0, me) was asked to confirm, or the other way round.
+const paperCard = (db, { by = 10, confirmer = 0, state = 'waiting', note = null } = {}) => {
+  const b = db.book(0, at(db, 570).id, [10])
+  db.rounds.push({ id: 61, date: db.today, slotId: b.slotId, createdBy: by, lineup: [{ m: 0 }, { m: 10 }], game: 'stab', pairing: 0, submitted: {},
+    scores: Array.from({ length: 18 }, (_, h) => [h < 9 ? 5 : 4, h < 9 ? 4 : 5]), done: Array.from({ length: 18 }, () => true),
+    paper: { by, confirmer, state, note, photos: 1 } })
+  db.photos.push('61/1.jpg')
+}
+
+describe('paper scorecards: confirming the uploader’s score', () => {
+  it('the person asked confirms it from the drop-down', async () => {
+    app = await boot(db => paperCard(db))
+    await app.settle()
+    const alerts = document.getElementById('alerts').textContent
+    expect(alerts).toContain('Please confirm a score')
+    expect(alerts).toContain('Tom Byrne · 81 (Out 36 · In 45)')
+    await app.tap('[data-al="pconfirm"]')
+    expect(app.db.rounds.find(r => r.id === 61).paper).toMatchObject({ state: 'confirmed', confirmer: 0 })
+    expect(app.toast()).toBe('Score confirmed')
+  })
+
+  it('Not right: a short note goes back to the uploader', async () => {
+    app = await boot(db => paperCard(db))
+    await app.settle()
+    await app.tap('[data-al="pback"]')
+    expect(app.text()).toContain('What isn’t right?')
+    await app.type('#pb-note', 'Hole 14 was a 6')
+    await app.tap('#pb-send')
+    expect(app.db.rounds.find(r => r.id === 61).paper).toMatchObject({ state: 'sent_back', note: 'Hole 14 was a 6' })
+  })
+
+  it('the club office confirms one left for the office, from Today', async () => {
+    app = await boot(db => { paperCard(db, { confirmer: null }); db.asOffice = true })
+    expect(app.main()).toContain('Score to confirm: Tom Byrne · 81')
+    expect(app.text()).toContain('1 thing waiting for you')
+    await app.tap('[data-o-pconf="61"]')
+    expect(app.db.rounds.find(r => r.id === 61).paper).toMatchObject({ state: 'confirmed', confirmer: null })
+  })
+
+  it('my card says who it waits for; sent back, I fix my score and send it again', async () => {
+    app = await boot(db => paperCard(db, { by: 0, confirmer: 10, state: 'sent_back', note: 'Hole 14 was a 6' }))
+    expect(app.screen()).toMatch(/^Hole/) // mid-round, the app opens on the scorecard
+    expect(app.main()).toContain('Read from paper')
+    expect(app.main()).toContain('Tom says your score isn’t right: “Hole 14 was a 6”')
+    await app.tap('Check my scores')
+    expect(app.screen()).toBe('Your scores')
+    await app.tap('[data-ph="13"]')
+    await app.tap('[data-pn="6"]')
+    await app.tap('My scores are right')
+    const r = app.db.rounds.find(x => x.id === 61)
+    expect(r.paper.state).toBe('waiting')
+    expect(r.scores[13][0]).toBe(6)
+    expect(app.toast()).toBe('Sent to Tom again')
+    expect(app.main()).toContain('Awaiting confirmation')
+  })
+})

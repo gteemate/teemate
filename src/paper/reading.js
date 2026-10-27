@@ -21,6 +21,12 @@ export function colChecks(col, open) {
 /** The 18 scores to save: the open holes as read (or as fixed), null on closed holes. */
 export const toScores = (col, open) => col.holes.map((h, i) => (open.includes(i) ? h.score : null))
 
+/** A player's gross, Out and In on a saved card (scores[hole][player], blanks skipped). */
+export function playerTotals(scores, k) {
+  const add = (from, to) => scores.slice(from, to).reduce((s, h) => s + (h?.[k] ?? 0), 0)
+  return { gross: add(0, 18), out: add(0, 9), in: add(9, 18) }
+}
+
 export const playerKey = e => (e.m != null ? `m${e.m}` : `g${e.g}`)
 
 /** First guess: the card's players in order, one to each column with something written. */

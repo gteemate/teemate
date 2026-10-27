@@ -10,7 +10,8 @@ import { guestHcpSheet } from './scores-guest.js'
 import { holeGrid } from '../course-art.js'
 import { cardHoles } from './card-holes.js'
 import { openCourse, scaleHcp, holesText, allOpen } from '../open-holes.js'
-import { startPaper } from '../paper/paper-flow.js'
+import { startPaper, startPaperRecheck } from '../paper/paper-flow.js'
+import { photosSheet } from '../paper/review.js'
 import { courseHandicap, playingHandicaps, holeCalc, gameState, upText, toPar } from '../scoring.js'
 import { buildLibrary, playable, gameSpec, resolveGame, preferredGame, teeRating, PAIRINGS, NO_GAME, SCORES_ONLY, parseGame, oneOnOneKey, oneOnOneGames, gameName } from '../games.js'
 
@@ -205,7 +206,14 @@ export function draw({ course, members, guests, L, me, teeTimes, events, leagues
       <span class="row"><button class="linkbtn" data-chk-go="${n}">Go to hole ${c.i + 1}</button><button class="linkbtn" data-chk-ok="${n}">OK, it's right</button></span></div>`
   })())).join('')
   const hcpNote = noHcp.length ? `<div class="hcpnote">${noHcp.map(p => esc(p.name.split(' ')[0])).join(' and ')} ${noHcp.length > 1 ? 'have' : 'has'} no handicap yet, so ${noHcp.length > 1 ? 'they play' : 'plays'} off an index of 0 until you set one. Shots and points update as soon as you do.</div>` : ''
-  $('main').innerHTML = `<div class="screen">${eventsTop(events, me)}${grid}${checks}${hcpNote}
+  // Read from a paper card: who confirmed each score, and whether the uploader's own is still waiting.
+  const pp = round.paper, first = id => nm(id).split(' ')[0], conf = pp && (pp.confirmer != null ? first(pp.confirmer) : 'the club office')
+  const paperBox = !pp ? '' : `<div class="hcpnote ppbox"><b>Read from paper</b> · <button class="linkbtn" id="paper-photo">See the photo of the card</button>
+    <span>${round.lineup.map((e, k) => `${esc(ps[k].name)}: ${e.m === pp.by
+      ? pp.state === 'confirmed' ? `confirmed by ${esc(conf)}` : pp.state === 'sent_back' ? '<span class="pmark">Sent back</span>' : `<span class="pmark">Awaiting confirmation</span> (${esc(conf)})`
+      : `confirmed by ${esc(first(pp.by))}`}`).join(' · ')}</span>
+    ${pp.state === 'sent_back' && pp.by === me.id ? `<span class="ppnote">${esc(conf === 'the club office' ? 'The club office' : conf)} says your score isn’t right: “${esc(pp.note ?? '')}”</span><button class="ghost sm" id="paper-fix">Check my scores</button>` : ''}</div>`
+  $('main').innerHTML = `<div class="screen">${eventsTop(events, me)}${grid}${checks}${paperBox}${hcpNote}
     <div class="rstatus">${LG ? `<b>${esc(line)}</b> · <button class="gname" id="gname" aria-haspopup="dialog">${one ? `${esc(pn(duo[0]))} v ${esc(pn(duo[1]))} · ` : ''}${esc(LG.name)} ${CHEV}</button>` : '<button class="addmatch" id="gname" aria-haspopup="dialog">+ Add a match</button>'}
       <button class="linkbtn gchip" id="gchip" aria-expanded="${!!S.gmenu}" aria-controls="gmenu">${G.pairs ? 'Pairs, players &amp; shots' : 'Players &amp; shots'} ${S.gmenu ? '▴' : '›'}</button></div>
     ${gamebar}
@@ -223,6 +231,8 @@ export function draw({ course, members, guests, L, me, teeTimes, events, leagues
   $('gchip').onclick = async () => { S.gmenu = !S.gmenu; await keepScroll(render) }
   $('gname').onclick = () => matchSheet({ L, n, ps })
   if ($('paper-go')) $('paper-go').onclick = async () => { startPaper(); await render(); top0() }
+  if ($('paper-fix')) $('paper-fix').onclick = async () => { startPaperRecheck(me.id); await render(); top0() }
+  if ($('paper-photo')) $('paper-photo').onclick = () => photosSheet(round.id, round.paper.photos)
   if (S.gmenu) {
     document.querySelectorAll('[data-gm]').forEach(b => (b.onclick = async () => { round.game = b.dataset.gm; await api.saveRound(round); keepScroll(render) }))
     document.querySelectorAll('[data-pr]').forEach(b => (b.onclick = async () => {

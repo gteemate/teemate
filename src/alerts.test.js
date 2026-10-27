@@ -53,6 +53,12 @@ describe('pickAlerts: what drops down from the header', () => {
     expect(pickAlerts({ ...base, notices: [{ id: 7, kind: 'added', date: '2026-10-08', oldTime: 480, byName: 'Pat Reid', withNames: [] }] })).toEqual([])
   })
 
+  it('a paper score for me to confirm: who, the score, and Confirm / Not right / See the holes / Later', () => {
+    const [a] = pickAlerts({ ...base, paper: [{ id: 41, byName: 'Alex Hart', gross: 85, out: 41, in: 44 }] })
+    expect(a).toMatchObject({ key: 'pc:41', kind: 'paperconfirm', title: 'Please confirm a score', detail: 'Alex Hart · 85 (Out 41 · In 44)', ref: { roundId: 41 } })
+    expect(ids(a)).toEqual(['pconfirm', 'pback', 'pholes', 'later'])
+  })
+
   it('a request approved: OK or Later', () => {
     const [a] = pickAlerts({ ...base, requests: [req()] })
     expect(a).toMatchObject({ key: 'rq:3', kind: 'request', title: 'Request approved: Sat 14 Nov 08:10', detail: 'Booked. It’s in your bookings.', ref: { reqId: 3 } })
