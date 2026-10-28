@@ -22,7 +22,7 @@ export function draw({ date, slot: s, me, members, friends, points }) {
   if (!s) { back(); return }
   const add = !!S.addTo // adding to a booking I'm on: I'm already on the time
   const hold = !add && !S.reqMode ? S.matchHold : null // a club singles match: the other places are held for it
-  const free = s.capacity - s.players.length - (s.held ?? 0), max = add ? free : hold ? 1 : free - 1, fee = s.twilight ? 25 : 0, cost = points.cost
+  const free = s.capacity - s.players.length - (s.held ?? 0), max = add ? free : hold ? 1 : free - 1, cost = points.cost
   header(add ? `Add to ${hhmm(s.time)}` : S.reqMode ? `Request ${hhmm(s.time)}` : hhmm(s.time), `${longDay(date)} · 1st tee`, back)
   if (free <= 0) { // someone else took the last space while this screen was open
     $('main').innerHTML = `<div class="done"><div class="flagmark">⛳</div><h4>This time is now full</h4>
@@ -51,7 +51,7 @@ export function draw({ date, slot: s, me, members, friends, points }) {
   ${S.reqMode ? `<div class="card evsec"><label for="rq-why">Why do you need this time?</label><textarea id="rq-why" class="plainsel" rows="3" maxlength="500" placeholder="e.g. Visitors flying in from Boston for one weekend">${esc(S.reqReason)}</textarea>
     <span class="hint">An admin approves (it’s booked for you straight away) or declines with a note. Nothing is held while you wait.</span></div>` : ''}
   </div>
-  <div class="cta"><div class="tot">${add ? `${used} to add` : `${1 + used} player${used ? 's' : ''}`}<b>${fee ? `€${fee * (1 + S.picked.length)}` : "Members' time"}</b></div><button class="primary" id="confirm">${hold ? `Book ${esc(hold.label)}` : add ? 'Add to booking' : S.reqMode ? 'Send request' : 'Confirm booking'}</button></div>`
+  <div class="cta"><div class="tot">${add ? `${used} to add` : `${1 + used} player${used ? 's' : ''}`}<b>Members' time</b></div><button class="primary" id="confirm">${hold ? `Book ${esc(hold.label)}` : add ? 'Add to booking' : S.reqMode ? 'Send request' : 'Confirm booking'}</button></div>`
 
   const taken = new Set([me.id, ...S.picked, ...s.players.map(p => p.memberId)])
   if (S.gmodal === 'pick') pickSheet(members, friends, taken, canGuest, points, left, max)

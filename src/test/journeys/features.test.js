@@ -1542,3 +1542,14 @@ describe('the Course tab: today’s pin', () => {
     expect(app.text()).not.toContain('aren’t set yet')
   })
 })
+
+describe('booking: no prices', () => {
+  it('found 28 Oct: a twilight tee time shows no made-up green fee (the app shows no money for tee times)', async () => {
+    app = await boot(db => { at(db, 780).twilight = true }) // 13:00, the last of the day, as a twilight time
+    await app.tap('[data-tile="booking"]'); await app.tap('+ Add a booking')
+    await app.tap(`.slot[data-id="${at(app.db, 780).id}"]`)
+    if (document.querySelector('[data-open]')) await app.tap('[data-open]')
+    expect(document.querySelector('.cta .tot').textContent).toContain('Members’ time'.replace('’', "'"))
+    expect(app.text()).not.toMatch(/[€£]\d/)
+  })
+})
