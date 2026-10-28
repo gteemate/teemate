@@ -44,12 +44,17 @@ export function pickAlerts({ me, playerEvents, requests, date, now = Date.now(),
   }))
   // Find a time: someone suggested days for my knockout match; everyone can do one; or the play-by date is close and
   // nothing's arranged (once a day).
-  const times = notices.filter(n => (n.kind === 'times' || n.kind === 'agreed') && n.date >= date).map(n => ({
-    key: `bn:${n.id}`, kind: 'notice', ref: { noticeId: n.id, matchId: n.koMatchId },
-    title: n.kind === 'times' ? `${n.byName} suggests times for your ${n.note} match` : `Everyone can do ${longDay(fromIso(n.date))} · ${n.part}`,
-    detail: n.kind === 'times' ? 'Tick the days you can do.' : `Your ${n.note} match: book a tee time that ${n.part}.`,
-    actions: n.kind === 'times' ? [{ id: 'times', label: 'See the times', primary: true }, later] : [{ id: 'bookagreed', label: 'Book a tee time', primary: true }, { id: 'times', label: 'See the times' }, later],
-  }))
+  // "Everyone can do": one notice listing every agreed slot (older ones carry one, in date / part); passed ones drop off.
+  const times = notices.filter(n => (n.kind === 'times' || n.kind === 'agreed') && n.date >= date).map(n => {
+    const base = { key: `bn:${n.id}`, kind: 'notice', ref: { noticeId: n.id, matchId: n.koMatchId } }
+    if (n.kind === 'times') return { ...base, title: `${n.byName} suggests times for your ${n.note} match`, detail: 'Tick the days you can do.', actions: [{ id: 'times', label: 'See the times', primary: true }, later] }
+    const slots = (n.slots ?? [{ day: n.date, part: n.part }]).filter(s => s.day >= date), slot = s => `${longDay(fromIso(s.day))} · ${s.part}`
+    return slots.length === 1
+      ? { ...base, title: `Everyone can do ${slot(slots[0])}`, detail: `Your ${n.note} match: book a tee time that ${slots[0].part}.`,
+          actions: [{ id: 'bookagreed', label: 'Book a tee time', primary: true }, { id: 'times', label: 'See the times' }, later] }
+      : { ...base, title: `Everyone can do ${slots.length} times for your ${n.note} match`, detail: `${slots.map(slot).join(', ')}. Pick the one that suits and book a tee time.`,
+          actions: [{ id: 'times', label: 'Pick a time', primary: true }, later] }
+  })
   const due = koDue.map(d => ({
     key: `kd:${d.matchId}:${date}`, kind: 'findtime', ref: { matchId: d.matchId, compId: d.compId },
     title: `Your ${d.compName} match isn’t arranged yet: play by ${longDay(fromIso(d.by))}`,

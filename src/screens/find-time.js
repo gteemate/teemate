@@ -1,7 +1,8 @@
 // Find a time (a knockout match, S.ftMatch): suggest days with Morning / Afternoon / Evening up to the play-by date, and
 // a grid of who can do which (each player ticks their own column ✓, ✕ or blank, plus their partner's "the same" in pairs,
 // and an "anything else" note, then Confirm saves the lot). When everyone can do one, Book a tee
-// time opens the tee sheet on that day with the others ready to add, as Book this match does.
+// time opens the tee sheet on that day with the others ready to add, as Book this match does;
+// when everyone can do several, tapping one of their rows picks which (S.ftChosen, the first by default).
 import * as api from '../api.js'
 import { S } from '../state.js'
 import { $, esc, header, keepScroll, render, redraw, toast, top0, goBack } from '../ui.js'
@@ -24,7 +25,7 @@ export async function load() {
 // Leaving with ticks not confirmed: say so once; Back again leaves (and drops them).
 const back = () => {
   if (S.ftDraft?.dirty && !S.ftDraft.warned) { S.ftDraft.warned = true; toast('You haven’t confirmed your answers'); return }
-  S.ftPick = null; S.ftDraft = null
+  S.ftPick = null; S.ftDraft = null; S.ftChosen = null
   return goBack(async () => { S.aview = 'ko'; S.koComp = S.ftComp ?? S.koComp; await render(); top0() })
 }
 const first = n => n.split(' ')[0]
@@ -45,23 +46,30 @@ export function draw({ grid, me, booked }) {
   if (S.ftDraft?.match !== m.id) S.ftDraft = { match: m.id, mine: Object.fromEntries(times.map(t => [t.id, t.answers[me.id] ?? null])), same: false, note: grid.notes?.[me.id] ?? '', dirty: false }
   const d = S.ftDraft
   const shown = (t, p) => (p.id === me.id ? d.mine[t.id] : partner && p.id === partner.id && d.same ? d.mine[t.id] : t.answers[p.id] ?? null)
-  const agreed = booked ? null : times.find(t => t.id === grid.agreed) // booked: nothing left to book
+  const all = t => players.every(p => t.answers[p.id] === true)
+  const ok = booked ? [] : times.filter(all) // booked: nothing left to book
+  const agreed = ok.find(t => t.id === S.ftChosen) ?? ok[0] ?? null
   const answered = p => times.some(t => t.answers[p.id] != null)
   const byName = id => first(players.find(p => p.id === id)?.name ?? 'someone')
   const cell = (t, p) => {
     const a = shown(t, p), cls = a === true ? 'y' : a === false ? 'n' : ''
-    return `<td><button class="fttick ${cls}" data-tt="${t.id}" data-p="${p.id}" ${p.id === me.id ? `data-t="${t.id}"` : 'disabled'} aria-label="${esc(p.name)}, ${dayLabel(t.day)} ${t.part}: ${a === true ? 'can' : a === false ? 'can’t' : 'not answered'}">${mark(a)}</button></td>`
+    return `<td><button class="fttick ${cls}" data-tt="${t.id}" data-p="${p.id}" ${p.id === me.id ? `data-t="${t.id}"` : 'aria-disabled="true"'} aria-label="${esc(p.name)}, ${dayLabel(t.day)} ${t.part}: ${a === true ? 'can' : a === false ? 'can’t' : 'not answered'}">${mark(a)}</button></td>`
   }
   const head = p => p.id === me.id ? 'You' : `${esc(first(p.name))}${grid.answeredBy?.[p.id] && grid.answeredBy[p.id] !== me.id ? `<small>answered by ${esc(byName(grid.answeredBy[p.id]))}</small>` : grid.answeredBy?.[p.id] === me.id ? '<small>answered by you</small>' : ''}`
   const notes = players.filter(p => grid.notes?.[p.id]).map(p => `<span><b>${p.id === me.id ? 'You' : esc(first(p.name))}:</b> ${esc(grid.notes[p.id])}</span>`).join('')
   $('main').innerHTML = `<div class="screen">
     ${booked ? `<div class="card ftcard ftagreed"><b>Booked: ${dayLabel(booked.date)} ${hhmm(booked.time)}</b><span class="hint">Everyone in the match is on it.</span><button class="ghost" id="ft-seebk">See the booking</button></div>` : ''}
-    ${agreed ? `<div class="card ftcard ftagreed"><b>Everyone can do ${dayLabel(agreed.day)} · ${agreed.part}</b>
+    ${agreed && ok.length > 1 ? `<div class="card ftcard ftagreed"><b>Everyone can do ${ok.length} times</b>
+      <span class="hint">Tap the one that suits best below. Booking ${dayLabel(agreed.day)} · ${agreed.part}: the tee sheet opens on that day with ${esc(others.map(p => first(p.name)).join(' and '))} ready to add.</span>
+      <button class="primary" id="ft-book">Book a tee time · ${dayLabel(agreed.day)}</button></div>` : ''}
+    ${agreed && ok.length === 1 ? `<div class="card ftcard ftagreed"><b>Everyone can do ${dayLabel(agreed.day)} · ${agreed.part}</b>
       <span class="hint">Book a tee time that ${agreed.part}: the tee sheet opens on that day with ${esc(others.map(p => first(p.name)).join(' and '))} ready to add.</span>
       <button class="primary" id="ft-book">Book a tee time · ${dayLabel(agreed.day)}</button></div>` : ''}
     <div class="card ftcard"><b>Who can do which?</b>
       ${times.length ? `<div class="ftwrap"><table class="ftgrid"><thead><tr><th></th>${players.map(p => `<th class="${p.id === me.id ? 'me' : ''}">${head(p)}</th>`).join('')}</tr></thead>
-        <tbody>${times.map(t => `<tr data-row="${t.id}" class="${t.id === grid.agreed ? 'all' : ''}"><td>${dayLabel(t.day)}<small>${partLabel(t.part)}</small></td>${players.map(p => cell(t, p)).join('')}</tr>`).join('')}</tbody></table></div>
+        <tbody>${times.map(t => `<tr data-row="${t.id}" class="${t === agreed ? 'all' : ok.includes(t) ? 'ok' : ''}"><td>${ok.length > 1 && ok.includes(t)
+          ? `<button class="ftpick" data-pick="${t.id}" aria-pressed="${t === agreed}">${dayLabel(t.day)}<small>${partLabel(t.part)}${t === agreed ? ' · chosen' : ''}</small></button>`
+          : `${dayLabel(t.day)}<small>${partLabel(t.part)}</small>`}</td>${players.map(p => cell(t, p)).join('')}</tr>`).join('')}</tbody></table></div>
         <span class="hint">${players.filter(answered).length} of ${players.length} have answered. Tap your column: ✓ you can, again for ✕, again to clear.</span>
         ${partner ? `<button type="button" class="ftsame" id="ft-same" role="checkbox" aria-checked="${d.same}"><span class="box">${d.same ? '✓' : ''}</span>${esc(first(partner.name))} can do the same</button>` : ''}`
         : '<span class="hint">No days suggested yet.</span>'}
@@ -73,6 +81,8 @@ export function draw({ grid, me, booked }) {
     <p class="hint">Nothing agreed a week before ${dayLabel(m.by)}? Everyone gets a reminder.</p></div>`
   const dirty = () => { d.dirty = true; d.warned = false }
   document.querySelectorAll('[data-t]').forEach(b => (b.onclick = () => { d.mine[b.dataset.t] = cycle(d.mine[b.dataset.t]); dirty(); keepScroll(redraw) }))
+  // several agreed: tap anywhere on one of their rows (bar my own ticks) to choose it
+  if (ok.length > 1) document.querySelectorAll('tr.ok, tr.all').forEach(r => (r.onclick = e => { if (e.target.closest('[data-t]')) return; S.ftChosen = +r.dataset.row; keepScroll(redraw) }))
   if ($('ft-same')) $('ft-same').onclick = () => { d.same = !d.same; dirty(); keepScroll(redraw) }
   $('ft-note').oninput = e => { d.note = e.target.value; dirty() }
   $('ft-confirm').onclick = async () => {
@@ -138,7 +148,7 @@ export async function book(m, me, others, agreed) {
   const rules = await api.getBookingRules(), days = nextDays(rules.days + 1).map(isoDate), i = days.indexOf(agreed.day)
   const ids = others.map(p => p.id)
   const hold = m.club && m.kind === 'singles' && i >= 0 ? { kind: 'ko', ref: m.compId, opp: ids[0], label: `${m.compName} match` } : null
-  Object.assign(S, { ftPick: null, ftDraft: null, tab: 'home', aview: 'tee', matchPick: ids, matchHold: hold, matchPart: agreed.part, matchName: m.compName, filter: hold || ids.length >= 2 ? '4' : '2',
+  Object.assign(S, { ftPick: null, ftDraft: null, ftChosen: null, tab: 'home', aview: 'tee', matchPick: ids, matchHold: hold, matchPart: agreed.part, matchName: m.compName, filter: hold || ids.length >= 2 ? '4' : '2',
     reqMode: i < 0, ...(i < 0 ? { reqDate: agreed.day, reqReason: `${m.compName} match` } : { day: i }) })
   await render(); top0()
 }

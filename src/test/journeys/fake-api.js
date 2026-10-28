@@ -472,14 +472,18 @@ export function makeWorld(today, setup = () => {}, as = 'admin') {
       if (note != null) { db.matchNotes[mid] ??= {}; if (n) db.matchNotes[mid][ME] = n; else delete db.matchNotes[mid][ME] }
       const name = db.signups.find(x => x.id === m.compId).name
       const all = t => t.day >= db.today && players.every(p => t.answers[p] === true)
-      for (const t of db.matchTimes.filter(x => x.matchId === mid)) {
-        if (!all(t)) db.notices = db.notices.filter(n2 => !(n2.kind === 'agreed' && n2.koMatchId === mid && n2.date === t.day && n2.part === t.part && !n2.seen))
-        else if (!db.notices.some(n2 => n2.kind === 'agreed' && n2.koMatchId === mid && n2.date === t.day && n2.part === t.part && players.includes(n2.memberId))) {
-          for (const p of players) db.notices.push({ id: id(), memberId: p, kind: 'agreed', date: t.day, oldTime: 0, newTime: null, note: name, part: t.part, koMatchId: mid, seen: false })
-        }
-      }
       const order = ['morning', 'afternoon', 'evening']
-      return { agreed: db.matchTimes.filter(x => x.matchId === mid && all(x)).sort((x, y) => x.day.localeCompare(y.day) || order.indexOf(x.part) - order.indexOf(y.part))[0]?.id ?? null }
+      const agreed = db.matchTimes.filter(x => x.matchId === mid && all(x)).sort((x, y) => x.day.localeCompare(y.day) || order.indexOf(x.part) - order.indexOf(y.part))
+      const slots = agreed.map(t => ({ day: t.day, part: t.part })), same = (a, b) => JSON.stringify(a) === JSON.stringify(b)
+      for (const p of players) { // one notice listing every agreed slot, for a player who hasn't seen them all
+        const mine = db.notices.filter(n2 => n2.kind === 'agreed' && n2.koMatchId === mid && n2.memberId === p)
+        const seen = mine.filter(n2 => n2.seen).flatMap(n2 => n2.slots ?? [{ day: n2.date, part: n2.part }])
+        const fresh = slots.some(s => !seen.some(x => same(x, s)))
+        if (fresh && mine.some(n2 => !n2.seen && same(n2.slots, slots))) continue
+        db.notices = db.notices.filter(n2 => !(n2.kind === 'agreed' && n2.koMatchId === mid && n2.memberId === p && !n2.seen))
+        if (fresh) db.notices.push({ id: id(), memberId: p, kind: 'agreed', date: slots.at(-1).day, oldTime: 0, newTime: null, note: name, part: slots[0].part, slots, koMatchId: mid, seen: false })
+      }
+      return { agreed: agreed[0]?.id ?? null }
     },
     getMyKoDue: async () => db.koMatches.filter(m => ['open', 'disputed'].includes(m.status) && m.aEntry != null && m.bEntry != null && koPlayers(m.id).includes(ME)).flatMap(m => {
       const c = db.signups.find(x => x.id === m.compId), by = c?.drawPublished ? c.roundDeadlines?.[m.round - 1] : null, players = koPlayers(m.id)

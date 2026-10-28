@@ -197,3 +197,57 @@ describe('Find a time: from an agreed slot straight to booking it', () => {
     expect(app.screen()).toBe('Booking')
   })
 })
+
+describe('Find a time: everyone can do several', () => {
+  // Gary has suggested three; Declan ticks all three and confirms.
+  const three = db => { suggested(db); db.notices[0].seen = true; db.matchTimes.push({ id: 53, matchId: 1, day: '2026-10-16', part: 'afternoon', by: 0, answers: { 0: true } }) }
+  const agreeAll = async () => {
+    await open(); await app.tap('Find a time')
+    for (const t of [51, 52, 53]) await app.tap(`[data-t="${t}"]`)
+    await app.tap('Confirm my answers')
+  }
+  it('one notice each, listing all three, not one per slot', async () => {
+    app = await boot(three, { as: 'member' })
+    await agreeAll()
+    const agreed = app.db.notices.filter(n => n.kind === 'agreed')
+    expect(agreed.map(n => n.memberId).sort()).toEqual([0, 1])
+    expect(agreed[0].slots.map(s => `${s.day} ${s.part}`)).toEqual(['2026-10-12 morning', '2026-10-14 evening', '2026-10-16 afternoon'])
+  })
+  it('tap the row that suits: Book a tee time takes me to that day and part of the day', async () => {
+    app = await boot(three, { as: 'member' })
+    await agreeAll()
+    expect(app.text()).toContain('Everyone can do 3 times')
+    expect(document.getElementById('ft-book').textContent).toContain('Mon 12 Oct') // the first, to start with
+    await app.tap('[data-pick="52"]')
+    expect(document.querySelector('tr[data-row="52"]').className).toBe('all')
+    expect(document.getElementById('ft-book').textContent).toContain('Wed 14 Oct')
+    await app.tap('Book a tee time · Wed 14 Oct')
+    expect(app.screen()).toBe('Book tee times')
+    expect(app.text()).toContain('Evening times for your Men’s Match Play match')
+  })
+  it('tapping anywhere else on the row picks it, Gary’s tick too', async () => {
+    app = await boot(three, { as: 'member' })
+    await agreeAll()
+    await app.tap('[data-tt="53"][data-p="0"]')
+    expect(document.getElementById('ft-book').textContent).toContain('Fri 16 Oct')
+  })
+  it('tapping my own tick on an agreed row changes my answer, not the choice', async () => {
+    app = await boot(three, { as: 'member' })
+    await agreeAll()
+    await app.tap('[data-t="53"]')
+    expect(document.getElementById('ft-book').textContent).toContain('Mon 12 Oct')
+  })
+  it('the notice lists the three and Pick a time opens the grid', async () => {
+    app = await boot(db => {
+      three(db)
+      for (const t of db.matchTimes) t.answers[1] = true
+      db.notices.push({ id: 63, memberId: 1, kind: 'agreed', date: '2026-10-16', oldTime: 0, newTime: null, note: 'Men’s Match Play', part: 'morning', koMatchId: 1, seen: false,
+        slots: [{ day: '2026-10-12', part: 'morning' }, { day: '2026-10-14', part: 'evening' }, { day: '2026-10-16', part: 'afternoon' }] })
+    }, { as: 'member' })
+    const bar = document.getElementById('alerts').textContent
+    expect(bar).toContain('Everyone can do 3 times for your Men’s Match Play match')
+    expect(bar).toContain('Mon 12 Oct · morning, Wed 14 Oct · evening, Fri 16 Oct · afternoon')
+    await app.tap('[data-al="times"]')
+    expect(app.text()).toContain('Everyone can do 3 times')
+  })
+})
