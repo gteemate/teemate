@@ -135,6 +135,11 @@ export default [
     action: 'publishPins', expect: db => db.pinSheet?.pins?.length === 18, refusals: 'all',
   },
   {
+    id: 'office-take-down-pins', who: 'office', title: 'Take today’s flags down again',
+    setup: db => { db.pinsToday = true }, steps: [{ tap: '[data-ov="club"]' }, { tap: '[data-o-open="pins"]' }, { tap: '#pdown' }, { tap: '#pdown' }],
+    action: 'takeDownPins', expect: db => db.pinsToday === false, refusals: 'all',
+  },
+  {
     id: 'office-green-width', who: 'office', title: 'Correct a green’s width',
     steps: [{ tap: '[data-ov="club"]' }, { tap: '[data-o-open="pins"]' }, { tap: '[data-w="1"]' }, { tap: '[data-wd="1"]' }, { tap: '#wsave' }],
     action: 'setGreenWidth', expect: db => db.calls.includes('setGreenWidth'), refusals: 'all',

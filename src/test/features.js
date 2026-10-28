@@ -289,6 +289,8 @@ export const FEATURES = [
     what: 'The course guide shows each hole and today’s flags; Home shows the weather at the course.',
     scenarios: [
       { says: 'The office sets today’s flags; the guide shows them', tests: ['journey:office-publish-pins', `${F} › pins: the office sets today’s flags and the course guide shows them`] },
+      { says: 'Take today’s flags down again; the guide says they aren’t set', tests: ['journey:office-take-down-pins', `${F} › pins: take today’s down again (two taps), and they show as not set`, `${F} › pins: not set today, nothing to take down`] },
+      { says: 'Not set today: the guide says so, no flags from an earlier day', tests: [`${F} › not set today: says so, no flag from an earlier day`, `${F} › set today: the flag, its yards and when it was set`] },
       { says: 'Correct a green’s width', tests: ['journey:office-green-width'] },
       { says: 'Weather', tests: ['src/weather.test.js'] },
     ],

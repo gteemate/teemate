@@ -1608,6 +1608,12 @@
    ],
    "tables": []
   },
+  "takeDownPins": {
+   "rpc": [],
+   "tables": [
+    "pin_sheets"
+   ]
+  },
   "toMember": {
    "rpc": [],
    "tables": []
