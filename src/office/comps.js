@@ -167,6 +167,14 @@ export function draw({ evs, comps, kos, members, t, tpls = [] }) {
     try { r = await (sel.c ? api.demoClearSignup(sel.c.id) : api.demoClearEvent(sel.e.id)) } catch (er) { toast(er.message); b.disabled = false; return }
     await keepScroll(render); toast(`${r.removed} demo ${sel.c?.kind === 'pairs' ? 'pairs' : 'entries'} removed`)
   }
+  if ($('o-ftreset')) $('o-ftreset').onclick = async () => {
+    const b = $('o-ftreset')
+    if (b.dataset.armed !== '1') { b.dataset.armed = '1'; b.textContent = 'Tap again to reset'; return }
+    b.disabled = true
+    let r
+    try { r = await api.demoResetFindATime(sel.c.id) } catch (er) { toast(er.message); b.disabled = false; return }
+    await keepScroll(render); toast(r.removed ? `Find a time reset: ${r.removed} suggested ${r.removed === 1 ? 'day' : 'days'} cleared` : 'Find a time reset: nothing was suggested')
+  }
   // Delete the selected competition (a club event or league, or a sign-up competition and its draw): tap twice.
   if ($('o-del')) $('o-del').onclick = async () => {
     const b = $('o-del'), x = sel, name = x.c?.name ?? x.e.name
@@ -257,7 +265,10 @@ function detail(x, ko, members, t) {
   const side = (m, id, bye) => `<div class="obk${m.winnerEntry === id && id != null && ['confirmed', 'bye'].includes(m.status) ? ' w' : ''}">${esc(entryName(id, ko.entries, members, bye))}</div>`
   const state = m => m.status === 'bye' ? 'Bye' : m.status === 'confirmed' ? `${esc(name(m.winnerEntry))} won${m.result ? ` ${esc(m.result)}` : ''}`
     : m.status === 'disputed' ? 'Disputed: set the result' : m.status === 'reported' ? 'Waiting for the other side to confirm' : c.roundDeadlines[m.round - 1] ? `To play by ${eventDates(c.roundDeadlines[m.round - 1], 1)}` : 'To play'
-  return `${head}${!c.drawPublished ? '<p class="hint opad">Draft: members don’t see it until it’s published.</p>' : ''}${champ ? `<p class="opad"><span class="pill gold">Champion: ${esc(name(champ))}</span></p>` : ''}
+  // For a demo: Find a time from the start again for every match (bookings stay).
+  const ftDemo = c.drawPublished ? `<div class="orow odemo"><span class="ot"><b>Demo</b><span>Start Find a time again for every match: the days suggested, ticks and notes go. Bookings stay.</span></span>
+    <span class="oacts"><button class="ghost sm" id="o-ftreset">Reset Find a time</button></span></div>` : ''
+  return `${head}${ftDemo}${!c.drawPublished ? '<p class="hint opad">Draft: members don’t see it until it’s published.</p>' : ''}${champ ? `<p class="opad"><span class="pill gold">Champion: ${esc(name(champ))}</span></p>` : ''}
     <div class="obracket">${[...Array(n)].map((_, r) => `<div class="oround"><small>${roundName(r + 1, n)}${c.roundDeadlines[r] ? `<span>By ${eventDates(c.roundDeadlines[r], 1)}</span>` : ''}</small>
       ${ko.matches.filter(m => m.round === r + 1).sort((a, b) => a.slot - b.slot).map(m => `<div class="omatch${m.status === 'disputed' ? ' disp' : ''}">${side(m, m.aEntry)}${side(m, m.bEntry, m.status === 'bye')}<div class="ost">${state(m)}${m.roundId ? ` · <button class="linkbtn" data-o-card="${m.id}:${c.id}">Scorecard</button>` : ''}</div></div>`).join('')}</div>`).join('')}</div>`
 }

@@ -75,6 +75,8 @@ export async function publishDraw(compId) { must(await sb.rpc('admin_publish_dra
 /** The knockout match a card is for: { compId, round }, or null. */
 /** Find a time: suggest days for my knockout match, each { day: 'YYYY-MM-DD', part: 'morning' | 'afternoon' | 'evening' }
  *  (1 to 6; I count as able to do them). The other players are told. → { added } */
+/** For a demo: the office wipes Find a time for a knockout's matches (days, ticks, notes, notices). → { removed } */
+export async function demoResetFindATime(compId) { return must(await sb.rpc('demo_reset_find_a_time', { p_comp: compId })) }
 export async function suggestMatchTimes(matchId, times) {
   return must(await sb.rpc('suggest_match_times', { p_match: matchId, p_times: times }))
 }

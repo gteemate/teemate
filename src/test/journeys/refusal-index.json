@@ -353,6 +353,10 @@
    "At most 128 demo entries."
   ],
   "demo_pick": [],
+  "demo_reset_find_a_time": [
+   "Only the club office can reset Find a time.",
+   "That competition no longer exists."
+  ],
   "demo_signup_comp": [
    "Only the club office can add or remove demo entries.",
    "That competition no longer exists.",
@@ -930,6 +934,12 @@
   "demoFillSignup": {
    "rpc": [
     "demo_fill_signup"
+   ],
+   "tables": []
+  },
+  "demoResetFindATime": {
+   "rpc": [
+    "demo_reset_find_a_time"
    ],
    "tables": []
   },

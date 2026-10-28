@@ -19,7 +19,7 @@ export const API_NAMES = ['getMe', 'forgetMe', 'getSession', 'signIn', 'needsAcc
   'getHutStaff', 'setHutStaff', 'placeHutOrder', 'cancelMyHutOrder', 'myHutOrders', 'hutOrdersToday', 'setHutOrderStatus', 'getMembers', 'getBuddies',
   'addBuddy', 'removeBuddy', 'getFriends', 'saveContact', 'removeContact', 'setFriendFavourite', 'getAccessList', 'saveMember', 'getFavourites',
   'setFavourite', 'setOfficeLogin', 'getAccessRequests', 'declineRequest', 'deleteMember', 'resetLogin', 'getCourse', 'getPins', 'setGreenWidth', 'publishPins', 'takeDownPins',
-  'getTeeSheet', 'bookTeeTime', 'getMyTeeTimes', 'getGuests', 'setGuestHandicap', 'setHandicaps', 'suggestMatchTimes', 'confirmMatchTimes', 'getMatchTimes', 'getMyKoDue', 'cancelBooking', 'removeFromBooking', 'addToBooking', 'bookClubMatch', 'chargeGuests', 'removeGuestCharge', 'getGuestChargesToday', 'moveMatchBooking', 'adminCancelBooking', 'adminMoveBooking',
+  'getTeeSheet', 'bookTeeTime', 'getMyTeeTimes', 'getGuests', 'setGuestHandicap', 'setHandicaps', 'suggestMatchTimes', 'confirmMatchTimes', 'demoResetFindATime', 'getMatchTimes', 'getMyKoDue', 'cancelBooking', 'removeFromBooking', 'addToBooking', 'bookClubMatch', 'chargeGuests', 'removeGuestCharge', 'getGuestChargesToday', 'moveMatchBooking', 'adminCancelBooking', 'adminMoveBooking',
   'getBookingNotices', 'seenBookingNotice', 'getMyBookings',
   'getGuestPoints', 'getBookingRules', 'setBookingRules', 'requestTeeTime', 'cancelTeeTimeRequest', 'getMyTeeTimeRequests', 'getTeeTimeRequests',
   'decideTeeTimeRequest', 'markTeeTimeRequestsSeen', 'dismissTeeTimeRequest', 'getGameSettings', 'setMyGamePref', 'getCurrentRound', 'getRound', 'deleteRound', 'saveRound',
@@ -454,6 +454,13 @@ export function makeWorld(today, setup = () => {}, as = 'admin') {
       const first = times.map(t => t.day).sort()[0]
       for (const p of koPlayers(mid).filter(p => p !== ME)) db.notices.push({ id: id(), memberId: p, kind: 'times', date: first, oldTime: 0, newTime: null, byName: member(ME).name, note: c.name, koMatchId: mid, seen: false })
       return { added: times.length }
+    },
+    demoResetFindATime: async compId => { // as the database: the office only; the days, ticks, notes and notices go
+      if (!db.asOffice && !me()?.admin) throw new Error('Only the club office can reset Find a time.')
+      const mids = db.koMatches.filter(m => m.compId === compId).map(m => m.id), removed = db.matchTimes.filter(t => mids.includes(t.matchId)).length
+      db.matchTimes = db.matchTimes.filter(t => !mids.includes(t.matchId)); for (const m of mids) delete db.matchNotes[m]
+      db.notices = db.notices.filter(n => !(['times', 'agreed'].includes(n.kind) && mids.includes(n.koMatchId)))
+      return { removed }
     },
     confirmMatchTimes: async (mid, answers, partner = null, note = null) => { // as the database: mine, my own partner's, a note; then who's agreed
       const m = arrange(mid), players = koPlayers(mid)

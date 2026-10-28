@@ -238,6 +238,18 @@ export default [
     action: 'demoClearSignup', expect: db => db.signupEntries.filter(e => e.compId === 1).map(e => e.memberId).join() === '3', refusals: 'all',
   },
   {
+    id: 'office-demo-reset-find-a-time', who: 'office', title: 'After a demo: start Find a time again for a knockout',
+    setup: db => {
+      Object.assign(db.signups[0], { closesOn: '2026-10-01', drawPublished: true, roundDeadlines: ['2026-10-20', '2026-11-03'] })
+      db.signupEntries.push({ id: 100, compId: 1, memberId: 0, partnerId: null }, { id: 101, compId: 1, memberId: 1, partnerId: null })
+      db.koMatches.push({ id: 1, compId: 1, round: 1, slot: 0, aEntry: 100, bEntry: 101, winnerEntry: null, result: null, status: 'open', reportedEntry: null })
+      db.matchTimes.push({ id: 51, matchId: 1, day: '2026-10-12', part: 'morning', by: 0, answers: { 0: true, 1: true } })
+      db.notices.push({ id: 61, memberId: 1, kind: 'agreed', date: '2026-10-12', oldTime: 0, newTime: null, note: 'Men’s Match Play', part: 'morning', koMatchId: 1, seen: false })
+    },
+    steps: [{ tap: '[data-ov="comps"]' }, { tap: '[data-o-comp="s:1"]' }, { tap: '#o-ftreset' }, { tap: '#o-ftreset' }],
+    action: 'demoResetFindATime', expect: db => !db.matchTimes.length && !db.notices.some(n => n.koMatchId === 1), refusals: 'all',
+  },
+  {
     id: 'office-demo-fill-event', who: 'office', title: 'For a demo: fill a league open for sign-up to its places',
     setup: db => db.events.push({ id: 880, name: 'Frosty League', style: 'league', fmt: 'beststab', club: true, everyone: false, startDate: '2026-12-07', days: 1, weeks: 10, bestOf: 4,
       teams: [], team: {}, players: [10], matches: {}, captainPool: [], signup: true, advertiseFrom: '2026-10-01', entriesClose: '2026-11-30', maxEntries: 12, createdBy: { id: 0, name: 'Gary Cochrane' } }),

@@ -25,7 +25,7 @@ export const {
   setFriendFavourite, setFavourite, setMyPlaysIn, adminSetPlaysIn, declineSignup, undeclineSignup,
   runSignup, enterSignup, withdrawSignup, saveSignup, createMemberKnockout, deleteMemberKnockout,
   makeDraw, swapDraw, setRoundDeadlines, publishDraw, linkKoCard, reportKoResult,
-  confirmKoResult, disputeKoResult, adminSetKoResult, deleteSignup, demoFillSignup, demoClearSignup, deleteRound, cancelBooking, removeFromBooking,
+  confirmKoResult, disputeKoResult, adminSetKoResult, deleteSignup, demoFillSignup, demoClearSignup, demoResetFindATime, deleteRound, cancelBooking, removeFromBooking,
   adminCancelBooking, adminMoveBooking, requestTeeTime, cancelTeeTimeRequest, dismissTeeTimeRequest, decideTeeTimeRequest,
   markTeeTimeRequestsSeen,
 } = w

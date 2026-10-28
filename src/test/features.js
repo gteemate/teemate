@@ -91,6 +91,7 @@ export const FEATURES = [
     what: 'For a demo, the club office fills a sign-up competition or league with made-up players, and takes them out again.',
     scenarios: [
       { says: 'Fill to 8, 16, 32 or the limit, in the right sections (one man and one lady per mixed pair); real entries stay', tests: ['journey:office-demo-fill-signup', 'journey:office-demo-fill-event', 'rule:demo-limit', 'supabase/tests/demo_fill.sql › Demo entries: a mixed pair is one man and one lady, all demo', 'supabase/tests/demo_fill.sql › Demo entries: men’s singles get men; ladies’ pairs get two ladies, nobody twice'] },
+      { says: 'Reset Find a time for a knockout: suggested days, ticks, notes and notices go; bookings and the matches stay', tests: ['journey:office-demo-reset-find-a-time', 'supabase/tests/demo_reset_find_a_time.sql › Reset Find a time: the days, ticks, notes and notices go', 'supabase/tests/demo_reset_find_a_time.sql › Reset Find a time: only the club office'] },
       { says: 'Remove demo entries takes out only the made-up players', tests: ['journey:office-demo-clear-signup', 'journey:office-demo-clear-event', 'supabase/tests/demo_fill.sql › Demo entries: Remove takes out only the demo ones'] },
       { says: 'Office only, and not once the draw is made', tests: ['rule:demo-office-only', 'rule:demo-not-after-draw'] },
     ],
