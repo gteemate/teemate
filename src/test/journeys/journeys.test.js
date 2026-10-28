@@ -188,9 +188,24 @@ describe('journeys', () => {
     expect(app.text()).toContain('you’ve had your round this week')
     await app.tap('Winter League')
     expect(entering()).toEqual({ 1: true }) // only Declan can, so he's picked
-    expect(app.text()).toContain('Marker: You') // I mark his card (the only other one on it)
+    expect(app.text()).toContain('Declan’s marker: You') // I mark his card (the only other one on it)
     await app.tap('Start round · Winter League')
     expect(app.db.leagueEntries.filter(x => x.roundId != null).map(x => [x.memberId, x.marker])).toEqual([[1, { m: 0 }]])
+  })
+  it('6a3. Entering with Declan: I’m taken to be marking his card, unless someone else is', async () => {
+    app = await boot(db => db.book(0, at(db, 570).id, [1, 3]))
+    await app.tap('Scoring')
+    await app.tap('09:30')
+    await app.tap('Winter League')
+    await app.tap(entrant(1)) // Declan counts his too
+    expect(app.text()).toContain('You’re marking Declan’s card.')
+    await app.tap('[data-mk="0"]') // Declan marks mine
+    await app.tap('#mk-else') // someone else marks Declan's
+    expect(app.text()).toContain('Who’s marking Declan’s card?')
+    expect([...document.querySelectorAll('[data-mko]')].map(b => b.textContent)).toEqual(['You', 'Ciarán O\'Neill'])
+    await app.tap('[data-mko="1"][data-n="1"]') // Ciarán
+    await app.tap('Start round · Winter League')
+    expect(app.db.leagueEntries.filter(x => x.roundId != null).map(x => [x.memberId, x.marker])).toEqual([[0, { m: 1 }], [1, { m: 3 }]])
   })
   it('6a1b. A three-ball where only Declan enters: who’s marking Declan’s card, me to start with', async () => {
     app = await boot(db => { db.book(0, at(db, 570).id, [1, 3]); const e = db.events.find(x => x.name === 'Winter League'); db.leagueEntries.push({ eventId: e.id, week: leagueWeek(e, db.today), memberId: 0, roundId: null }) })
@@ -200,8 +215,8 @@ describe('journeys', () => {
     expect(entering()).toEqual({ 1: false, 3: false }) // two could: nobody picked for them
     await app.tap(entrant(1)) // Declan counts his; Ciarán doesn't
     expect(app.text()).toContain('Who’s marking Declan’s card?')
-    expect(document.querySelector('[data-mk][aria-pressed="true"]').textContent).toBe('You')
-    expect([...document.querySelectorAll('[data-mk]')].map(b => b.textContent)).not.toContain('Declan Murphy')
+    expect(document.querySelector('[data-mko][aria-pressed="true"]').textContent).toBe('You')
+    expect([...document.querySelectorAll('[data-mko]')].map(b => b.textContent)).not.toContain('Declan Murphy')
     await app.tap('Start round · Winter League')
     expect(app.db.leagueEntries.filter(x => x.roundId != null).map(x => [x.memberId, x.marker])).toEqual([[1, { m: 0 }]])
   })
