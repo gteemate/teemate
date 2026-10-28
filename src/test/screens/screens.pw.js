@@ -221,6 +221,11 @@ test('every main screen', async ({ page }, testInfo) => {
   })
   expect.soft(spread, `draft draw at ${testInfo.project.name}: Spread the rounds evenly ${JSON.stringify(spread)}`).toEqual({ h: expect.any(Number), overlap: false })
   expect.soft(spread?.h ?? 0, `draft draw at ${testInfo.project.name}: Spread the rounds evenly is ${spread?.h}px tall`).toBeGreaterThanOrEqual(44)
+  // Found 28 Oct: Update handicaps' Choose a CSV file button filled the whole side panel on the iPad.
+  await visit('48 club office · update handicaps', async () => { await office('members'); await tap(page, 'text=Update handicaps'); await page.waitForSelector('.filebtn') })
+  const fileBtn = await page.evaluate(() => Math.round(document.querySelector('.filebtn')?.getBoundingClientRect().height ?? 0))
+  expect.soft(fileBtn, `Update handicaps at ${testInfo.project.name}: Choose a CSV file is ${fileBtn}px tall`).toBeLessThanOrEqual(64)
+  expect.soft(fileBtn).toBeGreaterThanOrEqual(40)
 })
 
 test.afterAll(async ({}, testInfo) => {

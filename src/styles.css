@@ -1110,3 +1110,4 @@ button.lrow.ci-m{width:100%;text-align:left;background:none;border:0;border-top:
 .dchip.on{background:var(--gold);border-color:var(--gold);color:var(--on-gold);font-weight:700}
 .cta .linkbtn{white-space:nowrap}
 .compsec{margin:10px 0 -2px}
+.opanel label.filebtn,label.filebtn{flex:0 0 auto;align-self:flex-start;display:inline-block;text-align:center;margin-top:6px;padding:12px 20px;color:var(--on-green);font-size:15px} /* a button-sized label, not one that fills the panel */
