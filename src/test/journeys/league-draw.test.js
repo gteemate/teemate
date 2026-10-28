@@ -221,3 +221,22 @@ describe('a surname letter bar on long entry lists', () => {
     expect(document.querySelector('.oaz')).toBe(null)
   })
 })
+
+describe('the office Competitions page on a phone', () => {
+  afterEach(() => window.happyDOM.setViewport({ width: 1024, height: 768 }))
+  it('the chosen competition’s detail sits straight under its list, above Templates and Finished', async () => {
+    window.happyDOM.setViewport({ width: 375, height: 812 })
+    app = await boot(league())
+    await open()
+    const det = document.querySelector('.odetail')
+    expect(det.parentElement.className).toBe('ocol') // in the list column, not after it
+    expect(det.previousElementSibling.classList.contains('olist')).toBe(true)
+    expect(det.previousElementSibling.querySelector('[data-o-comp="e:880"]')).not.toBe(null)
+    expect(document.querySelectorAll('.odetail')).toHaveLength(1)
+  })
+  it('wider, the detail keeps its own column', async () => {
+    app = await boot(league())
+    await open()
+    expect(document.querySelector('.odetail').parentElement.className).toBe('osplit')
+  })
+})

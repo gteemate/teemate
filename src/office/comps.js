@@ -70,19 +70,26 @@ export function draw({ evs, comps, kos, members, t, tpls = [] }) {
     : `${x.e.style === 'league' ? `League · ${x.e.weeks} weeks${x.e.koTop ? ` · top ${x.e.koTop} to a knockout` : ''}` : `${EVENT_TYPES[x.e.style]?.name ?? 'Event'} · ${eventWhen(x.e)}`}${holesText(x.e.holes) ? ` · ${holesText(x.e.holes)}` : ''}`
   const row = x => `<button class="orow obtn ocomp" data-o-comp="${x.key}" aria-pressed="${x === sel}"><span class="ot"><b>${esc(x.t?.name ?? x.c?.name ?? x.e.name)}</b><span>${line(x)}</span></span>${tag(x)}</button>`
 
+  const det = `<div class="card odetail">${sel?.t ? tplForm(sel.t, t) : sel && isTemplate(sel) ? runForm(sel, kos[sel.key], champ(sel), members, t) : sel ? detail(sel, kos[sel.key], members, t) : '<div class="empty-state">No club competitions yet. Start one with New competition.</div>'}</div>`
+  // On a phone (one column) the detail sits straight under the list holding the chosen one; wider, in its own column.
+  const phone = matchMedia('(max-width:760px)').matches, under = list => (phone && sel && list.includes(sel) ? det : '')
   $('main').innerHTML = `<div class="screen office">
     <div class="osplit">
       <div class="ocol">
         <button class="primary sm" id="o-new">New competition</button>
-        <div class="card olist">${live.map(row).join('') || '<div class="empty-state">Nothing running.</div>'}</div>
-        ${templates.length ? `<h3>Templates</h3><span class="hint">The club’s standard competitions. Pick one to run it with new dates.</span><div class="card olist">${templates.map(row).join('')}</div>` : ''}
-        ${finished.length ? `<h3>Finished</h3><div class="card olist">${finished.map(row).join('')}</div>` : ''}
+        <div class="card olist">${live.map(row).join('') || '<div class="empty-state">Nothing running.</div>'}</div>${under(live)}
+        ${templates.length ? `<h3>Templates</h3><span class="hint">The club’s standard competitions. Pick one to run it with new dates.</span><div class="card olist">${templates.map(row).join('')}</div>${under(templates)}` : ''}
+        ${finished.length ? `<h3>Finished</h3><div class="card olist">${finished.map(row).join('')}</div>${under(finished)}` : ''}
       </div>
-      <div class="card odetail">${sel?.t ? tplForm(sel.t, t) : sel && isTemplate(sel) ? runForm(sel, kos[sel.key], champ(sel), members, t) : sel ? detail(sel, kos[sel.key], members, t) : '<div class="empty-state">No club competitions yet. Start one with New competition.</div>'}</div>
+      ${phone && sel ? '' : det}
     </div>
   </div>`
 
-  document.querySelectorAll('[data-o-comp]').forEach(b => (b.onclick = () => { S.oComp = b.dataset.oComp; keepScroll(redraw) }))
+  document.querySelectorAll('[data-o-comp]').forEach(b => (b.onclick = async () => {
+    S.oComp = b.dataset.oComp
+    await keepScroll(redraw)
+    if (phone) document.querySelector('.odetail')?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' }) // bring the detail up under its list
+  }))
   const go = async f => { $('modal').innerHTML = ''; f(); await render(); top0() }
   document.querySelectorAll('[data-o-go]').forEach(b => (b.onclick = () => go(() => {
     const [what, id] = b.dataset.oGo.split(':')
