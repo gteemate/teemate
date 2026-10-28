@@ -530,6 +530,24 @@ describe('the smaller jobs', () => {
     await app.tap(publish.id ? `#${publish.id}` : publish.textContent.trim())
     expect(app.db.pinSheet?.pins).toHaveLength(18)
   })
+  it('pins: take today’s down again (two taps), and they show as not set', async () => {
+    app = await boot(db => { db.pinsToday = true })
+    await app.tap('Gary Cochrane'); await app.tap('Club office'); await app.tap('Club')
+    await app.tap('[data-o-open="pins"]')
+    expect(app.screen()).toBe('Pins')
+    await app.tap('#pdown')
+    expect(app.db.pinsToday).toBe(true) // one tap only arms it
+    await app.tap('#pdown')
+    expect(app.db.pinsToday).toBe(false)
+    expect(document.getElementById('pdown')).toBe(null) // nothing left to take down
+    expect(app.text()).toContain('Not set today')
+  })
+  it('pins: not set today, nothing to take down', async () => {
+    app = await boot()
+    await app.tap('Gary Cochrane'); await app.tap('Club office'); await app.tap('Club')
+    await app.tap('Set today’s flags')
+    expect(document.getElementById('pdown')).toBe(null)
+  })
   it('club name and colours: the office renames the club', async () => {
     app = await boot()
     await app.tap('Gary Cochrane')

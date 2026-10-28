@@ -28,6 +28,12 @@ export async function getPins(date = today()) {
   return { date: row.date, setAt: hhmmLocal(row.set_at), setBy: row.setter?.name ?? 'Head greenkeeper', pins: row.pins }
 }
 
+/** Take today's pins down (admins): the Course tab says they aren't set until they're published again. */
+export async function takeDownPins() {
+  const c = await getCourse()
+  must(await sb.from('pin_sheets').delete().eq('course_id', c.id).eq('date', todayIso()))
+}
+
 /** Correct a green's width (admins). */
 export async function setGreenWidth(hole, width) {
   must(await sb.rpc('admin_set_green_width', { p_hole: hole, p_width: width }))

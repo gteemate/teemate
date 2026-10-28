@@ -1,9 +1,9 @@
-// Admin → Pins: set today's pin positions and publish them to the Course tab.
+// Admin → Pins: set today's pin positions and publish them to the Course tab (or take today's down again).
 // Each hole reads like a sentence: "Flag is 3 yds from [back] and 1 yd from [right]".
 import * as api from '../api.js'
 import { $, esc, header, keepScroll, render, toast } from '../ui.js'
 import { flagOf, FLAGCOL, FLAGNAME, pinDistances, pinFrom } from '../course-art.js'
-import { today } from '../dates.js'
+import { today, isoDate } from '../dates.js'
 import { toAdmin } from './nav.js'
 
 let draft // edits in progress, kept until published or you leave via Back
@@ -21,7 +21,8 @@ const shownSide = (p, h) => pinDistances(h, p)[p.sideRef === 'right' ? 'right' :
 const yd = n => `yd${n === 1 ? '' : 's'}`
 
 export function draw({ course, sheet }) {
-  header('Pins', `Today · set ${esc(sheet.setAt)} by ${esc(sheet.setBy)}`, () => { draft = null; widthOpen = null; toAdmin() })
+  const set = sheet.date === isoDate(today()) // today's are out (otherwise this starts from the last ones set)
+  header('Pins', set ? `Today · set ${esc(sheet.setAt)} by ${esc(sheet.setBy)}` : 'Not set today · starting from the last pins set', () => { draft = null; widthOpen = null; toAdmin() })
   const seg = (hole, kind, a, b, cur) => `<span class="lcr pinseg" role="group">${[a, b].map(x => `<button data-ref="${hole}" data-kind="${kind}" data-v="${x}" aria-pressed="${cur === x}">${x[0].toUpperCase() + x.slice(1)}</button>`).join('')}</span>`
   const step = (hole, kind, v) => `<span class="stepper sm"><button data-step="${hole}" data-kind="${kind}" data-d="-1" aria-label="Closer">−</button><output>${v}</output><button data-step="${hole}" data-kind="${kind}" data-d="1" aria-label="Further">+</button></span>`
   $('main').innerHTML = `<div class="screen">
@@ -35,7 +36,7 @@ export function draw({ course, sheet }) {
        ${widthOpen === h.n ? `<div class="gedit"><span class="hint">Green width (yds)</span><span class="stepper sm"><button data-wd="-1" aria-label="Narrower">−</button><output id="wv">${h.greenWidth}</output><button data-wd="1" aria-label="Wider">+</button></span><button class="primary" id="wsave" style="flex:0 0 auto;padding:8px 14px">Save</button></div>` : ''}
      </div>`
    }).join('')}</div></div>
-   <div class="cta"><button class="primary" id="pub">Publish pins to members</button></div>`
+   <div class="cta">${set ? '<button class="ghost" id="pdown">Take down</button>' : ''}<button class="primary" id="pub">Publish pins to members</button></div>`
 
   document.querySelectorAll('[data-ref]').forEach(b => (b.onclick = () => {
     const p = draft[+b.dataset.ref]
@@ -63,6 +64,16 @@ export function draw({ course, sheet }) {
     widthOpen = null
     await keepScroll(render)
     toast(`Hole ${n} green is ${w} yds wide`)
+  }
+  // Take today's pins down (e.g. to set them again for a demo): tap twice.
+  if ($('pdown')) $('pdown').onclick = async () => {
+    const b = $('pdown')
+    if (b.dataset.armed !== '1') { b.dataset.armed = '1'; b.textContent = 'Tap again to take down'; return }
+    b.disabled = true
+    try { await api.takeDownPins() } catch (err) { toast(err.message); b.disabled = false; return }
+    draft = null
+    await render()
+    toast('Today’s pins taken down: members see they aren’t set yet')
   }
   $('pub').onclick = async () => {
     $('pub').disabled = true

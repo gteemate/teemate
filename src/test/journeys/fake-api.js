@@ -18,7 +18,7 @@ export const API_NAMES = ['getMe', 'forgetMe', 'getSession', 'signIn', 'needsAcc
   'onAuthChange', 'requestAccess', 'getTheme', 'setTheme', 'setDayBoardDays', 'setDayBoardToday', 'setFeePayment', 'getMyBalances', 'setClubName', 'setCourseLocation', 'getHut', 'setHutOn', 'saveHutItem', 'removeHutItem',
   'getHutStaff', 'setHutStaff', 'placeHutOrder', 'cancelMyHutOrder', 'myHutOrders', 'hutOrdersToday', 'setHutOrderStatus', 'getMembers', 'getBuddies',
   'addBuddy', 'removeBuddy', 'getFriends', 'saveContact', 'removeContact', 'setFriendFavourite', 'getAccessList', 'saveMember', 'getFavourites',
-  'setFavourite', 'setOfficeLogin', 'getAccessRequests', 'declineRequest', 'deleteMember', 'resetLogin', 'getCourse', 'getPins', 'setGreenWidth', 'publishPins',
+  'setFavourite', 'setOfficeLogin', 'getAccessRequests', 'declineRequest', 'deleteMember', 'resetLogin', 'getCourse', 'getPins', 'setGreenWidth', 'publishPins', 'takeDownPins',
   'getTeeSheet', 'bookTeeTime', 'getMyTeeTimes', 'getGuests', 'setGuestHandicap', 'setHandicaps', 'suggestMatchTimes', 'confirmMatchTimes', 'getMatchTimes', 'getMyKoDue', 'cancelBooking', 'removeFromBooking', 'addToBooking', 'bookClubMatch', 'chargeGuests', 'removeGuestCharge', 'getGuestChargesToday', 'moveMatchBooking', 'adminCancelBooking', 'adminMoveBooking',
   'getBookingNotices', 'seenBookingNotice', 'getMyBookings',
   'getGuestPoints', 'getBookingRules', 'setBookingRules', 'requestTeeTime', 'cancelTeeTimeRequest', 'getMyTeeTimeRequests', 'getTeeTimeRequests',
@@ -311,6 +311,7 @@ export function makeWorld(today, setup = () => {}, as = 'admin') {
     setCourseLocation: async (lat, lon, place) => { Object.assign(db.theme, { courseLat: lat, courseLon: lon, coursePlace: place }) },
     changePassword: async pw => { if (pw.length < 8) throw new Error('Password should be at least 8 characters.'); db.password = pw },
     publishPins: async pins => { db.pinSheet = { setAt: '09:00', setBy: 'Gary Cochrane', pins: copy(pins), date: today }; db.pinsToday = true },
+    takeDownPins: async () => { db.pinSheet = null; db.pinsToday = false }, // back to the last day's sheet
     setGreenWidth: async () => {},
     saveHutItem: async it => { if (it.id) Object.assign(db.hut.menu.find(x => x.id === it.id), it); else db.hut.menu.push({ ...it, id: id() }) },
     removeHutItem: async hid => { db.hut.menu = db.hut.menu.filter(x => x.id !== hid) },
