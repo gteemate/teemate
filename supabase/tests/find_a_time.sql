@@ -68,7 +68,7 @@ do $$ declare r jsonb; e text; d date := public.club_today(); v_t bigint; v_n in
   perform t.act_as(999002); perform public.answer_match_time(v_t, true); reset role;
   perform t.act_as(999003); perform public.answer_match_time(v_t, true); reset role;
   perform t.act_as(999001); r := public.get_match_times(999301); reset role;
-  perform t.ok('Find a time: 3 of 4 isn''t agreed', r->'agreed' = 'null'::jsonb and not exists (select 1 from public.booking_notices where kind = 'agreed'), r::text);
+  perform t.ok('Find a time: 3 of 4 isn''t agreed', r->'agreed' = 'null'::jsonb and not exists (select 1 from public.booking_notices where kind = 'agreed' and ko_match_id = 999301), r::text);
   perform t.act_as(999004); perform public.answer_match_time(v_t, true); r := public.get_match_times(999301); reset role;
   perform t.ok('Find a time: the last ✓ makes it agreed and everyone is told',
     (r->>'agreed')::bigint = v_t and (select count(distinct member_id) from public.booking_notices where kind = 'agreed' and member_id between 999001 and 999004) = 4, r::text);

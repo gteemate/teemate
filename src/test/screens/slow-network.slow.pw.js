@@ -54,6 +54,9 @@ for (const [net, cond] of Object.entries(NETS)) {
 
     await time(net, 'first open (nothing kept yet)', async () => { await page.goto('./'); await page.waitForSelector('#to-in', { timeout: HANG }) })
     await page.click('#to-in')
+    // the sign-in page puts the cursor in Email a moment after it shows: wait for that, as a person would, so it
+    // can't jump back there while the password is being typed
+    await page.waitForFunction(() => document.activeElement?.id === 'email', null, { timeout: HANG })
     await page.fill('#login #email', process.env.SCREENS_EMAIL)
     await page.fill('#login #pw', process.env.SCREENS_PASSWORD)
     await time(net, 'sign in → first screen', async () => { await page.click('#go'); await page.waitForSelector('#app:not(.signed-out) #main .screen', { timeout: HANG }) })
