@@ -32,6 +32,16 @@ describe('data kept on the device', () => {
     expect(app.main()).toContain('Renamed Cup')
     expect(callsTo('getEvents')).toBe(2)
   })
+  it('a page left open picks up someone else’s change by itself (the office iPad)', async () => {
+    app = await boot(db => { db.asOffice = true })
+    await app.tap('[data-ov="comps"]')
+    const e = app.db.events.find(x => app.main().includes(x.name))
+    e.name = 'Renamed Cup' // someone else's change
+    app.db.stamps.events = '2'
+    await vi.advanceTimersByTimeAsync(31_000) // nobody touches the iPad
+    await app.settle()
+    expect(app.main()).toContain('Renamed Cup')
+  })
   it('a change nobody made fetches nothing again', async () => {
     app = await boot(() => {})
     await openEntered()

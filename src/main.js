@@ -232,6 +232,9 @@ async function render() {
   if (screen === login || $('app').classList.contains('signed-out')) $('alerts').innerHTML = ''
   else checkAlerts(JSON.stringify(place()))
 }
+// A page left open (the office iPad, a leaderboard) picks up other people's changes by itself: every 30 s while
+// it's on screen, the same check a redraw makes (it redraws only if this page's data changed, and not mid-typing).
+setInterval(() => { if (document.visibilityState === 'visible') checkForChanges() }, 30_000)
 // Back to the app from another app or the lock screen: anything new?
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState !== 'visible' || $('app').classList.contains('signed-out')) return
