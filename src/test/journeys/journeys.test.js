@@ -141,6 +141,9 @@ describe('journeys', () => {
     await app.homeFromHere()
   })
 
+  // Scoring round?'s "Who's entering their score?": { memberId: picked }
+  const entering = () => Object.fromEntries([...document.querySelectorAll('[data-ent]')].map(b => [b.dataset.ent.split('|')[1], b.getAttribute('aria-pressed') === 'true']))
+  const entrant = id => `[data-ent="${[...document.querySelectorAll('[data-ent]')].find(b => b.dataset.ent.endsWith(`|${id}`)).dataset.ent}"]`
   const teeTimeToday = db => db.book(0, at(db, 570).id, [1]) // 09:30 with Declan Murphy (both in the Winter League)
 
   it('6. Start a round, count it for the Winter League (marker), save to hole 8, order a bacon roll', async () => {
@@ -149,6 +152,9 @@ describe('journeys', () => {
     await app.tap('09:30')
     expect(app.screen()).toBe('Scoring round?')
     await app.tap('Winter League')
+    expect(app.text()).toContain('Who’s entering their score?')
+    expect(entering()).toEqual({ 0: true, 1: false }) // me to start with; Declan, his choice
+    await app.tap(entrant(1)) // Declan wants his counted too
     expect(app.text()).toContain('Marker: Declan Murphy')
     await app.tap('Start round · Winter League')
     for (let h = 1; h <= 8; h++) await app.tap(`Save hole ${h}`)
@@ -160,8 +166,26 @@ describe('journeys', () => {
     expect(app.db.leagueEntries.map(x => [x.memberId, x.marker])).toEqual([[0, { m: 1 }], [1, { m: 0 }]])
     expect(app.db.orders.map(o => o.items.map(i => i.name))).toEqual([['Bacon roll']])
     expect(app.screen()).toMatch(/^Hole/) // back on the scorecard
-    expect(app.taps).toBeLessThanOrEqual(15)
+    expect(app.taps).toBeLessThanOrEqual(16) // one of them: Declan choosing to count his round
     await app.homeFromHere()
+  })
+
+  it('6a. Only the players who want it count: Declan not tapped, only my round goes in', async () => {
+    app = await boot(teeTimeToday)
+    await app.tap('Scoring')
+    await app.tap('09:30')
+    await app.tap('Winter League')
+    await app.tap('Start round · Winter League')
+    expect(app.db.leagueEntries.map(x => x.memberId)).toEqual([0])
+  })
+  it('6a2. Nobody entering: Start waits until someone is picked', async () => {
+    app = await boot(teeTimeToday)
+    await app.tap('Scoring')
+    await app.tap('09:30')
+    await app.tap('Winter League')
+    await app.tap(entrant(0)) // I take myself off
+    expect(document.getElementById('start').disabled).toBe(true)
+    expect(document.getElementById('start').textContent).toBe('Pick who’s entering')
   })
 
   it('6b. Found in review: on holes 1–6 and 10–12 the halfway hut asks after hole 6 (hole 8 is closed)', async () => {
