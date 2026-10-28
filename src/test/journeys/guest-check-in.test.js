@@ -217,16 +217,35 @@ describe('the club office sees each member’s guests, with how often each has c
     { member: 3, date: '2026-05-01', guest: 'Sam Guest', club: 'Portrush', points: 3, playerId: null },
     { member: 3, date: '2026-08-01', guest: 'Sam Guest', club: 'Portrush', points: 3, playerId: null },
     { member: 3, date: '2026-09-01', guest: 'Alex Moore', club: '', points: 3, playerId: null })
-  it('Members → a member: guests this year, each with ×times and points', async () => {
+  it('Members → a member’s page: guests this year, each counted out of 6, with the points used', async () => {
     app = await boot(visits, { as: 'office' })
     await app.tap('[data-ov="members"]')
     await app.tap('[data-o-m="3"]')
-    const rows = [...document.querySelectorAll('.oguests .orow')].map(r => r.textContent.replace(/\s+/g, ' ').trim())
+    const rows = [...document.querySelectorAll('.otable tbody tr')].map(r => r.textContent.replace(/\s+/g, ' ').trim())
     expect(rows[0]).toContain('Sam Guest')
-    expect(rows[0]).toContain('×2')
-    expect(rows[0]).toContain('6 pts')
+    expect(rows[0]).toContain('2 of 6')
     expect(rows[1]).toContain('Alex Moore')
-    expect(rows[1]).toContain('×1')
+    expect(rows[1]).toContain('1 of 6')
+    expect(app.text()).toContain('3 visits · 9 points used')
+    expect(document.getElementById('modal').innerHTML).toBe('') // its own page, not a panel
+    await app.tap('#o-mback')
+    expect(document.querySelector('[data-o-m="3"]')).not.toBe(null)
+  })
+  it('names that may be the same person are flagged; the office merges them', async () => {
+    app = await boot(db => { visits(db); db.guestVisits.push({ id: 81, member: 3, date: db.today, guest: 'G Cochrane', club: '', points: 3, playerId: null, by: 0 }, { id: 82, member: 3, date: db.today, guest: 'Gary Cochrane', club: 'Ballymena', points: 3, playerId: null, by: 0 }) }, { as: 'office' })
+    await app.tap('[data-ov="members"]'); await app.tap('[data-o-m="3"]')
+    expect(document.querySelector('.oflag').textContent).toContain('May be the same person: 2 of 6 together')
+    await app.tap('[data-o-merge="0"]')
+    expect(app.db.guestVisits.filter(v => v.member === 3 && /cochrane/i.test(v.guest)).map(v => v.guest)).toEqual(['Gary Cochrane', 'Gary Cochrane'])
+    expect(document.querySelector('.oflag')).toBe(null)
+    expect([...document.querySelectorAll('.otable tbody tr')].find(r => r.textContent.includes('Gary Cochrane')).textContent).toContain('2 of 6')
+  })
+  it('Different people: the pair isn’t flagged again', async () => {
+    app = await boot(db => { visits(db); db.guestVisits.push({ id: 81, member: 3, date: db.today, guest: 'G Cochrane', club: '', points: 3, playerId: null, by: 0 }, { id: 82, member: 3, date: db.today, guest: 'Gary Cochrane', club: 'Ballymena', points: 3, playerId: null, by: 0 }) }, { as: 'office' })
+    await app.tap('[data-ov="members"]'); await app.tap('[data-o-m="3"]')
+    await app.tap('[data-o-apart="0"]')
+    expect(app.db.guestNotSame).toEqual([{ memberId: 3, a: 'g cochrane', b: 'gary cochrane' }])
+    expect(document.querySelector('.oflag')).toBe(null)
   })
   it('Admin → Guest points: under each member, their guests with counts', async () => {
     app = await boot(visits)

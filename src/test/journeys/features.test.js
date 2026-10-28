@@ -784,14 +784,15 @@ describe('club office: finding a member and adding one', () => {
     await app.tap('[data-o-az=""]')
     expect(document.querySelectorAll('[data-o-m]').length).toBe(all)
   })
-  it('Add a member opens as a small box, not the full side panel', async () => {
+  it('Add a member opens as a small box; a member opens as their own page', async () => {
     app = await boot(db => { db.asOffice = true })
     await app.tap('[data-ov="members"]')
     await app.tap('#o-add')
     expect(document.querySelector('#modal .opanelwrap').classList.contains('small')).toBe(true)
     await app.tap('#opx')
     await app.tap('[data-o-m]')
-    expect(document.querySelector('#modal .opanelwrap').classList.contains('small')).toBe(false)
+    expect(document.querySelector('#modal .opanelwrap')).toBe(null)
+    expect(document.querySelector('.omember')).not.toBe(null)
   })
 })
 

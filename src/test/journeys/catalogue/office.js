@@ -227,6 +227,18 @@ export default [
     action: 'officeDeleteLeagueCard', expect: db => !db.rounds.some(r => r.id === 871) && !db.leagueEntries.some(x => x.roundId === 871), refusals: 'all',
   },
   {
+    id: 'office-merge-guests', who: 'office', title: 'Merge two names for the same guest (G Cochrane and Gary Cochrane)',
+    setup: db => db.guestVisits.push({ id: 81, member: 3, date: db.today, guest: 'G Cochrane', club: '', points: 3, playerId: null, by: 0 }, { id: 82, member: 3, date: db.today, guest: 'Gary Cochrane', club: 'Ballymena', points: 3, playerId: null, by: 0 }),
+    steps: [{ tap: '[data-ov="members"]' }, { tap: '[data-o-m="3"]' }, { tap: '[data-o-merge="0"]' }],
+    action: 'officeMergeGuests', expect: db => db.guestVisits.filter(v => v.member === 3).every(v => v.guest === 'Gary Cochrane'), refusals: 'all',
+  },
+  {
+    id: 'office-guests-not-same', who: 'office', title: 'Say two similar guest names are different people',
+    setup: db => db.guestVisits.push({ id: 81, member: 3, date: db.today, guest: 'G Cochrane', club: '', points: 3, playerId: null, by: 0 }, { id: 82, member: 3, date: db.today, guest: 'Gary Cochrane', club: 'Ballymena', points: 3, playerId: null, by: 0 }),
+    steps: [{ tap: '[data-ov="members"]' }, { tap: '[data-o-m="3"]' }, { tap: '[data-o-apart="0"]' }],
+    action: 'officeGuestsNotSame', expect: db => db.guestNotSame.length === 1, refusals: 'all',
+  },
+  {
     id: 'office-demo-fill-signup', who: 'office', title: 'For a demo: fill a mixed pairs competition with made-up pairs',
     steps: [{ tap: '[data-ov="comps"]' }, { tap: '[data-o-comp="s:4"]' }, { tap: '[data-o-demo="8"]' }],
     action: 'demoFillSignup', expect: db => db.signupEntries.filter(e => e.compId === 4).length === 8, refusals: 'all',

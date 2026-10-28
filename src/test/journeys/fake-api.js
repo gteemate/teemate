@@ -21,7 +21,7 @@ export const API_NAMES = ['getMe', 'forgetMe', 'getSession', 'signIn', 'needsAcc
   'setFavourite', 'setOfficeLogin', 'getAccessRequests', 'declineRequest', 'deleteMember', 'resetLogin', 'getCourse', 'getPins', 'setGreenWidth', 'publishPins', 'takeDownPins',
   'getTeeSheet', 'bookTeeTime', 'getMyTeeTimes', 'getGuests', 'setGuestHandicap', 'setHandicaps', 'suggestMatchTimes', 'confirmMatchTimes', 'demoResetFindATime', 'getMatchTimes', 'getMyKoDue', 'cancelBooking', 'removeFromBooking', 'addToBooking', 'bookClubMatch', 'chargeGuests', 'removeGuestCharge', 'getGuestChargesToday', 'moveMatchBooking', 'adminCancelBooking', 'adminMoveBooking',
   'getBookingNotices', 'seenBookingNotice', 'getMyBookings',
-  'getGuestPoints', 'getBookingRules', 'setBookingRules', 'requestTeeTime', 'cancelTeeTimeRequest', 'getMyTeeTimeRequests', 'getTeeTimeRequests',
+  'getGuestPoints', 'getGuestNotSame', 'officeMergeGuests', 'officeGuestsNotSame', 'getBookingRules', 'setBookingRules', 'requestTeeTime', 'cancelTeeTimeRequest', 'getMyTeeTimeRequests', 'getTeeTimeRequests',
   'decideTeeTimeRequest', 'markTeeTimeRequestsSeen', 'dismissTeeTimeRequest', 'getGameSettings', 'setMyGamePref', 'getCurrentRound', 'getRound', 'deleteRound', 'saveRound',
   'getTodayRounds', 'getCardsForTeeTimes', 'getMyPlayerEvents', 'proposePlayerEvent', 'proposeSingles', 'counterPlayerEvent', 'answerPlayerEvent', 'cancelPlayerEvent',
   'getStamps', 'getEvents', 'saveEvent', 'saveEvents', 'enterEvent', 'withdrawEvent', 'removeEventEntrant', 'demoFillEvent', 'demoClearEvent', 'officeTakeOutLeague', 'officeDeleteLeagueCard', 'getEventTemplates', 'saveEventTemplate', 'deleteEventTemplate', 'saveSeason', 'deleteEvent', 'getCardsOn', 'getLeagueEntries', 'getCardsById', 'enterLeague', 'enterEventToday',
@@ -138,7 +138,7 @@ export function makeWorld(today, setup = () => {}, as = 'admin') {
     signupEntries: [], koMatches: [], declines: [], matchTimes: [], matchNotes: {}, // matchNotes: { [matchId]: [{ by, note }] }, each player's last 2; matchTimes: Find a time { id, matchId, day, part, by, answers: { [memberId]: bool } } // declines: compIds I've said No thanks to
     buddies: [{ id: 1, favourite: false }, { id: 3, favourite: true }, { id: 5, favourite: false }, { id: 7, favourite: false }, { id: 11, favourite: false }],
     contacts: [{ id: 1, name: 'Sam Visitor', club: 'Royal Portrush GC', hcp: '12.0', gui: '1234567', sharedOn: today, favourite: false, updatedAt: `${today}T08:00:00Z` }],
-    slots: {}, bookings: [], guestVisits: [], rounds: [], requests: [], playerEvents: [],
+    slots: {}, bookings: [], guestVisits: [], guestNotSame: [], rounds: [], requests: [], playerEvents: [],
     rules: { time: '20:00', days: 8, weekendsOnly: false },
     theme: { main: '#19335A', accent: '#762A43', name: 'Royal Teemate Golf Club', courseLat: 55.2, courseLon: -6.65, coursePlace: 'Portrush', feePayment: 'shop', dayBoardDays: [0, 1, 2, 3, 4, 5, 6], dayBoardToday: null, paperCards: false },
     balances: null, // the club's system once linked: { competition, clubhouse } in pence
@@ -589,6 +589,24 @@ export function makeWorld(today, setup = () => {}, as = 'admin') {
       mine: db.guestVisits.filter(v => v.member === ME).map(v => ({ date: v.date, guest: v.guest, club: v.club, course: 'Ailsa', points: v.points, office: v.by != null })),
       members: db.members.map(m => { const vs = db.guestVisits.filter(v => v.member === m.id)
         return { id: m.id, name: m.name, used: vs.reduce((t, v) => t + v.points, 0), guests: guestCounts(vs.map(v => ({ guest: v.guest, club: v.club, points: v.points, date: v.date }))) } }) }),
+    getGuestNotSame: async () => copy(db.guestNotSame),
+    // As the database: the office only; this year's visits under one name move to the name kept
+    officeMergeGuests: async (memberId, from, to) => {
+      if (!db.asOffice && !me()?.admin) throw new Error('Only the club office can merge guests.')
+      const tidy = x => String(x ?? '').trim().toLowerCase().replace(/\s+/g, ' ')
+      if (!tidy(to)) throw new Error('Say which name to keep.')
+      if (tidy(from) === tidy(to)) throw new Error('Those are already the same name.')
+      const vs = db.guestVisits.filter(v => v.member === memberId && tidy(v.guest) === tidy(from) && v.date >= `${db.today.slice(0, 4)}-01-01`)
+      if (!vs.length) throw new Error('There are no visits under that name this year.')
+      for (const v of vs) v.guest = to.trim().replace(/\s+/g, ' ')
+      return vs.length
+    },
+    officeGuestsNotSame: async (memberId, a, b) => {
+      if (!db.asOffice && !me()?.admin) throw new Error('Only the club office can do that.')
+      const tidy = x => String(x ?? '').trim().toLowerCase().replace(/\s+/g, ' '), [x, y] = [tidy(a), tidy(b)].sort()
+      if (!x || x === y) throw new Error('Pick two different names.')
+      if (!db.guestNotSame.some(p => p.memberId === memberId && p.a === x && p.b === y)) db.guestNotSame.push({ memberId, a: x, b: y })
+    },
     // As the database: the office only; a scanned card's name must match; 1 to 3 named guests; never over the allowance.
     chargeGuests: async (memberId, cardName, guests) => {
       if (!db.asOffice && !me()?.admin) throw new Error('Only the club office can check in guests.')

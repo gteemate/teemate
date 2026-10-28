@@ -557,6 +557,16 @@
   "office_guest_charges_today": [
    "Only the club office can check in guests."
   ],
+  "office_guests_not_same": [
+   "Only the club office can do that.",
+   "Pick two different names."
+  ],
+  "office_merge_guests": [
+   "Only the club office can merge guests.",
+   "Say which name to keep.",
+   "Those are already the same name.",
+   "There are no visits under that name this year."
+  ],
   "office_remove_guest_charge": [
    "Only the club office can check in guests.",
    "Only today's check-ins at the office can be removed here."
@@ -716,6 +726,7 @@
    "You've read 10 cards today. Enter the scores by hand, or try again tomorrow."
   ],
   "tee_time_opens_at": [],
+  "tidy_guest_name": [],
   "too_close": [],
   "undecline_signup": [],
   "withdraw_event": [
@@ -1064,6 +1075,10 @@
    ],
    "tables": []
   },
+  "getGuestNotSame": {
+   "rpc": [],
+   "tables": []
+  },
   "getGuestPoints": {
    "rpc": [],
    "tables": []
@@ -1271,6 +1286,18 @@
   "officeDeleteLeagueCard": {
    "rpc": [
     "office_delete_league_card"
+   ],
+   "tables": []
+  },
+  "officeGuestsNotSame": {
+   "rpc": [
+    "office_guests_not_same"
+   ],
+   "tables": []
+  },
+  "officeMergeGuests": {
+   "rpc": [
+    "office_merge_guests"
    ],
    "tables": []
   },

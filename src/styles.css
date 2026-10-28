@@ -1111,3 +1111,32 @@ button.lrow.ci-m{width:100%;text-align:left;background:none;border:0;border-top:
 .cta .linkbtn{white-space:nowrap}
 .compsec{margin:10px 0 -2px}
 .opanel label.filebtn,label.filebtn{flex:0 0 auto;align-self:flex-start;display:inline-block;text-align:center;margin-top:6px;padding:12px 20px;color:var(--on-green);font-size:15px} /* a button-sized label, not one that fills the panel */
+/* Office → a member's page: details on the left, guests this year on the right (one column on a phone). */
+.oback{align-self:flex-start;min-height:40px;font-weight:600}
+.omember{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);gap:20px;align-items:start}
+.omember>.card{padding:18px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.omember label{font-size:13px;font-weight:700;color:var(--muted);margin-top:6px}
+.omember input{width:100%;box-sizing:border-box;padding:13px 14px;border-radius:14px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:500 16px var(--sys)}
+.omember label .opt{font-weight:500;opacity:.8;margin-left:4px}
+.omember .primary{flex:0 0 auto}
+.omore{border:1px solid var(--line);border-radius:14px;padding:0 14px;margin-top:6px}
+.omore>summary{min-height:48px;display:flex;align-items:center;font-weight:700;cursor:pointer}
+.omore[open]{padding-bottom:14px}
+.omore[open]>summary{border-bottom:1px solid var(--line);margin-bottom:6px}
+.omore .gm-btns .ghost{flex:1}
+.ohead2{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.ohead2 h3{margin:0}
+.obarpts{height:8px;border-radius:4px;background:var(--bg);overflow:hidden}
+.obarpts i{display:block;height:100%;background:var(--gold)}
+.oflag{display:grid;gap:4px;background:#2a2412;border:1px solid #a8862f;border-radius:12px;padding:10px 14px;color:#e6dcc0;font-size:14px}
+.oflag b{color:#f0d999;font-size:15px}
+.oflag .oacts{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.oflagged{color:#f0d999;font-weight:600;font-size:13px}
+.otablewrap{overflow-x:auto}
+.otable{width:100%;border-collapse:collapse;font-size:15px}
+.otable th{text-align:left;color:var(--muted);font-size:13px;font-weight:700;padding:6px 8px;border-bottom:1px solid var(--line)}
+.otable td{padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+.otable .n{text-align:right;white-space:nowrap}
+.pill.amber{background:#e1a93c;color:#241a05}
+@media (max-width:760px){.omember{grid-template-columns:1fr}}
+.omember .gerr:empty{display:none}

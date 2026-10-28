@@ -117,6 +117,14 @@ export async function removeGuestCharge(visitId) {
   return must(await sb.rpc('office_remove_guest_charge', { p_visit: visitId }))
 }
 /** Today's office check-ins, newest first: [{ id, memberId, memberName, guest, club, points }] */
+/** Guests the office said aren't the same person (so they aren't flagged again): [{ memberId, a, b }] (tidied names). */
+export async function getGuestNotSame() {
+  return must(await sb.from('guest_not_same').select('member_id, a, b')).map(r => ({ memberId: r.member_id, a: r.a, b: r.b }))
+}
+/** The office merges a member's guest: this year's visits under `from` become `to`. → how many visits moved */
+export async function officeMergeGuests(memberId, from, to) { return must(await sb.rpc('office_merge_guests', { p_member: memberId, p_from: from, p_to: to })) }
+/** The office says two of a member's guests are different people. */
+export async function officeGuestsNotSame(memberId, a, b) { must(await sb.rpc('office_guests_not_same', { p_member: memberId, p_a: a, p_b: b })) }
 export async function getGuestChargesToday() {
   return must(await sb.rpc('office_guest_charges_today'))
 }

@@ -14,7 +14,7 @@ function inspect({ min, comfy, vw }) {
   const W = vw, norm = t => (t ?? '').replace(/\s+/g, ' ').trim().slice(0, 40)
   const label = el => norm(el.getAttribute('aria-label') || el.textContent || el.placeholder || el.id || el.tagName)
   const inScroller = el => { for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) { const s = getComputedStyle(p); if (/(auto|scroll)/.test(s.overflowX) && p.scrollWidth > p.clientWidth + 1) return true } return false }
-  const shown = el => { const r = el.getBoundingClientRect(), s = getComputedStyle(el); return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none' && !el.closest('[hidden]') }
+  const shown = el => { const r = el.getBoundingClientRect(), s = getComputedStyle(el); return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none' && !el.closest('[hidden]') && !(el.closest('details:not([open])') && !el.closest('summary')) } // inside a closed fold: not on screen
   const sheetOpen = !!document.querySelector('#modal .overlay') // a pop-up sheet is meant to cover the page behind it
   const els = [...document.querySelectorAll('#app button, #app a[href], #app [role="button"], #app input:not([type="hidden"]), #app select, #app textarea')].filter(shown)
     .filter(el => !sheetOpen || el.closest('#modal'))
@@ -167,7 +167,7 @@ test('every main screen', async ({ page }, testInfo) => {
   for (const [k, n] of [['today', 'today'], ['members', 'members'], ['tee', 'tee sheet'], ['comps', 'competitions'], ['club', 'club']]) {
     await tap(page, `[data-ov="${k}"]`); await check(page, `3${['today', 'members', 'tee', 'comps', 'club'].indexOf(k)} club office · ${n}`, testInfo)
   }
-  await tap(page, '[data-ov="members"]'); await tap(page, '[data-o-m]'); await check(page, '35 club office · a member (side panel)', testInfo)
+  await tap(page, '[data-ov="members"]'); await tap(page, '[data-o-m]'); await check(page, '35 club office · a member (their own page)', testInfo)
 
   // More screens (added for the testing protocol). Each is visited if the test data has it; one that can't be
   // reached is noted in the results (and the run carries on), so a gap shows rather than stopping everything.
@@ -221,6 +221,7 @@ test('every main screen', async ({ page }, testInfo) => {
   })
   expect.soft(spread, `draft draw at ${testInfo.project.name}: Spread the rounds evenly ${JSON.stringify(spread)}`).toEqual({ h: expect.any(Number), overlap: false })
   expect.soft(spread?.h ?? 0, `draft draw at ${testInfo.project.name}: Spread the rounds evenly is ${spread?.h}px tall`).toBeGreaterThanOrEqual(44)
+  await visit('49 club office · a member, Additional info open', async () => { await office('members'); await tap(page, '[data-o-m]'); await page.click('#o-more > summary') })
   // Found 28 Oct: Update handicaps' Choose a CSV file button filled the whole side panel on the iPad.
   await visit('48 club office · update handicaps', async () => { await office('members'); await tap(page, 'text=Update handicaps'); await page.waitForSelector('.filebtn') })
   const fileBtn = await page.evaluate(() => Math.round(document.querySelector('.filebtn')?.getBoundingClientRect().height ?? 0))
