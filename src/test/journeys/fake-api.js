@@ -135,7 +135,7 @@ export function makeWorld(today, setup = () => {}, as = 'admin') {
       { id: 3, name: 'Ladies Singles', category: 'ladies', kind: 'singles', closesOn: '2026-10-31', notes: null, open: true },
       { id: 4, name: 'Mixed Foursome', category: 'mixed', kind: 'pairs', closesOn: '2026-10-31', notes: null, open: true }],
     eventTemplates: [], // club event templates: { id, name, setup }
-    signupEntries: [], koMatches: [], declines: [], matchTimes: [], matchNotes: {}, // matchNotes: { [matchId]: { [memberId]: note } }; matchTimes: Find a time { id, matchId, day, part, by, answers: { [memberId]: bool } } // declines: compIds I've said No thanks to
+    signupEntries: [], koMatches: [], declines: [], matchTimes: [], matchNotes: {}, // matchNotes: { [matchId]: [{ by, note }] }, each player's last 2; matchTimes: Find a time { id, matchId, day, part, by, answers: { [memberId]: bool } } // declines: compIds I've said No thanks to
     buddies: [{ id: 1, favourite: false }, { id: 3, favourite: true }, { id: 5, favourite: false }, { id: 7, favourite: false }, { id: 11, favourite: false }],
     contacts: [{ id: 1, name: 'Sam Visitor', club: 'Royal Portrush GC', hcp: '12.0', gui: '1234567', sharedOn: today, favourite: false, updatedAt: `${today}T08:00:00Z` }],
     slots: {}, bookings: [], guestVisits: [], rounds: [], requests: [], playerEvents: [],
@@ -477,7 +477,10 @@ export function makeWorld(today, setup = () => {}, as = 'admin') {
           if (v == null) { delete t.answers[who]; delete (t.by2 ??= {})[who] } else { t.answers[who] = v; (t.by2 ??= {})[who] = ME }
         }
       }
-      if (note != null) { db.matchNotes[mid] ??= {}; if (n) db.matchNotes[mid][ME] = n; else delete db.matchNotes[mid][ME] }
+      if (n) { // as the database: a message, unless the same as my last; only each player's last 2 are kept
+        const list = (db.matchNotes[mid] ??= []), mine = list.filter(x => x.by === ME)
+        if (mine.at(-1)?.note !== n) { list.push({ by: ME, note: n }); if (mine.length >= 2) list.splice(list.indexOf(mine[0]), 1) }
+      }
       const name = db.signups.find(x => x.id === m.compId).name
       const all = t => t.day >= db.today && players.every(p => t.answers[p] === true)
       const order = ['morning', 'afternoon', 'evening']
@@ -510,8 +513,8 @@ export function makeWorld(today, setup = () => {}, as = 'admin') {
       const match = { id: m.id, compId: c.id, compName: c.name, kind: c.kind, club: c.createdBy == null, round: m.round, by: c.roundDeadlines?.[m.round - 1] ?? addDaysIso(db.today, 21), status: m.status }
       const answeredBy = {}
       for (const t of db.matchTimes.filter(x => x.matchId === mid)) for (const [who, by] of Object.entries(t.by2 ?? {})) if (+who !== by && players.includes(+who)) answeredBy[who] = by
-      const notes = Object.fromEntries(Object.entries(db.matchNotes[mid] ?? {}).filter(([k]) => players.includes(+k)))
-      return copy({ match, notes, answeredBy, players: players.map(p => ({ id: p, name: member(p).name })), times, agreed: times.find(t => players.every(p => t.answers[p] === true))?.id ?? null })
+      const messages = (db.matchNotes[mid] ?? []).filter(x => players.includes(x.by)), notes = Object.fromEntries(messages.map(x => [x.by, x.note]))
+      return copy({ match, notes, messages, answeredBy, players: players.map(p => ({ id: p, name: member(p).name })), times, agreed: times.find(t => players.every(p => t.answers[p] === true))?.id ?? null })
     },
     // As the database: a club singles match (a club knockout, or a club event's 1 v 1) holds the other places.
     bookClubMatch: async ({ slotId, opponent, kind, ref }) => {

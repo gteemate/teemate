@@ -1,6 +1,6 @@
 // Find a time (a knockout match, S.ftMatch): suggest days with Morning / Afternoon / Evening up to the play-by date, and
 // a grid of who can do which (each player ticks their own column ✓, ✕ or blank, plus their partner's "the same" in pairs,
-// and an "anything else" note, then Confirm saves the lot). When everyone can do one, Book a tee
+// and a message to the others (each player's last 2 show, as a short conversation), then Confirm saves the lot). When everyone can do one, Book a tee
 // time opens the tee sheet on that day with the others ready to add, as Book this match does;
 // when everyone can do several, tapping one of their rows picks which (S.ftChosen, the first by default).
 import * as api from '../api.js'
@@ -43,7 +43,7 @@ export function draw({ grid, me, booked }) {
   // My partner in a pairs match: the other player on my side (the players come side by side: A, A's partner, B, B's partner).
   const i = players.findIndex(p => p.id === me.id), partner = players.length === 4 ? players[i ^ 1] : null
   // What I've ticked on screen, saved only by Confirm.
-  if (S.ftDraft?.match !== m.id) S.ftDraft = { match: m.id, mine: Object.fromEntries(times.map(t => [t.id, t.answers[me.id] ?? null])), same: false, note: grid.notes?.[me.id] ?? '', dirty: false }
+  if (S.ftDraft?.match !== m.id) S.ftDraft = { match: m.id, mine: Object.fromEntries(times.map(t => [t.id, t.answers[me.id] ?? null])), same: false, note: '', dirty: false } // note: a new message
   const d = S.ftDraft
   const shown = (t, p) => (p.id === me.id ? d.mine[t.id] : partner && p.id === partner.id && d.same ? d.mine[t.id] : t.answers[p.id] ?? null)
   const all = t => players.every(p => t.answers[p.id] === true)
@@ -56,7 +56,8 @@ export function draw({ grid, me, booked }) {
     return `<td><button class="fttick ${cls}" data-tt="${t.id}" data-p="${p.id}" ${p.id === me.id ? `data-t="${t.id}"` : 'aria-disabled="true"'} aria-label="${esc(p.name)}, ${dayLabel(t.day)} ${t.part}: ${a === true ? 'can' : a === false ? 'can’t' : 'not answered'}">${mark(a)}</button></td>`
   }
   const head = p => p.id === me.id ? 'You' : `${esc(first(p.name))}${grid.answeredBy?.[p.id] && grid.answeredBy[p.id] !== me.id ? `<small>answered by ${esc(byName(grid.answeredBy[p.id]))}</small>` : grid.answeredBy?.[p.id] === me.id ? '<small>answered by you</small>' : ''}`
-  const notes = players.filter(p => grid.notes?.[p.id]).map(p => `<span><b>${p.id === me.id ? 'You' : esc(first(p.name))}:</b> ${esc(grid.notes[p.id])}</span>`).join('')
+  // The conversation: each player's last 2 messages, oldest first
+  const notes = (grid.messages ?? []).filter(x => players.some(p => p.id === x.by)).map(x => `<span><b>${x.by === me.id ? 'You' : esc(byName(x.by))}:</b> ${esc(x.note)}</span>`).join('')
   $('main').innerHTML = `<div class="screen">
     ${booked ? `<div class="card ftcard ftagreed"><b>Booked: ${dayLabel(booked.date)} ${hhmm(booked.time)}</b><span class="hint">Everyone in the match is on it.</span><button class="ghost" id="ft-seebk">See the booking</button></div>` : ''}
     ${agreed && ok.length > 1 ? `<div class="card ftcard ftagreed"><b>Everyone can do ${ok.length} times</b>
@@ -74,8 +75,8 @@ export function draw({ grid, me, booked }) {
         ${partner ? `<button type="button" class="ftsame" id="ft-same" role="checkbox" aria-checked="${d.same}"><span class="box">${d.same ? '✓' : ''}</span>${esc(first(partner.name))} can do the same</button>` : ''}`
         : '<span class="hint">No days suggested yet.</span>'}
       ${notes ? `<div class="ftnotes">${notes}</div>` : ''}
-      <label for="ft-note" class="hint">Anything else?</label>
-      <input id="ft-note" class="plainsel" maxlength="120" autocomplete="off" placeholder="e.g. any weekday after 5pm" value="${esc(d.note)}">
+      <label for="ft-note" class="hint">${notes ? 'Add a message' : 'Anything else?'}</label>
+      <input id="ft-note" class="plainsel" maxlength="120" autocomplete="off" placeholder="${notes ? 'e.g. 16:20 suits me' : 'e.g. any weekday after 5pm'}" value="${esc(d.note)}">
       <button class="primary" id="ft-confirm" ${sending ? 'disabled' : ''}>Confirm my answers</button>
       <button class="ghost" id="ft-more">Suggest other days</button></div>
     <p class="hint">Nothing agreed a week before ${dayLabel(m.by)}? Everyone gets a reminder.</p></div>`
@@ -90,7 +91,7 @@ export function draw({ grid, me, booked }) {
     sending = true
     $('ft-confirm').disabled = true
     const answers = Object.fromEntries(times.map(t => [t.id, d.mine[t.id] ?? null]))
-    const note = d.note.trim() === (grid.notes?.[me.id] ?? '') ? null : d.note
+    const note = d.note.trim() || null // a new message (nothing typed: none)
     let r
     try { r = await api.confirmMatchTimes(m.id, answers, partner && d.same ? answers : null, note) } catch (err) { toast(err.message); return } finally { sending = false; if ($('ft-confirm')) $('ft-confirm').disabled = false }
     S.ftDraft = null

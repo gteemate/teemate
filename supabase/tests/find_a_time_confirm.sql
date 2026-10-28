@@ -69,7 +69,22 @@ do $$ declare r jsonb; e text; d date := public.club_today(); t1 bigint; t2 bigi
   reset role;
   perform t.ok('Confirm: a note is up to 120 characters', e = 'Keep the note to 120 characters.', e);
   perform t.act_as(999003); perform public.confirm_match_times(999301, '{}', null, ''); r := public.get_match_times(999301); reset role;
-  perform t.ok('Confirm: an empty note clears it', not (r->'notes' ? '999003'), (r->'notes')::text);
+  perform t.ok('Confirm: an empty message box sends nothing (the last message stays)', r->'notes'->>'999003' = 'any weekday after 5pm', (r->'notes')::text);
+
+  -- A conversation: each player's last 2 messages, oldest first; the same again isn't repeated.
+  perform t.act_as(999002); perform public.confirm_match_times(999301, '{}', null, 'After 3pm'); reset role;
+  perform t.act_as(999003); perform public.confirm_match_times(999301, '{}', null, '16:20 is good for me'); reset role;
+  perform t.act_as(999003); perform public.confirm_match_times(999301, '{}', null, '16:20 is good for me'); reset role;
+  perform t.act_as(999002); perform public.confirm_match_times(999301, '{}', null, 'Great, see you then'); reset role;
+  perform t.act_as(999003); perform public.confirm_match_times(999301, '{}', null, 'Booking it now'); reset role;
+  perform t.act_as(999001); r := public.get_match_times(999301); reset role;
+  perform t.ok('Conversation: each player''s last 2, oldest first, no repeats',
+    (select jsonb_agg(x->>'note' order by o) from jsonb_array_elements(r->'messages') with ordinality a(x, o))
+      = '["After 3pm", "16:20 is good for me", "Great, see you then", "Booking it now"]'::jsonb, (r->'messages')::text);
+  perform t.ok('Conversation: only each player''s last 2 are kept (older ones go)',
+    (select count(*) from public.match_time_notes where ko_match_id = 999301 and member_id = 999003) = 2
+    and not exists (select 1 from public.match_time_notes where ko_match_id = 999301 and note = 'any weekday after 5pm'));
+  perform t.ok('Conversation: notes is each player''s latest', r->'notes'->>'999003' = 'Booking it now' and r->'notes'->>'999002' = 'Great, see you then', (r->'notes')::text);
 end $$;
 
 select test, ok, detail from t.results order by n;

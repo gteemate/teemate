@@ -100,8 +100,17 @@ describe('Find a time', () => {
     await app.tap('[data-al="times"]')
     await app.type('#ft-note', 'any weekday after 5pm')
     await app.tap('Confirm my answers')
-    expect(app.db.matchNotes[1][1]).toBe('any weekday after 5pm')
+    expect(app.db.matchNotes[1]).toEqual([{ by: 1, note: 'any weekday after 5pm' }])
     expect(app.text()).toContain('You: any weekday after 5pm') // the others see “Declan: …”
+  })
+  it('a conversation: the last 2 messages from each player, oldest first; the box starts empty for a new one', async () => {
+    app = await boot(db => { suggested(db); db.matchNotes[1] = [{ by: 0, note: 'After 3pm' }, { by: 1, note: '16:20 is good for me' }, { by: 0, note: 'Great' }] }, { as: 'member' })
+    await app.tap('[data-al="times"]')
+    expect(document.getElementById('ft-note').value).toBe('')
+    await app.type('#ft-note', 'Booking it now'); await app.tap('Confirm my answers')
+    await app.type('#ft-note', 'See you at 16:20'); await app.tap('Confirm my answers')
+    expect([...document.querySelectorAll('.ftnotes span')].map(x => x.textContent)).toEqual(['Gary: After 3pm', 'Gary: Great', 'You: Booking it now', 'You: See you at 16:20'])
+    expect(app.db.matchNotes[1].filter(x => x.by === 1)).toHaveLength(2) // my oldest (16:20 is good for me) has gone
   })
   it('Suggest other days adds to the same grid', async () => {
     app = await boot(suggested, { as: 'member' })
