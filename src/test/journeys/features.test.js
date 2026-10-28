@@ -1553,3 +1553,15 @@ describe('booking: no prices', () => {
     expect(app.text()).not.toMatch(/[€£]\d/)
   })
 })
+
+describe('Competitions → Entered: the club’s first, then Your events', () => {
+  it('found 28 Oct: an event I set up sits under Your events, after the club’s competitions', async () => {
+    app = await boot()
+    await app.tap('Competition'); await app.tap('[data-tab="entered"]')
+    const order = [...document.querySelectorAll('#main .ct, #main .compsec')].map(x => x.textContent.trim())
+    const at = name => order.indexOf(name)
+    expect(at('Your events')).toBeGreaterThan(-1)
+    expect(at('Christmas Cup')).toBeGreaterThan(at('Your events')) // mine
+    expect(at('Winter League')).toBeLessThan(at('Your events')) // the club's
+  })
+})

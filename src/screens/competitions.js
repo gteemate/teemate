@@ -71,6 +71,14 @@ export function draw({ dayBoard = true, me, date, members, friends, signups, cou
   const mineRow = x => `<div class="card comp${x.comp.drawPublished ? ' gold' : ''}"${x.comp.drawPublished ? ` data-ko="${x.comp.id}" role="button" tabindex="0"` : ''}><span class="row"><span class="ct">${esc(x.comp.name)}</span><span class="pill${x.comp.drawPublished ? ' gold' : ''}">${x.comp.drawPublished ? 'Draw ›' : 'Entered'}</span></span>
       <span class="sub">${x.partnerId ? `With ${esc(nameOf(x.partnerId))}` : 'Singles'} · ${x.comp.drawPublished ? 'The draw is out: see your match' : x.comp.closesOn && date > x.comp.closesOn ? 'Entries closed: the draw is coming' : closes(x.comp)}</span>
       ${x.comp.drawPublished || (x.comp.closesOn && date > x.comp.closesOn) ? '' : `<span class="row"><span></span><button class="linkbtn" data-wd="${x.comp.id}">Withdraw${x.partnerId ? ' (both of you)' : ''}</button></span>`}</div>`
+  // Entered: the club's competitions first, then what I've set up myself under Your events (events, seasons and
+  // knockouts I made, whether I'm playing or organising).
+  const own = x => !!x.e && x.kind !== 'invite' && x.kind !== 'match' && !x.e.club && x.e.createdBy?.id === me.id
+  const yours = tab !== 'entered' ? '' : [
+    ...list.map((x, n) => (own(x) ? row(x, n) : '')),
+    ...entered.filter(x => x.comp.createdBy === me.id).map(mineRow),
+    ...signups.comps.filter(c => c.createdBy === me.id && !entered.some(x => x.comp.id === c.id)).map(c => `<div class="card comp gold" data-ko="${c.id}" role="button" tabindex="0"><span class="row"><span class="ct">${esc(c.name)}</span><span class="pill gold">Draw ›</span></span><span class="sub">Your knockout · you’re organising it</span></div>`),
+  ].join('')
   const empty = { entered: 'You’re not in any competitions right now. When a club competition is on, you can join it as you start your round.',
     events: needsSection(signups.comps, me, date) ? '' : 'No season competitions are open for entries right now.', history: 'Finished competitions you played in will show here.' }[tab]
   $('main').innerHTML = `<div class="screen">
@@ -81,9 +89,9 @@ export function draw({ dayBoard = true, me, date, members, friends, signups, cou
     ${tab === 'events' ? offer.map(c => signRow(c)).join('') : ''}
     ${tab === 'events' && declined.length ? `<button class="linkbtn" id="declined" aria-expanded="${!!S.showDeclined}" style="align-self:flex-start">${S.showDeclined ? 'Hide declined' : `Declined (${declined.length})`}</button>
       ${S.showDeclined ? `<span class="hint">You said no thanks to these. You can still enter until entries close.</span>${declined.map(c => signRow(c, true)).join('')}` : ''}` : ''}
-    ${tab === 'entered' ? entered.map(mineRow).join('') : ''}
-    ${tab === 'entered' ? signups.comps.filter(c => c.createdBy === me.id && !entered.some(x => x.comp.id === c.id)).map(c => `<div class="card comp gold" data-ko="${c.id}" role="button" tabindex="0"><span class="row"><span class="ct">${esc(c.name)}</span><span class="pill gold">Draw ›</span></span><span class="sub">Your knockout · you’re organising it</span></div>`).join('') : ''}
-    ${list.length ? list.map(row).join('') : (tab === 'events' && (offer.length || declined.length || evOpen.length)) || (tab === 'entered' && entered.length) || !empty[tab] ? '' : `<div class="empty-state">${empty[tab]}</div>`}
+    ${tab === 'entered' ? entered.filter(x => x.comp.createdBy !== me.id).map(mineRow).join('') : ''}
+    ${tab === 'entered' ? list.map((x, n) => (own(x) ? '' : row(x, n))).join('') + (yours ? `<span class="kicker compsec">Your events</span>${yours}` : '') : list.map(row).join('')}
+    ${list.length ? '' : (tab === 'events' && (offer.length || declined.length || evOpen.length)) || (tab === 'entered' && entered.length) || !empty[tab] ? '' : `<div class="empty-state">${empty[tab]}</div>`}
     ${tab === 'events' ? '<button class="ghost dashed" id="create">+ Create your own event</button>' : ''}
   </div>`
   const go = async f => { f(); await render(); top0() }
