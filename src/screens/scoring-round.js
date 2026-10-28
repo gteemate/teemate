@@ -32,7 +32,8 @@ export async function load() {
 }
 
 const key = o => `${o.kind}:${o.e.id}`
-const asksWho = o => o.players.length > 1 && !o.match && o.kind !== 'join' // a match needs everyone in it
+// Asked whenever someone else on the card could enter (a match needs everyone in it; a club competition is only me).
+const asksWho = (o, me) => !o.match && o.kind !== 'join' && o.players.some(id => id !== me.id)
 
 // What the server is sent for a marker: just who it is on the card ({ m } or { g }), not the name shown here.
 const who = c => (c.m != null ? { m: c.m } : { g: c.g })
@@ -41,7 +42,7 @@ const same = (a, b) => !!a && !!b && (a.m != null ? a.m === b.m : a.g === b.g)
 async function start(round, options, me) {
   if (!round.id) await api.saveRound(round) // creates the group's card (or joins it)
   for (const o of options.filter(x => ticked.has(key(x)))) {
-    const players = asksWho(o) ? o.players.filter(id => entering[key(o)]?.has(id)) : o.players
+    const players = asksWho(o, me) ? o.players.filter(id => entering[key(o)]?.has(id)) : o.players
     // Each player's marker: the one chosen, or me when that player is the marker. Matches need none.
     const enter = (ids, mk) => (o.kind === 'league' ? api.enterLeague(round.id, o.e.id, ids, mk)
       : o.kind === 'join' ? api.enterEventToday(round.id, o.e.id, mk) : api.enterEventRound(round.id, o.e.id, ids, mk))
@@ -61,21 +62,22 @@ export function draw({ round, me, choices, names = {}, options, fees = { payment
   if (!round) { render(); return }
   if (!options.length) { start(round, options, me); return } // nothing to ask: straight to the card
   if (seen !== round) { seen = round; ticked = new Set(options.filter(o => o.auto).map(key)); marker = choices.length === 1 ? choices[0] : null
-    entering = Object.fromEntries(options.filter(asksWho).map(o => [key(o), new Set(o.players.filter(id => id === me.id))])) } // your match counts already; you're entering
+    // you're entering to start with; if you can't (already counted this week), the one other player who can
+    entering = Object.fromEntries(options.filter(o => asksWho(o, me)).map(o => [key(o), new Set(o.players.includes(me.id) ? [me.id] : o.players.length === 1 ? o.players : [])])) } // your match counts already
   const needMarker = options.some(o => o.needsMarker && ticked.has(key(o)))
-  const nobody = options.some(o => ticked.has(key(o)) && asksWho(o) && !entering[key(o)].size) // ticked, but nobody entering
+  const nobody = options.some(o => ticked.has(key(o)) && asksWho(o, me) && !entering[key(o)].size) // ticked, but nobody entering
   header('Scoring round?', '', async () => { ticked = new Set(); marker = null; seen = null; resetRound(); S.sview = 'card'; await render(); top0() }) // back to New round (an unsaved card is dropped)
   const label = () => { const on = options.filter(o => ticked.has(key(o))).map(o => o.e.name); return `Start round · ${on.length ? on.join(' + ') : 'General play'}` }
-  const sub = o => (o.kind === 'join' ? `Club competition${eventFormat(o.e) ? ` · ${eventFormat(o.e)}` : ''}` : o.match ? `Match ${o.match}${o.e.season ? '' : o.e.days > 1 ? ` · day ${o.day}` : ''} · ${o.players.length === 1 ? 'your singles: your card counts' : o.players.length === 2 ? 'both of you are on this card' : o.players.length === 3 ? 'all three of you are on this card' : 'all four of you are on this card'}` : o.kind === 'league' ? `Week ${o.week} of ${o.e.weeks} · Stableford` : `${o.e.days > 1 && !o.e.season ? `Day ${o.day} of ${o.e.days} · ` : ''}${o.e.club ? 'Club event' : `Event by ${esc(o.e.createdBy?.name ?? 'a member')}`}`)
+  const sub = o => (o.kind === 'join' ? `Club competition${eventFormat(o.e) ? ` · ${eventFormat(o.e)}` : ''}` : o.match ? `Match ${o.match}${o.e.season ? '' : o.e.days > 1 ? ` · day ${o.day}` : ''} · ${o.players.length === 1 ? 'your singles: your card counts' : o.players.length === 2 ? 'both of you are on this card' : o.players.length === 3 ? 'all three of you are on this card' : 'all four of you are on this card'}` : o.kind === 'league' ? `Week ${o.week} of ${o.e.weeks} · Stableford${o.e.players.includes(me.id) && !o.players.includes(me.id) ? ' · you’ve had your round this week' : ''}` : `${o.e.days > 1 && !o.e.season ? `Day ${o.day} of ${o.e.days} · ` : ''}${o.e.club ? 'Club event' : `Event by ${esc(o.e.createdBy?.name ?? 'a member')}`}`)
   const entered = options.filter(o => o.kind !== 'join'), joinable = options.filter(o => o.kind === 'join')
   const tick = o => `<button class="card tick" data-k="${key(o)}" aria-pressed="${ticked.has(key(o))}"><span class="box" aria-hidden="true">${ticked.has(key(o)) ? '✓' : ''}</span>
-      <span><span class="tt">${esc(o.e.name)}</span><span class="sub">${sub(o)}</span></span></button>${ticked.has(key(o)) && asksWho(o) ? `
+      <span><span class="tt">${esc(o.e.name)}</span><span class="sub">${sub(o)}</span></span></button>${ticked.has(key(o)) && asksWho(o, me) ? `
       <span class="kicker">Who’s entering their score?</span><div class="chips" role="group" aria-label="Who’s entering ${esc(o.e.name)}">${o.players.map(id =>
         `<button class="chip" data-ent="${key(o)}|${id}" aria-pressed="${entering[key(o)].has(id)}">${id === me.id ? 'You' : esc(names[id] ?? 'A player')}</button>`).join('')}</div>` : ''}`
   $('main').innerHTML = `<div class="screen">
-    ${entered.length ? `<p class="sub" style="margin:0">You’re currently entered in these competitions.</p>
-    <h3 style="margin:0">Do you want to make this a scoring round?</h3>
-    <p class="sub" style="margin:0">Tick the ones this round should count for, or leave them all for a general round.</p>
+    ${entered.length ? `<p class="sub" style="margin:0">${entered.every(o => o.players.length === 1 && o.players[0] === me.id) ? 'You’re' : 'You or your group are'} entered in these competitions.</p>
+    <h3 style="margin:0">${entered.every(o => o.players.length === 1 && o.players[0] === me.id) ? 'Do you want to make this a scoring round?' : 'Is anyone making this a scoring round?'}</h3>
+    <p class="sub" style="margin:0">Tick the ones this round should count for${entered.some(o => asksWho(o, me)) ? ', then who’s entering' : ''}, or leave them all for a general round.</p>
     ${entered.map(tick).join('')}` : ''}
     ${joinable.map(o => `<h3 style="margin:${entered.length ? '10px' : '0'} 0 0">${esc(o.e.name)} is on today. Do you want to play in it?</h3>
       <p class="sub" style="margin:0">Tick it and you’re entered, with this round counting.</p>${feeLine(o.e.entryFee, fees.payment, fees.purse) ? `<span class="feeline">${esc(feeLine(o.e.entryFee, fees.payment, fees.purse))}</span>` : ''}${tick(o)}`).join('')}

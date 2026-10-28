@@ -4,6 +4,7 @@
 import { describe, it, expect, vi, afterEach, afterAll } from 'vitest'
 import { writeFileSync } from 'node:fs'
 import { boot } from './driver.js'
+import { leagueWeek } from '../../dates.js'
 
 vi.mock('../../api.js', async () => (await import('./fake-api.js')).mockModule())
 
@@ -177,6 +178,18 @@ describe('journeys', () => {
     await app.tap('Winter League')
     await app.tap('Start round · Winter League')
     expect(app.db.leagueEntries.map(x => x.memberId)).toEqual([0])
+  })
+  it('6a1. I’ve had my league round this week, Declan hasn’t: asked about the group, Declan picked', async () => {
+    app = await boot(db => { teeTimeToday(db); const e = db.events.find(x => x.name === 'Winter League'); db.leagueEntries.push({ eventId: e.id, week: leagueWeek(e, db.today), memberId: 0, roundId: null }) })
+    await app.tap('Scoring')
+    await app.tap('09:30')
+    expect(app.text()).toContain('You or your group are entered in these competitions.')
+    expect(app.text()).toContain('Is anyone making this a scoring round?')
+    expect(app.text()).toContain('you’ve had your round this week')
+    await app.tap('Winter League')
+    expect(entering()).toEqual({ 1: true }) // only Declan can, so he's picked
+    await app.tap('Start round · Winter League')
+    expect(app.db.leagueEntries.filter(x => x.roundId != null).map(x => x.memberId)).toEqual([1])
   })
   it('6a2. Nobody entering: Start waits until someone is picked', async () => {
     app = await boot(teeTimeToday)
