@@ -622,8 +622,8 @@ export function draw({ members, me }) {
     const p = problem(ev, step)
     if (p) { $('ev-err').textContent = p; return }
     if (step === 3 && ev.style === 'ryder' && !ev.season) for (let d = 1; d <= ev.days; d++) if (!(ev.matches[d] ?? []).length) draw1(ev, d) // start with a draw
-    if (dc && drawStep(ev) < 3) { S.evDraw++; S.evMove = null; S.evQ = ''; await render(); top0(); return } // the draw's next step
-    if (!last && !dc) { S.evStep = steps[idx + 1]; S.evSwap = null; await render(); top0(); return } // (the draw's last step saves)
+    if (dc && drawStep(ev) < 3) { $('ev-next').disabled = true; S.evDraw++; S.evMove = null; S.evQ = ''; await render(); top0(); return } // the draw's next step (a second tap while it loads would skip one)
+    if (!last && !dc) { $('ev-next').disabled = true; S.evStep = steps[idx + 1]; S.evSwap = null; await render(); top0(); return } // (the draw's last step saves)
     if (ev.style !== 'ryder') ev.matches = {}
     if (ev.style === 'individual') ev.team = {}
     if (ev.style !== 'league') { ev.weeks = null; ev.bestOf = null; ev.teams = null; ev.leaguePairs = null; ev.koTop = null }

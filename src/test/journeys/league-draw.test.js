@@ -120,6 +120,19 @@ describe('a sign-up league: entries in, then the draw in three steps', () => {
   })
 })
 
+describe('the draw: one step per tap', () => {
+  it('a second tap on Next while the step loads doesn’t skip a step', async () => {
+    app = await boot(league())
+    await open()
+    await app.tap('Pick captains and make the draw')
+    await app.tap('[data-capmode="random"]'); await app.tap('#lg-draw')
+    const next = document.getElementById('ev-next')
+    next.click(); next.click()
+    await app.settle()
+    expect(document.querySelector('.drawsteps li.on').textContent).toContain('Teams')
+  })
+})
+
 describe('unfinished league cards, for the office', () => {
   const played = db => {
     league({ startDate: '2026-10-01', signup: false, team: { 1: 0, 2: 0, 3: 1 } })(db)
