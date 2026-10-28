@@ -68,7 +68,7 @@ export function draw({ round, me, people, names = {}, options, fees = { payment:
     entering = Object.fromEntries(options.filter(o => asksWho(o, me)).map(o => [key(o), new Set(o.players.includes(me.id) ? [me.id] : o.players.length === 1 ? o.players : [])])) } // your match counts already
   const needMarker = options.some(o => o.needsMarker && ticked.has(key(o)))
   // Who's entering a competition that needs a marker: my card's marker is asked; the others' cards are marked by me
-  // unless "Someone else is" (asked straight away when I'm not entering myself).
+  // (whether or not I'm entering) unless "Someone else is".
   const entrants = [...new Set(options.filter(o => o.needsMarker && ticked.has(key(o))).flatMap(o => (asksWho(o, me) ? o.players.filter(id => entering[key(o)]?.has(id)) : o.players)))]
   const mine = entrants.includes(me.id), others = entrants.filter(id => id !== me.id)
   const choices = people.filter(c => c.m !== me.id)
@@ -76,11 +76,11 @@ export function draw({ round, me, people, names = {}, options, fees = { payment:
   const markOf = id => marks[id] ?? { m: me.id }, choicesFor = id => people.filter(c => c.m !== id)
   const first = id => names[id]?.split(' ')[0] ?? 'Their', poss = id => `${esc(first(id))}’s`
   const cards = others.length === 1 ? `${poss(others[0])} card` : `${others.slice(0, -1).map(poss).join(', ')} and ${poss(others.at(-1))} cards`
-  const askOthers = othersOpen || !mine
+  const askOthers = othersOpen, nobodyElse = others.every(id => choicesFor(id).length === 1) // only I can mark them
   const markRow = (label, list, pressed, attr) => (list.length === 1 ? `<p class="hint">${label}: <b>${esc(list[0].name)}</b></p>`
     : `<span class="kicker">Who’s marking ${label === 'Marker' ? 'your card' : label.replace(' marker', ' card')}?</span><div class="chips" role="radiogroup" aria-label="${label}">${list.map((c, n) => `<button class="chip" role="radio" ${attr}="${n}" aria-checked="${pressed(c)}" aria-pressed="${pressed(c)}">${esc(c.name)}</button>`).join('')}</div>`)
   const markersHtml = !needMarker ? '' : `${mine ? markRow('Marker', choices, c => same(marker, c), 'data-mk') : ''}
-    ${others.length && !askOthers ? `<p class="hint mkothers">You’re marking ${cards}. <button type="button" class="linkbtn" id="mk-else">Someone else is</button></p>` : ''}
+    ${others.length && !askOthers ? `<p class="hint mkothers">You’re marking ${cards}.${nobodyElse ? '' : ' <button type="button" class="linkbtn" id="mk-else">Someone else is</button>'}</p>` : ''}
     ${others.length && askOthers ? others.map(id => markRow(`${poss(id)} marker`, choicesFor(id), c => same(markOf(id), c), `data-mko="${id}" data-n`)).join('') : ''}`
   const nobody = options.some(o => ticked.has(key(o)) && asksWho(o, me) && !entering[key(o)].size) // ticked, but nobody entering
   header('Scoring round?', '', async () => { ticked = new Set(); marker = null; marks = {}; othersOpen = false; seen = null; resetRound(); S.sview = 'card'; await render(); top0() }) // back to New round (an unsaved card is dropped)
