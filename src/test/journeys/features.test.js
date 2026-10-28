@@ -1470,3 +1470,21 @@ describe('held places: the small things', () => {
     expect(document.querySelector('.olegend').textContent).toContain('Held for a match')
   })
 })
+
+describe('the Course tab: today’s pin', () => {
+  const onCourse = async () => { await app.tap('Scoring'); await app.tap('09:30'); if (app.screen() === 'Scoring round?') await app.tap('#start'); await app.tap('Course') }
+  it('not set today: says so, no flag from an earlier day', async () => {
+    app = await boot(db => db.book(0, at(db, 570).id, [1]))
+    await onCourse()
+    expect(app.text()).toContain('Today’s flags aren’t set yet')
+    expect(document.querySelector('.flagdot')).toBe(null)
+    expect(document.querySelector('.pincard .facts')).toBe(null)
+  })
+  it('set today: the flag, its yards and when it was set', async () => {
+    app = await boot(db => { db.pinsToday = true; db.book(0, at(db, 570).id, [1]) })
+    await onCourse()
+    expect(document.querySelector('.pincard .facts')).not.toBe(null)
+    expect(document.querySelectorAll('.flagdot')).toHaveLength(18)
+    expect(app.text()).not.toContain('aren’t set yet')
+  })
+})
