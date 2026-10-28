@@ -9,6 +9,7 @@ import { leagueBadges, bindLeagueBox } from './scores-league.js'
 import { guestHcpSheet } from './scores-guest.js'
 import { holeGrid } from '../course-art.js'
 import { cardHoles } from './card-holes.js'
+import { dayBoardOn } from '../day-board.js'
 import { openCourse, scaleHcp, holesText, allOpen } from '../open-holes.js'
 import { startPaper, startPaperRecheck } from '../paper/paper-flow.js'
 import { photosSheet } from '../paper/review.js'
@@ -98,6 +99,7 @@ async function loadFresh() {
   const t = isoDate(today())
   const { board, holes, leagues, entries } = await cardHoles(round, t, { playerEvents: events, allEvents })
   S.roundBoard = board
+  S.roundDayOn = dayBoardOn(await api.getTheme(), t) // today's scores on: the Leaderboard tab has them too
   S.cardHoles = holes // the holes this card plays (null: all 18)
   return { course, members, guests, L: buildLibrary(games), me, teeTimes, events, leagues, entries }
 }

@@ -8,6 +8,7 @@ import { scorePlayerEvent, buildEventGroups } from '../event-scoring.js'
 import { buildLibrary, teeRating, EVENT_ALLOWANCE_GAME } from '../games.js'
 import { hhmm } from '../dates.js'
 import { eventTitle, eventSubtitle, myGroup } from './player-events.js'
+import { addRoundLbSwitch } from '../round-lb.js'
 
 export async function load() {
   const [events, course, members, games, me] = await Promise.all([api.getMyPlayerEvents(), api.getCourse(), api.getMembers(), api.getGameSettings(), api.getMe()])
@@ -78,5 +79,6 @@ export function draw({ e, course, members, guests, cards, L, me }) {
     <div class="hint" style="text-align:center">Scores come from each group’s card and update as holes are saved. <button class="linkbtn" id="pe-refresh">Refresh</button></div>
   </div>`
   $('pe-refresh').onclick = () => render()
+  addRoundLbSwitch() // in a round: and today's scores
   timer = setTimeout(() => { if (S.tab === 'scores' && S.sview === 'pevent') render() }, 30000)
 }

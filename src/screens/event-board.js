@@ -14,6 +14,7 @@ import { myMatch, matchBooking } from '../match.js'
 import { matchDays, dayDate, seasonEnd, SINGLES_FMT, canChange } from '../season.js'
 import { matchType, dayRules } from '../match-scoring.js'
 import { matchActionHtml, bindMatchAction } from './match.js'
+import { addRoundLbSwitch } from '../round-lb.js'
 
 export async function loadBoard(id, dayWanted = null) {
   const [events, members, course, games] = await Promise.all([api.getEvents(), api.getMembers(), api.getCourse(), api.getGameSettings()])
@@ -271,6 +272,7 @@ export function draw(data) {
   header(esc(data.e.name), `${data.e.players.length} player${data.e.players.length === 1 ? '' : 's'}`, back)
   $('main').innerHTML = boardHtml(data)
   bindBoard(data)
+  addRoundLbSwitch() // in a round: and today's scores
 }
 
 // A pairs league: the pairs table (season total, or one week), and the knockout finish.

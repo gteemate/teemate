@@ -73,11 +73,12 @@ describe('roundBoard: the Leaderboard tab in a round (null = general round, no t
   it('this card ticked for an event: its board', () => expect(roundBoard({ ...base, eventEntries: [{ eventId: 7, day: 1, memberId: 2, roundId: 9 }] })).toEqual({ view: 'evboard', id: 7, holes: null }))
   it('an accepted match today with someone on the card: the match board', () => {
     const pe = { id: 5, date: D, status: 'accepted', players: [{ memberId: 2 }] }
-    expect(roundBoard({ ...base, playerEvents: [pe] })).toEqual({ view: 'pevent', id: 5, holes: null })
+    expect(roundBoard({ ...base, playerEvents: [pe] })).toEqual({ view: 'pevent', id: 5, name: 'Your match', holes: null })
     expect(roundBoard({ ...base, playerEvents: [{ ...pe, status: 'pending' }] })).toBeNull()
   })
   it('an older event that counts every card, on today, with someone on the card in it', () => {
-    expect(roundBoard({ ...base, events: [event({ id: 4, entryRequired: false, players: [2] })] })).toEqual({ view: 'evboard', id: 4, holes: null })
+    const e = event({ id: 4, entryRequired: false, players: [2] })
+    expect(roundBoard({ ...base, events: [e] })).toEqual({ view: 'evboard', id: 4, name: e.name, holes: null })
     expect(roundBoard({ ...base, events: [event({ id: 4, entryRequired: true, players: [2] })] })).toBeNull() // needs a tick
   })
 })

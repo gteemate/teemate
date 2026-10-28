@@ -58,9 +58,9 @@ export function roundBoard({ cardId, lineup, events, leagueEntries, eventEntries
   const onCard = lineup.filter(x => x.m != null).map(x => x.m)
   const ticked = [...leagueEntries, ...eventEntries].find(x => x.roundId === cardId)
   const on = (e, d) => (e ? holesFor(e, d ?? dayOfDate(e, date)) : null)
-  if (ticked) return { view: 'evboard', id: ticked.eventId, holes: on(events.find(e => e.id === ticked.eventId), ticked.week ?? ticked.day) }
+  if (ticked) return { view: 'evboard', id: ticked.eventId, name: events.find(e => e.id === ticked.eventId)?.name, holes: on(events.find(e => e.id === ticked.eventId), ticked.week ?? ticked.day) }
   const match = playerEvents.find(e => e.date === date && e.status === 'accepted' && e.players.some(p => onCard.includes(p.memberId)))
-  if (match) return { view: 'pevent', id: match.id, holes: null }
+  if (match) return { view: 'pevent', id: match.id, name: 'Your match', holes: null }
   const auto = events.find(e => e.style !== 'league' && !e.entryRequired && e.startDate <= date && eventLastDay(e) >= date && e.players.some(m => onCard.includes(m)))
-  return auto ? { view: 'evboard', id: auto.id, holes: on(auto) } : null
+  return auto ? { view: 'evboard', id: auto.id, name: auto.name, holes: on(auto) } : null
 }

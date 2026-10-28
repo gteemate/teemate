@@ -33,6 +33,7 @@ import * as koCard from './screens/ko-card.js'
 import * as friend from './screens/friend.js'
 import { pendingFriend, setPendingFriend } from './screens/friend.js'
 import { checkAlerts } from './alert-bar.js'
+import { openRoundLb } from './round-lb.js'
 import { drawSide, hideSide, forgetSummary, summary } from './office/shell.js'
 
 // Screens most members never open (admin pages, the club office) load the first time they're needed, so the
@@ -110,7 +111,8 @@ setDefaultBack(() => (nav.canGoBack() && !(S.office && OFFICE_HOME.has(S.aview))
 } : null))
 
 // The round bar: Score · [Leaderboard] · Course on a round's screens. Leaderboard only when the card counts for a
-// competition (S.roundBoard, worked out by the scorecard). Switching with it keeps Home underneath, so back = Home.
+// competition (S.roundBoard, worked out by the scorecard) or today's scores are on (round-lb.js). Switching with it keeps
+// Home underneath, so back = Home.
 const ICONS = {
   score: '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/>',
   lb: '<path d="M5 20V12M12 20V5M19 20v-7M3 20h18"/>',
@@ -121,6 +123,7 @@ function roundTab() {
   if (S.tab === 'scores' && S.sview === 'card' && scores.getRound()?.id) return 'score'
   if (!S.roundBar) return null
   if (S.tab === 'course') return 'course'
+  if (S.tab === 'lb' && (b || S.roundDayOn)) return 'lb' // today's scores
   if (b && ((b.view === 'evboard' && S.tab === 'home' && S.aview === 'evboard' && S.evId === b.id) || (b.view === 'pevent' && S.tab === 'scores' && S.sview === 'pevent' && S.peId === b.id))) return 'lb'
   return null
 }
@@ -130,14 +133,13 @@ function drawRoundBar() {
   bar.hidden = !on
   $('app').classList.toggle('withbar', !!on)
   if (!on) return
-  const tabs = [['score', 'Score'], ...(S.roundBoard ? [['lb', 'Leaderboard']] : []), ['course', 'Course']]
+  const tabs = [['score', 'Score'], ...(S.roundBoard || S.roundDayOn ? [['lb', 'Leaderboard']] : []), ['course', 'Course']]
   bar.innerHTML = tabs.map(([k, n]) => `<button data-rt="${k}" aria-current="${k === on ? 'page' : 'false'}"><svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[k]}</svg>${n}</button>`).join('')
   bar.querySelectorAll('[data-rt]').forEach(b => (b.onclick = async () => {
     const k = b.dataset.rt, rb = S.roundBoard
     if (k === 'score') { S.tab = 'scores'; S.sview = 'card' }
     if (k === 'course') { S.tab = 'course'; S.hole = S.ch ?? 0 } // opens on the hole you're playing
-    if (k === 'lb' && rb.view === 'pevent') { S.tab = 'scores'; S.sview = 'pevent'; S.peId = rb.id }
-    if (k === 'lb' && rb.view === 'evboard') { S.tab = 'home'; S.aview = 'evboard'; S.evId = rb.id; S.evDay = 1 }
+    if (k === 'lb') openRoundLb(rb ? 'comp' : 'today') // the card's competition first; a general round, today's scores
     S.roundBar = true
     nav.reset(place()) // back from any round tab goes Home
     await render()

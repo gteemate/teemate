@@ -1,62 +1,36 @@
-// Leaderboard tab: today's field (gross, net, Stableford, birdies), or an event that's on or coming up
-// (all-member events for everyone; other events for the players in them).
+// Leaderboard (Today at the club, and a round's Leaderboard tab): today's field (gross, net, Stableford, birdies).
 import * as api from '../api.js'
 import { S } from '../state.js'
-import { $, esc, ini, header, keepScroll, top0, render, redraw } from '../ui.js'
+import { $, esc, ini, header, keepScroll, redraw } from '../ui.js'
 import { courseHandicap, roundSummary, toPar } from '../scoring.js'
 import { teeRating } from '../games.js'
-import { longDay, today, isoDate, eventLastDay, fromIso } from '../dates.js'
-import { loadBoard, boardHtml, bindBoard } from './event-board.js'
+import { longDay, today, isoDate } from '../dates.js'
+import { addRoundLbSwitch } from '../round-lb.js'
 import { dayBoardOn } from '../day-board.js'
 
 export async function load() {
-  const [all, me] = await Promise.all([api.getEvents(), api.getMe()])
-  const t = isoDate(today())
-  // Events on now or coming up that are for me to see: all-member events, or ones I'm in (or set up myself).
-  const events = all.filter(e => eventLastDay(e) >= t && (e.everyone || e.players.includes(me.id) || (!e.club && e.createdBy?.id === me.id)))
-    .sort((a, b) => (a.startDate > t) - (b.startDate > t) || (a.startDate < b.startDate ? -1 : 1)) // on now first, then by date
-  // The leaderboard of the day can be off (the club's days, or today's switch): then only competitions show.
-  const dayOn = dayBoardOn(await api.getTheme(), t)
-  if (S.lbv === 'event' || (!dayOn && S.lbv === 'today')) S.lbv = events[0]?.id ?? 'today' // first visit: show the event if there is one
-  const ev = events.find(e => e.id === S.lbv)
-  if (ev) return { events, dayOn, board: await loadBoard(ev.id) }
-  if (!dayOn) return { events, dayOn, off: true }
+  // Today at the club: everyone's round today (each competition has its own board, from its card).
+  const me = await api.getMe()
+  if (!dayBoardOn(await api.getTheme(), isoDate(today()))) return { off: true }
   S.lbv = 'today'
   const [course, rounds] = await Promise.all([api.getCourse(), api.getTodayRounds(today())])
-  return { events, course, rounds, me }
+  return { course, rounds, me }
 }
 
 export function draw(data) {
-  if (data.off) { // the leaderboard of the day is off, and no competition is on
+  if (data.off) { // the leaderboard of the day is off
     header('Leaderboard', longDay(today()))
-    $('main').innerHTML = '<div class="screen"><div class="empty-state">Today’s scores aren’t shown today. Competitions show here when they’re on.</div></div>'
+    $('main').innerHTML = '<div class="screen"><div class="empty-state">Today’s scores aren’t shown today.</div></div>'
     return
   }
-  if (data.board?.e) {
-    header(esc(data.board.e.name), `${data.board.e.players.length} player${data.board.e.players.length === 1 ? '' : 's'}`)
-    $('main').innerHTML = boardHtml(data.board, lbSeg(data.events, data.dayOn))
-    bindBoard(data.board)
-    bindLbSeg()
-  } else todayBoard(data)
+  todayBoard(data)
 }
 
-export function lbSeg(events, dayOn = true) {
-  if (!events.length || (!dayOn && events.length < 2)) return ''
-  const t = isoDate(today())
-  const opts = [...(dayOn ? [['today', 'Today']] : []), ...events.map(e => [e.id, esc(e.name) + (e.startDate > t ? ` · ${longDay(fromIso(e.startDate)).split(' ').slice(0, 2).join(' ')}` : '')])]
-  return opts.length === 2
-    ? `<div class="seg" role="group">${opts.map(([k, n]) => `<button data-lv="${k}" aria-pressed="${String(S.lbv) === String(k)}">${n}</button>`).join('')}</div>`
-    : `<div class="tabs-pill" role="group">${opts.map(([k, n]) => `<button data-lv="${k}" aria-pressed="${String(S.lbv) === String(k)}">${n}</button>`).join('')}</div>`
-}
-export function bindLbSeg() {
-  document.querySelectorAll('[data-lv]').forEach(b => (b.onclick = async () => { S.lbv = b.dataset.lv === 'today' ? 'today' : +b.dataset.lv; S.evDay = null; await render(); top0() }))
-}
-
-function todayBoard({ events, course, rounds, me }) {
+function todayBoard({ course, rounds, me }) {
   header('Leaderboard', `${esc(course.name)} · ${longDay(today())} · White tees`)
-  $('main').innerHTML = `<div class="screen">${lbSeg(events, true)}${fieldHtml({ course, rounds, me })}</div>`
+  $('main').innerHTML = `<div class="screen">${fieldHtml({ course, rounds, me })}</div>`
   bindField()
-  bindLbSeg()
+  addRoundLbSwitch() // in a round: and the card's competition
 }
 
 /** Today's scores (gross, net, Stableford, birdies): the members' Leaderboard tab and the club office. */

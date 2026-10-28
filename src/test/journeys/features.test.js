@@ -631,6 +631,42 @@ describe('the leaderboard of the day', () => {
     await app.tap('#field')
     expect(app.screen()).toBe('Leaderboard')
   })
+  it('Today at the club is just today’s scores: no competition buttons', async () => {
+    app = await boot()
+    await app.tap('Competition'); await app.tap('[data-tab="entered"]')
+    await app.tap('#field')
+    expect(document.querySelector('[data-lv]')).toBe(null)
+    expect(document.querySelector('[data-rlb]')).toBe(null) // not in a round
+    expect(document.querySelector('[data-m="net"]')).not.toBe(null) // gross / net / Stableford / birdies
+  })
+  const round = async (who, tick) => {
+    await app.tap('Scoring'); await app.tap('09:30')
+    if (app.screen() === 'Scoring round?') { if (tick) await app.tap(tick); await app.tap('#start') }
+  }
+  it('in a round counting for a competition: its board, with a switch to Today and back', async () => {
+    app = await boot(db => db.book(0, at(db, 570).id, [1]))
+    await round([1], 'Winter League')
+    await app.tap('[data-rt="lb"]')
+    expect(document.querySelector('[data-rlb="comp"]').textContent).toBe('Winter League')
+    await app.tap('[data-rlb="today"]')
+    expect(app.screen()).toBe('Leaderboard')
+    expect(document.querySelector('[data-rlb="today"]').getAttribute('aria-pressed')).toBe('true')
+    expect(document.querySelector('[data-rt="lb"]').getAttribute('aria-current')).toBe('page') // still the round's Leaderboard tab
+    await app.tap('[data-rlb="comp"]')
+    expect(app.screen()).toBe('Winter League')
+  })
+  it('a general round: the Leaderboard tab is today’s scores', async () => {
+    app = await boot(db => { db.book(0, at(db, 570).id, [1]); db.events = db.events.filter(e => e.style === 'league') })
+    await round([1])
+    await app.tap('[data-rt="lb"]')
+    expect(app.screen()).toBe('Leaderboard')
+    expect(document.querySelector('[data-rlb]')).toBe(null) // nothing to switch to
+  })
+  it('a general round with today’s scores off: no Leaderboard tab', async () => {
+    app = await boot(db => { db.book(0, at(db, 570).id, [1]); db.events = db.events.filter(e => e.style === 'league'); db.theme.dayBoardToday = { date: db.today, on: false } })
+    await round([1])
+    expect(document.querySelector('[data-rt="lb"]')).toBe(null)
+  })
   it('off today: nobody sees today’s scores', async () => {
     app = await boot(db => { db.theme.dayBoardToday = { date: db.today, on: false } })
     await app.tap('Competition'); await app.tap('[data-tab="entered"]')
