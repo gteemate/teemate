@@ -8,7 +8,7 @@ import { $, esc, header, keepScroll, render, toast } from '../ui.js'
 import { eventLastDay, isoDate, longDay, today } from '../dates.js'
 import { matchDays, dayDate } from '../season.js'
 import { dayBoardOn } from '../day-board.js'
-import { loadBoard, boardHtml } from '../screens/event-board.js'
+import { loadBoard, boardHtml, bindLeague } from '../screens/event-board.js'
 import { fieldHtml, bindField } from '../screens/leaderboard.js'
 import { clubEvent } from './shell.js'
 
@@ -38,6 +38,7 @@ export function draw({ boards, dayOn, switched, field }) {
       || (field ? '' : '<div class="hint">No club competition today.</div>')}
   </div>`
   bindField()
+  bindLeague() // a league's weeks and views
   document.querySelectorAll('details[data-ob]').forEach(d => d.addEventListener('toggle', () => { S.oBoardOpen = { ...S.oBoardOpen, [d.dataset.ob]: d.open } }))
   document.querySelectorAll('[data-o-db]').forEach(b => (b.onclick = async () => {
     const on = b.dataset.oDb === 'on'

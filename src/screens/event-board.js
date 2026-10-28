@@ -182,6 +182,11 @@ export function bindBoard(data = {}) {
     c.onkeydown = ev => { if ((ev.key === 'Enter' || ev.key === ' ') && ev.target === c) { ev.preventDefault(); c.click() } }
   })
   if (data.action) bindMatchAction(data.action)
+  bindLeague()
+}
+
+/** A league's buttons: Teams / Individual, the weeks, and which teams are open (also on the office Leaderboard). */
+export function bindLeague() {
   document.querySelectorAll('[data-lgview]').forEach(b => (b.onclick = () => { S.lgView = b.dataset.lgview; keepScroll(redraw) }))
   document.querySelectorAll('[data-lgweek]').forEach(b => (b.onclick = () => { S.lgWeek = b.dataset.lgweek === 'season' ? 'season' : +b.dataset.lgweek; keepScroll(redraw) }))
   // Remember which teams are open between redraws.

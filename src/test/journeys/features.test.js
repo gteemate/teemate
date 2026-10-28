@@ -685,6 +685,14 @@ describe('club office: members with no guest points left', () => {
 })
 
 describe('club office: the leaderboard sections fold away', () => {
+  it('the league’s week and view buttons work here too', async () => {
+    app = await boot(db => { db.asOffice = true })
+    await app.tap('[data-ov="board"]')
+    await app.tap('[data-lgweek="1"]')
+    expect(document.querySelector('[data-lgweek="1"]').getAttribute('aria-pressed')).toBe('true')
+    await app.tap('[data-lgview="individual"]')
+    expect(document.querySelector('[data-lgview="individual"]').getAttribute('aria-pressed')).toBe('true')
+  })
   it('today’s scores first and open; today’s competition open; the league closed for a nosey', async () => {
     app = await boot(db => { db.asOffice = true })
     await app.tap('[data-ov="board"]')
