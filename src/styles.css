@@ -820,7 +820,7 @@ h4,.sheet h4{font-family:var(--display);font-weight:600;letter-spacing:0}
 .olegend i.b{background:var(--leaf);border-style:solid}
 .olegend i.g{background:var(--gold)}
 .osplit{display:grid;grid-template-columns:minmax(240px,.75fr) minmax(0,1.7fr);gap:16px;align-items:start}
-.ocol{display:flex;flex-direction:column;gap:12px;align-items:stretch}
+.ocol{display:flex;flex-direction:column;gap:12px;align-items:stretch;min-width:0} /* a wide bracket in it scrolls inside its card, not the page */
 .ocol .primary{align-self:flex-start}
 .ocomp[aria-pressed="true"]{background:var(--leaf)}
 .odetail{min-width:0}
