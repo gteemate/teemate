@@ -21,7 +21,7 @@ export async function loadBoard(id, dayWanted = null) {
   if (!e) return { e: null }
   if (e.style === 'league') {
     const entries = await api.getLeagueEntries([e.id])
-    const cards = await api.getCardsById([...new Set(entries.map(x => x.roundId))])
+    const cards = await api.getCardsById([...new Set(entries.map(x => x.roundId).filter(Boolean))]) // a deleted card leaves its entry with none
     return { e, members, course, L: buildLibrary(games), entries, cards, me: await api.getMe() }
   }
   const days = matchDays(e), dates = days.map(d => dayDate(e, d))

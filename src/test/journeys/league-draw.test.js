@@ -142,6 +142,12 @@ describe('unfinished league cards, for the office', () => {
     expect(document.querySelector('[data-o-lgout="3:1"]')).not.toBe(null)
     expect(document.querySelectorAll('[data-o-lgdel]')).toHaveLength(2) // only the real card's two rows
   })
+  it('the league board opens with a deleted card in it', async () => {
+    app = await boot(db => { played(db); db.asOffice = false; db.leagueEntries.push({ eventId: 880, week: 1, memberId: 3, roundId: null }) }, { as: 'member' })
+    await app.tap('Competition'); await app.tap('Frosty League')
+    expect(app.screen()).toBe('Frosty League')
+    expect(app.text()).not.toContain('Something went wrong')
+  })
   it('none unfinished: no section', async () => {
     app = await boot(db => { played(db); db.rounds[db.rounds.length - 2].done = Array(18).fill(true) })
     await open()

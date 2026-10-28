@@ -31,7 +31,7 @@ export async function load() {
   const leagues = evs.filter(x => x.e.style === 'league' && x.e.startDate <= t && !x.done)
   if (leagues.length) {
     const [entries, course] = await Promise.all([api.getLeagueEntries(leagues.map(x => x.e.id)), api.getCourse()])
-    const cards = await api.getCardsById([...new Set(entries.map(x => x.roundId))])
+    const cards = await api.getCardsById([...new Set(entries.map(x => x.roundId).filter(Boolean))]) // a deleted card leaves its entry with none
     for (const x of leagues) x.unfinished = entries.filter(en => en.eventId === x.e.id).map(en => {
       const card = cards[en.roundId], wh = openCourse(course.holes, holesFor(x.e, en.week))
       if (!card) return { ...en, gone: true, date: '', thru: 0, of: wh.length, on: 0 } // the player deleted the card: the week's go is still used

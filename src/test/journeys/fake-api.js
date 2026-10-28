@@ -677,7 +677,8 @@ export function makeWorld(today, setup = () => {}, as = 'admin') {
       return admin || !e.signup || !e.advertiseFrom || e.advertiseFrom <= db.today || e.players.includes(ME) || e.createdBy?.id === ME
     })).map(e => { const [a, b] = visiblePair(e.A?.col, e.B?.col); return { ...e, A: e.A && { ...e.A, col: a }, B: e.B && { ...e.B, col: b } } }),
     getCardsOn: async dates => copy(db.rounds.filter(r => dates.includes(r.date))),
-    getCardsById: async ids => Object.fromEntries(db.rounds.filter(r => ids.includes(r.id)).map(r => [r.id, copy(r)])),
+    getCardsById: async ids => { if (ids.some(i => i == null)) throw new Error('invalid input syntax for type bigint: "null"') // as the database
+      return Object.fromEntries(db.rounds.filter(r => ids.includes(r.id)).map(r => [r.id, copy(r)])) },
     getLeagueEntries: async eids => copy(db.leagueEntries.filter(x => eids.includes(x.eventId))),
     getEventEntries: async eids => copy(db.entries.filter(x => eids.includes(x.eventId))),
     enterLeague: async (rid, eid, ids, marker = null) => {
