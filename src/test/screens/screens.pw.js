@@ -9,8 +9,9 @@ const COMFY_TAP = 40 // smaller than this is noted (Apple suggests 44)
 const results = []
 
 // What's wrong on the screen as it is now (run in the page).
-function inspect({ min, comfy }) {
-  const W = innerWidth, norm = t => (t ?? '').replace(/\s+/g, ' ').trim().slice(0, 40)
+function inspect({ min, comfy, vw }) {
+  // the device's own width: an emulated phone widens its window to fit a page that's too wide, so innerWidth can't tell
+  const W = vw, norm = t => (t ?? '').replace(/\s+/g, ' ').trim().slice(0, 40)
   const label = el => norm(el.getAttribute('aria-label') || el.textContent || el.placeholder || el.id || el.tagName)
   const inScroller = el => { for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) { const s = getComputedStyle(p); if (/(auto|scroll)/.test(s.overflowX) && p.scrollWidth > p.clientWidth + 1) return true } return false }
   const shown = el => { const r = el.getBoundingClientRect(), s = getComputedStyle(el); return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none' && !el.closest('[hidden]') }
@@ -49,7 +50,7 @@ async function check(page, name, testInfo) {
   await page.waitForLoadState('networkidle')
   await page.waitForTimeout(300)
   const size = testInfo.project.name
-  const found = await page.evaluate(inspect, { min: MIN_TAP, comfy: COMFY_TAP })
+  const found = await page.evaluate(inspect, { min: MIN_TAP, comfy: COMFY_TAP, vw: page.viewportSize().width })
   mkdirSync(`test-results/screens/${size}`, { recursive: true })
   const file = `${size}/${name.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.png`
   await page.screenshot({ path: `test-results/screens/${file}`, fullPage: true })
@@ -171,22 +172,55 @@ test('every main screen', async ({ page }, testInfo) => {
   // More screens (added for the testing protocol). Each is visited if the test data has it; one that can't be
   // reached is noted in the results (and the run carries on), so a gap shows rather than stopping everything.
   const visit = async (name, go) => {
-    try { await go(); await check(page, name, testInfo) } catch (err) { results.push({ size: testInfo.project.name, name, skipped: String(err.message).slice(0, 200) }) }
+    try { await go(); await check(page, name, testInfo) } catch (err) {
+      results.push({ size: testInfo.project.name, name, skipped: String(err.message).slice(0, 200) })
+      expect.soft(null, `${name} at ${testInfo.project.name}: not reached (${String(err.message).split('\n')[0]})`).toBe('reached') // an unchecked screen is a gap
+    }
   }
-  await visit('36 club office · club settings (paper scorecards, fees, leaderboard days)', async () => { await tap(page, '[data-ov="club"]') })
-  await visit('37 club office · new competition', async () => { await tap(page, '[data-ov="comps"]'); await tap(page, '#o-new') })
+  // Each visit starts from a fresh open of the app, so one that goes wrong can't leave the next stuck behind it.
+  const fresh = async () => { await page.goto('/'); await page.waitForSelector('#app:not(.signed-out)'); await dismissAlerts(page); await home(page) }
+  const office = async ov => { await fresh(); await tap(page, '#account'); await tap(page, '[data-a="office"]'); await tap(page, `[data-ov="${ov}"]`) }
+  await visit('36 club office · club settings (paper scorecards, fees, leaderboard days)', async () => { await office('club') })
+  await visit('37 club office · new competition', async () => { await office('comps'); await tap(page, '#o-new') })
   await visit('38 club office · new club event: details', async () => { await tap(page, '[data-o-kind="event"]') })
   await visit('39 club office · new club event: holes', async () => { await page.fill('#ev-name', 'Screen check'); await tap(page, '[data-style="individual"]'); await tap(page, '[data-who="all"]') })
-  await visit('40 club office · the leaderboard', async () => { await tap(page, '[data-ov="board"]') })
-  await visit('41 club office · tee sheet booking rules', async () => { await tap(page, '[data-ov="tee"]'); await tap(page, '#o-rules') })
-  await page.goto('/'); await page.waitForSelector('#app:not(.signed-out)'); await dismissAlerts(page); await home(page)
-  await visit('42 make your own event', async () => { await tap(page, '[data-tile="comp"]'); await tap(page, '[data-tab="events"]'); await tap(page, 'text=+ Create your own event') })
+  await visit('40 club office · the leaderboard', async () => { await office('board') })
+  await visit('41 club office · tee sheet booking rules', async () => { await office('tee'); await tap(page, '#o-rules') })
+  await visit('42 make your own event', async () => { await fresh(); await tap(page, '[data-tile="comp"]'); await tap(page, '[data-tab="events"]'); await tap(page, 'text=+ Create your own event') })
   await visit('43 a season: match day, who’s playing', async () => {
-    await home(page); await tap(page, '[data-tile="comp"]'); await tap(page, '[data-tab="entered"]')
-    await tap(page, '[data-edit]'); for (let i = 0; i < 3; i++) await tap(page, '#ev-next')
-    await tap(page, '#md-new'); await page.fill('#ev-md', new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10)); await tap(page, '#ev-mdadd')
+    await fresh(); await tap(page, '[data-tile="comp"]'); await tap(page, '[data-tab="entered"]')
+    await openCard(page, '.card.comp', 'Pals Ryder Season'); await tap(page, 'text=+ Add a match day')
+    await page.fill('#ev-md', new Date(Date.now() + 10 * 864e5).toISOString().slice(0, 10)); await tap(page, '#ev-mdadd')
+    await page.waitForSelector('[data-pick], .pick') // who's playing
   })
-  await visit('44 friends · find', async () => { await home(page); await tap(page, '[data-tile="friends"]'); await tap(page, '[data-s="find"]') })
+  await visit('44 friends · find', async () => { await fresh(); await tap(page, '[data-tile="friends"]'); await tap(page, '[data-s="find"]') })
+  // Found in the pre-demo checks (28 Oct): these screens weren't visited, so their layout bugs went unseen.
+  await visit('45 knockout · Find a time', async () => {
+    await fresh(); await tap(page, '[data-tile="comp"]'); await tap(page, '[data-tab="entered"]')
+    await openCard(page, '[data-ko]', 'Club Singles'); await tap(page, '#ko-find')
+  })
+  // Its cards keep their text and buttons in from the card's edge (they once had no margin at all).
+  expect.soft(await page.locator('.ftcard').count(), `Find a time not reached at ${testInfo.project.name}`).toBeGreaterThan(0)
+  const inset = await page.evaluate(() => Math.min(...[...document.querySelectorAll('.ftcard')].flatMap(c => {
+    const r = c.getBoundingClientRect()
+    return [...c.children].map(k => { const b = k.getBoundingClientRect(); return Math.min(b.left - r.left, r.right - b.right) })
+  })))
+  expect.soft(inset, `Find a time at ${testInfo.project.name}: something sits ${inset}px from its card's edge`).toBeGreaterThanOrEqual(8)
+  await visit('46 club office · a knockout draw (on a phone, its detail under the list)', async () => {
+    await office('comps'); await tap(page, '[data-o-comp^="s:"]:has-text("Club Singles")')
+    await page.waitForSelector('.obracket')
+  })
+  await visit('47 knockout · a draft draw (play-by dates, Spread the rounds evenly)', async () => {
+    await office('comps'); await tap(page, '[data-o-comp^="s:"]:has-text("Captain")'); await tap(page, '[data-o-go^="draw:"]')
+    await page.waitForSelector('#ko-spread')
+  })
+  // Found 27 Oct: Spread the rounds evenly was squashed into the final's date box on the iPad.
+  const spread = await page.evaluate(() => {
+    const b = document.getElementById('ko-spread')?.getBoundingClientRect(), d = document.getElementById('ko-fin')?.getBoundingClientRect()
+    return b && d ? { h: Math.round(b.height), overlap: !(b.right <= d.left || b.left >= d.right || b.bottom <= d.top || b.top >= d.bottom) } : null
+  })
+  expect.soft(spread, `draft draw at ${testInfo.project.name}: Spread the rounds evenly ${JSON.stringify(spread)}`).toEqual({ h: expect.any(Number), overlap: false })
+  expect.soft(spread?.h ?? 0, `draft draw at ${testInfo.project.name}: Spread the rounds evenly is ${spread?.h}px tall`).toBeGreaterThanOrEqual(44)
 })
 
 test.afterAll(async ({}, testInfo) => {

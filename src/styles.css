@@ -1032,11 +1032,11 @@ button.lrow.ci-m{width:100%;text-align:left;background:none;border:0;border-top:
 .pendnote{background:rgba(227,195,117,.12);border:1px solid var(--gold);color:var(--ink);border-radius:12px;padding:10px 12px;font-size:14px;font-weight:600;margin-bottom:10px}
 /* Find a time (find-time.js): days to tick, then the grid of who can do which */
 .ftdays{display:grid;gap:8px}
-.ftday{display:grid;grid-template-columns:84px 1fr;gap:10px;align-items:center;background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:8px 10px}
+.ftday{display:grid;grid-template-columns:64px minmax(0,1fr);gap:8px;align-items:center;background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:8px} /* fits a small phone */
 .ftd{font-weight:700;line-height:1.15}
 .ftd small{display:block;color:var(--muted);font-weight:600;font-size:12px}
-.ftparts{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
-.ftparts button{font:inherit;font-size:14px;font-weight:700;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:9px 4px;min-height:42px;cursor:pointer}
+.ftparts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.ftparts button{font:inherit;font-size:13px;font-weight:700;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:9px 4px;min-height:42px;cursor:pointer}
 .ftparts button[aria-pressed="true"]{background:var(--gold);color:var(--on-gold);border-color:var(--gold)}
 .ftparts button:disabled{opacity:.35}
 .ftgone{display:grid;place-items:center;font-size:12px;color:var(--muted);border:1px dashed var(--line);border-radius:10px;min-height:42px}

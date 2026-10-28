@@ -39,6 +39,19 @@ describe('Find a time', () => {
     expect(app.db.matchTimes.every(t => t.answers[0] === true)).toBe(true)
     expect(app.db.notices.some(n => n.memberId === 1 && n.kind === 'times')).toBe(true)
   })
+  it('found 27 Oct: today’s morning is gone after midday, the afternoon after 5pm', async () => {
+    app = await boot(koMatch())
+    vi.setSystemTime(new Date(2026, 9, 10, 13, 0)) // 1pm today
+    await open()
+    await app.tap('Find a time')
+    expect(document.querySelector('[data-k="2026-10-10|morning"]')).toBeNull() // shown as Gone
+    expect(document.querySelector('[data-k="2026-10-10|afternoon"]')).not.toBeNull()
+    expect(document.querySelector('[data-k="2026-10-11|morning"]')).not.toBeNull() // tomorrow's all there
+    vi.setSystemTime(new Date(2026, 9, 10, 17, 30))
+    await app.tap('Cancel'); await app.tap('Find a time')
+    expect(document.querySelector('[data-k="2026-10-10|afternoon"]')).toBeNull()
+    expect(document.querySelector('[data-k="2026-10-10|evening"]')).not.toBeNull()
+  })
   it('only days up to the play-by date are offered', async () => {
     app = await boot(koMatch())
     await open()
